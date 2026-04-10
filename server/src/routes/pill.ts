@@ -83,10 +83,6 @@ router.post('/craft', authMiddleware, async (req: AuthRequest, res: Response) =>
 
     const char = charRows[0];
 
-    if (char.spirit_stone < cost) {
-      return res.json({ code: 400, message: '灵石不足' });
-    }
-
     if (!Array.isArray(herbs_used) || herbs_used.length === 0) {
       return res.json({ code: 400, message: '灵草参数错误' });
     }
@@ -113,25 +109,31 @@ router.post('/craft', authMiddleware, async (req: AuthRequest, res: Response) =>
     }
     const qualityFactor = totalCount > 0 ? Math.round((totalWeight / totalCount) * 100) / 100 : 1.0;
 
+    // 灵石消耗按品质系数调整
+    const actualCost = Math.floor(cost * qualityFactor);
+
+    if (char.spirit_stone < actualCost) {
+      return res.json({ code: 400, message: `灵石不足,需要 ${actualCost}(品质加成)` });
+    }
+
     // 扣灵石
     await pool.query(
       'UPDATE characters SET spirit_stone = spirit_stone - ? WHERE id = ?',
-      [cost, char.id]
+      [actualCost, char.id]
     );
+
+    // 扣灵草(不管成功失败都扣)
+    for (const h of herbs_used) {
+      await pool.query(
+        'UPDATE character_materials SET count = count - ? WHERE character_id = ? AND material_id = ? AND quality = ?',
+        [h.count, char.id, h.herb_id, h.quality]
+      );
+    }
 
     // 判断成功
     const success = Math.random() < success_rate;
 
-    // 失败返还灵草(方案 B),只损失灵石
     if (success) {
-      // 扣灵草
-      for (const h of herbs_used) {
-        await pool.query(
-          'UPDATE character_materials SET count = count - ? WHERE character_id = ? AND material_id = ? AND quality = ?',
-          [h.count, char.id, h.herb_id, h.quality]
-        );
-      }
-
       // 添加丹药(同品质系数合并)
       await pool.query(
         `INSERT INTO character_pills (character_id, pill_id, count, quality_factor)
@@ -146,7 +148,7 @@ router.post('/craft', authMiddleware, async (req: AuthRequest, res: Response) =>
       data: {
         success,
         quality_factor: qualityFactor,
-        new_spirit_stone: char.spirit_stone - cost,
+        new_spirit_stone: Number(char.spirit_stone) - actualCost,
       },
     });
   } catch (error) {
@@ -191,18 +193,18 @@ router.post('/use', authMiddleware, async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // 战斗丹药: 添加buff(同种丹药覆盖,不叠加)
-    if (pill_type === 'battle' && buff_duration) {
-      const finalDuration = Math.floor(buff_duration * qf);
-      // 先删除该丹药的旧 buff
+    // 战斗丹药: 按品质系数决定持续时间(小时)
+    if (pill_type === 'battle') {
+      // 品质→小时: 1.0→1h, 1.2→2h, 1.5→2h, 2.0→3h, 3.0→5h, 5.0→8h
+      const hours = Math.min(8, Math.max(1, Math.round(qf * 1.6)));
+      const expireTime = new Date(Date.now() + hours * 3600 * 1000);
       await pool.query(
         'DELETE FROM character_buffs WHERE character_id = ? AND pill_id = ?',
         [char.id, pill_id]
       );
-      // 再添加新 buff
       await pool.query(
-        'INSERT INTO character_buffs (character_id, pill_id, remaining_fights, quality_factor) VALUES (?, ?, ?, ?)',
-        [char.id, pill_id, finalDuration, qf]
+        'INSERT INTO character_buffs (character_id, pill_id, remaining_fights, quality_factor, expire_time) VALUES (?, ?, 0, ?, ?)',
+        [char.id, pill_id, qf, expireTime]
       );
     }
 
@@ -220,7 +222,7 @@ router.get('/buffs', authMiddleware, async (req: AuthRequest, res: Response) => 
     if (charRows.length === 0) return res.json({ code: 400, message: '角色不存在' });
 
     const [buffs] = await pool.query<RowDataPacket[]>(
-      'SELECT id, pill_id, remaining_fights, quality_factor FROM character_buffs WHERE character_id = ? AND remaining_fights > 0',
+      'SELECT id, pill_id, remaining_fights, quality_factor, expire_time FROM character_buffs WHERE character_id = ? AND (expire_time > NOW() OR remaining_fights > 0)',
       [charRows[0].id]
     );
 

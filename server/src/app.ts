@@ -8,6 +8,7 @@ import skillRouter from './routes/skill';
 import equipmentRouter from './routes/equipment';
 import pillRouter from './routes/pill';
 import caveRouter from './routes/cave';
+import battleRouter from './routes/battle';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use('/api/skill', skillRouter);
 app.use('/api/equipment', equipmentRouter);
 app.use('/api/pill', pillRouter);
 app.use('/api/cave', caveRouter);
+app.use('/api/battle', battleRouter);
 
 // 健康检查
 app.get('/api/health', (_req, res) => {

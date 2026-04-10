@@ -2,9 +2,10 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { CharacterData, BattleLogEntry, MapData, MonsterBattleInfo } from '../game/types';
 import { MAPS, REALM_TIERS, getRealmName, getExpRequired, formatNumber, getUnlockedMaps } from '../game/data';
-import { generateMonsterStats, characterToBattler, runBattle, buildMonsterInfo, getSpiritDensity, EquippedSkillInfo } from '../game/battleEngine';
-import { getGameData, saveBattleRewards, updateCharacter } from '../api/game';
-import { SKILL_NAME_TO_ID } from '../game/skillData';
+import type { EquippedSkillInfo } from '../game/battleEngine';
+import { getGameData, updateCharacter } from '../api/game';
+import request from '../api/request';
+// 战斗计算已迁移到后端，前端仅负责展示
 
 export const useGameStore = defineStore('game', () => {
   // ===== 角色数据 =====
@@ -27,7 +28,8 @@ export const useGameStore = defineStore('game', () => {
   const displayMonsterHp = ref(0);
   const displayMonsterMaxHp = ref(0);
   const currentMonsterInfo = ref<MonsterBattleInfo | null>(null);
-  const inFight = ref(false); // 正在一场战斗中（区分 isBattling 的"历练中"）
+  const waveMonsterNames = ref<string[]>([]); // 本波所有怪物名字
+  const inFight = ref(false);
 
   // 死亡冷却
   const deathCooldown = ref(0);
@@ -38,11 +40,7 @@ export const useGameStore = defineStore('game', () => {
   const logTimer = ref<number | null>(null);
   const pendingResult = ref<{ won: boolean; expGained: number; spiritStoneGained: number; drops: any[] } | null>(null);
 
-  // 累计未保存的奖励
-  const unsavedExp = ref(0);
-  const unsavedStone = ref(0);
-  const unsavedLevelExp = ref(0);
-  const unsavedSkills = ref<string[]>([]);
+  // 自动保存(保留兼容)
   const saveTimer = ref<number | null>(null);
 
   // 本次历练掉落统计
@@ -72,17 +70,17 @@ export const useGameStore = defineStore('game', () => {
 
   const unlockedMaps = computed(() => {
     if (!character.value) return MAPS.slice(0, 1);
-    return getUnlockedMaps(character.value.realm_tier, character.value.realm_stage);
+    return getUnlockedMaps(character.value.realm_tier || 1, character.value.realm_stage || 1);
   });
 
   const realmName = computed(() => {
     if (!character.value) return '';
-    return getRealmName(character.value.realm_tier, character.value.realm_stage);
+    return getRealmName(character.value.realm_tier || 1, character.value.realm_stage || 1);
   });
 
   const expRequired = computed(() => {
     if (!character.value) return 0;
-    return getExpRequired(character.value.realm_tier, character.value.realm_stage);
+    return getExpRequired(character.value.realm_tier || 1, character.value.realm_stage || 1);
   });
 
   const expPercent = computed(() => {
@@ -205,77 +203,47 @@ export const useGameStore = defineStore('game', () => {
     executeFight();
   }
 
-  // 执行一波战斗 (随机 1-5 只怪)
-  function executeFight() {
+  // 执行一波战斗 (后端计算)
+  async function executeFight() {
     if (!character.value || !currentMap.value) return;
-
-    const map = currentMap.value;
-    const waveSize = 1 + Math.floor(Math.random() * 5); // 1-5只
-    const playerStats = characterToBattler(character.value);
-
-    // 等级固定属性加成
-    const lb = levelBonus.value;
-    playerStats.maxHp += lb.hp;
-    playerStats.hp = playerStats.maxHp;
-    playerStats.atk += lb.atk;
-    playerStats.def += lb.def;
-    playerStats.spd += lb.spd;
-
-    let totalExp = 0, totalStone = 0;
-    const allDrops: any[] = [];
-    const allLogs: any[] = [];
-    let playerDied = false;
-
-    // 波次日志
-    if (waveSize > 1) {
-      allLogs.push({ turn: 0, text: `遭遇了一波 ${waveSize} 只怪物!`, type: 'system', playerHp: playerStats.maxHp, playerMaxHp: playerStats.maxHp, monsterHp: 0, monsterMaxHp: 0 });
-    }
-
-    for (let w = 0; w < waveSize; w++) {
-      const idx = Math.floor(Math.random() * map.monsters.length);
-      const template = map.monsters[idx];
-      const monsterStats = generateMonsterStats(template);
-
-      // 设置当前怪物 (用最后一只的信息显示)
-      currentMonsterInfo.value = buildMonsterInfo(template, monsterStats);
-      displayMonsterHp.value = monsterStats.maxHp;
-      displayMonsterMaxHp.value = monsterStats.maxHp;
-
-      const result = runBattle(playerStats, monsterStats, template, equippedSkills.value || undefined);
-
-      allLogs.push(...result.logs);
-
-      if (result.won) {
-        totalExp += result.expGained;
-        totalStone += result.spiritStoneGained;
-        allDrops.push(...(result.drops || []));
-        // 玩家血量延续到下一只 (不回满)
-        // playerStats.hp 已在 runBattle 内部更新... 但 runBattle 返回后 player 是局部变量
-        // 需要从日志中读取最终血量
-        const lastLog = result.logs[result.logs.length - 1];
-        if (lastLog?.playerHp !== undefined) {
-          playerStats.hp = lastLog.playerHp;
-        }
-      } else {
-        playerDied = true;
-        break;
-      }
-    }
-
-    // 设置初始显示
-    displayPlayerHp.value = playerStats.hp;
-    displayPlayerMaxHp.value = playerStats.maxHp;
     inFight.value = true;
 
-    pendingResult.value = {
-      won: !playerDied,
-      expGained: totalExp,
-      spiritStoneGained: totalStone,
-      drops: allDrops,
-    };
+    try {
+      const res: any = await request.post('/battle/fight', { map_id: currentMapId.value });
 
-    logQueue.value = [...allLogs];
-    drainLogQueue();
+      if (res.code !== 200) {
+        addLog(0, res.message || '战斗请求失败', 'system');
+        inFight.value = false;
+        scheduleFight();
+        return;
+      }
+
+      const data = res.data;
+
+      // 更新角色数据(后端已直接存库)
+      if (data.character) {
+        character.value = data.character;
+      }
+
+      waveMonsterNames.value = data.monsterNames || [];
+      displayPlayerHp.value = character.value!.max_hp;
+      displayPlayerMaxHp.value = character.value!.max_hp;
+
+      pendingResult.value = {
+        won: data.won,
+        expGained: data.expGained || 0,
+        spiritStoneGained: data.stoneGained || 0,
+        drops: [],
+      };
+
+      logQueue.value = data.logs || [];
+      drainLogQueue();
+    } catch (err) {
+      addLog(0, '战斗请求失败', 'system');
+      inFight.value = false;
+      // 延迟重试
+      battleTimer.value = window.setTimeout(() => scheduleFight(), 2000);
+    }
   }
 
   // 输出一条日志并同步血条
@@ -325,7 +293,7 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 日志输出完毕后结算战斗结果
+  // 日志输出完毕后结算战斗结果(后端已存库,前端只更新显示)
   function onBattleLogsFinished() {
     if (!character.value || !pendingResult.value) return;
 
@@ -335,73 +303,23 @@ export const useGameStore = defineStore('game', () => {
 
     if (result.won) {
       killCount.value++;
-      // 战意沸腾叠层 (最多10层)
       if (battleFrenzyStacks.value < 10) battleFrenzyStacks.value++;
-      // 演武堂 + 装备灵气浓度加成
-      const expBonusMul = 1 + caveBonus.value.expBonus / 100 + getSpiritDensity() / 100;
-      const finalExp = Math.floor(result.expGained * expBonusMul);
-      result.expGained = finalExp;
 
       sessionExp.value += result.expGained;
       sessionStone.value += result.spiritStoneGained;
 
-      // 更新本地角色数据
-      character.value!.cultivation_exp += result.expGained;
-      character.value!.spirit_stone += result.spiritStoneGained;
-
-      // 等级经验 (和修为同额)
-      const levelExpGain = result.expGained;
-      character.value!.level_exp += levelExpGain;
-      unsavedLevelExp.value += levelExpGain;
-
-      // 检查升级
-      checkLevelUp();
-
-      // 累计未保存数据
-      unsavedExp.value += result.expGained;
-      unsavedStone.value += result.spiritStoneGained;
-
-      // 收集掉落物品
+      // 掉落统计(仅显示用)
       if (result.drops && Array.isArray(result.drops)) {
-        result.drops.forEach(drop => {
-          if (drop.type === 'skill' && SKILL_NAME_TO_ID[drop.name]) {
-            unsavedSkills.value.push(SKILL_NAME_TO_ID[drop.name]);
-          }
-          if (drop.type === 'equipment' && drop.equipData) {
-            const data = JSON.parse(JSON.stringify(drop.equipData));
-            import('../api/request').then(({ default: request }) => {
-              request.post('/equipment/add', data).catch(() => {});
-            });
-          }
-          // 灵草掉落
-          if (drop.type === 'material' && drop.equipData && drop.equipData.herb_id) {
-            const herbData = JSON.parse(JSON.stringify(drop.equipData));
-            import('../api/request').then(({ default: request }) => {
-              request.post('/pill/add-herb', herbData).catch(() => {});
-            });
-          }
-          sessionDrops.value[drop.name] = (sessionDrops.value[drop.name] || 0) + 1;
+        result.drops.forEach((dropName: string) => {
+          if (dropName) sessionDrops.value[dropName] = (sessionDrops.value[dropName] || 0) + 1;
         });
       }
 
-      // 检查突破
-      checkBreakthrough();
-
-      // 立即保存
-      flushSave();
-
-      // 扣减丹药buff次数
-      import('../api/request').then(({ default: request }) => {
-        request.post('/pill/consume-buff').catch(() => {});
-      });
-
-      // 继续下一场
       scheduleFight();
     } else {
-      // 死亡：3秒冷却
+      // 死亡：3秒冷却(后端已扣灵石)
       deathCooldown.value = 3;
-      battleFrenzyStacks.value = 0; // 死亡重置叠层
-      character.value!.spirit_stone = Math.floor(character.value!.spirit_stone * 0.95);
+      battleFrenzyStacks.value = 0;
 
       deathTimer.value = window.setInterval(() => {
         deathCooldown.value--;
@@ -415,31 +333,17 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 检查突破
-  function checkLevelUp() {
-    if (!character.value) return;
-    if ((character.value.level || 1) >= 200) return;
-    const req = levelExpRequired.value;
-    if (req === Infinity) return;
-    if (character.value.level_exp >= req) {
-      character.value.level_exp -= req;
-      character.value.level = Math.min(200, (character.value.level || 1) + 1);
-      addLog(0, `等级提升!你已升至【Lv.${character.value.level}】`, 'system');
-      updateCharacter({
-        realm_tier: character.value.realm_tier,
-        realm_stage: character.value.realm_stage,
-        max_hp: character.value.max_hp,
-        atk: character.value.atk,
-        def: character.value.def,
-        spd: character.value.spd,
-        level: character.value.level,
-        level_exp: character.value.level_exp,
-      }).catch(() => {});
-    }
+  // 手动触发境界突破
+  function forceBreakthrough() {
+    checkBreakthrough();
   }
 
   function checkBreakthrough() {
     if (!character.value) return;
+    // 兜底: realm_tier/realm_stage 为 null 时默认练气1层
+    if (!character.value.realm_tier) character.value.realm_tier = 1;
+    if (!character.value.realm_stage) character.value.realm_stage = 1;
+
     const req = expRequired.value;
     if (character.value.cultivation_exp >= req) {
       character.value.cultivation_exp -= req;
@@ -491,12 +395,15 @@ export const useGameStore = defineStore('game', () => {
     battleLogs.value = [];
   }
 
-  // ===== 自动保存 =====
+  // ===== 自动保存(后端战斗已直接存库,保留地图切换保存) =====
   function startAutoSave() {
     stopAutoSave();
     saveTimer.value = window.setInterval(() => {
-      flushSave();
-    }, 30000); // 每30秒保存一次
+      // 定期保存当前地图
+      if (character.value) {
+        updateCharacter({ current_map: currentMapId.value }).catch(() => {});
+      }
+    }, 30000);
   }
 
   function stopAutoSave() {
@@ -506,29 +413,9 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  async function flushSave() {
-    if (unsavedExp.value === 0 && unsavedStone.value === 0 && unsavedLevelExp.value === 0 && unsavedSkills.value.length === 0) return;
-    const exp = unsavedExp.value;
-    const stone = unsavedStone.value;
-    const lvExp = unsavedLevelExp.value;
-    const skills = [...unsavedSkills.value];
-    unsavedExp.value = 0;
-    unsavedStone.value = 0;
-    unsavedLevelExp.value = 0;
-    unsavedSkills.value = [];
-    try {
-      await saveBattleRewards({
-        exp_gained: exp,
-        spirit_stone_gained: stone,
-        level_exp_gained: lvExp,
-        current_map: currentMapId.value,
-        skills_gained: skills,
-      });
-    } catch {
-      unsavedExp.value += exp;
-      unsavedStone.value += stone;
-      unsavedLevelExp.value += lvExp;
-      unsavedSkills.value = [...unsavedSkills.value, ...skills];
+  function flushSave() {
+    if (character.value) {
+      updateCharacter({ current_map: currentMapId.value }).catch(() => {});
     }
   }
 
@@ -537,11 +424,11 @@ export const useGameStore = defineStore('game', () => {
     character, loaded, battleLogs, isBattling, currentMapId, isPaused,
     killCount, sessionExp, sessionStone, sessionDrops, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
-    currentMonsterInfo, inFight,
+    currentMonsterInfo, waveMonsterNames, inFight,
     // computed
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
     // methods
-    loadGameData, changeMap, startBattle, stopBattle, togglePause, clearLogs, addLog, flushSave,
+    loadGameData, changeMap, startBattle, stopBattle, togglePause, clearLogs, addLog, flushSave, forceBreakthrough,
   };
 });

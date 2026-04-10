@@ -8,8 +8,8 @@ export const REALM_TIERS: RealmTier[] = [
   { tier: 4, realm: '元婴', stages: 3, base_power: 20000, power_multiplier: 20.0, breakthrough_type: 'tribulation', exp_multiplier: 200 },
   { tier: 5, realm: '化神', stages: 3, base_power: 100000, power_multiplier: 50.0, breakthrough_type: 'tribulation', exp_multiplier: 800 },
   { tier: 6, realm: '渡劫', stages: 3, base_power: 500000, power_multiplier: 120.0, breakthrough_type: 'tribulation', exp_multiplier: 3000 },
-  { tier: 7, realm: '大乘', stages: 3, base_power: 2000000, power_multiplier: 300.0, breakthrough_type: 'tribulation', exp_multiplier: 10000 },
-  { tier: 8, realm: '飞升', stages: 5, base_power: 10000000, power_multiplier: 1000.0, breakthrough_type: 'tribulation', exp_multiplier: 50000 },
+  { tier: 7, realm: '大乘', stages: 3, base_power: 2000000, power_multiplier: 200.0, breakthrough_type: 'tribulation', exp_multiplier: 8000 },
+  { tier: 8, realm: '飞升', stages: 5, base_power: 10000000, power_multiplier: 300.0, breakthrough_type: 'tribulation', exp_multiplier: 15000 },
 ];
 
 export const REALM_STAGE_NAMES: Record<number, string[]> = {
@@ -45,7 +45,7 @@ export function getElementMultiplier(attackerElement: string | null, defenderEle
 export const MAPS: MapData[] = [
   {
     id: 'qingfeng_valley', name: '清风谷', tier: 1,
-    realm_required: '练气一层', recommended_power: 100,
+    realm_required: '练气一层', recommended_power: 1,
     element: null, description: '灵气稀薄的山谷，新手历练之地',
     monsters: [
       { id: 'wild_boar', name: '野猪妖', power: 50, element: null, exp: 10, spirit_stone_range: [5, 15], role: 'balanced', drop_table: 'common_t1' },
@@ -56,7 +56,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'misty_swamp', name: '迷雾沼泽', tier: 1,
-    realm_required: '练气五层', recommended_power: 300,
+    realm_required: '练气五层', recommended_power: 5,
     element: 'water', description: '毒瘴弥漫的湿地，盛产炼丹草药',
     monsters: [
       { id: 'toad_spirit', name: '蟾蜍精', power: 200, element: 'water', exp: 20, spirit_stone_range: [5, 15], role: 'balanced', drop_table: 'common_t1' },
@@ -67,7 +67,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'sunset_mountain', name: '落霞山', tier: 2,
-    realm_required: '筑基初期', recommended_power: 1200,
+    realm_required: '筑基初期', recommended_power: 15,
     element: 'fire', description: '晚霞笼罩的火灵山，装备掉率较高',
     monsters: [
       { id: 'fire_fox', name: '火狐妖', power: 800, element: 'fire', exp: 80, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
@@ -78,7 +78,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'jade_bamboo_forest', name: '翠竹林', tier: 2,
-    realm_required: '筑基初期', recommended_power: 1400,
+    realm_required: '筑基初期', recommended_power: 20,
     element: 'wood', description: '灵竹成林，功法残页掉率高',
     monsters: [
       { id: 'bamboo_spirit', name: '竹灵', power: 900, element: 'wood', exp: 90, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
@@ -89,7 +89,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'iron_ore_cave', name: '黑铁矿洞', tier: 2,
-    realm_required: '筑基中期', recommended_power: 1800,
+    realm_required: '筑基中期', recommended_power: 25,
     element: 'metal', description: '地下矿洞，盛产炼器矿石',
     monsters: [
       { id: 'iron_golem', name: '铁傀儡', power: 1200, element: 'metal', exp: 110, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
@@ -100,7 +100,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'myriad_demon_mountain', name: '万妖山', tier: 3,
-    realm_required: '金丹初期', recommended_power: 6000,
+    realm_required: '金丹初期', recommended_power: 35,
     element: 'wood', description: '妖兽盘踞深山，高品质装备掉率提升',
     monsters: [
       { id: 'tree_demon', name: '树妖', power: 4000, element: 'wood', exp: 400, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
@@ -111,7 +111,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'thunderpeak', name: '雷鸣峰', tier: 3,
-    realm_required: '金丹初期', recommended_power: 7000,
+    realm_required: '金丹初期', recommended_power: 40,
     element: 'metal', description: '雷电交加的山巅，金系功法的圣地',
     monsters: [
       { id: 'thunder_hawk', name: '雷鹰', power: 5000, element: 'metal', exp: 500, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
@@ -122,7 +122,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'ancient_ruins', name: '上古遗迹', tier: 3,
-    realm_required: '金丹中期', recommended_power: 9000,
+    realm_required: '金丹中期', recommended_power: 45,
     element: 'earth', description: '远古修士留下的遗迹，套装部件掉落概率高',
     monsters: [
       { id: 'stone_guard', name: '石卫士', power: 6000, element: 'earth', exp: 600, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
@@ -133,7 +133,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'dark_sea', name: '幽冥海', tier: 4,
-    realm_required: '元婴初期', recommended_power: 25000,
+    realm_required: '元婴初期', recommended_power: 55,
     element: 'water', description: '深邃黑暗的海域，水系装备圣地',
     monsters: [
       { id: 'sea_serpent', name: '海蛟', power: 18000, element: 'water', exp: 2000, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
@@ -144,7 +144,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'soul_forest', name: '噬魂林', tier: 4,
-    realm_required: '元婴初期', recommended_power: 28000,
+    realm_required: '元婴初期', recommended_power: 60,
     element: 'wood', description: '诡异的黑森林，藏有上古功法残卷',
     monsters: [
       { id: 'soul_tree', name: '噬魂树', power: 20000, element: 'wood', exp: 2200, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
@@ -155,7 +155,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'desert_of_sands', name: '流沙大漠', tier: 4,
-    realm_required: '元婴中期', recommended_power: 35000,
+    realm_required: '元婴中期', recommended_power: 65,
     element: 'earth', description: '无尽沙漠，稀有矿物和土系材料产地',
     monsters: [
       { id: 'sand_scorpion', name: '沙蝎王', power: 24000, element: 'earth', exp: 2600, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
@@ -166,7 +166,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'purgatory', name: '九幽炼狱', tier: 5,
-    realm_required: '化神初期', recommended_power: 120000,
+    realm_required: '化神初期', recommended_power: 80,
     element: 'fire', description: '炼狱之地，极品装备产出',
     monsters: [
       { id: 'hell_guard', name: '狱卒', power: 90000, element: 'fire', exp: 10000, spirit_stone_range: [1000, 3000], role: 'balanced', drop_table: 'common_t5' },
@@ -177,7 +177,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'frozen_abyss', name: '寒渊冰窟', tier: 5,
-    realm_required: '化神初期', recommended_power: 130000,
+    realm_required: '化神初期', recommended_power: 85,
     element: 'water', description: '极寒深渊，冰系套装部件产出地',
     monsters: [
       { id: 'frost_giant', name: '霜巨人', power: 95000, element: 'water', exp: 11000, spirit_stone_range: [1000, 3000], role: 'balanced', drop_table: 'common_t5' },
@@ -188,7 +188,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'demon_battlefield', name: '魔域战场', tier: 5,
-    realm_required: '化神中期', recommended_power: 180000,
+    realm_required: '化神中期', recommended_power: 95,
     element: null, description: '人魔大战遗址，各属性功法均有掉落',
     monsters: [
       { id: 'demon_general', name: '魔将', power: 130000, element: 'fire', exp: 15000, spirit_stone_range: [2000, 6000], role: 'dps', drop_table: 'uncommon_t5' },
@@ -199,7 +199,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'tribulation_wasteland', name: '天劫荒原', tier: 6,
-    realm_required: '渡劫初期', recommended_power: 600000,
+    realm_required: '渡劫初期', recommended_power: 110,
     element: 'metal', description: '天劫频繁降临的荒原，顶级装备产出',
     monsters: [
       { id: 'thunder_beast', name: '雷兽', power: 450000, element: 'metal', exp: 50000, spirit_stone_range: [5000, 15000], role: 'balanced', drop_table: 'common_t6' },
@@ -210,7 +210,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'void_rift', name: '虚空裂缝', tier: 6,
-    realm_required: '渡劫初期', recommended_power: 650000,
+    realm_required: '渡劫初期', recommended_power: 120,
     element: null, description: '时空裂缝中的异度空间，顶级功法产出',
     monsters: [
       { id: 'void_stalker', name: '虚空猎手', power: 480000, element: null, exp: 55000, spirit_stone_range: [5000, 15000], role: 'balanced', drop_table: 'common_t6' },
@@ -221,7 +221,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'celestial_mountain', name: '昆仑仙境', tier: 7,
-    realm_required: '大乘初期', recommended_power: 2500000,
+    realm_required: '大乘初期', recommended_power: 140,
     element: 'metal', description: '传说中的仙山，仙器级装备掉率极高',
     monsters: [
       { id: 'celestial_crane', name: '仙鹤', power: 1800000, element: 'metal', exp: 200000, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
@@ -232,7 +232,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'nether_realm', name: '幽冥黄泉', tier: 7,
-    realm_required: '大乘中期', recommended_power: 3500000,
+    realm_required: '大乘中期', recommended_power: 155,
     element: 'water', description: '生死之间的黄泉路，高阶套装产出',
     monsters: [
       { id: 'nether_guard', name: '冥卫', power: 2500000, element: 'water', exp: 280000, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
@@ -243,7 +243,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'immortal_realm', name: '天界仙宫', tier: 8,
-    realm_required: '飞升·散仙', recommended_power: 12000000,
+    realm_required: '飞升·散仙', recommended_power: 170,
     element: null, description: '飞升后的仙界，太古神器掉落之地',
     monsters: [
       { id: 'immortal_soldier', name: '天兵', power: 8000000, element: 'metal', exp: 800000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
@@ -254,7 +254,7 @@ export const MAPS: MapData[] = [
   },
   {
     id: 'chaos_origin', name: '混沌本源', tier: 8,
-    realm_required: '飞升·金仙', recommended_power: 25000000,
+    realm_required: '飞升·金仙', recommended_power: 180,
     element: null, description: '万物起源之地，终极历练场',
     monsters: [
       { id: 'chaos_beast', name: '混沌兽', power: 18000000, element: null, exp: 2000000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
@@ -365,8 +365,5 @@ export function getUnlockedMaps(tier: number, stage: number): MapData[] {
 
 // ========== 数字格式化 ==========
 export function formatNumber(n: number): string {
-  if (n >= 100000000) return (n / 100000000).toFixed(1) + '亿';
-  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
   return String(Math.floor(n));
 }

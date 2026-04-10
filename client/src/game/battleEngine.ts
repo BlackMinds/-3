@@ -28,6 +28,10 @@ export interface SkillRefInfo {
   debuff?: SkillDebuffInfo;
   buff?: SkillBuffInfo;
   ignoreDef?: number;
+  isAoe?: boolean;
+  targetCount?: number;   // 2=打2只, 3=打3只
+  hitCount?: number;      // 多段攻击
+  healAtkRatio?: number;  // 即时回血(攻击力倍率)
 }
 
 export interface EquippedSkillInfo {
@@ -90,6 +94,381 @@ export function setEquipCombatStats(stats: typeof _equipCombatStats) {
   _equipCombatStats = stats;
 }
 
+// ========== 怪物技能系统 ==========
+
+interface MonsterSkillDef {
+  name: string;
+  multiplier: number;        // 伤害倍率 (1.0=普攻级, 0=纯辅助)
+  cdTurns: number;            // 冷却回合
+  element: string | null;
+  debuff?: SkillDebuffInfo;
+  buff?: { type: 'atk_up' | 'def_up'; value: number; duration: number };  // 怪物自身buff
+  hitCount?: number;          // 多段攻击 (每段 = 倍率/hitCount)
+  healPercent?: number;       // 自身回血 (最大血量百分比, 如0.15=回15%血)
+  isHeal?: boolean;           // 标记为回复技能 (AI低血量优先释放)
+  description: string;
+}
+
+// 怪物运行时技能状态
+interface MonsterSkillState {
+  skills: MonsterSkillDef[];
+  cds: number[];
+  berserkTriggered: boolean;  // 狂暴是否已触发
+  bossEnrageTriggered: boolean; // Boss低血量强化
+}
+
+// 按 tier 和 element 生成怪物技能池
+function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDef[] {
+  const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
+  const elem = template.element;
+  const isBoss = template.role === 'boss';
+  const role = template.role;
+  const skills: MonsterSkillDef[] = [];
+
+  // ===== T1+: 基础属性攻击 =====
+  if (elem) {
+    const elemSkills: Record<string, MonsterSkillDef> = {
+      fire:  { name: '喷火', multiplier: 1.5, cdTurns: 3, element: 'fire',
+               debuff: { type: 'burn', chance: 0.15, duration: 2 }, description: '喷出火焰,15%灼烧2回合' },
+      water: { name: '水箭术', multiplier: 1.4, cdTurns: 3, element: 'water',
+               debuff: { type: 'slow', chance: 0.20, duration: 2 }, description: '射出水箭,20%减速2回合' },
+      wood:  { name: '毒液喷射', multiplier: 1.3, cdTurns: 3, element: 'wood',
+               debuff: { type: 'poison', chance: 0.25, duration: 2 }, description: '喷射毒液,25%中毒2回合' },
+      metal: { name: '利爪', multiplier: 1.5, cdTurns: 3, element: 'metal',
+               debuff: { type: 'bleed', chance: 0.15, duration: 2 }, description: '锋利爪击,15%流血2回合' },
+      earth: { name: '飞石术', multiplier: 1.4, cdTurns: 3, element: 'earth',
+               debuff: { type: 'brittle', chance: 0.15, duration: 2, value: 0.15 }, description: '投掷巨石,15%脆弱2回合' },
+    };
+    if (elemSkills[elem]) skills.push(elemSkills[elem]);
+  }
+
+  // T2+: 通用眩晕技能 (让控制抗性从早期就有作用)
+  if (tier >= 2) {
+    skills.push({
+      name: '蛮力撞击', multiplier: 1.6, cdTurns: 5, element: null,
+      debuff: { type: 'stun', chance: 0.20, duration: 1 },
+      description: '猛烈撞击,20%眩晕1回合',
+    });
+  }
+
+  // T2+: 多段攻击 (按role区分)
+  if (tier >= 2 && role === 'dps') {
+    skills.push({
+      name: '连续撕咬', multiplier: 2.0, cdTurns: 4, element: null,
+      hitCount: 3, description: '连续撕咬3段,总计200%伤害',
+    });
+  }
+  if (tier >= 2 && role === 'speed') {
+    skills.push({
+      name: '疾风连击', multiplier: 1.8, cdTurns: 3, element: null,
+      hitCount: 4, description: '疾风般连击4段,总计180%伤害',
+    });
+  }
+
+  // T2+: tank/boss回复技能
+  if (tier >= 2 && (role === 'tank' || role === 'boss')) {
+    skills.push({
+      name: '吞噬灵气', multiplier: 0, cdTurns: 6, element: null,
+      healPercent: 0.10, isHeal: true,
+      description: '吸收周围灵气,回复10%最大气血',
+    });
+  }
+
+  // ===== T3+: 强化属性攻击 =====
+  if (tier >= 3 && elem) {
+    const strongSkills: Record<string, MonsterSkillDef> = {
+      fire:  { name: '烈焰吐息', multiplier: 2.2, cdTurns: 5, element: 'fire',
+               debuff: { type: 'burn', chance: 0.30, duration: 3 }, description: '高温火息,30%灼烧3回合' },
+      water: { name: '寒冰刺', multiplier: 2.0, cdTurns: 5, element: 'water',
+               debuff: { type: 'freeze', chance: 0.20, duration: 1 }, description: '冰锥攻击,20%冻结1回合' },
+      wood:  { name: '缠绕荆棘', multiplier: 1.8, cdTurns: 5, element: 'wood',
+               debuff: { type: 'root', chance: 0.30, duration: 2 }, description: '荆棘缠绕,30%束缚2回合' },
+      metal: { name: '破甲斩', multiplier: 2.2, cdTurns: 5, element: 'metal',
+               debuff: { type: 'brittle', chance: 0.25, duration: 3, value: 0.20 }, description: '重斩破甲,25%脆弱3回合' },
+      earth: { name: '震地击', multiplier: 2.0, cdTurns: 5, element: 'earth',
+               debuff: { type: 'stun', chance: 0.15, duration: 1 }, description: '震地攻击,15%眩晕1回合' },
+    };
+    if (strongSkills[elem]) skills.push(strongSkills[elem]);
+  }
+
+  // T3+: 封印技能 (让控制抗性更有价值)
+  if (tier >= 3) {
+    skills.push({
+      name: '妖气封印', multiplier: 1.0, cdTurns: 7, element: null,
+      debuff: { type: 'silence', chance: 0.30, duration: 2 },
+      description: '妖气缠身,30%封印2回合(无法施展神通)',
+    });
+  }
+
+  // T3+: 通用多段
+  if (tier >= 3 && !['dps', 'speed'].includes(role)) {
+    skills.push({
+      name: '乱爪', multiplier: 2.4, cdTurns: 5, element: null,
+      hitCount: 3, description: '疯狂乱抓3段,总计240%伤害',
+    });
+  }
+
+  // ===== T4+: 回复 + 控制升级 =====
+  if (tier >= 4) {
+    // 更强的回复
+    skills.push({
+      name: '妖力恢复', multiplier: 0, cdTurns: 8, element: null,
+      healPercent: 0.15, isHeal: true,
+      description: '凝聚妖力,回复15%最大气血',
+    });
+    // 强眩晕
+    skills.push({
+      name: '咆哮震慑', multiplier: 1.8, cdTurns: 6, element: null,
+      debuff: { type: 'stun', chance: 0.30, duration: 1 },
+      description: '威压咆哮,30%眩晕1回合',
+    });
+  }
+
+  // T4+: 多段属性攻击
+  if (tier >= 4 && elem) {
+    const multiHitSkills: Record<string, MonsterSkillDef> = {
+      fire:  { name: '连环火弹', multiplier: 2.8, cdTurns: 6, element: 'fire', hitCount: 4,
+               debuff: { type: 'burn', chance: 0.15, duration: 2 }, description: '连射4枚火弹,每段15%灼烧' },
+      water: { name: '冰晶乱射', multiplier: 2.4, cdTurns: 6, element: 'water', hitCount: 3,
+               debuff: { type: 'freeze', chance: 0.12, duration: 1 }, description: '冰晶乱射3段,每段12%冻结' },
+      wood:  { name: '荆棘连刺', multiplier: 2.4, cdTurns: 6, element: 'wood', hitCount: 4,
+               debuff: { type: 'poison', chance: 0.15, duration: 2 }, description: '荆棘连刺4段,每段15%中毒' },
+      metal: { name: '暴风利刃', multiplier: 3.0, cdTurns: 6, element: 'metal', hitCount: 5,
+               debuff: { type: 'bleed', chance: 0.12, duration: 2 }, description: '利刃暴风5段,每段12%流血' },
+      earth: { name: '碎石连击', multiplier: 2.6, cdTurns: 6, element: 'earth', hitCount: 3,
+               debuff: { type: 'stun', chance: 0.10, duration: 1 }, description: '碎石连击3段,每段10%眩晕' },
+    };
+    if (multiHitSkills[elem]) skills.push(multiHitSkills[elem]);
+  }
+
+  // ===== T5+: 狂暴 + 高级技能 =====
+  if (tier >= 5) {
+    skills.push({
+      name: '狂暴', multiplier: 0, cdTurns: 10, element: null,
+      buff: { type: 'atk_up', value: 0.40, duration: 4 },
+      description: '攻击+40%持续4回合,但防御-20%',
+    });
+    // 束缚+伤害
+    skills.push({
+      name: '锁魂术', multiplier: 1.5, cdTurns: 7, element: null,
+      debuff: { type: 'root', chance: 0.40, duration: 2 },
+      description: '锁魂束缚,40%束缚2回合(强制后手)',
+    });
+  }
+
+  // T5+: 高级多段 + 眩晕连击
+  if (tier >= 5) {
+    skills.push({
+      name: '雷霆万钧', multiplier: 3.0, cdTurns: 7, element: 'metal', hitCount: 3,
+      debuff: { type: 'stun', chance: 0.20, duration: 1 },
+      description: '雷霆3段打击,每段20%眩晕',
+    });
+  }
+
+  // ===== T6+: 终极技能 =====
+  if (tier >= 6 && elem) {
+    const t6Skills: Record<string, MonsterSkillDef> = {
+      fire:  { name: '焚天', multiplier: 3.0, cdTurns: 8, element: 'fire',
+               debuff: { type: 'burn', chance: 0.50, duration: 3 }, description: '天火焚世,50%灼烧3回合' },
+      water: { name: '极寒领域', multiplier: 2.5, cdTurns: 8, element: 'water',
+               debuff: { type: 'freeze', chance: 0.35, duration: 2 }, description: '极寒冰封,35%冻结2回合' },
+      wood:  { name: '万毒噬心', multiplier: 2.5, cdTurns: 8, element: 'wood',
+               debuff: { type: 'poison', chance: 0.50, duration: 4 }, description: '剧毒入体,50%中毒4回合' },
+      metal: { name: '斩魂', multiplier: 3.5, cdTurns: 8, element: 'metal',
+               debuff: { type: 'bleed', chance: 0.40, duration: 3 }, description: '斩魂一击,40%流血3回合' },
+      earth: { name: '山崩地裂', multiplier: 2.8, cdTurns: 8, element: 'earth',
+               debuff: { type: 'stun', chance: 0.25, duration: 2 }, description: '山崩天降,25%眩晕2回合' },
+    };
+    if (t6Skills[elem]) skills.push(t6Skills[elem]);
+  }
+
+  // T6+: 强力回复
+  if (tier >= 6) {
+    skills.push({
+      name: '涅槃重生', multiplier: 0, cdTurns: 12, element: null,
+      healPercent: 0.25, isHeal: true,
+      buff: { type: 'def_up', value: 0.20, duration: 3 },
+      description: '涅槃之力,回复25%气血并防御+20%持续3回合',
+    });
+  }
+
+  // T6+: 极强多段
+  if (tier >= 6) {
+    skills.push({
+      name: '千刃绞杀', multiplier: 4.0, cdTurns: 9, element: null, hitCount: 5,
+      debuff: { type: 'bleed', chance: 0.20, duration: 3 },
+      description: '刃雨绞杀5段,每段20%流血,总计400%伤害',
+    });
+  }
+
+  // ===== T7+: 仙级技能 =====
+  if (tier >= 7) {
+    // 仙级眩晕
+    skills.push({
+      name: '天雷制裁', multiplier: 3.5, cdTurns: 8, element: 'metal',
+      debuff: { type: 'stun', chance: 0.40, duration: 2 },
+      description: '召唤天雷,40%眩晕2回合',
+    });
+    // 仙级多段
+    skills.push({
+      name: '灭世连击', multiplier: 5.0, cdTurns: 10, element: null, hitCount: 6,
+      debuff: { type: 'stun', chance: 0.10, duration: 1 },
+      description: '毁灭连击6段,每段10%眩晕,总计500%伤害',
+    });
+    // 仙级回复
+    skills.push({
+      name: '天地造化', multiplier: 0, cdTurns: 15, element: null,
+      healPercent: 0.35, isHeal: true,
+      description: '汲取天地精华,回复35%最大气血',
+    });
+  }
+
+  // ===== T8: 太古技能 =====
+  if (tier >= 8) {
+    skills.push({
+      name: '混沌吞噬', multiplier: 6.0, cdTurns: 10, element: null, hitCount: 4,
+      debuff: { type: 'stun', chance: 0.25, duration: 2 },
+      description: '混沌之力4段,每段25%眩晕,总计600%伤害',
+    });
+    skills.push({
+      name: '太古沉眠', multiplier: 0, cdTurns: 15, element: null,
+      healPercent: 0.40, isHeal: true,
+      buff: { type: 'def_up', value: 0.40, duration: 4 },
+      description: '太古之力,回复40%气血并防御+40%持续4回合',
+    });
+  }
+
+  // ===== Boss额外技能 =====
+  if (isBoss) {
+    // 所有Boss: 首领之吼
+    skills.push({
+      name: '首领之吼', multiplier: 1.2, cdTurns: 6, element: null,
+      debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.15 },
+      description: '威压吼叫,40%降低目标攻击15%持续3回合',
+    });
+
+    // T2+ Boss: 回复
+    if (tier >= 2) {
+      skills.push({
+        name: '首领恢复', multiplier: 0, cdTurns: 8, element: null,
+        healPercent: 0.12, isHeal: true,
+        description: '首领凝聚妖力,回复12%最大气血',
+      });
+    }
+
+    // T3+ Boss: 震慑眩晕
+    if (tier >= 3) {
+      skills.push({
+        name: '威压震慑', multiplier: 2.0, cdTurns: 7, element: null,
+        debuff: { type: 'stun', chance: 0.35, duration: 1 },
+        description: '首领威压,35%眩晕1回合',
+      });
+    }
+
+    // T4+ Boss: 凶煞之气
+    if (tier >= 4) {
+      skills.push({
+        name: '凶煞之气', multiplier: 0, cdTurns: 8, element: null,
+        buff: { type: 'def_up', value: 0.30, duration: 4 },
+        description: '凶煞护体,防御+30%持续4回合',
+      });
+    }
+
+    // T5+ Boss: 多段重击
+    if (tier >= 5) {
+      skills.push({
+        name: '首领乱舞', multiplier: 3.5, cdTurns: 7, element: null, hitCount: 4,
+        debuff: { type: 'bleed', chance: 0.25, duration: 3 },
+        description: '首领狂乱4段攻击,每段25%流血',
+      });
+    }
+
+    // T6+ Boss: 封印+眩晕连招
+    if (tier >= 6) {
+      skills.push({
+        name: '灭世怒吼', multiplier: 2.5, cdTurns: 9, element: null,
+        debuff: { type: 'stun', chance: 0.45, duration: 2 },
+        description: '灭世吼叫,45%眩晕2回合',
+      });
+    }
+
+    // T7+ Boss: 终极连击
+    if (tier >= 7) {
+      skills.push({
+        name: '首领灭杀', multiplier: 5.5, cdTurns: 10, element: null, hitCount: 5,
+        debuff: { type: 'stun', chance: 0.15, duration: 1 },
+        description: '首领灭杀5段,每段15%眩晕,总计550%伤害',
+      });
+    }
+  }
+
+  return skills;
+}
+
+// 初始化怪物技能运行状态
+function initMonsterSkillState(template: MonsterTemplate): MonsterSkillState {
+  const skills = buildMonsterSkillPool(template);
+  return {
+    skills,
+    cds: skills.map(() => 0),
+    berserkTriggered: false,
+    bossEnrageTriggered: false,
+  };
+}
+
+// 怪物AI选择技能（返回 null 表示普通攻击）
+function monsterChooseSkill(
+  state: MonsterSkillState,
+  monsterHp: number,
+  monsterMaxHp: number,
+  isBoss: boolean
+): MonsterSkillDef | null {
+  const hpRatio = monsterHp / monsterMaxHp;
+
+  // 低血量时优先回复技能 (血量<40%时寻找可用的回复技能)
+  if (hpRatio < 0.40) {
+    let bestHeal: { skill: MonsterSkillDef; index: number } | null = null;
+    for (let i = 0; i < state.skills.length; i++) {
+      if (state.cds[i] <= 0 && state.skills[i].isHeal) {
+        const s = state.skills[i];
+        if (!bestHeal || (s.healPercent || 0) > (bestHeal.skill.healPercent || 0)) {
+          bestHeal = { skill: s, index: i };
+        }
+      }
+    }
+    if (bestHeal) {
+      state.cds[bestHeal.index] = bestHeal.skill.cdTurns;
+      return bestHeal.skill;
+    }
+  }
+
+  // 正常选技：优先高倍率攻击技能，buff技能次之
+  let best: { skill: MonsterSkillDef; index: number } | null = null;
+  for (let i = 0; i < state.skills.length; i++) {
+    if (state.cds[i] <= 0) {
+      const s = state.skills[i];
+      if (s.isHeal) continue; // 血量充足时不主动用回复
+      // 优先级: 高倍率 > 相同倍率时选CD更长的(更强的技能)
+      if (!best || s.multiplier > best.skill.multiplier || (s.multiplier === best.skill.multiplier && (s.cdTurns > best.skill.cdTurns))) {
+        best = { skill: s, index: i };
+      }
+    }
+  }
+
+  if (best) {
+    state.cds[best.index] = best.skill.cdTurns;
+    return best.skill;
+  }
+  return null;
+}
+
+// 每回合递减怪物技能CD
+function tickMonsterCds(state: MonsterSkillState) {
+  for (let i = 0; i < state.cds.length; i++) {
+    if (state.cds[i] > 0) state.cds[i]--;
+  }
+}
+
 // 随机数辅助
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -122,6 +501,43 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
     (monsterResists as any)[template.element] = 0.40;
   }
 
+  // 按 tier 和 role 分配特殊属性
+  const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
+  const role = template.role;
+
+  // 暴击: tier越高越强, dps/speed/boss额外加成
+  let critRate = 0.05 + tier * 0.01;
+  let critDmg = 1.5 + tier * 0.05;
+  if (role === 'dps') { critRate += 0.05; critDmg += 0.2; }
+  if (role === 'boss') { critRate += 0.03; critDmg += 0.3; }
+
+  // 闪避: speed型有闪避, tier越高越多
+  let dodge = 0;
+  if (role === 'speed') dodge = 0.05 + tier * 0.02;
+  if (role === 'dps') dodge = tier * 0.01;
+  if (role === 'boss') dodge = 0.02 + tier * 0.005;
+
+  // 吸血: boss和高tier dps有吸血
+  let lifesteal = 0;
+  if (role === 'boss' && tier >= 3) lifesteal = 0.03 + tier * 0.005;
+  if (role === 'dps' && tier >= 5) lifesteal = 0.02;
+
+  // 破甲: dps和boss有破甲
+  let armorPen = 0;
+  if (role === 'dps') armorPen = tier * 1.5;
+  if (role === 'boss') armorPen = tier * 2;
+
+  // 命中: 对抗玩家闪避
+  let accuracy = tier * 1;
+  if (role === 'boss') accuracy = tier * 2;
+
+  // 控制抗性: boss更高
+  let ctrlResist = 0.10 + tier * 0.03;
+  if (role === 'boss') ctrlResist = 0.20 + tier * 0.05;
+  ctrlResist = Math.min(0.70, ctrlResist);
+
+  monsterResists.ctrl = ctrlResist;
+
   return {
     name: template.name,
     maxHp,
@@ -129,12 +545,14 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
     atk: Math.floor(power * r.atk),
     def: Math.floor(power * r.def * 0.6),
     spd: Math.floor(power * r.spd * 0.3),
-    crit_rate: 0.05,
-    crit_dmg: 1.5,
-    dodge: 0,
-    lifesteal: 0,
+    crit_rate: Math.min(0.50, critRate),
+    crit_dmg: Math.min(3.0, critDmg),
+    dodge: Math.min(0.30, dodge),
+    lifesteal: Math.min(0.15, lifesteal),
     element: template.element,
     resists: monsterResists,
+    armorPen: Math.min(30, armorPen),
+    accuracy: Math.min(25, accuracy),
   };
 }
 
@@ -213,32 +631,15 @@ function calculateDamage(
   return { damage, isCrit };
 }
 
-// 怪物技能描述（根据tier和属性生成）
+// 怪物技能描述（从真实技能池生成）
 function getMonsterSkills(template: MonsterTemplate): string[] {
-  const skills: string[] = ['普通攻击'];
-  const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
-  const elem = template.element;
-  const elemNames: Record<string, string> = { fire: '火', water: '水', wood: '木', metal: '金', earth: '土' };
-  const eName = elem ? elemNames[elem] || '' : '';
-
-  if (tier >= 1 && elem) {
-    const t1Skills: Record<string, string> = {
-      fire: '喷火 - 造成火属性伤害，15%灼烧2回合',
-      water: '水箭术 - 造成水属性伤害，20%减速2回合',
-      wood: '毒液喷射 - 造成木属性伤害，25%中毒2回合',
-      metal: '利爪 - 造成金属性伤害，15%流血2回合',
-      earth: '飞石术 - 造成土属性伤害，15%脆弱2回合',
-    };
-    if (t1Skills[elem]) skills.push(t1Skills[elem]);
-  }
-  if (tier >= 3 && elem) {
-    skills.push(`${eName}系强化攻击 - 高倍率${eName}属性伤害`);
-  }
-  if (tier >= 5) {
-    skills.push('狂暴 - 攻击+40%，防御-20%');
+  const skills: string[] = ['普通攻击 - 基础攻击'];
+  const pool = buildMonsterSkillPool(template);
+  for (const s of pool) {
+    skills.push(`${s.name} - ${s.description} (CD${s.cdTurns}回合)`);
   }
   if (template.role === 'boss') {
-    skills.push('首领被动 - 气血低于30%时攻击+30%');
+    skills.push('首领被动 - 气血低于30%时攻击永久+30%');
   }
   return skills;
 }
@@ -258,7 +659,384 @@ export function buildMonsterInfo(template: MonsterTemplate, stats: BattlerStats)
   };
 }
 
-// 执行一场战斗
+// 执行一波战斗 (1 vs 多只怪)
+export function runWaveBattle(
+  playerStats: BattlerStats,
+  monsterList: { stats: BattlerStats; template: MonsterTemplate }[],
+  equippedSkills?: EquippedSkillInfo
+): BattleResult {
+  // 合并所有怪的战斗为一场大战
+  // 玩家每回合攻击一只(血量最低的), 所有存活怪每回合攻击玩家
+  const player = { ...playerStats, hp: playerStats.maxHp };
+  const maxTurns = 50 * monsterList.length; // 回合上限按怪物数量放宽
+  const logs: BattleLogEntry[] = [];
+  let totalExp = 0, totalStone = 0;
+  const allDrops: DropItem[] = [];
+
+  // 怪物列表(可变血量+技能状态)
+  const monsters = monsterList.map(m => ({
+    stats: { ...m.stats },
+    template: m.template,
+    alive: true,
+    skillState: initMonsterSkillState(m.template),
+    baseAtk: m.stats.atk,
+    baseDef: m.stats.def,
+    buffs: [] as ActiveBuff[],
+    frozenTurns: 0,  // 冻结/眩晕剩余回合
+  }));
+
+  // 应用被动
+  if (equippedSkills?.passiveEffects) {
+    const p = equippedSkills.passiveEffects;
+    player.atk = Math.floor(player.atk * (1 + p.atkPercent / 100));
+    player.def = Math.floor(player.def * (1 + p.defPercent / 100));
+    player.maxHp = Math.floor(player.maxHp * (1 + p.hpPercent / 100));
+    player.spd = Math.floor(player.spd * (1 + (p.spdPercent || 0) / 100));
+    player.hp = player.maxHp;
+    player.crit_rate += p.critRate;
+    player.crit_dmg += p.critDmg;
+    player.dodge += p.dodge || 0;
+    player.lifesteal += p.lifesteal || 0;
+  }
+  player.armorPen = _equipCombatStats.armorPen;
+  player.accuracy = _equipCombatStats.accuracy;
+  player.elementDmg = _equipCombatStats.elementDmg;
+
+  const activeSkill: SkillRefInfo = equippedSkills?.activeSkill || { name: '基础剑法', multiplier: 1.0, element: null };
+  const cdReduction = equippedSkills?.passiveEffects?.skillCdReduction || 0;
+  const divineCds: number[] = (equippedSkills?.divineSkills || []).map(() => 0);
+  let reviveAvailable = equippedSkills?.passiveEffects?.reviveOnce || false;
+
+  // 遭遇日志
+  const names = monsters.map(m => m.stats.name).join('、');
+  logs.push({ turn: 0, text: `你遭遇了 ${monsters.length} 只怪物: ${names}`, type: 'system',
+    playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
+
+  for (let turn = 1; turn <= maxTurns; turn++) {
+    const aliveMonsters = monsters.filter(m => m.alive);
+    if (aliveMonsters.length === 0) break;
+
+    // 被动回血
+    if (equippedSkills?.passiveEffects?.regenPerTurn && equippedSkills.passiveEffects.regenPerTurn > 0) {
+      const heal = Math.floor(player.maxHp * equippedSkills.passiveEffects.regenPerTurn);
+      if (heal > 0 && player.hp < player.maxHp) {
+        player.hp = Math.min(player.maxHp, player.hp + heal);
+      }
+    }
+
+    // 选目标(血量最低的)
+    const target = aliveMonsters.reduce((a, b) => a.stats.hp < b.stats.hp ? a : b);
+
+    // 玩家攻击目标
+    let usedSkill: SkillRefInfo = activeSkill;
+    let isDivine = false;
+    const divines = equippedSkills?.divineSkills || [];
+    for (let i = 0; i < divines.length; i++) {
+      if (divineCds[i] <= 0) {
+        usedSkill = divines[i];
+        divineCds[i] = Math.max(1, (divines[i].cdTurns || 5) - cdReduction);
+        isDivine = true;
+        break;
+      }
+    }
+    for (let i = 0; i < divineCds.length; i++) {
+      if (divineCds[i] > 0) divineCds[i]--;
+    }
+
+    let mul = usedSkill.multiplier;
+    let rootMatched = false;
+    if (usedSkill.element && player.spiritualRoot && usedSkill.element === player.spiritualRoot) {
+      mul *= 1.2;
+      rootMatched = true;
+    }
+
+    // 辅助: 生成快照
+    function snap2() {
+      const t = monsters.find(m => m.alive);
+      return { playerHp: Math.max(0, player.hp), playerMaxHp: player.maxHp,
+        monsterHp: t ? t.stats.hp : 0, monsterMaxHp: t ? t.stats.maxHp : 0 };
+    }
+
+    // buff/回复技能 (multiplier=0)
+    if (mul === 0) {
+      const prefix = isDivine ? '神通发动！' : '';
+      // 即时回血(按攻击力)
+      if (usedSkill.healAtkRatio) {
+        const heal = Math.floor(player.atk * usedSkill.healAtkRatio);
+        player.hp = Math.min(player.maxHp, player.hp + heal);
+        logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】回复 ${heal} 点气血`, type: 'buff', ...snap2() });
+      }
+      if (usedSkill.buff) {
+        logs.push({ turn, text: `[第${turn}回合] ${prefix}你获得了【${usedSkill.name}】的增益`, type: 'buff', ...snap2() });
+      }
+      // AOE debuff (冻结/眩晕实际生效,合并日志)
+      if (usedSkill.debuff && (usedSkill.isAoe || (usedSkill.targetCount && usedSkill.targetCount > 1))) {
+        const debuffTargets = usedSkill.isAoe ? aliveMonsters : aliveMonsters.slice(0, usedSkill.targetCount || 1);
+        const hitNames: string[] = [];
+        for (const m of debuffTargets) {
+          if (usedSkill.debuff && Math.random() < usedSkill.debuff.chance) {
+            const dtype = usedSkill.debuff.type;
+            if (dtype === 'freeze' || dtype === 'stun') {
+              m.frozenTurns = usedSkill.debuff.duration;
+            }
+            hitNames.push(m.stats.name);
+          }
+        }
+        if (hitNames.length > 0) {
+          const dtype = usedSkill.debuff.type;
+          const dname = (dtype === 'freeze') ? '冻结' : (dtype === 'stun') ? '眩晕' : '控制';
+          logs.push({ turn, text: `[第${turn}回合] ${hitNames.join('、')}被${dname}!`, type: 'normal', ...snap2() });
+        }
+      }
+    } else {
+      // 攻击技能: 确定目标
+      let attackTargets: typeof aliveMonsters;
+      if (usedSkill.isAoe) {
+        attackTargets = [...aliveMonsters];
+      } else if (usedSkill.targetCount && usedSkill.targetCount > 1) {
+        // 多目标: 按血量从低到高选 N 只
+        const sorted = [...aliveMonsters].sort((a, b) => a.stats.hp - b.stats.hp);
+        attackTargets = sorted.slice(0, Math.min(usedSkill.targetCount, sorted.length));
+      } else {
+        attackTargets = [target];
+      }
+
+      const prefix = isDivine ? '神通发动！' : (rootMatched ? '灵根共鸣！' : '');
+      const hits = usedSkill.hitCount || 1;
+      const perHitMul = mul / hits;
+      const targetLabel = usedSkill.isAoe ? '全体' : (attackTargets.length > 1 ? `${attackTargets.length}目标` : '');
+      const hitsLabel = hits > 1 ? `${hits}段` : '';
+      const skillLabel = [targetLabel, hitsLabel].filter(Boolean).join('·');
+      if (skillLabel) {
+        logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】(${skillLabel})`, type: isDivine ? 'crit' : 'normal', ...snap2() });
+      }
+
+      // 攻击逻辑(多段在目标死后溢出到下一只)
+      let hitsRemaining = hits * attackTargets.length; // 总打击次数
+      if (hits > 1 && attackTargets.length === 1) {
+        // 多段单体: 溢出到任意存活怪
+        let hitsDone = 0;
+        while (hitsDone < hits) {
+          const curTarget = monsters.find(m => m.alive && m.stats.hp > 0);
+          if (!curTarget) break;
+          const dmgResult = calculateDamage(player, curTarget.stats, perHitMul, usedSkill.element, usedSkill.ignoreDef);
+          if (dmgResult.damage > 0) {
+            curTarget.stats.hp -= dmgResult.damage;
+            if (player.lifesteal > 0) {
+              player.hp = Math.min(player.maxHp, player.hp + Math.floor(dmgResult.damage * player.lifesteal));
+            }
+            const critText = dmgResult.isCrit ? '暴击!' : '';
+            const hitLabel = `第${hitsDone + 1}段 `;
+            logs.push({ turn, text: `  ${hitLabel}${critText}对${curTarget.stats.name}造成 ${dmgResult.damage} 伤害`,
+              type: dmgResult.isCrit ? 'crit' : 'normal', ...snap2() });
+            if (usedSkill.debuff && Math.random() < usedSkill.debuff.chance) {
+              if (usedSkill.debuff!.type === 'freeze' || usedSkill.debuff!.type === 'stun') {
+                curTarget.frozenTurns = usedSkill.debuff!.duration;
+              }
+              logs.push({ turn, text: `  ${curTarget.stats.name}受到debuff!`, type: 'normal', ...snap2() });
+            }
+          }
+          hitsDone++;
+        }
+      } else {
+        // AOE/多目标/普通单体: 每个目标打1次
+        for (const t of attackTargets) {
+          if (t.stats.hp <= 0) continue;
+          const dmgResult = calculateDamage(player, t.stats, mul, usedSkill.element, usedSkill.ignoreDef);
+          if (dmgResult.damage > 0) {
+            t.stats.hp -= dmgResult.damage;
+            if (player.lifesteal > 0) {
+              player.hp = Math.min(player.maxHp, player.hp + Math.floor(dmgResult.damage * player.lifesteal));
+            }
+            const critText = dmgResult.isCrit ? '暴击!' : '';
+            if (!skillLabel) {
+              logs.push({ turn,
+                text: `[第${turn}回合] ${prefix}${critText}【${usedSkill.name}】对${t.stats.name}造成 ${dmgResult.damage} 伤害`,
+                type: dmgResult.isCrit ? 'crit' : 'normal', ...snap2() });
+            } else {
+              logs.push({ turn,
+                text: `  ${critText}对${t.stats.name}造成 ${dmgResult.damage} 伤害`,
+                type: dmgResult.isCrit ? 'crit' : 'normal', ...snap2() });
+            }
+            if (usedSkill.debuff && Math.random() < usedSkill.debuff.chance) {
+              if (usedSkill.debuff!.type === 'freeze' || usedSkill.debuff!.type === 'stun') {
+                t.frozenTurns = usedSkill.debuff!.duration;
+              }
+              logs.push({ turn, text: `  ${t.stats.name}受到debuff!`, type: 'normal', ...snap2() });
+            }
+          }
+        }
+      }
+
+      // 即时回血 (攻击技能也可以带)
+      if (usedSkill.healPercent) {
+        const heal = Math.floor(player.maxHp * usedSkill.healPercent);
+        player.hp = Math.min(player.maxHp, player.hp + heal);
+        logs.push({ turn, text: `[第${turn}回合] 回复 ${heal} 点气血`, type: 'buff', ...snap2() });
+      }
+
+      // 检查击杀
+      for (const m of monsters) {
+        if (m.alive && m.stats.hp <= 0) {
+          m.alive = false;
+          const exp = Math.floor(m.template.exp * randFloat(0.9, 1.1));
+          const stone = rand(m.template.spirit_stone_range[0], m.template.spirit_stone_range[1]);
+          totalExp += exp;
+          totalStone += stone;
+          const drops = generateDrops(m.template);
+          allDrops.push(...drops);
+          logs.push({ turn, text: `你击杀了${m.stats.name}，获得 ${exp} 修为、${stone} 灵石`, type: 'kill', ...snap2() });
+          for (const d of drops) {
+            logs.push({ turn, text: `${m.stats.name}掉落了【${d.name}】！`, type: 'loot', ...snap2() });
+          }
+        }
+      }
+      const remaining = monsters.filter(mm => mm.alive).length;
+      if (remaining > 0 && remaining < aliveMonsters.length) {
+        logs.push({ turn, text: `还剩 ${remaining} 只怪物!`, type: 'system', ...snap2() });
+      }
+    }
+
+    // 所有存活怪物攻击玩家
+    const frozenNames: string[] = [];
+    for (const m of monsters.filter(mm => mm.alive)) {
+      // 冻结/眩晕: 跳过攻击
+      if (m.frozenTurns > 0) {
+        m.frozenTurns--;
+        frozenNames.push(m.stats.name);
+        continue;
+      }
+      // 怪物buff/CD递减
+      tickMonsterCds(m.skillState);
+      for (let bi = m.buffs.length - 1; bi >= 0; bi--) {
+        m.buffs[bi].remaining--;
+        if (m.buffs[bi].remaining <= 0) m.buffs.splice(bi, 1);
+      }
+
+      // 怪物有效属性
+      let mAtk = m.baseAtk;
+      let mDef = m.baseDef;
+      for (const b of m.buffs) {
+        if (b.type === 'atk_up' && b.value) mAtk = Math.floor(mAtk * (1 + b.value));
+        if (b.type === 'def_up' && b.value) mDef = Math.floor(mDef * (1 + b.value));
+      }
+      // Boss低血量强化
+      if (m.template.role === 'boss' && !m.skillState.bossEnrageTriggered && m.stats.hp < m.stats.maxHp * 0.30) {
+        m.skillState.bossEnrageTriggered = true;
+        logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}进入狂暴状态！攻击永久+30%!`, type: 'crit', ...snap2() });
+      }
+      if (m.skillState.bossEnrageTriggered) mAtk = Math.floor(mAtk * 1.30);
+      if (m.buffs.some(b => b.type === 'atk_up') && m.skillState.berserkTriggered) mDef = Math.floor(mDef * 0.80);
+      m.stats.atk = mAtk;
+      m.stats.def = mDef;
+
+      // 选择技能
+      const mSkill = monsterChooseSkill(m.skillState, m.stats.hp, m.stats.maxHp, m.template.role === 'boss');
+
+      // 非攻击技能 (buff/回复)
+      if (mSkill && mSkill.multiplier === 0) {
+        if (mSkill.healPercent) {
+          const heal = Math.floor(m.stats.maxHp * mSkill.healPercent);
+          m.stats.hp = Math.min(m.stats.maxHp, m.stats.hp + heal);
+          logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】，回复 ${heal} 点气血!`, type: 'buff', ...snap2() });
+        }
+        if (mSkill.buff) {
+          const existBuff = m.buffs.find(b => b.type === mSkill.buff!.type);
+          if (existBuff) { existBuff.remaining = mSkill.buff.duration; existBuff.value = mSkill.buff.value; }
+          else m.buffs.push({ type: mSkill.buff.type as BuffType, remaining: mSkill.buff.duration, value: mSkill.buff.value });
+          if (mSkill.name === '狂暴') m.skillState.berserkTriggered = true;
+          if (!mSkill.healPercent) {
+            logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】！`, type: 'normal', ...snap2() });
+          }
+        }
+        if (mSkill.debuff) {
+          // wave战斗中简化debuff处理：直接降低玩家属性
+          if (mSkill.debuff.type === 'atk_down' && mSkill.debuff.value && Math.random() < mSkill.debuff.chance) {
+            logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}的【${mSkill.name}】削弱了你的攻击!`, type: 'normal', ...snap2() });
+          }
+        }
+        continue;
+      }
+
+      // 攻击技能或普攻
+      const skillMul = mSkill ? mSkill.multiplier : 1.0;
+      const skillElem = mSkill ? mSkill.element : null;
+      const skillName = mSkill ? mSkill.name : '普通攻击';
+      const hits = mSkill?.hitCount || 1;
+
+      if (hits > 1) {
+        // 多段攻击
+        const perHitMul = skillMul / hits;
+        logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}施展了【${skillName}】(${hits}段)!`, type: 'crit', ...snap2() });
+        for (let h = 0; h < hits; h++) {
+          const mResult = calculateDamage(m.stats, player, perHitMul, skillElem);
+          if (mResult.damage > 0) {
+            let dmg = mResult.damage;
+            if (equippedSkills?.passiveEffects?.damageReductionFlat) {
+              dmg = Math.floor(dmg * (1 - equippedSkills.passiveEffects.damageReductionFlat));
+            }
+            player.hp -= dmg;
+            const critText = mResult.isCrit ? '暴击!' : '';
+            logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dmg} 点伤害`,
+              type: mResult.isCrit ? 'crit' : 'normal', playerHp: Math.max(0, player.hp), playerMaxHp: player.maxHp,
+              monsterHp: m.stats.hp, monsterMaxHp: m.stats.maxHp });
+          }
+          if (player.hp <= 0) break;
+        }
+        // 多段结束后判定debuff
+        if (mSkill?.debuff && player.hp > 0) {
+          if (Math.random() < mSkill.debuff.chance) {
+            logs.push({ turn, text: `[第${turn}回合] 你受到了【${mSkill.name}】的异常效果!`, type: 'normal', ...snap2() });
+          }
+        }
+      } else {
+        // 单段攻击
+        const mResult = calculateDamage(m.stats, player, skillMul, skillElem);
+        if (mResult.damage > 0) {
+          let dmg = mResult.damage;
+          if (equippedSkills?.passiveEffects?.damageReductionFlat) {
+            dmg = Math.floor(dmg * (1 - equippedSkills.passiveEffects.damageReductionFlat));
+          }
+          player.hp -= dmg;
+          const isSkillAttack = mSkill !== null;
+          logs.push({ turn,
+            text: `[第${turn}回合] ${m.stats.name}${isSkillAttack ? '施展【' + skillName + '】，' : ''}攻击了你，造成 ${dmg} 点伤害`,
+            type: mResult.isCrit ? 'crit' : 'normal', playerHp: Math.max(0, player.hp), playerMaxHp: player.maxHp,
+            monsterHp: target.alive ? target.stats.hp : 0, monsterMaxHp: target.stats.maxHp });
+        }
+      }
+    }
+
+    // 被控制日志(合并)
+    if (frozenNames.length > 0) {
+      logs.push({ turn, text: `[第${turn}回合] ${frozenNames.join('、')}被控制中,无法行动`, type: 'normal', ...snap2() });
+    }
+
+    // 玩家死亡判定
+    if (player.hp <= 0) {
+      if (reviveAvailable) {
+        reviveAvailable = false;
+        player.hp = Math.floor(player.maxHp * 0.20);
+        logs.push({ turn, text: `[第${turn}回合] 【不灭金身】发动!`, type: 'buff',
+          playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
+      } else {
+        logs.push({ turn: turn, text: '你的气血耗尽，陨落了…3回合后原地复活', type: 'death',
+          playerHp: 0, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
+        const mInfo = buildMonsterInfo(monsterList[0].template, monsterList[0].stats);
+        return { won: false, turns: turn, expGained: totalExp, spiritStoneGained: totalStone, logs, drops: allDrops, monsterInfo: mInfo };
+      }
+    }
+
+    // 全灭检查
+    if (monsters.filter(m => m.alive).length === 0) break;
+  }
+
+  const mInfo = buildMonsterInfo(monsterList[0].template, monsterList[0].stats);
+  const allDead = monsters.filter(m => m.alive).length === 0;
+  return { won: allDead, turns: 0, expGained: totalExp, spiritStoneGained: totalStone, logs, drops: allDrops, monsterInfo: mInfo };
+}
+
+// 执行一场战斗 (单怪,保留兼容)
 export function runBattle(
   playerStats: BattlerStats,
   monsterStats: BattlerStats,
@@ -272,6 +1050,15 @@ export function runBattle(
   const baseAtk = player.atk;
   const baseDef = player.def;
   const baseSpd = player.spd;
+
+  // 怪物技能状态
+  const monsterSkillState = initMonsterSkillState(monsterTemplate);
+  const monsterBaseAtk = monster.atk;
+  const monsterBaseDef = monster.def;
+  // 怪物身上的buff列表
+  const monsterBuffs: ActiveBuff[] = [];
+  // 玩家身上的怪物施加的debuff
+  const playerDebuffs: ActiveDebuff[] = [];
 
   // 应用被动功法加成
   if (equippedSkills?.passiveEffects) {
@@ -400,6 +1187,64 @@ export function runBattle(
     });
   }
 
+  // 触发 debuff (怪物对玩家)
+  function tryApplyMonsterDebuff(debuff: SkillDebuffInfo, casterAtk: number, target: BattlerStats, turn: number) {
+    let chance = debuff.chance;
+    const controlTypes = ['freeze', 'stun', 'root', 'silence'];
+    const isControl = controlTypes.includes(debuff.type);
+
+    // 玩家抗性削弱概率
+    if (target.resists) {
+      if (isControl) {
+        chance *= (1 - Math.min(0.7, target.resists.ctrl || 0));
+      } else {
+        const elemMap: Record<string, string> = { burn: 'fire', poison: 'wood', bleed: 'metal' };
+        const elemKey = elemMap[debuff.type];
+        if (elemKey) {
+          const r = (target.resists as any)[elemKey] || 0;
+          chance *= (1 - Math.min(0.7, r));
+        }
+      }
+    }
+
+    if (Math.random() >= chance) return;
+
+    let duration = debuff.duration;
+    // 控制类受玩家控制抗性影响持续时间
+    if (isControl && target.resists) {
+      const ctrlResist = target.resists.ctrl || 0;
+      duration = Math.max(1, Math.floor(duration * (1 - Math.min(0.5, ctrlResist))));
+    }
+
+    let dmg = 0;
+    if (debuff.type === 'burn')   dmg = Math.floor(casterAtk * 0.15);
+    if (debuff.type === 'poison') dmg = Math.floor(target.maxHp * 0.03);
+    if (debuff.type === 'bleed')  dmg = Math.floor(casterAtk * 0.10);
+    if (dmg > 0 && dmg < 1) dmg = 1;
+
+    const exist = playerDebuffs.find(d => d.type === debuff.type);
+    if (exist) {
+      exist.remaining = duration;
+      exist.damagePerTurn = dmg;
+      exist.value = debuff.value;
+    } else {
+      playerDebuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: debuff.value });
+    }
+
+    let detail = '';
+    if (debuff.type === 'brittle' && debuff.value)  detail = ` 防御 -${(debuff.value * 100).toFixed(0)}%`;
+    if (debuff.type === 'atk_down' && debuff.value) detail = ` 攻击 -${(debuff.value * 100).toFixed(0)}%`;
+    if (debuff.type === 'burn')                     detail = ` 每回合受 ${dmg} 火伤`;
+    if (debuff.type === 'poison')                   detail = ` 每回合受 ${dmg} 毒伤`;
+    if (debuff.type === 'bleed')                    detail = ` 每回合受 ${dmg} 流血伤害`;
+    logs.push({
+      turn,
+      text: `[第${turn}回合] 你陷入了【${debuffName(debuff.type)}】状态!${detail} (${duration}回合)`,
+      type: 'normal',
+      ...snap(),
+    });
+  }
+
   // 是否被控制无法行动 (freeze/stun)
   function isStunned(): boolean {
     return monsterDebuffs.some(d => d.type === 'freeze' || d.type === 'stun');
@@ -469,13 +1314,60 @@ export function runBattle(
       if (b.type === 'def_up' && b.value)  effectiveDef = Math.floor(effectiveDef * (1 + b.value));
       if (b.type === 'spd_up' && b.value)  effectiveSpd = Math.floor(effectiveSpd * (1 + b.value));
     }
+    // 玩家受怪物debuff影响
+    for (const d of playerDebuffs) {
+      if (d.type === 'brittle' && d.value)  effectiveDef = Math.floor(effectiveDef * (1 - d.value));
+      if (d.type === 'atk_down' && d.value) effectiveAtk = Math.floor(effectiveAtk * (1 - d.value));
+    }
     player.atk = effectiveAtk;
     player.def = effectiveDef;
     player.spd = effectiveSpd;
 
-    // 怪物的有效属性 (受 debuff 影响)
-    let monsterEffectiveAtk = monsterStats.atk;
-    let monsterEffectiveDef = monsterStats.def;
+    // 回合开始: 结算玩家身上的怪物debuff (DOT)
+    for (let i = playerDebuffs.length - 1; i >= 0; i--) {
+      const d = playerDebuffs[i];
+      if (d.damagePerTurn > 0) {
+        let dotDmg = d.damagePerTurn;
+        if (equippedSkills?.passiveEffects.damageReductionFlat) {
+          dotDmg = Math.floor(dotDmg * (1 - equippedSkills.passiveEffects.damageReductionFlat));
+        }
+        player.hp -= dotDmg;
+        logs.push({ turn, text: `[第${turn}回合] 你受到【${debuffName(d.type)}】伤害 ${dotDmg} 点`, type: 'normal', ...snap() });
+      }
+      d.remaining--;
+      if (d.remaining <= 0) playerDebuffs.splice(i, 1);
+    }
+
+    // 回合开始: 结算怪物buff
+    for (let i = monsterBuffs.length - 1; i >= 0; i--) {
+      monsterBuffs[i].remaining--;
+      if (monsterBuffs[i].remaining <= 0) monsterBuffs.splice(i, 1);
+    }
+
+    // 怪物技能CD递减
+    tickMonsterCds(monsterSkillState);
+
+    // 怪物的有效属性 (受 debuff + buff 影响)
+    let monsterEffectiveAtk = monsterBaseAtk;
+    let monsterEffectiveDef = monsterBaseDef;
+    // 怪物buff加成
+    for (const b of monsterBuffs) {
+      if (b.type === 'atk_up' && b.value) monsterEffectiveAtk = Math.floor(monsterEffectiveAtk * (1 + b.value));
+      if (b.type === 'def_up' && b.value) monsterEffectiveDef = Math.floor(monsterEffectiveDef * (1 + b.value));
+    }
+    // Boss低血量强化 (30%血以下 +30% ATK，永久)
+    if (monsterTemplate.role === 'boss' && !monsterSkillState.bossEnrageTriggered && monster.hp < monster.maxHp * 0.30) {
+      monsterSkillState.bossEnrageTriggered = true;
+      logs.push({ turn, text: `[第${turn}回合] ${monster.name}进入狂暴状态！攻击永久+30%!`, type: 'crit', ...snap() });
+    }
+    if (monsterSkillState.bossEnrageTriggered) {
+      monsterEffectiveAtk = Math.floor(monsterEffectiveAtk * 1.30);
+    }
+    // 狂暴状态防御-20% (有狂暴buff时生效)
+    if (monsterBuffs.some(b => b.type === 'atk_up' && monsterSkillState.berserkTriggered)) {
+      monsterEffectiveDef = Math.floor(monsterEffectiveDef * 0.80);
+    }
+    // debuff减属性
     for (const d of monsterDebuffs) {
       if (d.type === 'brittle' && d.value)  monsterEffectiveDef = Math.floor(monsterEffectiveDef * (1 - d.value));
       if (d.type === 'atk_down' && d.value) monsterEffectiveAtk = Math.floor(monsterEffectiveAtk * (1 - d.value));
@@ -498,13 +1390,13 @@ export function runBattle(
           logs.push({ turn, text: `[第${turn}回合] ${monster.name}处于控制中,无法行动`, type: 'normal', ...snap() });
           continue;
         }
-        // 怪物普攻
-        const result = calculateDamage(atk.attacker, atk.defender);
-        if (result.damage === 0) {
-          logs.push({ turn, text: `[第${turn}回合] ${monster.name}的攻击被你闪避了`, type: 'normal', ...snap() });
-        } else {
-          // 护盾吸收
-          let dmg = result.damage;
+
+        // 怪物选择技能
+        const mSkill = monsterChooseSkill(monsterSkillState, monster.hp, monster.maxHp, monsterTemplate.role === 'boss');
+
+        // 辅助: 应用怪物伤害到玩家（护盾/减伤/反弹等）
+        function applyMonsterDmgToPlayer(rawDmg: number, skillName: string, isCrit: boolean, isSkill: boolean, turn: number) {
+          let dmg = rawDmg;
           if (playerShield > 0) {
             const absorb = Math.min(playerShield, dmg);
             playerShield -= absorb;
@@ -513,21 +1405,18 @@ export function runBattle(
               logs.push({ turn, text: `[第${turn}回合] 护盾吸收了 ${absorb} 点伤害`, type: 'buff', ...snap() });
             }
           }
-          // 减伤
           if (equippedSkills?.passiveEffects.damageReductionFlat) {
             dmg = Math.floor(dmg * (1 - equippedSkills.passiveEffects.damageReductionFlat));
           }
-          // 金钟罩 immune: 期间受到伤害 -50%
           if (playerImmune()) {
             dmg = Math.floor(dmg * 0.5);
           }
           if (dmg > 0) {
-            atk.defender.hp -= dmg;
+            player.hp -= dmg;
             // 反弹
             const reflectBuff = playerBuffs.find(b => b.type === 'reflect');
             let reflectPercent = (reflectBuff?.value || 0) + (equippedSkills?.passiveEffects.reflectPercent || 0) / 100;
-            // 暴击额外反弹
-            if (result.isCrit && equippedSkills?.passiveEffects.reflectOnCrit) {
+            if (isCrit && equippedSkills?.passiveEffects.reflectOnCrit) {
               reflectPercent += equippedSkills.passiveEffects.reflectOnCrit;
             }
             if (reflectPercent > 0) {
@@ -535,20 +1424,89 @@ export function runBattle(
               monster.hp -= reflectDmg;
               logs.push({ turn, text: `[第${turn}回合] 反弹 ${reflectDmg} 点伤害给 ${monster.name}`, type: 'normal', ...snap() });
             }
-            logs.push({
-              turn,
-              text: result.isCrit
-                ? `[第${turn}回合] ${monster.name}暴击！对你造成 ${dmg} 点伤害`
-                : `[第${turn}回合] ${monster.name}攻击了你，造成 ${dmg} 点伤害`,
-              type: result.isCrit ? 'crit' : 'normal',
-              ...snap(),
-            });
-            // 被打触发型: 中毒/灼烧
+            // 被打触发型
             if (equippedSkills?.passiveEffects.poisonOnHitTaken && Math.random() < equippedSkills.passiveEffects.poisonOnHitTaken) {
               tryApplyDebuff({ debuff: { type: 'poison', chance: 1.0, duration: 2 } }, player.atk, monster, turn);
             }
             if (equippedSkills?.passiveEffects.burnOnHitTaken && Math.random() < equippedSkills.passiveEffects.burnOnHitTaken) {
               tryApplyDebuff({ debuff: { type: 'burn', chance: 1.0, duration: 2 } }, player.atk, monster, turn);
+            }
+          }
+          return dmg;
+        }
+
+        // 非攻击技能 (buff/回复/buff+debuff)
+        if (mSkill && mSkill.multiplier === 0) {
+          // 回复
+          if (mSkill.healPercent) {
+            const heal = Math.floor(monster.maxHp * mSkill.healPercent);
+            monster.hp = Math.min(monster.maxHp, monster.hp + heal);
+            logs.push({ turn, text: `[第${turn}回合] ${monster.name}施展了【${mSkill.name}】，回复 ${heal} 点气血!`, type: 'buff', ...snap() });
+          }
+          // buff
+          if (mSkill.buff) {
+            const existBuff = monsterBuffs.find(b => b.type === mSkill.buff!.type);
+            if (existBuff) { existBuff.remaining = mSkill.buff.duration; existBuff.value = mSkill.buff.value; }
+            else monsterBuffs.push({ type: mSkill.buff.type as BuffType, remaining: mSkill.buff.duration, value: mSkill.buff.value });
+            if (mSkill.name === '狂暴') {
+              monsterSkillState.berserkTriggered = true;
+              logs.push({ turn, text: `[第${turn}回合] ${monster.name}施展了【${mSkill.name}】！攻击+40%,防御-20%!`, type: 'crit', ...snap() });
+            } else if (!mSkill.healPercent) {
+              logs.push({ turn, text: `[第${turn}回合] ${monster.name}施展了【${mSkill.name}】！`, type: 'normal', ...snap() });
+            }
+          }
+          // debuff (如首领之吼)
+          if (mSkill.debuff) {
+            tryApplyMonsterDebuff(mSkill.debuff, monster.atk, player, turn);
+          }
+          continue;
+        }
+
+        // 攻击技能或普攻
+        const skillMul = mSkill ? mSkill.multiplier : 1.0;
+        const skillElem = mSkill ? mSkill.element : null;
+        const skillName = mSkill ? mSkill.name : '普通攻击';
+        const hits = mSkill?.hitCount || 1;
+
+        if (hits > 1) {
+          // 多段攻击
+          const perHitMul = skillMul / hits;
+          logs.push({ turn, text: `[第${turn}回合] ${monster.name}施展了【${skillName}】(${hits}段)!`, type: 'crit', ...snap() });
+          let totalDmg = 0;
+          for (let h = 0; h < hits; h++) {
+            const result = calculateDamage(atk.attacker, atk.defender, perHitMul, skillElem);
+            if (result.damage === 0) {
+              logs.push({ turn, text: `  第${h + 1}段被闪避了`, type: 'normal', ...snap() });
+            } else {
+              const applied = applyMonsterDmgToPlayer(result.damage, skillName, result.isCrit, true, turn);
+              totalDmg += applied;
+              const critText = result.isCrit ? '暴击!' : '';
+              logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${applied} 点伤害`, type: result.isCrit ? 'crit' : 'normal', ...snap() });
+              // 每段独立判定debuff
+              if (mSkill?.debuff) {
+                tryApplyMonsterDebuff(mSkill.debuff, monster.atk, player, turn);
+              }
+            }
+            if (player.hp <= 0) break;
+          }
+        } else {
+          // 单段攻击
+          const result = calculateDamage(atk.attacker, atk.defender, skillMul, skillElem);
+          if (result.damage === 0) {
+            logs.push({ turn, text: `[第${turn}回合] ${monster.name}的【${skillName}】被你闪避了`, type: 'normal', ...snap() });
+          } else {
+            const applied = applyMonsterDmgToPlayer(result.damage, skillName, result.isCrit, mSkill !== null, turn);
+            const isSkillAttack = mSkill !== null;
+            logs.push({
+              turn,
+              text: result.isCrit
+                ? `[第${turn}回合] ${monster.name}施展【${skillName}】暴击！对你造成 ${applied} 点伤害`
+                : `[第${turn}回合] ${monster.name}${isSkillAttack ? '施展【' + skillName + '】，' : ''}攻击了你，造成 ${applied} 点伤害`,
+              type: result.isCrit ? 'crit' : 'normal',
+              ...snap(),
+            });
+            if (mSkill?.debuff) {
+              tryApplyMonsterDebuff(mSkill.debuff, monster.atk, player, turn);
             }
           }
         }
@@ -715,19 +1673,20 @@ function generateDrops(template: MonsterTemplate): DropItem[] {
       // 天品 + 仙品
       skills = [
         '时光凝滞', '天罚雷劫',
-        '万剑归宗', '地裂天崩', '噬魂大法', '九天玄火阵',
+        '万剑归宗', '地裂天崩', '噬魂大法', '九天玄火阵', '暴风斩', '天地归元',
         '道心通明', '五行归一', '渊海之心', '战意沸腾', '不灭金身',
       ];
     } else if (mapTier >= 5) {
       // 地品
       skills = [
+        '剑雨纷飞', '双焰斩', '连环掌', '灵泉术',
         '嗜血诀', '生生不息', '明镜止水',
         '破绽感知', '不动如山', '百毒不侵', '焚天之体',
       ];
     } else if (mapTier >= 3) {
       // 玄品
       skills = [
-        '天火术', '霜冻新星', '厚土盾', '万藤缚', '金钟罩',
+        '天火术', '霜冻新星', '厚土盾', '万藤缚', '金钟罩', '地裂波',
         '凌波微步', '铁布衫', '荆棘之体', '焚身火甲', '厚土心法',
       ];
     } else {

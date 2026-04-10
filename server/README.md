@@ -17,13 +17,18 @@ src/
 ├── app.ts                # 应用入口(Express 配置、路由注册)
 ├── database/
 │   ├── db.ts             # MySQL 连接池
+│   ├── init.sql          # 初始化脚本
 │   └── migration.sql     # 数据库建表/迁移脚本
+├── engine/               # 战斗引擎(服务端计算,防作弊)
+│   ├── battleEngine.ts   # 完整战斗引擎(波次战斗/debuff/buff/怪物AI/技能系统)
+│   └── skillData.ts      # 46个功法数据(6主修+21神通+19被动)
 ├── middleware/
 │   └── auth.ts           # JWT 鉴权中间件
 └── routes/
     ├── auth.ts           # 登录/注册
     ├── character.ts      # 角色查询/创建/头像上传
-    ├── game.ts           # 游戏数据/战斗奖励/角色更新
+    ├── game.ts           # 游戏数据/角色更新/离线挂机
+    ├── battle.ts         # 战斗API(服务端计算+25张地图+掉落生成)
     ├── skill.ts          # 功法背包/装备/升级
     ├── equipment.ts      # 装备背包/穿戴/强化/出售
     ├── pill.ts           # 炼丹/灵草/丹药/buff
@@ -49,8 +54,23 @@ src/
 | 方法 | 路径 | 说明 | 鉴权 |
 |------|------|------|------|
 | GET | /data | 获取完整角色数据 | 是 |
-| POST | /save-rewards | 保存战斗奖励(修为/灵石/等级经验/功法) | 是 |
+| POST | /save-rewards | 保存战斗奖励 | 是 |
 | POST | /update-character | 更新角色状态(境界突破/升级) | 是 |
+| POST | /cultivate | 闭关修炼(消耗灵石获得修为) | 是 |
+| POST | /offline-start | 开始离线挂机 | 是 |
+| GET | /offline-status | 查询离线挂机状态和预估收益 | 是 |
+| POST | /offline-claim | 结束离线并领取收益 | 是 |
+
+### 战斗 `/api/battle`
+| 方法 | 路径 | 说明 | 鉴权 |
+|------|------|------|------|
+| POST | /fight | 执行一波战斗(服务端完整计算) | 是 |
+
+战斗防作弊机制:
+- 所有战斗计算在服务端完成,前端仅展示日志
+- 同一角色 1.5 秒冷却,防止并发刷经验
+- 离线挂机中禁止在线战斗
+- 经验/灵石/掉落全部服务端入库
 
 ### 功法 `/api/skill`
 | 方法 | 路径 | 说明 | 鉴权 |
@@ -58,14 +78,14 @@ src/
 | GET | /inventory | 功法背包 | 是 |
 | GET | /equipped | 已装备功法(含等级) | 是 |
 | POST | /save-equipped | 保存装备状态 | 是 |
-| POST | /upgrade | 升级功法(Lv5上限) | 是 |
+| POST | /upgrade | 升级功法(Lv5上限,每级+15%) | 是 |
 | POST | /add | 添加功法 | 是 |
 
 ### 装备 `/api/equipment`
 | 方法 | 路径 | 说明 | 鉴权 |
 |------|------|------|------|
 | GET | /list | 装备列表 | 是 |
-| POST | /add | 添加装备(含武器类型/等级限制) | 是 |
+| POST | /add | 添加装备 | 是 |
 | POST | /equip | 穿戴(校验等级+槽位) | 是 |
 | POST | /unequip | 卸下 | 是 |
 | POST | /sell | 出售(含强化加成) | 是 |
@@ -77,10 +97,10 @@ src/
 | GET | /inventory | 丹药背包(分品质系数) | 是 |
 | GET | /herbs | 灵草背包(分种类品质) | 是 |
 | POST | /add-herb | 添加灵草(战斗掉落) | 是 |
-| POST | /craft | 炼丹(灵草数组+品质系数) | 是 |
-| POST | /use | 使用丹药(同种覆盖) | 是 |
-| GET | /buffs | 当前buff | 是 |
-| POST | /consume-buff | 战斗后扣减buff | 是 |
+| POST | /craft | 炼丹(灵草+灵石,失败全扣) | 是 |
+| POST | /use | 使用丹药(时间制buff,1-8小时) | 是 |
+| GET | /buffs | 当前buff(含过期检查) | 是 |
+| POST | /consume-buff | 扣减buff | 是 |
 
 ### 洞府 `/api/cave`
 | 方法 | 路径 | 说明 | 鉴权 |
@@ -101,22 +121,33 @@ src/
 |------|------|------|
 | GET | /api/health | 健康检查 |
 
+## 战斗引擎 (`src/engine/`)
+
+服务端完整战斗引擎,从前端 battleEngine.ts 移植:
+- **波次战斗**: 1-5只怪同时出现,1%概率Boss
+- **46个功法**: 6主修 + 21神通(AOE/多段/多目标/治疗/buff) + 19被动
+- **10种debuff**: 灼烧/中毒/流血/冻结/眩晕/减速/脆弱/降攻/束缚/封印
+- **8种buff**: 攻击/防御/速度/暴击/护盾/回血/反弹/免疫
+- **怪物AI**: 按tier分层技能池,Boss低血量狂暴,优先回复/攻击选择
+- **属性系统**: 破甲/命中/闪避/吸血/五行抗性/控制抗性/元素强化/神识/灵气浓度
+- **功法等级**: Lv1-5,每级+15%效果(倍率/debuff概率/buff数值/被动加成)
+
 ## 数据库
 
 ### 库名: `xiantu_game`
 
 | 表名 | 用途 |
 |------|------|
-| users | 账号 |
-| characters | 角色(属性/境界/等级/货币/头像) |
-| character_equipment | 装备(含base_slot/weapon_type/req_level/enhance_level) |
-| character_skills | 已装备功法(含等级) |
-| character_skill_inventory | 功法背包 |
-| character_pills | 丹药背包(含quality_factor) |
-| character_buffs | 激活buff(含quality_factor) |
-| character_cave | 洞府建筑 |
-| character_cave_plots | 灵田地块 |
-| character_materials | 灵草背包(分品质) |
+| users | 账号(用户名/密码/状态) |
+| characters | 角色(属性/境界/等级/货币/头像/离线状态) |
+| character_equipment | 装备(base_slot/weapon_type/req_level/enhance_level/sub_stats) |
+| character_skills | 已装备功法(active/divine/passive,含等级) |
+| character_skill_inventory | 功法背包(skill_id + count) |
+| character_pills | 丹药背包(pill_id + quality_factor + count) |
+| character_buffs | 激活buff(pill_id + quality_factor + expire_time) |
+| character_cave | 洞府建筑(building_id + level + 升级/领取时间) |
+| character_cave_plots | 灵田地块(plot_index + herb_id + 种植时间) |
+| character_materials | 灵草背包(material_id + quality + count) |
 
 ### 初始化
 ```bash
@@ -140,6 +171,13 @@ npm install
 npm run dev        # 开发模式 http://localhost:3001
 npm run build      # 编译
 npm run start      # 生产模式
+```
+
+## 测试
+```bash
+npx ts-node src/test-battle.ts       # 46技能×100场战斗测试
+npx ts-node src/test-skill-level.ts  # 功法升级效果验证
+npx ts-node src/test-attributes.ts   # 14项属性生效验证
 ```
 
 ## 环境要求

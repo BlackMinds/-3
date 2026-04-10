@@ -162,8 +162,6 @@ router.post('/enhance', authMiddleware, async (req: AuthRequest, res: Response) 
 
     const eq = eqRows[0];
 
-    if (!eq.slot) return res.json({ code: 400, message: '只能强化已穿戴的装备' });
-
     const currentLevel = eq.enhance_level || 0;
 
     if (currentLevel >= 10) {

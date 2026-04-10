@@ -1,5 +1,9 @@
 <template>
   <div class="game-page">
+    <!-- Toast 提示 -->
+    <Transition name="toast-fade">
+      <div v-if="toastVisible" :class="['game-toast', 'toast-' + toastType]">{{ toastMsg }}</div>
+    </Transition>
     <!-- ==================== 顶栏 ==================== -->
     <header class="top-bar">
       <div class="bar-left">
@@ -36,13 +40,20 @@
         </div>
       </div>
       <div class="dual-bars">
-        <div class="exp-bar-wrap">
-          <div class="exp-bar" :style="{ width: gameStore.expPercent + '%' }"></div>
-          <span class="exp-text">修为 {{ Math.floor(gameStore.expPercent) }}%</span>
+        <div class="bar-row">
+          <span class="bar-label">Lv.{{ gameStore.charLevel }}</span>
+          <div class="exp-bar-wrap">
+            <div class="exp-bar level-bar" :style="{ width: gameStore.levelExpPercent + '%' }"></div>
+            <span class="exp-text">等级经验 {{ Math.floor(gameStore.levelExpPercent) }}%</span>
+          </div>
         </div>
-        <div class="exp-bar-wrap level-bar-wrap">
-          <div class="exp-bar level-bar" :style="{ width: gameStore.levelExpPercent + '%' }"></div>
-          <span class="exp-text">Lv.{{ gameStore.charLevel }} {{ Math.floor(gameStore.levelExpPercent) }}%</span>
+        <div class="bar-row">
+          <span class="bar-label">{{ gameStore.realmName }}</span>
+          <div class="exp-bar-wrap">
+            <div class="exp-bar" :style="{ width: gameStore.expPercent + '%' }"></div>
+            <span class="exp-text">境界修为 {{ Math.floor(gameStore.expPercent) }}%</span>
+          </div>
+          <button v-if="gameStore.expPercent >= 100" class="realm-challenge-btn" @click="showRealmChallenge = true">突破</button>
         </div>
       </div>
     </div>
@@ -77,11 +88,25 @@
         <!-- 战斗控制 -->
         <div class="battle-controls">
           <button
-            v-if="!gameStore.isBattling"
+            v-if="!gameStore.isBattling && !isOffline"
             class="ctrl-btn start-btn"
             @click="battleStartTime = Date.now(); gameStore.startBattle()"
           >
             开始历练
+          </button>
+          <button
+            v-if="!gameStore.isBattling && !isOffline"
+            class="ctrl-btn offline-btn"
+            @click="startOffline"
+          >
+            开始离线
+          </button>
+          <button
+            v-if="!gameStore.isBattling && isOffline"
+            class="ctrl-btn offline-end-btn"
+            @click="endOffline"
+          >
+            结束离线
           </button>
           <template v-else>
             <button class="ctrl-btn pause-btn" @click="gameStore.togglePause()">
@@ -118,17 +143,14 @@
 
           <!-- 怪物侧 -->
           <div class="hud-side hud-monster" @mouseenter="showMonsterTip = true" @mouseleave="showMonsterTip = false">
-            <div class="hud-name monster-name">
-              <span v-if="monsterElemColor" class="monster-elem-dot" :style="{ background: monsterElemColor }"></span>
-              {{ gameStore.currentMonsterInfo?.name }}
+            <div class="wave-monsters-grid">
+              <div v-for="(name, i) in gameStore.waveMonsterNames" :key="i" class="wave-monster-cell">
+                <div class="wave-cell-name">{{ name }}</div>
+                <div class="wave-cell-bar">
+                  <div class="wave-cell-fill" :style="{ width: (i === 0 ? monsterHpPercent : 100) + '%' }"></div>
+                </div>
+              </div>
             </div>
-            <div class="hud-hp-bar">
-              <div
-                class="hud-hp-fill monster-fill"
-                :style="{ width: monsterHpPercent + '%' }"
-              ></div>
-            </div>
-            <div class="hud-hp-text">{{ formatNum(gameStore.displayMonsterHp) }} / {{ formatNum(gameStore.displayMonsterMaxHp) }}</div>
 
             <!-- 怪物信息浮窗 -->
             <transition name="tip-fade">
@@ -321,6 +343,7 @@
                 :style="{ borderColor: getEquipColor(eq) }"
                 @mouseenter="onBagHover($event, eq)"
                 @mouseleave="hoverEquip = null"
+                @click.stop="onBagClick($event, eq)"
               >
                 <span class="bag-cell-name" :style="{ color: getEquipColor(eq) }">{{ eq.name.split('·')[1] || eq.name }}</span>
                 <span class="bag-cell-rarity" :style="{ color: getEquipColor(eq) }">{{ eq.name.split('·')[0] }}</span>
@@ -367,7 +390,7 @@
             @mouseenter="onBuffHover($event, b)"
             @mouseleave="hoverBuff = null"
           >
-            {{ getPillName(b.pill_id) }} ({{ b.remaining_fights }}场)
+            {{ getPillName(b.pill_id) }} ({{ formatBuffTime(b) }})
           </span>
         </div>
 
@@ -408,7 +431,7 @@
             </div>
 
             <p class="pill-rate">
-              成功率: {{ (recipe.successRate * 100).toFixed(0) }}% · 灵石: {{ formatNum(recipe.cost) }}
+              成功率: {{ (recipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100) * 100).toFixed(0) }}% · 灵石: {{ formatNum(Math.floor(recipe.cost * (getCraftPreview(recipe).factor || 1))) }}
               <span v-if="getCraftPreview(recipe).factor > 0" class="pill-preview">
                 · 品质系数: {{ getCraftPreview(recipe).factor.toFixed(2) }}x
               </span>
@@ -472,7 +495,7 @@
             </div>
 
             <p class="pill-rate">
-              成功率: {{ (recipe.successRate * 100).toFixed(0) }}% · 灵石: {{ formatNum(recipe.cost) }}
+              成功率: {{ (recipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100) * 100).toFixed(0) }}% · 灵石: {{ formatNum(Math.floor(recipe.cost * (getCraftPreview(recipe).factor || 1))) }}
               <span v-if="getCraftPreview(recipe).factor > 0" class="pill-preview">
                 · 品质系数: {{ getCraftPreview(recipe).factor.toFixed(2) }}x
               </span>
@@ -843,23 +866,48 @@
     </main>
 
     <!-- ==================== 装备悬浮提示 ==================== -->
+    <!-- ==================== 装备 hover 提示(只看属性) ==================== -->
     <Teleport to="body">
-      <div v-if="hoverEquip" class="fixed-tooltip" :style="{ top: tooltipY + 'px', left: tooltipX + 'px' }">
-        <div class="tooltip-name" :style="{ color: getEquipColor(hoverEquip) }">{{ hoverEquip.name }}</div>
-        <div v-if="hoverEquip.weapon_type" class="tooltip-weapon-type">
-          类型: {{ getWeaponTypeDef(hoverEquip.weapon_type)?.name }}
+      <div v-if="hoverEquip && !clickedEquip" class="fixed-tooltip" :style="{ top: tooltipY + 'px', left: tooltipX + 'px' }">
+        <div class="tooltip-name" :style="{ color: getEquipColor(hoverEquip) }">
+          {{ hoverEquip.name }}
+          <span v-if="hoverEquip.enhance_level > 0" class="enhance-tag">+{{ hoverEquip.enhance_level }}</span>
         </div>
+        <div v-if="hoverEquip.weapon_type" class="tooltip-weapon-type">类型: {{ getWeaponTypeDef(hoverEquip.weapon_type)?.name }}</div>
         <div v-if="hoverEquip.req_level > 1" class="tooltip-sub" :style="{ color: (gameStore.charLevel >= hoverEquip.req_level) ? 'var(--jade)' : 'var(--cinnabar)' }">
           需要等级: Lv.{{ hoverEquip.req_level }}
         </div>
-        <div class="tooltip-main">{{ getStatName(hoverEquip.primary_stat) }} +{{ hoverEquip.primary_value }}</div>
+        <div class="tooltip-main">{{ getStatName(hoverEquip.primary_stat) }} +{{ getEnhancedPrimaryValue(hoverEquip.primary_value, hoverEquip.enhance_level || 0) }}</div>
         <div v-for="(sub, i) in parseSubs(hoverEquip.sub_stats)" :key="i" class="tooltip-sub">
           {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
         </div>
-        <div v-if="hoverEquip.weapon_type" class="tooltip-weapon-bonus">
-          <div v-for="(line, i) in formatWeaponBonus(hoverEquip.weapon_type)" :key="i" class="tooltip-sub" style="color: var(--gold-ink);">
-            {{ line }}
-          </div>
+        <div class="tooltip-sub" style="color: var(--ink-faint); margin-top: 4px;">点击查看操作</div>
+      </div>
+    </Teleport>
+
+    <!-- ==================== 装备点击面板 ==================== -->
+    <Teleport to="body">
+      <div v-if="clickedEquip" class="equip-action-panel" :style="{ top: clickedEquipY + 'px', left: clickedEquipX + 'px' }">
+        <div class="tooltip-name" :style="{ color: getEquipColor(clickedEquip) }">
+          {{ clickedEquip.name }}
+          <span v-if="clickedEquip.enhance_level > 0" class="enhance-tag">+{{ clickedEquip.enhance_level }}</span>
+        </div>
+        <div v-if="clickedEquip.weapon_type" class="tooltip-weapon-type">
+          类型: {{ getWeaponTypeDef(clickedEquip.weapon_type)?.name }}
+        </div>
+        <div v-if="clickedEquip.req_level > 1" class="tooltip-sub" :style="{ color: (gameStore.charLevel >= clickedEquip.req_level) ? 'var(--jade)' : 'var(--cinnabar)' }">
+          需要等级: Lv.{{ clickedEquip.req_level }}
+        </div>
+        <div class="tooltip-main">{{ getStatName(clickedEquip.primary_stat) }} +{{ getEnhancedPrimaryValue(clickedEquip.primary_value, clickedEquip.enhance_level || 0) }}</div>
+        <div v-for="(sub, i) in parseSubs(clickedEquip.sub_stats)" :key="i" class="tooltip-sub">
+          {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
+        </div>
+        <div class="equip-action-btns">
+          <button v-if="!clickedEquip.slot" class="equip-action-btn-green" @click="quickEquip(clickedEquip)">装备</button>
+          <button v-if="(clickedEquip.enhance_level || 0) < 10" class="equip-action-btn-gold" @click="openEnhance(clickedEquip); clickedEquip = null">强化</button>
+          <button v-if="clickedEquip.slot" class="equip-action-btn-red" @click="quickUnequip(clickedEquip)">卸下</button>
+          <button v-if="!clickedEquip.slot" class="equip-action-btn-red" @click="quickSell(clickedEquip)">出售</button>
+          <button class="equip-action-btn-close" @click="clickedEquip = null">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -880,20 +928,33 @@
         <div class="tooltip-weapon-bonus">
           <div class="tooltip-sub">当前等级: <span style="color: var(--gold-ink);">Lv.{{ hoverCurrentLevel }}</span></div>
           <div v-if="hoverCurrentLevel < 5">
-            <div class="tooltip-sub" v-if="hoverSkillData.type !== 'passive'">
-              当前效果: 倍率 {{ (hoverSkillData.multiplier * (1 + (hoverCurrentLevel - 1) * 0.08) * 100).toFixed(0) }}%
-            </div>
-            <div class="tooltip-sub" v-if="hoverSkillData.type !== 'passive'" style="color: var(--jade);">
-              下一级 (Lv.{{ hoverCurrentLevel + 1 }}): 倍率 {{ (hoverSkillData.multiplier * (1 + hoverCurrentLevel * 0.08) * 100).toFixed(0) }}%
-              <span style="color: var(--ink-faint);">(+{{ (hoverSkillData.multiplier * 0.08 * 100).toFixed(0) }}%)</span>
-            </div>
-            <div class="tooltip-sub" v-else>
-              当前数值: × {{ (1 + (hoverCurrentLevel - 1) * 0.10).toFixed(2) }}
-            </div>
-            <div class="tooltip-sub" v-if="hoverSkillData.type === 'passive'" style="color: var(--jade);">
-              下一级 (Lv.{{ hoverCurrentLevel + 1 }}): × {{ (1 + hoverCurrentLevel * 0.10).toFixed(2) }}
-              <span style="color: var(--ink-faint);">(+10%)</span>
-            </div>
+            <!-- 攻击型神通(有倍率) -->
+            <template v-if="hoverSkillData.type !== 'passive' && hoverSkillData.multiplier > 0">
+              <div class="tooltip-sub">
+                当前倍率: {{ (hoverSkillData.multiplier * (1 + (hoverCurrentLevel - 1) * 0.08) * 100).toFixed(0) }}%
+              </div>
+              <div class="tooltip-sub" style="color: var(--jade);">
+                Lv.{{ hoverCurrentLevel + 1 }}: {{ (hoverSkillData.multiplier * (1 + hoverCurrentLevel * 0.08) * 100).toFixed(0) }}%
+              </div>
+            </template>
+            <!-- 纯buff神通(倍率=0) -->
+            <template v-else-if="hoverSkillData.type !== 'passive' && hoverSkillData.multiplier === 0">
+              <div class="tooltip-sub">
+                当前效果: × {{ (1 + (hoverCurrentLevel - 1) * 0.08).toFixed(2) }}
+              </div>
+              <div class="tooltip-sub" style="color: var(--jade);">
+                Lv.{{ hoverCurrentLevel + 1 }}: 效果 × {{ (1 + hoverCurrentLevel * 0.08).toFixed(2) }} (+8%)
+              </div>
+            </template>
+            <!-- 被动功法 -->
+            <template v-else>
+              <div class="tooltip-sub">
+                当前数值: × {{ (1 + (hoverCurrentLevel - 1) * 0.10).toFixed(2) }}
+              </div>
+              <div class="tooltip-sub" style="color: var(--jade);">
+                Lv.{{ hoverCurrentLevel + 1 }}: × {{ (1 + hoverCurrentLevel * 0.10).toFixed(2) }} (+10%)
+              </div>
+            </template>
             <div class="tooltip-sub" style="margin-top: 4px; color: var(--gold-ink);">
               升级所需: {{ hoverCurrentLevel }} 个残页
             </div>
@@ -916,7 +977,7 @@
           {{ line }}
         </div>
         <div class="tooltip-sub" style="margin-top: 4px; color: var(--ink-faint);">
-          剩余 {{ hoverBuff.remaining_fights }} 场
+          剩余 {{ formatBuffTime(hoverBuff) }}
         </div>
       </div>
     </Teleport>
@@ -1036,22 +1097,55 @@
 
     <!-- ==================== 掉落表弹窗 ==================== -->
     <div v-if="showDropTable" class="modal-overlay" @click="showDropTable = false">
-      <div class="modal-content" @click.stop>
+      <div class="modal-content" @click.stop style="max-width: 640px;">
         <div class="modal-header">
           <h3>怪物掉落表</h3>
           <button class="modal-close" @click="showDropTable = false">×</button>
         </div>
         <div class="modal-body">
+          <!-- 掉落概率总览 -->
+          <div class="drop-rate-info" style="margin-bottom: 12px;">
+            <table class="help-table"><tbody>
+              <tr><td>装备</td><td>普怪 20% / Boss 100%</td></tr>
+              <tr><td>功法</td><td>普怪 15% / Boss 50%</td></tr>
+              <tr><td>灵草</td><td>普怪 30% / Boss 80%</td></tr>
+              <tr><td>Boss</td><td>每波 1% 概率出现</td></tr>
+            </tbody></table>
+          </div>
+
+          <!-- 按地图列出 -->
           <div class="drop-section" v-for="map in gameStore.unlockedMaps" :key="map.id">
-            <div class="map-name">{{ map.name }} (Lv.{{ map.tier }})</div>
+            <div class="map-name">{{ map.name }} (T{{ map.tier }})</div>
             <div class="drop-detail">
-              <p>💎 装备：{{ map.tier }}阶装备</p>
-              <p>📜 功法：风刃术、烈焰剑诀、天火术、霜冻新星、金刚体、焚体诀</p>
-              <p>📦 材料：修炼材料</p>
+              <div class="drop-monsters">
+                <span v-for="m in map.monsters" :key="m.id" class="drop-monster-tag" :style="{ color: m.element ? elemColor(m.element) : '#ccc' }">
+                  {{ m.name }}({{ m.element ? elemName(m.element) : '无' }})
+                </span>
+                <span v-if="map.boss" class="drop-monster-tag" style="color: #FFAA00; font-weight: bold;">
+                  Boss: {{ map.boss.name }}
+                </span>
+              </div>
+              <p>装备: T{{ map.tier }}阶 {{ dropQualityRange(map.tier) }}</p>
+              <p>功法: {{ dropSkillRange(map.tier) }}</p>
+              <p>灵草: {{ dropHerbInfo(map) }}</p>
             </div>
           </div>
-          <div class="drop-rate-info">
-            <p>掉落概率：装备5% | 功法3% | 材料20% | Boss翻倍</p>
+
+          <!-- 装备品质分布 -->
+          <div class="drop-section" style="margin-top: 12px;">
+            <div class="map-name">装备品质分布</div>
+            <table class="help-table"><tbody>
+              <tr><td>T1</td><td>凡器60% 灵器30% 法器9% 灵宝1%</td></tr>
+              <tr><td>T2</td><td>凡器40% 灵器35% 法器18% 灵宝6% 仙器1%</td></tr>
+              <tr><td>T3</td><td>凡器20% 灵器35% 法器25% 灵宝15% 仙器4.5% 太古0.5%</td></tr>
+              <tr><td>T4</td><td>凡器5% 灵器25% 法器30% 灵宝25% 仙器13% 太古2%</td></tr>
+              <tr><td>T5</td><td>灵器10% 法器30% 灵宝35% 仙器22% 太古3%</td></tr>
+              <tr><td>T6</td><td>法器20% 灵宝40% 仙器35% 太古5%</td></tr>
+              <tr><td>T7</td><td>法器10% 灵宝35% 仙器45% 太古10%</td></tr>
+              <tr><td>T8</td><td>法器5% 灵宝25% 仙器55% 太古15%</td></tr>
+              <tr><td>T9</td><td>灵宝20% 仙器60% 太古20%</td></tr>
+              <tr><td>T10</td><td>灵宝10% 仙器60% 太古30%</td></tr>
+            </tbody></table>
           </div>
         </div>
       </div>
@@ -1199,6 +1293,103 @@
       </div>
     </div>
 
+    <!-- ==================== 境界挑战弹窗 ==================== -->
+    <div v-if="showRealmChallenge" class="modal-overlay" @click="showRealmChallenge = false; realmChallengeResult = null">
+      <div class="modal-content" @click.stop style="max-width: 400px;">
+        <div class="modal-header">
+          <h3>境界突破</h3>
+          <button class="modal-close" @click="showRealmChallenge = false; realmChallengeResult = null">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="realm-challenge-info">
+            <div class="realm-current">当前境界: <span style="color: var(--gold-ink);">{{ gameStore.realmName }}</span></div>
+            <div class="realm-exp-info">
+              修为: {{ formatNum(gameStore.character?.cultivation_exp || 0) }} / {{ formatNum(gameStore.expRequired) }}
+            </div>
+            <div class="realm-exp-bar-big">
+              <div class="realm-exp-fill" :style="{ width: Math.min(100, gameStore.expPercent) + '%' }"></div>
+            </div>
+          </div>
+
+          <div v-if="gameStore.expPercent >= 100" class="realm-ready">
+            <p style="color: var(--jade); text-align: center; margin: 16px 0;">修为充足,可以尝试突破!</p>
+            <button class="realm-do-btn" @click="doRealmBreakthrough">开始突破</button>
+          </div>
+          <div v-else class="realm-not-ready">
+            <p style="color: var(--cinnabar); text-align: center; margin: 16px 0;">修为不足,继续修炼</p>
+          </div>
+
+          <div v-if="realmChallengeResult" class="realm-result" :class="{ success: realmChallengeResult.includes('成功') }">
+            {{ realmChallengeResult }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 离线收益弹窗 ==================== -->
+    <div v-if="showOfflineModal && offlineData" class="modal-overlay" @click="showOfflineModal = false">
+      <div class="modal-content" @click.stop style="max-width: 440px;">
+        <div class="modal-header">
+          <h3>{{ offlineClaimed ? '离线结算完成' : '离线挂机中' }}</h3>
+          <button class="modal-close" @click="showOfflineModal = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="offline-summary">
+            <p class="offline-time">已离线 <span style="color: var(--gold-ink);">{{ formatOfflineTime(offlineData.offlineMinutes) }}</span></p>
+            <p class="offline-efficiency">离线效率: {{ offlineData.efficiency }}% (上限12小时)</p>
+          </div>
+
+          <p v-if="!offlineClaimed" class="offline-hint">以下为预估收益，点击结算后发放</p>
+
+          <div class="stats-table" style="margin: 12px 0;">
+            <div class="stats-row">
+              <span class="stats-label">战斗场次</span>
+              <span class="stats-val">{{ offlineData.totalBattles }}</span>
+            </div>
+            <div class="stats-row">
+              <span class="stats-label">击杀怪物</span>
+              <span class="stats-val">{{ offlineData.totalKills }}</span>
+            </div>
+            <div class="stats-row">
+              <span class="stats-label">修为</span>
+              <span class="stats-val" style="color: var(--jade);">+{{ formatNum(offlineData.expGained) }}</span>
+            </div>
+            <div class="stats-row">
+              <span class="stats-label">灵石</span>
+              <span class="stats-val" style="color: var(--gold-ink);">+{{ formatNum(offlineData.stoneGained) }}</span>
+            </div>
+            <div class="stats-row" v-if="offlineData.equipCount > 0">
+              <span class="stats-label">装备</span>
+              <span class="stats-val">{{ offlineData.equipCount }} 件</span>
+            </div>
+            <div class="stats-row" v-if="offlineData.skillCount > 0">
+              <span class="stats-label">功法残页</span>
+              <span class="stats-val">{{ offlineData.skillCount }} 个</span>
+            </div>
+            <div class="stats-row" v-if="offlineData.herbCount > 0">
+              <span class="stats-label">灵草</span>
+              <span class="stats-val">{{ offlineData.herbCount }} 株</span>
+            </div>
+          </div>
+
+          <button
+            v-if="!offlineClaimed"
+            class="offline-claim-btn"
+            @click="claimOfflineRewards"
+            :disabled="offlineClaiming"
+          >
+            {{ offlineClaiming ? '结算中...' : '结束离线并领取' }}
+          </button>
+          <div v-else class="offline-claimed-msg">
+            <span style="color: var(--jade);">结算完成，奖励已发放!</span>
+            <div v-if="offlineClaimResult?.levelUps" style="color: var(--gold-ink); margin-top: 4px;">
+              升了 {{ offlineClaimResult.levelUps }} 级 → Lv.{{ offlineClaimResult.newLevel }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 帮助文档弹窗 ==================== -->
     <div v-if="showHelpDoc" class="modal-overlay" @click="showHelpDoc = false">
       <div class="modal-content" @click.stop style="max-width: 600px;">
@@ -1209,7 +1400,7 @@
         <div class="modal-body">
           <div class="help-section">
             <div class="help-title">基本操作</div>
-            <p class="help-text">选择地图 → 开始历练 → 自动战斗打怪 → 获得修为/灵石/装备/功法/灵草</p>
+            <p class="help-text">选择地图 → 开始历练 → 自动战斗打怪 → 获得修为/灵石/装备/功法/灵草。每波随机 1-5 只怪物同时出现,1% 概率遇到 Boss。战斗在服务器计算,无法作弊。</p>
           </div>
           <div class="help-section">
             <div class="help-title">五个标签页</div>
@@ -1222,37 +1413,56 @@
             </tbody></table>
           </div>
           <div class="help-section">
-            <div class="help-title">战斗机制</div>
-            <p class="help-text">回合制自动战斗。主修功法每回合施展,神通按 CD 自动释放(优先级更高)。命中后按概率触发 debuff:</p>
+            <div class="help-title">等级系统</div>
+            <p class="help-text">等级上限 200 级,打怪获得等级经验自动升级。等级提供属性加成,按段递增:</p>
             <table class="help-table"><tbody>
-              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击×15%火伤</td></tr>
-              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受目标气血×3%毒伤</td></tr>
-              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击×10%物伤</td></tr>
-              <tr><td style="color: #5b8eaa;">冻结</td><td>无法行动</td></tr>
-              <tr><td style="color: #c9a85c;">眩晕</td><td>无法行动</td></tr>
-              <tr><td style="color: #a08a60;">脆弱</td><td>降低防御</td></tr>
-              <tr><td>封印</td><td>无法释放神通</td></tr>
-              <tr><td>束缚</td><td>必定后攻,无法闪避</td></tr>
+              <tr><td>1-50 级</td><td>每级: 气血+5 攻击+2 防御+1 身法+1</td></tr>
+              <tr><td>51-100 级</td><td>每级: 气血+10 攻击+4 防御+2 身法+2</td></tr>
+              <tr><td>101-150 级</td><td>每级: 气血+20 攻击+8 防御+4 身法+3</td></tr>
+              <tr><td>151-200 级</td><td>每级: 气血+40 攻击+15 防御+8 身法+5</td></tr>
             </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">装备有等级需求,高阶装备需要对应等级才能穿戴。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">战斗机制</div>
+            <p class="help-text">回合制自动战斗,每波 1-5 只怪同时出现。玩家每回合攻击血量最低的怪,所有存活怪每回合攻击玩家。主修功法每回合施展,神通按 CD 自动释放(优先级更高)。</p>
+            <p class="help-text" style="margin-top: 4px;">10 种异常状态:</p>
+            <table class="help-table"><tbody>
+              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×15%火伤</td></tr>
+              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受目标气血×3%毒伤</td></tr>
+              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×10%物伤</td></tr>
+              <tr><td style="color: #5b8eaa;">冻结</td><td>无法行动(控制类,受控抗影响)</td></tr>
+              <tr><td style="color: #c9a85c;">眩晕</td><td>无法行动(控制类,受控抗影响)</td></tr>
+              <tr><td style="color: #5b8eaa;">减速</td><td>必定后攻</td></tr>
+              <tr><td style="color: #a08a60;">脆弱</td><td>降低防御 15-20%</td></tr>
+              <tr><td style="color: #a08a60;">降攻</td><td>降低攻击力 15-20%</td></tr>
+              <tr><td style="color: #6baa7d;">束缚</td><td>必定后攻,无法闪避(控制类)</td></tr>
+              <tr><td>封印</td><td>无法释放神通(控制类)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">8 种增益效果: 攻击提升/防御提升/速度提升/暴击提升/护盾/持续回血/伤害反弹/免疫控制。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">怪物技能</div>
+            <p class="help-text">怪物按地图 tier 拥有不同技能,tier 越高技能越多越强。Boss 额外拥有专属技能,气血低于 30% 时进入狂暴状态(攻击永久+30%)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">五行相克</div>
-            <p class="help-text">金克木、木克土、土克水、水克火、火克金。克制 ×1.3,被克 ×0.7。功法属性匹配灵根 +20% 伤害(灵根共鸣)。怪物对自身属性有 40% 抗性。</p>
+            <p class="help-text">金克木、木克土、土克水、水克火、火克金。克制伤害 ×1.3,被克 ×0.7。功法属性匹配灵根 +20% 伤害(灵根共鸣)。怪物对自身属性有 40% 抗性。</p>
           </div>
           <div class="help-section">
             <div class="help-title">境界系统</div>
-            <p class="help-text">修为积满自动突破。8 大境界:练气→筑基→金丹→元婴→化神→渡劫→大乘→飞升。每个境界有多个小阶段,突破后属性大幅提升。</p>
+            <p class="help-text">修为积满后手动突破。8 大境界: 练气(9层)→筑基→金丹→元婴→化神→渡劫→大乘→飞升(5阶)。突破后基础属性大幅提升,解锁更多地图。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备系统</div>
-            <p class="help-text">7 个槽位:兵器/法袍/法冠/步云靴/法宝/灵戒/灵佩。6 级品质:凡器→灵器→法器→灵宝→仙器→太古神器。兵器有 4 种类型:</p>
+            <p class="help-text">7 个槽位: 兵器/法袍/法冠/步云靴/法宝/灵戒/灵佩。6 级品质: 凡器→灵器→法器→灵宝→仙器→太古神器。兵器有 4 种类型:</p>
             <table class="help-table"><tbody>
               <tr><td>剑</td><td>攻击+5%, 会心率+3% (均衡)</td></tr>
               <tr><td>刀</td><td>攻击+10%, 会心伤害+15% (爆发)</td></tr>
               <tr><td>枪</td><td>攻击+3%, 身法+12%, 吸血+3% (持久)</td></tr>
               <tr><td>扇</td><td>攻击+3%, 神通+15%, 神识+10% (法术)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">副属性:破甲/命中/会心率/会心伤害/元素强化/灵气浓度/福缘等。</p>
+            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/元素强化/灵气浓度/福缘等 15 种。装备有等级需求(T1=Lv1, T5=Lv80, T10=Lv195)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备强化</div>
@@ -1265,22 +1475,28 @@
               <tr><td>+9</td><td>40%</td></tr>
               <tr><td>+10</td><td>25%</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">失败退 1 级(最低不低于 +5)。+5 和 +10 时触发副属性突破(随机一条 +30%)。</p>
+            <p class="help-text" style="margin-top: 6px;">失败退 1 级(最低不低于 +5)。+5 和 +10 时触发副属性突破(随机一条 +30%,最少+1)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">功法系统</div>
-            <p class="help-text">装备槽:1 主修 + 3 神通 + 3 被动。主修替代普攻(五行各一个);神通按 CD 自动释放;被动永久加成。功法最高 Lv.5,消耗同名残页升级,主修/神通每级 +8% 倍率,被动每级 +10% 数值。功法按地图 tier 分级掉落:</p>
+            <p class="help-text">装备槽: 1 主修 + 3 神通 + 3 被动。功法最高 Lv.5,消耗同名残页升级,每级效果 +15%。功法按地图 tier 分级掉落:</p>
             <table class="help-table"><tbody>
-              <tr><td>T1-T2</td><td>灵品(主修五行 + 基础被动)</td></tr>
-              <tr><td>T3-T4</td><td>玄品(中级神通和被动)</td></tr>
-              <tr><td>T5-T6</td><td>地品</td></tr>
-              <tr><td>T7-T8</td><td>天品 + 仙品</td></tr>
+              <tr><td>T1-T2</td><td>灵品: 风刃术/缠藤术/寒冰掌/烈焰剑诀/裂地拳 + 基础被动</td></tr>
+              <tr><td>T3-T4</td><td>玄品: 天火术/霜冻新星/厚土盾/地裂波/万藤缚/金钟罩 + 中级被动</td></tr>
+              <tr><td>T5-T6</td><td>地品: 剑雨纷飞/双焰斩/连环掌/灵泉术/嗜血诀 + 高级被动</td></tr>
+              <tr><td>T7+</td><td>天品+仙品: 万剑归宗/天罚雷劫/时光凝滞/道心通明/不灭金身等</td></tr>
             </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">技能类型: 群攻(全体)/多目标(2-3只)/多段(溢出到下一只)/治疗/增益/控制。</p>
           </div>
           <div class="help-section">
             <div class="help-title">炼丹系统</div>
-            <p class="help-text">灵田种植灵草 → 收获时随机品质(灵田越高品质越好) → 用灵草+灵石炼丹。灵草品质越高,丹药效果越强(系数 1.0x~5.0x)。炼制失败只损失灵石不损失灵草。</p>
-            <p class="help-text" style="margin-top: 4px;">战斗丹药:战前使用,持续 N 场战斗(同种覆盖)。突破丹药:使用直接获得修为。</p>
+            <p class="help-text">打怪掉灵草或灵田种植 → 收获时随机品质 → 用灵草+灵石炼丹。灵草品质影响丹药品质系数(1.0x~5.0x),品质越高效果越强。</p>
+            <p class="help-text" style="margin-top: 4px; color: #c45c4a;">炼制失败灵石和灵草全部损失!</p>
+            <table class="help-table"><tbody>
+              <tr><td>战斗丹药</td><td>使用后持续 1-8 小时(按品质系数,实时倒计时)</td></tr>
+              <tr><td>突破丹药</td><td>使用直接获得修为(按品质系数加成)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">解锁条件: 练气=聚灵丹/铁皮丹/培元丹/筑基丹, 筑基=破妄丹/凝元丹, 金丹=天元丹/化神丹, 化神=渡劫丹。</p>
           </div>
           <div class="help-section">
             <div class="help-title">洞府建筑</div>
@@ -1290,7 +1506,7 @@
               <tr><td>聚宝盆</td><td>产出灵石</td></tr>
               <tr><td>演武堂</td><td>打怪修为获取 +5%/级+2%</td></tr>
               <tr><td>藏经阁</td><td>功法掉落率 +5%/级+2%</td></tr>
-              <tr><td>炼丹房</td><td>炼丹成功率 +5%/级+3%</td></tr>
+              <tr><td>炼丹房</td><td>炼丹成功率提升</td></tr>
               <tr><td>炼器房</td><td>装备品质偏移 +1档/级</td></tr>
             </tbody></table>
           </div>
@@ -1299,10 +1515,18 @@
             <table class="help-table"><tbody>
               <tr><td>破甲</td><td>无视目标对应百分比防御</td></tr>
               <tr><td>命中</td><td>抵消目标闪避率</td></tr>
+              <tr><td>闪避</td><td>概率完全回避攻击(受命中抵消)</td></tr>
+              <tr><td>吸血</td><td>造成伤害按比例回复气血</td></tr>
+              <tr><td>控制抗性</td><td>降低被冻结/眩晕/束缚/封印的概率和持续时间</td></tr>
+              <tr><td>五行抗性</td><td>降低对应属性伤害和DOT持续时间</td></tr>
               <tr><td>元素强化</td><td>对应五行伤害提升百分比</td></tr>
               <tr><td>灵气浓度</td><td>打怪获得修为额外加成</td></tr>
               <tr><td>福缘</td><td>所有掉落(装备/功法/灵草)概率提升</td></tr>
             </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">死亡惩罚</div>
+            <p class="help-text">战败损失 5% 灵石,3 秒后原地复活继续战斗。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
           </div>
         </div>
       </div>
@@ -1333,7 +1557,7 @@ import { cultivate } from '../api/game';
 import { getSkillInventory, getEquippedSkills } from '../api/skill';
 import request from '../api/request';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '../game/skillData';
-import { EQUIP_SLOTS, STAT_NAMES, PERCENT_STATS, getRarityColor, getSlotName, getWeaponTypeDef, getEnhanceCost, getEnhanceSuccessRate, getEnhancedPrimaryValue, getEnhanceBonus } from '../game/equipData';
+import { EQUIP_SLOTS, STAT_NAMES, PERCENT_STATS, getRarityColor, getSlotName, getWeaponTypeDef, getEnhanceCost, getEnhanceSuccessRate, getEnhancedPrimaryValue, getEnhanceBonus, setForgeQualityBonus } from '../game/equipData';
 import { PILL_RECIPES, getPillById, getRarityColor as getPillColor } from '../game/pillData';
 import type { PillRecipe } from '../game/pillData';
 import {
@@ -1361,6 +1585,31 @@ const showMonsterTip = ref(false);
 const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showHelpDoc = ref(false);
+
+// 离线挂机
+const showOfflineModal = ref(false);
+const offlineData = ref<any>(null);
+const offlineClaimed = ref(false);
+const offlineClaiming = ref(false);
+const offlineClaimResult = ref<any>(null);
+const isOffline = ref(false);
+const showRealmChallenge = ref(false);
+const realmChallengeResult = ref<string | null>(null);
+
+function doRealmBreakthrough() {
+  if (!gameStore.character) return;
+  // 手动触发 store 中的 checkBreakthrough
+  const oldTier = gameStore.character.realm_tier;
+  const oldStage = gameStore.character.realm_stage;
+  gameStore.forceBreakthrough();
+  const newTier = gameStore.character.realm_tier;
+  const newStage = gameStore.character.realm_stage;
+  if (newTier !== oldTier || newStage !== oldStage) {
+    realmChallengeResult.value = `突破成功! ${gameStore.realmName}`;
+  } else {
+    realmChallengeResult.value = '修为不足,无法突破';
+  }
+}
 const avatarInput = ref<HTMLInputElement | null>(null);
 
 function triggerAvatarUpload() {
@@ -1385,6 +1634,7 @@ async function onAvatarSelected(e: Event) {
       }
     } catch (err) {
       console.error('上传头像失败', err);
+      showToast('上传头像失败', 'error');
     }
   };
   reader.readAsDataURL(file);
@@ -1392,6 +1642,19 @@ async function onAvatarSelected(e: Event) {
 }
 const showStats = ref(false);
 const battleStartTime = ref(0);
+
+// ===== Toast 提示 =====
+const toastMsg = ref('');
+const toastType = ref<'success' | 'error' | 'info'>('info');
+const toastVisible = ref(false);
+let toastTimer: number | null = null;
+function showToast(msg: string, type: 'success' | 'error' | 'info' = 'info', duration = 2500) {
+  toastMsg.value = msg;
+  toastType.value = type;
+  toastVisible.value = true;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => { toastVisible.value = false; }, duration);
+}
 
 // 历练时间计算
 const battleMinutes = computed(() => {
@@ -1580,6 +1843,117 @@ function elemName(elem: string): string {
   return map[elem] || '';
 }
 
+// 掉落表辅助函数
+function dropQualityRange(tier: number): string {
+  const ranges: Record<number, string> = {
+    1: '凡器~灵宝', 2: '凡器~仙器', 3: '凡器~太古神器', 4: '凡器~太古神器',
+    5: '灵器~太古神器', 6: '法器~太古神器', 7: '法器~太古神器', 8: '法器~太古神器',
+    9: '灵宝~太古神器', 10: '灵宝~太古神器',
+  };
+  return ranges[tier] || '凡器~灵宝';
+}
+
+function dropSkillRange(tier: number): string {
+  if (tier >= 7) return '天品+仙品(万剑归宗/天罚雷劫/时光凝滞/道心通明/不灭金身等)';
+  if (tier >= 5) return '地品(剑雨纷飞/双焰斩/连环掌/灵泉术/嗜血诀/破绽感知等)';
+  if (tier >= 3) return '玄品(天火术/霜冻新星/厚土盾/金钟罩/凌波微步等)';
+  return '灵品(风刃术/缠藤术/寒冰掌/烈焰剑诀/裂地拳/金刚体等)';
+}
+
+function dropHerbInfo(map: any): string {
+  const elems = new Set<string>();
+  for (const m of map.monsters) {
+    if (m.element) elems.add(elemName(m.element));
+  }
+  if (map.boss?.element) elems.add(elemName(map.boss.element));
+  const elemStr = elems.size > 0 ? [...elems].join('/') + '属性灵草' : '通用灵草';
+  const qualMap: Record<number, string> = {
+    1: '凡品~灵品', 2: '凡品~灵品', 3: '灵品~玄品', 4: '灵品~玄品',
+    5: '玄品~地品', 6: '玄品~地品', 7: '地品~天品', 8: '地品~天品',
+    9: '地品~天品', 10: '地品~天品',
+  };
+  return `${elemStr} (${qualMap[map.tier] || '凡品'})`;
+}
+
+// ===== 离线挂机 =====
+async function checkOfflineRewards() {
+  try {
+    const res: any = await request.get('/game/offline-status');
+    if (res.code === 200 && res.data) {
+      // 正在离线挂机中,弹窗显示收益预览
+      isOffline.value = true;
+      offlineData.value = res.data;
+      offlineClaimed.value = false;
+      offlineClaimResult.value = null;
+      showOfflineModal.value = true;
+    }
+  } catch (e) {
+    // 忽略
+  }
+}
+
+async function startOffline() {
+  try {
+    const res: any = await request.post('/game/offline-start');
+    if (res.code === 200) {
+      isOffline.value = true;
+      gameStore.addLog(0, '你进入了离线挂机模式，角色将自动历练', 'system');
+    } else {
+      gameStore.addLog(0, res.message || '开始离线失败', 'system');
+    }
+  } catch (e) {
+    console.error('开始离线失败', e);
+    showToast('开始离线失败', 'error');
+  }
+}
+
+async function endOffline() {
+  // 先查询最新收益
+  try {
+    const res: any = await request.get('/game/offline-status');
+    if (res.code === 200 && res.data) {
+      offlineData.value = res.data;
+      offlineClaimed.value = false;
+      offlineClaimResult.value = null;
+      showOfflineModal.value = true;
+    }
+  } catch (e) {
+    console.error('查询离线状态失败', e);
+  }
+}
+
+async function claimOfflineRewards() {
+  if (offlineClaiming.value) return;
+  offlineClaiming.value = true;
+  try {
+    const res: any = await request.post('/game/offline-claim');
+    if (res.code === 200 && res.data) {
+      offlineClaimed.value = true;
+      offlineClaimResult.value = res.data;
+      isOffline.value = false;
+      if (res.data.character) {
+        gameStore.character = res.data.character;
+      }
+      loadEquipList();
+      loadSkillInventory();
+      loadHerbs();
+    }
+  } catch (e) {
+    console.error('领取离线收益失败', e);
+    showToast('领取离线收益失败', 'error');
+  }
+  offlineClaiming.value = false;
+}
+
+function formatOfflineTime(minutes: number): string {
+  if (minutes >= 60) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}小时${m}分钟` : `${h}小时`;
+  }
+  return `${minutes}分钟`;
+}
+
 function onMapChange(e: Event) {
   const val = (e.target as HTMLSelectElement).value;
   gameStore.changeMap(val);
@@ -1637,6 +2011,7 @@ onMounted(async () => {
   loadCave();
   loadHerbs();
   loadPlots();
+  checkOfflineRewards();
   // 每秒触发响应式刷新(用于显示待领取数量和升级倒计时)
   caveTickTimer.value = window.setInterval(() => {
     caveTick.value++;
@@ -1824,13 +2199,14 @@ async function upgradeSkill(type: string, slotIndex: number, skill: Skill) {
     if (res.code === 200) {
       const key = getSkillLevelKey(type, slotIndex, skill.id);
       skillLevels.value = { ...skillLevels.value, [key]: res.data.newLevel };
-      // 重新加载背包
       await loadSkillInventory();
+      showToast(`${skill.name} 升级到 Lv.${res.data.newLevel}`, 'success');
     } else {
-      console.warn(res.message);
+      showToast(res.message || '升级失败', 'error');
     }
   } catch (err) {
     console.error('升级功法失败', err);
+    showToast('升级功法失败', 'error');
   }
 }
 
@@ -1910,6 +2286,10 @@ function syncEquippedSkills() {
           debuff: equippedActive.value.debuff,
           buff: equippedActive.value.buff,
           ignoreDef: equippedActive.value.ignoreDef,
+          isAoe: equippedActive.value.isAoe,
+          targetCount: equippedActive.value.targetCount,
+          hitCount: equippedActive.value.hitCount,
+          healAtkRatio: equippedActive.value.healAtkRatio,
         }
       : null,
     divineSkills: equippedDivines.value
@@ -1917,14 +2297,23 @@ function syncEquippedSkills() {
       .filter((x): x is { skill: Skill; idx: number } => x !== null)
       .map(({ skill, idx }) => {
         const lv = getSkillLevel('divine', idx, skill.id);
+        const lvMul = 1 + (lv - 1) * 0.08;
         return {
           name: skill.name,
-          multiplier: skill.multiplier * (1 + (lv - 1) * 0.08),
+          multiplier: skill.multiplier * lvMul,
           cdTurns: skill.cdTurns || 5,
           element: skill.element,
           debuff: skill.debuff,
-          buff: skill.buff,
+          buff: skill.buff ? {
+            ...skill.buff,
+            value: skill.buff.value ? skill.buff.value * lvMul : skill.buff.value,
+            valuePercent: skill.buff.valuePercent ? skill.buff.valuePercent * lvMul : skill.buff.valuePercent,
+          } : skill.buff,
           ignoreDef: skill.ignoreDef,
+          isAoe: skill.isAoe,
+          targetCount: skill.targetCount,
+          hitCount: skill.hitCount,
+          healAtkRatio: skill.healAtkRatio ? skill.healAtkRatio * lvMul : undefined,
         };
       }),
     passiveEffects: {
@@ -2122,6 +2511,7 @@ async function confirmPlant() {
     }
   } catch (err) {
     console.error('种植失败', err);
+    showToast('种植失败', 'error');
   }
 }
 
@@ -2134,6 +2524,7 @@ async function harvestPlot(plotIndex: number) {
     }
   } catch (err) {
     console.error('收获失败', err);
+    showToast('收获失败', 'error');
   }
 }
 
@@ -2145,6 +2536,7 @@ async function clearPlot(plotIndex: number) {
     }
   } catch (err) {
     console.error('清理失败', err);
+    showToast('清理失败', 'error');
   }
 }
 
@@ -2157,6 +2549,7 @@ async function harvestAllPlots() {
     }
   } catch (err) {
     console.error('一键收获失败', err);
+    showToast('一键收获失败', 'error');
   }
 }
 
@@ -2174,6 +2567,7 @@ async function upgradeHerbField() {
     }
   } catch (err) {
     console.error('升级灵田失败', err);
+    showToast('升级灵田失败', 'error');
   }
   upgrading.value = false;
 }
@@ -2203,6 +2597,7 @@ function syncCaveBonus() {
   }
   gameStore.caveBonus = { expBonus, skillRate, craftRate, equipQuality };
   setCaveBonus({ skillRate, equipQuality });
+  setForgeQualityBonus(equipQuality);
 }
 
 async function upgradeBuilding(building: BuildingDef) {
@@ -2220,6 +2615,7 @@ async function upgradeBuilding(building: BuildingDef) {
     }
   } catch (err) {
     console.error('升级失败', err);
+    showToast('建筑升级失败', 'error');
   }
   upgrading.value = false;
 }
@@ -2232,6 +2628,7 @@ async function finishUpgrade(building: BuildingDef) {
     }
   } catch (err) {
     console.error('完成升级失败', err);
+    showToast('完成升级失败', 'error');
   }
 }
 
@@ -2246,6 +2643,7 @@ async function collectBuilding(building: BuildingDef) {
     }
   } catch (err) {
     console.error('领取失败', err);
+    showToast('领取产出失败', 'error');
   }
 }
 
@@ -2259,6 +2657,7 @@ async function collectAllCave() {
     }
   } catch (err) {
     console.error('一键领取失败', err);
+    showToast('一键领取失败', 'error');
   }
 }
 
@@ -2330,7 +2729,8 @@ function isQualityEnough(herbId: string, qualityId: string, needCount: number): 
 }
 
 function canCraft(recipe: PillRecipe): boolean {
-  if (!gameStore.character || gameStore.character.spirit_stone < recipe.cost) return false;
+  const factor = getCraftPreview(recipe).factor || 1;
+  if (!gameStore.character || gameStore.character.spirit_stone < Math.floor(recipe.cost * factor)) return false;
   const selection = herbSelections.value[recipe.id] || [];
   for (let i = 0; i < recipe.herbCost.length; i++) {
     const q = selection[i];
@@ -2351,8 +2751,8 @@ function formatPillEffect(recipe: PillRecipe): string {
     if (e.hpPercent)   parts.push(`气血+${(e.hpPercent   * factor).toFixed(1)}%`);
     if (e.critRate)    parts.push(`会心率+${(e.critRate  * factor).toFixed(1)}%`);
     if (e.spdPercent)  parts.push(`身法+${(e.spdPercent  * factor).toFixed(1)}%`);
-    const dur = recipe.buffDuration ? Math.floor(recipe.buffDuration * factor) : 0;
-    return parts.join(' / ') + (dur > 0 ? `,持续${dur}场` : '');
+    const hours = Math.min(8, Math.max(1, Math.round(factor * 1.6)));
+    return parts.join(' / ') + `,持续${hours}小时`;
   }
   if (recipe.expGain) {
     return `获得 ${formatNum(Math.floor(recipe.expGain * factor))} 修为`;
@@ -2400,19 +2800,24 @@ async function craftPill(recipe: PillRecipe) {
     const res: any = await request.post('/pill/craft', {
       pill_id: recipe.id,
       cost: recipe.cost,
-      success_rate: recipe.successRate,
+      success_rate: Math.min(0.95, recipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100)),
       herbs_used,
     });
     if (res.code === 200) {
       gameStore.character!.spirit_stone = res.data.new_spirit_stone;
-      // 重新加载灵草和丹药
       await loadHerbs();
       await loadPills();
+      if (res.data.success) {
+        showToast(`炼丹成功! 品质系数: ${res.data.quality_factor}x`, 'success');
+      } else {
+        showToast('炼丹失败，材料已损耗', 'error');
+      }
     } else {
-      console.warn(res.message);
+      showToast(res.message || '炼丹失败', 'error');
     }
   } catch (err) {
     console.error('炼丹失败', err);
+    showToast('炼丹请求失败', 'error');
   }
   crafting.value = false;
 }
@@ -2429,7 +2834,11 @@ async function useVariant(recipe: PillRecipe, variant: any) {
     if (res.code === 200) {
       variant.count--;
       if (recipe.type === 'breakthrough' && recipe.expGain) {
-        gameStore.character!.cultivation_exp += Math.floor(recipe.expGain * Number(variant.quality_factor));
+        const gained = Math.floor(recipe.expGain * Number(variant.quality_factor));
+        gameStore.character!.cultivation_exp += gained;
+        showToast(`使用成功! 获得 ${gained} 修为`, 'success');
+      } else {
+        showToast('使用成功! buff已生效', 'success');
       }
       if (recipe.type === 'battle') {
         await loadBuffs();
@@ -2437,6 +2846,7 @@ async function useVariant(recipe: PillRecipe, variant: any) {
     }
   } catch (err) {
     console.error('使用丹药失败', err);
+    showToast('使用丹药失败', 'error');
   }
 }
 
@@ -2492,6 +2902,19 @@ function onBuffHover(e: MouseEvent, buff: any) {
   buffTipY.value = rect.top - 10;
 }
 
+function formatBuffTime(buff: any): string {
+  if (buff.expire_time) {
+    const ms = new Date(buff.expire_time).getTime() - Date.now();
+    if (ms <= 0) return '已过期';
+    const totalMin = Math.ceil(ms / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h > 0) return `${h}时${m}分`;
+    return `${m}分钟`;
+  }
+  return `${buff.remaining_fights}场`;
+}
+
 function getBuffEffectLines(buff: any): string[] {
   const recipe = PILL_RECIPES.find(r => r.id === buff.pill_id);
   if (!recipe || !recipe.buffEffect) return [];
@@ -2510,6 +2933,8 @@ function getBuffEffectLines(buff: any): string[] {
 function calcPillBuffEffect() {
   let atk = 0, def = 0, hp = 0, crit = 0;
   for (const buff of activeBuffs.value) {
+    // 检查是否过期
+    if (buff.expire_time && new Date(buff.expire_time).getTime() <= Date.now()) continue;
     const recipe = PILL_RECIPES.find(r => r.id === buff.pill_id);
     if (!recipe || !recipe.buffEffect) continue;
     const qf = Number(buff.quality_factor) || 1.0;
@@ -2527,12 +2952,78 @@ const hoverSlotEquip = ref<any>(null);
 const tooltipX = ref(0);
 const tooltipY = ref(0);
 
+const clickedEquip = ref<any>(null);
+const clickedEquipX = ref(0);
+const clickedEquipY = ref(0);
 function onBagHover(e: MouseEvent, eq: any) {
+  if (clickedEquip.value) return;
   hoverEquip.value = eq;
   const rect = (e.target as HTMLElement).getBoundingClientRect();
   tooltipX.value = rect.left;
   tooltipY.value = rect.top - 10;
 }
+
+function onBagClick(e: MouseEvent, eq: any) {
+  hoverEquip.value = null;
+  clickedEquip.value = eq;
+  const rect = (e.target as HTMLElement).getBoundingClientRect();
+  clickedEquipX.value = rect.right;
+  clickedEquipY.value = rect.top;
+  if (clickedEquipX.value + 250 > window.innerWidth) {
+    clickedEquipX.value = rect.left - 250;
+  }
+}
+
+// 点击空白关闭面板
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', () => { clickedEquip.value = null; });
+}
+
+async function quickEquip(eq: any) {
+  if (!eq.base_slot) return;
+  try {
+    const res: any = await request.post('/equipment/equip', { equip_id: eq.id, slot: eq.base_slot });
+    if (res.code === 200) {
+      await loadEquipList();
+      clickedEquip.value = null;
+    } else {
+      alert(res.message);
+    }
+  } catch (err) {
+    console.error('装备失败', err);
+    showToast('装备失败', 'error');
+  }
+}
+
+async function quickUnequip(eq: any) {
+  try {
+    const res: any = await request.post('/equipment/unequip', { equip_id: eq.id });
+    if (res.code === 200) {
+      eq.slot = null;
+      clickedEquip.value = null;
+      showToast('已卸下装备', 'success');
+    }
+  } catch (err) {
+    console.error('卸下失败', err);
+    showToast('卸下失败', 'error');
+  }
+}
+
+async function quickSell(eq: any) {
+  try {
+    const res: any = await request.post('/equipment/sell', { equip_id: eq.id });
+    if (res.code === 200 && res.data) {
+      equipList.value = equipList.value.filter(e => e.id !== eq.id);
+      if (gameStore.character) gameStore.character.spirit_stone += res.data.price;
+      clickedEquip.value = null;
+      showToast(`出售获得 ${res.data.price} 灵石`, 'success');
+    }
+  } catch (err) {
+    console.error('出售失败', err);
+    showToast('出售失败', 'error');
+  }
+}
+
 
 // 格式化副属性数值,百分比类加 %
 function formatStatValue(stat: string, value: number): string {
@@ -2676,8 +3167,10 @@ async function doEquip(eq: any) {
     if (old) old.slot = null;
     eq.slot = currentPickSlot.value;
     showEquipPicker.value = false;
+    showToast('装备穿戴成功', 'success');
   } catch (err) {
     console.error('穿戴失败', err);
+    showToast('穿戴失败', 'error');
   }
 }
 
@@ -2688,8 +3181,10 @@ async function doUnequip() {
     await request.post('/equipment/unequip', { equip_id: eq.id });
     eq.slot = null;
     showEquipPicker.value = false;
+    showToast('已卸下装备', 'success');
   } catch (err) {
     console.error('卸下失败', err);
+    showToast('卸下失败', 'error');
   }
 }
 
@@ -2701,9 +3196,11 @@ async function sellEquip(equipId: number) {
       if (gameStore.character) {
         gameStore.character.spirit_stone += res.data.price;
       }
+      showToast(`出售获得 ${res.data.price} 灵石`, 'success');
     }
   } catch (err) {
     console.error('出售失败', err);
+    showToast('出售失败', 'error');
   }
 }
 
@@ -2714,7 +3211,6 @@ const enhanceResult = ref<any>(null);
 const enhancing = ref(false);
 
 function openEnhance(eq: any) {
-  if (!eq.slot) return; // 只能强化已穿戴的
   enhanceTarget.value = eq;
   enhanceResult.value = null;
   showEnhance.value = true;
@@ -2772,6 +3268,7 @@ async function saveEquippedSkills() {
     await request.post('/skill/save-equipped', { equipped });
   } catch (err) {
     console.error('保存功法装备失败', err);
+    showToast('保存功法装备失败', 'error');
   }
 }
 
@@ -2786,6 +3283,26 @@ onUnmounted(() => {
 
 <style scoped>
 /* ========== 页面布局 ========== */
+/* Toast */
+.game-toast {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 8px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  pointer-events: none;
+  max-width: 80vw;
+  text-align: center;
+}
+.toast-success { background: rgba(142, 202, 160, 0.95); color: #1a1a1a; }
+.toast-error { background: rgba(196, 92, 74, 0.95); color: #fff; }
+.toast-info { background: rgba(201, 168, 92, 0.95); color: #1a1a1a; }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: opacity 0.3s, transform 0.3s; }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+
 .game-page {
   height: 100vh;
   display: flex;
@@ -2964,7 +3481,43 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-label {
+  font-size: 12px;
+  color: var(--ink-light);
+  min-width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.realm-challenge-btn {
+  padding: 2px 10px;
+  background: transparent;
+  border: 1px solid var(--gold-ink);
+  border-radius: 2px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 12px;
+  color: var(--gold-ink);
+  cursor: pointer;
+  flex-shrink: 0;
+  animation: pulse-glow 1.5s infinite;
+}
+
+.realm-challenge-btn:hover {
+  background: rgba(232, 204, 138, 0.15);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(232, 204, 138, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(232, 204, 138, 0.6); }
 }
 
 .exp-bar-wrap {
@@ -3094,6 +3647,67 @@ onUnmounted(() => {
   background: rgba(142, 202, 160, 0.18);
 }
 
+.offline-btn {
+  background: rgba(91, 142, 170, 0.10);
+  border-color: rgba(91, 142, 170, 0.25);
+  color: #5b8eaa;
+}
+.offline-btn:hover {
+  background: rgba(91, 142, 170, 0.18);
+}
+.offline-end-btn {
+  background: rgba(201, 168, 92, 0.10);
+  border-color: rgba(201, 168, 92, 0.25);
+  color: var(--gold-ink);
+}
+.offline-end-btn:hover {
+  background: rgba(201, 168, 92, 0.18);
+}
+
+.offline-summary {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.offline-time {
+  font-size: 16px;
+  margin: 4px 0;
+}
+.offline-efficiency {
+  font-size: 12px;
+  color: var(--faded-ink);
+}
+.offline-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--cinnabar);
+  margin: 8px 0 0;
+}
+.offline-claim-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  background: rgba(142, 202, 160, 0.15);
+  border: 1px solid rgba(142, 202, 160, 0.30);
+  color: var(--jade);
+  font-size: 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.offline-claim-btn:hover:not(:disabled) {
+  background: rgba(142, 202, 160, 0.28);
+}
+.offline-claim-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.offline-claimed-msg {
+  text-align: center;
+  padding: 10px;
+  font-size: 15px;
+}
+
 .pause-btn {
   background: rgba(201, 168, 92, 0.08);
   border-color: rgba(201, 168, 92, 0.20);
@@ -3142,6 +3756,43 @@ onUnmounted(() => {
 
 .hud-player {
   text-align: left;
+}
+
+.wave-monsters-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.wave-monster-cell {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(200, 80, 60, 0.2);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.wave-cell-name {
+  font-size: 12px;
+  color: var(--cinnabar);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wave-cell-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.wave-cell-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(200, 80, 60, 0.5), rgba(200, 80, 60, 0.8));
+  border-radius: 3px;
+  transition: width 0.3s;
 }
 
 .hud-monster {
@@ -4080,6 +4731,132 @@ onUnmounted(() => {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
+
+/* 境界挑战 */
+.realm-challenge-info {
+  text-align: center;
+  padding: 12px;
+}
+
+.realm-current {
+  font-size: 16px;
+  color: var(--ink-medium);
+  margin-bottom: 8px;
+}
+
+.realm-exp-info {
+  font-size: 14px;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+
+.realm-exp-bar-big {
+  height: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.realm-exp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(142, 202, 160, 0.4), rgba(142, 202, 160, 0.8));
+  border-radius: 10px;
+  transition: width 0.5s;
+}
+
+.realm-do-btn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid var(--gold-ink);
+  border-radius: 4px;
+  font-family: 'ZCOOL XiaoWei', serif;
+  font-size: 18px;
+  color: var(--gold-ink);
+  cursor: pointer;
+  letter-spacing: 6px;
+  transition: all 0.3s;
+}
+
+.realm-do-btn:hover {
+  background: rgba(232, 204, 138, 0.15);
+  box-shadow: 0 0 20px rgba(232, 204, 138, 0.3);
+}
+
+.realm-result {
+  margin-top: 12px;
+  padding: 12px;
+  text-align: center;
+  border-radius: 4px;
+  font-size: 16px;
+  color: var(--cinnabar);
+  background: rgba(232, 138, 120, 0.1);
+  border: 1px solid var(--cinnabar);
+}
+
+.realm-result.success {
+  color: var(--jade);
+  background: rgba(168, 224, 188, 0.1);
+  border-color: var(--jade);
+}
+
+.equip-action-panel {
+  position: fixed;
+  background: var(--paper-dark);
+  border: 1px solid var(--gold-ink);
+  border-radius: 6px;
+  padding: 12px;
+  min-width: 200px;
+  max-width: 260px;
+  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.equip-action-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.equip-action-btn-green,
+.equip-action-btn-gold,
+.equip-action-btn-red,
+.equip-action-btn-close {
+  flex: 1;
+  min-width: 50px;
+  padding: 5px 0;
+  background: transparent;
+  border-radius: 2px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-action-btn-green {
+  border: 1px solid var(--jade);
+  color: var(--jade);
+}
+.equip-action-btn-green:hover { background: rgba(168, 224, 188, 0.1); }
+
+.equip-action-btn-gold {
+  border: 1px solid var(--gold-ink);
+  color: var(--gold-ink);
+}
+.equip-action-btn-gold:hover { background: rgba(232, 204, 138, 0.1); }
+
+.equip-action-btn-red {
+  border: 1px solid var(--cinnabar);
+  color: var(--cinnabar);
+}
+.equip-action-btn-red:hover { background: rgba(232, 138, 120, 0.1); }
+
+.equip-action-btn-close {
+  border: 1px solid var(--ink-faint);
+  color: var(--ink-faint);
+}
+.equip-action-btn-close:hover { background: rgba(255, 255, 255, 0.05); }
 
 .skill-fixed-tooltip {
   position: fixed;

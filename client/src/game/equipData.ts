@@ -88,17 +88,18 @@ export const RARITIES = [
 ];
 
 // 品质权重（按地图tier）
+// 品质权重: [凡器, 灵器, 法器, 灵宝, 仙器, 太古神器]
 const QUALITY_WEIGHTS: Record<number, number[]> = {
-  1: [60, 30, 9, 1, 0, 0],
-  2: [40, 35, 18, 6, 1, 0],
-  3: [20, 35, 25, 15, 4.5, 0.5],
-  4: [5, 25, 30, 25, 13, 2],
-  5: [0, 10, 30, 30, 25, 5],
-  6: [0, 0, 20, 35, 35, 10],
-  7: [0, 0, 5, 30, 45, 20],
-  8: [0, 0, 0, 15, 50, 35],
-  9: [0, 0, 0, 5, 45, 50],
-  10: [0, 0, 0, 0, 30, 70],
+  1:  [60, 30, 9,  1,   0,    0],
+  2:  [40, 35, 18, 6,   1,    0],
+  3:  [20, 35, 25, 15,  4.5,  0.5],
+  4:  [5,  25, 30, 25,  13,   2],
+  5:  [0,  10, 30, 35,  22,   3],
+  6:  [0,  0,  20, 40,  35,   5],
+  7:  [0,  0,  10, 35,  45,   10],
+  8:  [0,  0,  5,  25,  55,   15],
+  9:  [0,  0,  0,  20,  60,   20],
+  10: [0,  0,  0,  10,  60,   30],
 };
 
 // 副属性池
@@ -156,6 +157,12 @@ const WEAPON_NAMES: Record<WeaponType, string[]> = {
   fan: ['折扇', '玉骨扇', '清风扇', '云霞扇', '太虚扇', '乾坤扇'],
 };
 
+// 炼器房品质加成
+let _forgeQualityBonus = 0;
+export function setForgeQualityBonus(v: number) {
+  _forgeQualityBonus = v;
+}
+
 // 生成一件装备
 export function generateEquipment(mapTier: number, isBoss: boolean): Equipment {
   // 随机槽位
@@ -163,6 +170,16 @@ export function generateEquipment(mapTier: number, isBoss: boolean): Equipment {
 
   // 随机品质
   const weights = [...(QUALITY_WEIGHTS[mapTier] || QUALITY_WEIGHTS[1])];
+  // 炼器房加成: 每级将低品质权重向高品质转移
+  if (_forgeQualityBonus > 0) {
+    for (let shift = 0; shift < _forgeQualityBonus; shift++) {
+      for (let i = weights.length - 1; i > 0; i--) {
+        const move = weights[i - 1] * 0.10;
+        weights[i] += move;
+        weights[i - 1] -= move;
+      }
+    }
+  }
   if (isBoss) {
     // Boss掉落品质向上偏移
     for (let i = weights.length - 1; i > 0; i--) {
