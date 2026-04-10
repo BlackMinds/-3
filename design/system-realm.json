@@ -1,0 +1,197 @@
+{
+  "system_id": "realm",
+  "system_name": "境界系统",
+  "priority": "P0",
+  "description": "单角色成长主线，从凡人修炼至飞升，境界决定基础属性和可用内容",
+
+  "realm_tiers": [
+    {
+      "tier": 1, "realm": "练气", "stages": 9,
+      "base_power": 100, "power_multiplier": 1.0,
+      "unlock_content": ["基础功法", "新手村地图"],
+      "breakthrough_type": "auto",
+      "expected_days": "0-2"
+    },
+    {
+      "tier": 2, "realm": "筑基", "stages": 3,
+      "base_power": 1000, "power_multiplier": 3.0,
+      "unlock_content": ["法宝装备", "炼丹术", "落霞山地图"],
+      "breakthrough_type": "resource",
+      "breakthrough_cost": { "spirit_stone": 5000, "foundation_pill": 1 },
+      "expected_days": "3-5"
+    },
+    {
+      "tier": 3, "realm": "金丹", "stages": 3,
+      "base_power": 5000, "power_multiplier": 8.0,
+      "unlock_content": ["御剑飞行", "万妖山地图", "宗门系统"],
+      "breakthrough_type": "tribulation",
+      "tribulation_difficulty": "easy",
+      "expected_days": "7-14"
+    },
+    {
+      "tier": 4, "realm": "元婴", "stages": 3,
+      "base_power": 20000, "power_multiplier": 20.0,
+      "unlock_content": ["神通系统", "幽冥海地图", "洞府系统"],
+      "breakthrough_type": "tribulation",
+      "tribulation_difficulty": "medium",
+      "expected_days": "15-30"
+    },
+    {
+      "tier": 5, "realm": "化神", "stages": 3,
+      "base_power": 100000, "power_multiplier": 50.0,
+      "unlock_content": ["天地法相", "九幽炼狱地图"],
+      "breakthrough_type": "tribulation",
+      "tribulation_difficulty": "hard",
+      "expected_days": "30-60"
+    },
+    {
+      "tier": 6, "realm": "渡劫", "stages": 3,
+      "base_power": 500000, "power_multiplier": 120.0,
+      "unlock_content": ["天劫系统", "仙器炼制", "天劫荒原地图"],
+      "breakthrough_type": "tribulation",
+      "tribulation_difficulty": "extreme",
+      "expected_days": "60-90"
+    },
+    {
+      "tier": 7, "realm": "大乘", "stages": 3,
+      "base_power": 2000000, "power_multiplier": 300.0,
+      "unlock_content": ["飞升准备", "大乘神通", "虚空裂缝地图"],
+      "breakthrough_type": "tribulation",
+      "tribulation_difficulty": "legendary",
+      "expected_days": "90-150"
+    },
+    {
+      "tier": 8, "realm": "飞升", "stages": 5,
+      "stage_names": ["散仙", "真仙", "金仙", "太乙金仙", "大罗金仙"],
+      "base_power": 10000000, "power_multiplier": 1000.0,
+      "unlock_content": ["仙界地图", "仙道功法"],
+      "breakthrough_type": "tribulation",
+      "tribulation_difficulty": "immortal",
+      "expected_days": "150+"
+    }
+  ],
+
+  "cultivation_exp": {
+    "formula": "exp_required(tier, stage) = base_exp * tier_multiplier * (stage + 1)^1.6",
+    "base_exp": 100,
+    "tier_multipliers": {
+      "练气": 1, "筑基": 10, "金丹": 50, "元婴": 200,
+      "化神": 800, "渡劫": 3000, "大乘": 10000, "飞升": 50000
+    }
+  },
+
+  "character_attributes": {
+    "primary": [
+      { "id": "HP",       "name": "气血",   "description": "生命值，归零则陨落" },
+      { "id": "ATK",      "name": "灵力攻击", "description": "功法和神通的伤害基础" },
+      { "id": "DEF",      "name": "灵力防御", "description": "减少受到的伤害" },
+      { "id": "SPD",      "name": "身法",    "description": "攻击速度和闪避" }
+    ],
+    "secondary": [
+      { "id": "CRIT_RATE",  "name": "会心率",   "base": 0.05, "cap": 1.0 },
+      { "id": "CRIT_DMG",   "name": "会心伤害", "base": 1.5,  "cap": 5.0 },
+      { "id": "DODGE",      "name": "闪避率",   "base": 0.0,  "cap": 0.5 },
+      { "id": "LIFESTEAL",  "name": "吸血",     "base": 0.0,  "cap": 0.3 },
+      { "id": "SPIRIT",     "name": "神识",     "base": 10,   "description": "影响炼丹/炼器成功率和探测隐藏物" }
+    ],
+    "resistance": [
+      { "id": "RESIST_METAL", "name": "金抗", "base": 0.0, "cap": 0.70, "description": "减少金系伤害，降低眩晕/流血持续回合" },
+      { "id": "RESIST_WOOD",  "name": "木抗", "base": 0.0, "cap": 0.70, "description": "减少木系伤害，降低中毒/束缚持续回合" },
+      { "id": "RESIST_WATER", "name": "水抗", "base": 0.0, "cap": 0.70, "description": "减少水系伤害，降低冻结/减速持续回合" },
+      { "id": "RESIST_FIRE",  "name": "火抗", "base": 0.0, "cap": 0.70, "description": "减少火系伤害，降低灼烧持续回合" },
+      { "id": "RESIST_EARTH", "name": "土抗", "base": 0.0, "cap": 0.70, "description": "减少土系伤害，降低脆弱持续回合" },
+      { "id": "RESIST_CTRL",  "name": "控制抗性", "base": 0.0, "cap": 0.70, "description": "降低所有控制效果(眩晕/冻结/束缚/封印)命中率" }
+    ],
+    "resistance_mechanics": {
+      "damage_reduction": "受到对应属性伤害时，伤害 *= (1 - 对应抗性)",
+      "debuff_duration_reduction": "debuff持续回合 = 原始回合 * (1 - 对应抗性)，最低1回合",
+      "control_resist_check": "控制类debuff命中率 = 原始概率 * (1 - 控制抗性)",
+      "cap": 0.70,
+      "cap_note": "所有抗性上限70%，防止完全免疫"
+    },
+    "stat_growth_formula": "base * (1 + (realm_tier - 1) * 0.8 + stage * 0.1)",
+    "base_stats_at_tier_1": { "HP": 500, "ATK": 50, "DEF": 30, "SPD": 50 }
+  },
+
+  "spiritual_root": {
+    "description": "灵根分为主灵根和第二灵根(觉醒灵根)，主灵根创建角色时选择，第二灵根后期觉醒获得",
+
+    "primary_root": {
+      "description": "创建角色时从五行中选择一个，确定后不可更改",
+      "obtain": "角色创建界面选择",
+      "changeable": false,
+      "types": [
+        { "id": "metal", "name": "金灵根", "bonus": { "ATK_percent": 15 }, "resist_bonus": { "RESIST_METAL": 0.15 }, "affinity": "metal", "cultivation_bonus": 1.0, "description": "攻击天赋，适合暴力输出流" },
+        { "id": "wood",  "name": "木灵根", "bonus": { "HP_percent": 15 }, "resist_bonus": { "RESIST_WOOD": 0.15 }, "affinity": "wood", "cultivation_bonus": 1.0, "description": "生命天赋，适合持久吸血流" },
+        { "id": "water", "name": "水灵根", "bonus": { "DEF_percent": 15 }, "resist_bonus": { "RESIST_WATER": 0.15 }, "affinity": "water", "cultivation_bonus": 1.0, "description": "防御天赋，适合控制冻结流" },
+        { "id": "fire",  "name": "火灵根", "bonus": { "CRIT_DMG_percent": 20 }, "resist_bonus": { "RESIST_FIRE": 0.15 }, "affinity": "fire", "cultivation_bonus": 1.0, "description": "爆发天赋，适合暴击灼烧流" },
+        { "id": "earth", "name": "土灵根", "bonus": { "DEF_percent": 10, "HP_percent": 10 }, "resist_bonus": { "RESIST_EARTH": 0.15 }, "affinity": "earth", "cultivation_bonus": 1.0, "description": "坚韧天赋，适合肉盾反击流" }
+      ]
+    },
+
+    "second_root": {
+      "description": "第二灵根通过觉醒获得，与主灵根共存，提供额外加成和技能强化",
+      "obtain": "后期觉醒系统获得",
+      "slot_name": "觉醒灵根",
+      "display": "角色面板同时显示主灵根和觉醒灵根",
+      "types": [
+        {
+          "id": "heaven",
+          "name": "天灵根",
+          "description": "主灵根的极致进化，大幅强化主灵根对应属性",
+          "bonus": { "primary_root_bonus_amplify": 0.60, "cultivation_bonus": 1.8 },
+          "resist_bonus": "主灵根对应抗性额外+20%",
+          "special": "解锁对应属性功法的强化版本",
+          "awakening_condition": {
+            "realm_required": "化神初期",
+            "quest": "完成【天道试炼】特殊副本",
+            "material": { "天道灵石": 10, "对应属性精华": 50 },
+            "description": "化神境界后，完成天道试炼副本，消耗材料觉醒"
+          }
+        },
+        {
+          "id": "chaos",
+          "name": "混沌灵根",
+          "description": "超越五行的混沌之力，所有属性均视为匹配",
+          "bonus": { "all_element_damage_percent": 10, "all_stat_percent": 8, "cultivation_bonus": 2.0 },
+          "resist_bonus": "全五行抗性+10%",
+          "special": "所有功法均触发灵根联动效果(加成较低)，解锁混沌系专属技能",
+          "awakening_condition": {
+            "realm_required": "渡劫初期",
+            "quest": "完成【混沌秘境】隐藏副本",
+            "material": { "混沌原石": 5, "五行精华各": 30 },
+            "prerequisite": "必须已觉醒天灵根",
+            "description": "渡劫境界后，已有天灵根基础上，完成混沌秘境觉醒。天灵根会被替换为混沌灵根"
+          }
+        }
+      ],
+      "stacking_rules": {
+        "description": "主灵根和觉醒灵根的加成叠加规则",
+        "stat_bonus": "两个灵根的属性加成直接相加",
+        "resist_bonus": "两个灵根的抗性加成直接相加(受上限70%限制)",
+        "skill_synergy": "技能联动优先判断觉醒灵根，若不匹配则判断主灵根",
+        "cultivation_bonus": "取两者中较高的修炼加成",
+        "example": {
+          "primary": "火灵根(CRIT_DMG+20%, 火抗+15%)",
+          "second": "天灵根(主灵根加成×1.6, 火抗额外+20%)",
+          "result": "CRIT_DMG+32%, 火抗+35%, 修炼速度×1.8, 火系功法解锁强化版"
+        }
+      }
+    }
+  },
+
+  "tribulation": {
+    "description": "大境界突破需渡劫，单人Boss战，失败损失部分修为",
+    "failure_penalty": "lose 20% current exp",
+    "retry_cooldown_hours": 4,
+    "buff_items": ["渡劫丹", "护体符", "避雷珠"],
+    "difficulty_scaling": {
+      "easy":      { "power_ratio": 0.8 },
+      "medium":    { "power_ratio": 1.0 },
+      "hard":      { "power_ratio": 1.2 },
+      "extreme":   { "power_ratio": 1.5 },
+      "legendary": { "power_ratio": 2.0 },
+      "immortal":  { "power_ratio": 3.0 }
+    }
+  }
+}

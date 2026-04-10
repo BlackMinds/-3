@@ -1,0 +1,57 @@
+{
+  "game": {
+    "title": "万界仙途",
+    "genre": ["idle", "rpg", "cultivation", "xianxia", "single-character"],
+    "platform": ["mobile", "web"],
+    "character_mode": "single_player_character",
+    "target_audience": {
+      "age_range": "16-35",
+      "player_types": ["casual", "mid-core"],
+      "session_length": {
+        "active": "5-15min",
+        "idle": "unlimited"
+      }
+    },
+    "core_fantasy": "你是一名散修，从凡人开始修炼，自由选择去哪片地图历练打怪，闭关修炼提升境界，最终飞升成仙",
+    "worldview": {
+      "setting": "苍穹大陆，灵气复苏的修仙世界",
+      "power_source": "天地灵气",
+      "conflict": "妖兽横行、魔修作乱，修士在各地图历练求道",
+      "tone": "东方玄幻，独行求道，逆天改命"
+    },
+    "core_loop": {
+      "inner_loop": {
+        "cycle_time": "minutes",
+        "steps": [
+          { "action": "choose_map", "description": "选择一张地图前往历练" },
+          { "action": "auto_fight", "description": "在地图中自动打怪(可离线挂机)" },
+          { "action": "loot", "description": "获取修为、灵石、材料、功法残页等" },
+          { "action": "return_cultivate", "description": "回洞府整理收获，闭关修炼" },
+          { "action": "enhance", "description": "修炼功法、炼丹炼器、强化装备" }
+        ]
+      },
+      "outer_loop": {
+        "cycle_time": "days",
+        "steps": [
+          { "action": "realm_breakthrough", "description": "突破境界，属性大幅提升" },
+          { "action": "unlock_new_map", "description": "解锁更高级地图区域" },
+          { "action": "unlock_new_system", "description": "解锁新玩法(炼丹/御剑/洞府等)" },
+          { "action": "tribulation", "description": "渡劫挑战，进入更高大境界" }
+        ]
+      }
+    }
+  },
+  "systems": [
+    { "id": "cultivation", "name": "修炼系统",     "priority": "P0", "description": "闭关修炼提升修为，离线挂机核心" },
+    { "id": "realm",       "name": "境界系统",     "priority": "P0", "description": "练气→筑基→金丹→元婴→…→飞升" },
+    { "id": "map",         "name": "地图历练系统", "priority": "P0", "description": "选择地图自动打怪，不同地图不同掉落" },
+    { "id": "combat",      "name": "战斗系统",     "priority": "P0", "description": "单角色自动战斗，功法+神通+法宝" },
+    { "id": "skill",       "name": "功法神通系统", "priority": "P0", "description": "功法修炼、神通领悟，五行体系" },
+    { "id": "equipment",   "name": "法宝装备系统", "priority": "P0", "description": "武器/护甲/法宝/饰品穿戴强化" },
+    { "id": "economy",     "name": "经济系统",     "priority": "P0", "description": "灵石/仙玉/功德等货币" },
+    { "id": "alchemy",     "name": "炼丹系统",     "priority": "P1", "description": "采药炼丹，辅助修炼和战斗" },
+    { "id": "cave",        "name": "洞府系统",     "priority": "P1", "description": "个人洞府建设，提供修炼加成" },
+    { "id": "sect",        "name": "宗门系统",     "priority": "P2", "description": "拜入宗门获取资源和功法" },
+    { "id": "collection",  "name": "天道图鉴",     "priority": "P2", "description": "收集功法/法宝/妖兽图鉴" }
+  ]
+}

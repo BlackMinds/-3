@@ -1,0 +1,25 @@
+{
+  "project": "万界仙途 - 放置修仙RPG",
+  "version": "0.2.0",
+  "last_updated": "2026-03-23",
+  "description": "单角色修仙放置游戏，下拉框选地图，文字log打怪，闭关修炼突破境界",
+
+  "game_type_summary": {
+    "character": "单角色，不收集英雄",
+    "map": "下拉框选择地图",
+    "combat": "文字log输出战斗过程",
+    "idle": "离线自动打怪+修炼",
+    "growth": "境界突破为核心成长线",
+    "theme": "东方修仙/玄幻"
+  },
+
+  "documents": [
+    { "file": "game-overview.json",     "description": "游戏总览、世界观、核心循环、系统列表" },
+    { "file": "system-realm.json",      "description": "境界系统：练气→飞升，灵根，属性成长" },
+    { "file": "system-map.json",        "description": "地图系统：20张地图，怪物配置，掉落表" },
+    { "file": "system-combat.json",     "description": "战斗系统：文字log、伤害公式、离线战斗" },
+    { "file": "system-skill.json",      "description": "功法神通：主动/神通/被动技能体系" },
+    { "file": "system-equipment.json",  "description": "法宝装备：8槽位，品质，强化" },
+    { "file": "system-economy.json",    "description": "经济系统：灵石/仙玉/修为/功德" }
+  ]
+}

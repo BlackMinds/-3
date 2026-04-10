@@ -1,0 +1,101 @@
+{
+  "system_id": "combat",
+  "system_name": "战斗系统",
+  "priority": "P0",
+  "description": "单角色回合制自动战斗，战斗过程以文字log形式输出",
+
+  "battle_display": {
+    "type": "text_log",
+    "description": "战斗过程以滚动文字形式展示，无动画，按回合输出",
+    "log_format": [
+      "[第N回合] 你对{怪物名}施展了{功法名}，造成{伤害值}点伤害",
+      "[第N回合] {怪物名}攻击了你，造成{伤害值}点伤害",
+      "[第N回合] 你触发了会心一击！{功法名}造成{伤害值}点暴击伤害",
+      "[第N回合] {怪物名}陷入了灼烧状态！受到{伤害值}点灼烧伤害",
+      "[第N回合] 你击杀了{怪物名}，获得{修为}修为、{灵石}灵石",
+      "[第N回合] {怪物名}掉落了{物品名}！"
+    ],
+    "log_speed": "real_time_scrolling",
+    "log_history_max": 200
+  },
+
+  "map_selection": {
+    "type": "dropdown",
+    "description": "顶部下拉框选择目标地图，选择后角色自动前往并开始打怪",
+    "ui_flow": [
+      "1. 页面顶部有地图下拉框，显示已解锁地图列表",
+      "2. 每个选项显示：地图名 + 推荐战力 + 主要掉落",
+      "3. 选择后，下方战斗区域开始滚动文字log",
+      "4. 离线时持续在当前地图打怪，上线显示离线收益汇总"
+    ]
+  },
+
+  "battle_flow": {
+    "type": "turn_based_auto",
+    "description": "回合制自动战斗，每回合双方各行动一次，按速度决定先后",
+    "turn_display_interval_ms": 1000,
+    "steps": [
+      "1. 从当前地图怪物表随机选取一只怪物，进入战斗",
+      "2. 每回合：按速度决定先攻 → 先攻方施展功法 → 后攻方反击",
+      "3. 神通按CD回合数计算，CD到则替代普攻释放",
+      "4. 回合开始时结算buff/debuff效果(灼烧伤害、回血等)，到期则消失",
+      "5. 怪物死亡 → 结算掉落 → 自动寻找下一只",
+      "6. 玩家死亡 → 输出死亡log → 3回合后原地复活 → 继续"
+    ],
+    "max_turns_per_fight": 50,
+    "timeout_rule": "超过50回合未分胜负视为平局，自动切换下一只怪",
+    "death_penalty": {
+      "description": "死亡后损失少量灵石，3回合后原地复活",
+      "spirit_stone_loss_percent": 5,
+      "revive_cooldown_turns": 3
+    }
+  },
+
+  "turn_order": {
+    "description": "每回合按速度决定行动顺序",
+    "formula": "速度高的先行动，速度相同则玩家优先",
+    "speed_buff_effect": "速度buff/debuff影响行动顺序，不影响行动次数"
+  },
+
+  "damage_formula": {
+    "formula": "damage = ATK * skill_multiplier * element_multi * resist_factor * (ATK / (ATK + DEF * 0.5))",
+    "components": {
+      "element_multi": "五行相克 克制1.3 / 被克0.7 / 中性1.0",
+      "resist_factor": "1 - target_element_resist (抗性减免，上限70%)"
+    },
+    "crit": {
+      "formula": "if random() < CRIT_RATE: damage *= CRIT_DMG",
+      "display": "会心一击！"
+    },
+    "realm_suppress": {
+      "per_tier_diff": 0.20,
+      "cap": 0.80
+    }
+  },
+
+  "auto_loot": {
+    "description": "击杀怪物自动拾取所有掉落物",
+    "display_in_log": true,
+    "rare_drop_highlight": "金色文字 + 特殊音效提示"
+  },
+
+  "offline_battle": {
+    "description": "离线时按简化公式计算挂机收益，以回合数折算",
+    "formula": "offline_reward = kills_per_hour * avg_drop_value * offline_hours * offline_coefficient",
+    "kills_per_hour_formula": "3600 / (avg_turns_per_kill * turn_interval_s)",
+    "offline_coefficient": {
+      "free": 0.6,
+      "monthly_card": 0.8,
+      "vip": 1.0
+    },
+    "max_offline_hours": {
+      "free": 8,
+      "monthly_card": 16,
+      "vip": 24
+    },
+    "offline_summary_popup": {
+      "description": "上线时弹出离线收益汇总",
+      "shows": ["总修为", "总灵石", "获得物品列表", "击杀数"]
+    }
+  }
+}

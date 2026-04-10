@@ -1,0 +1,470 @@
+{
+  "system_id": "map",
+  "system_name": "地图历练系统",
+  "priority": "P0",
+  "description": "玩家自由选择地图挂机打怪，怪物属性随机浮动，怪物拥有技能会在战斗中使用",
+
+  "monster_generation": {
+    "description": "怪物生成规则，基于模板数值随机浮动，并从技能池分配技能",
+    "stat_randomization": {
+      "description": "每次遭遇怪物时，基于模板数值随机浮动",
+      "fluctuation_range": 0.15,
+      "formula": "actual_value = base_value * random(1 - range, 1 + range)",
+      "affected_stats": ["HP", "ATK", "DEF", "SPD"],
+      "exp_fluctuation": 0.10,
+      "spirit_stone_fluctuation": 0.20,
+      "examples": [
+        { "base_power": 1000, "actual_range": [850, 1150], "note": "±15%浮动" },
+        { "base_exp": 100, "actual_range": [90, 110], "note": "经验±10%" }
+      ]
+    },
+    "stat_distribution": {
+      "description": "怪物的power值按比例分配到四维属性",
+      "formula": {
+        "HP": "power * hp_ratio * 10",
+        "ATK": "power * atk_ratio",
+        "DEF": "power * def_ratio * 0.6",
+        "SPD": "power * spd_ratio * 0.3"
+      },
+      "role_ratios": {
+        "balanced":  { "hp_ratio": 0.30, "atk_ratio": 0.30, "def_ratio": 0.25, "spd_ratio": 0.15 },
+        "tank":      { "hp_ratio": 0.40, "atk_ratio": 0.15, "def_ratio": 0.35, "spd_ratio": 0.10 },
+        "dps":       { "hp_ratio": 0.20, "atk_ratio": 0.45, "def_ratio": 0.15, "spd_ratio": 0.20 },
+        "speed":     { "hp_ratio": 0.20, "atk_ratio": 0.25, "def_ratio": 0.15, "spd_ratio": 0.40 },
+        "boss":      { "hp_ratio": 0.35, "atk_ratio": 0.30, "def_ratio": 0.25, "spd_ratio": 0.10 }
+      }
+    },
+    "skill_assignment": {
+      "description": "怪物根据tier和属性从技能池获取技能",
+      "rules": {
+        "tier_1_2": { "skill_count": 1, "pool": "basic" },
+        "tier_3_4": { "skill_count": 2, "pool": "intermediate" },
+        "tier_5_6": { "skill_count": 2, "pool": "advanced" },
+        "tier_7_8": { "skill_count": 3, "pool": "ultimate" },
+        "boss":     { "skill_count_bonus": 1, "has_passive": true, "note": "Boss比同tier小怪多1个技能，且拥有Boss被动" }
+      }
+    }
+  },
+
+  "monster_skill_pool": {
+    "description": "怪物技能池，按属性和难度分级，怪物根据自身属性和所在tier从中获取",
+
+    "basic": {
+      "description": "T1-T2怪物技能，简单的攻击和debuff",
+      "skills": [
+        { "id": "m_bite",        "name": "撕咬",     "element": null,   "multiplier": 1.3, "cd_turns": 0, "type": "attack",  "description": "强力撕咬" },
+        { "id": "m_poison_spit", "name": "毒液喷射", "element": "wood",  "multiplier": 1.0, "cd_turns": 3, "type": "debuff",  "debuff": { "type": "poison", "chance": 0.25, "duration_turns": 2 }, "description": "喷射毒液，25%中毒2回合" },
+        { "id": "m_fire_breath", "name": "喷火",     "element": "fire",  "multiplier": 1.5, "cd_turns": 3, "type": "attack",  "debuff": { "type": "burn", "chance": 0.15, "duration_turns": 2 }, "description": "喷射火焰，15%灼烧2回合" },
+        { "id": "m_water_jet",   "name": "水箭术",   "element": "water", "multiplier": 1.4, "cd_turns": 3, "type": "debuff",  "debuff": { "type": "slow", "chance": 0.20, "duration_turns": 2 }, "description": "水箭攻击，20%减速2回合" },
+        { "id": "m_rock_throw",  "name": "飞石术",   "element": "earth", "multiplier": 1.5, "cd_turns": 3, "type": "attack",  "debuff": { "type": "brittle", "chance": 0.15, "value": 0.10, "duration_turns": 2 }, "description": "投掷巨石，15%脆弱2回合" },
+        { "id": "m_claw_slash",  "name": "利爪",     "element": "metal", "multiplier": 1.4, "cd_turns": 3, "type": "attack",  "debuff": { "type": "bleed", "chance": 0.15, "duration_turns": 2 }, "description": "利爪撕裂，15%流血2回合" },
+        { "id": "m_howl",        "name": "嚎叫",     "element": null,    "multiplier": 0,   "cd_turns": 5, "type": "buff",    "buff": { "type": "atk_up", "value": 0.15, "duration_turns": 3 }, "description": "怒吼提升自身ATK 15%持续3回合" }
+      ]
+    },
+
+    "intermediate": {
+      "description": "T3-T4怪物技能，更强的debuff和控制",
+      "skills": [
+        { "id": "m_flame_claw",   "name": "焰爪",     "element": "fire",  "multiplier": 2.0, "cd_turns": 4, "type": "attack",  "debuff": { "type": "burn", "chance": 0.25, "duration_turns": 3 }, "description": "烈焰之爪，25%灼烧3回合" },
+        { "id": "m_ice_fang",     "name": "冰牙",     "element": "water", "multiplier": 1.8, "cd_turns": 4, "type": "debuff",  "debuff": { "type": "freeze", "chance": 0.12, "duration_turns": 1 }, "description": "冰属性撕咬，12%冻结1回合" },
+        { "id": "m_vine_bind",    "name": "藤蔓缠绕", "element": "wood",  "multiplier": 1.2, "cd_turns": 5, "type": "control", "debuff": { "type": "root", "chance": 0.30, "duration_turns": 1 }, "description": "藤蔓束缚，30%束缚1回合" },
+        { "id": "m_thunder_claw",  "name": "雷爪",     "element": "metal", "multiplier": 2.2, "cd_turns": 4, "type": "attack",  "debuff": { "type": "stun", "chance": 0.10, "duration_turns": 1 }, "description": "雷电之爪，10%眩晕1回合" },
+        { "id": "m_quake",        "name": "地震术",   "element": "earth", "multiplier": 2.0, "cd_turns": 5, "type": "debuff",  "debuff": { "type": "brittle", "chance": 0.30, "value": 0.15, "duration_turns": 3 }, "description": "地震冲击，30%脆弱(-15%DEF)3回合" },
+        { "id": "m_poison_cloud", "name": "毒雾",     "element": "wood",  "multiplier": 1.5, "cd_turns": 5, "type": "debuff",  "debuff": { "type": "poison", "chance": 0.40, "duration_turns": 3 }, "description": "释放毒雾，40%中毒3回合" },
+        { "id": "m_roar",         "name": "妖吼",     "element": null,    "multiplier": 0,   "cd_turns": 6, "type": "debuff",  "debuff": { "type": "atk_down", "chance": 0.35, "value": 0.15, "duration_turns": 3 }, "description": "妖兽怒吼，35%降低玩家ATK 15%持续3回合" },
+        { "id": "m_harden",       "name": "硬化",     "element": "earth", "multiplier": 0,   "cd_turns": 6, "type": "buff",    "buff": { "type": "def_up", "value": 0.25, "duration_turns": 3 }, "description": "身体硬化，自身DEF+25%持续3回合" },
+        { "id": "m_regen",        "name": "再生",     "element": "wood",  "multiplier": 0,   "cd_turns": 7, "type": "buff",    "buff": { "type": "regen", "value_percent": 0.05, "duration_turns": 3 }, "description": "自我回复，每回合回5%血持续3回合" }
+      ]
+    },
+
+    "advanced": {
+      "description": "T5-T6怪物技能，强力控制和高伤害",
+      "skills": [
+        { "id": "m_hellfire",      "name": "地狱火",   "element": "fire",  "multiplier": 3.0, "cd_turns": 5, "type": "attack",  "debuff": { "type": "burn", "chance": 0.35, "duration_turns": 4 }, "description": "地狱烈焰，35%灼烧4回合" },
+        { "id": "m_blizzard",      "name": "暴风雪",   "element": "water", "multiplier": 2.5, "cd_turns": 5, "type": "control", "debuff": { "type": "freeze", "chance": 0.20, "duration_turns": 1, "slow_chance": 0.50, "slow_turns": 2 }, "description": "暴风雪，20%冻结1回合+50%减速2回合" },
+        { "id": "m_soul_drain",    "name": "摄魂术",   "element": "wood",  "multiplier": 2.0, "cd_turns": 6, "type": "debuff",  "debuff": { "type": "silence", "chance": 0.25, "duration_turns": 2 }, "effect": "lifesteal_50%", "description": "摄魂攻击，吸血50%，25%封印2回合" },
+        { "id": "m_thunder_strike","name": "天雷击",   "element": "metal", "multiplier": 3.5, "cd_turns": 5, "type": "attack",  "debuff": { "type": "stun", "chance": 0.18, "duration_turns": 1 }, "description": "天雷降临，18%眩晕1回合" },
+        { "id": "m_sand_burial",   "name": "流沙葬",   "element": "earth", "multiplier": 2.5, "cd_turns": 6, "type": "control", "debuff": { "type": "root", "chance": 0.35, "duration_turns": 2, "brittle_chance": 0.40, "brittle_value": 0.20, "brittle_turns": 3 }, "description": "流沙吞噬，35%束缚2回合+40%脆弱3回合" },
+        { "id": "m_berserk",       "name": "狂暴",     "element": null,    "multiplier": 0,   "cd_turns": 8, "type": "buff",    "buff": { "type": "atk_up", "value": 0.40, "duration_turns": 3, "side_effect": "DEF_down_20%" }, "description": "狂暴化，ATK+40%但DEF-20%持续3回合" },
+        { "id": "m_death_gaze",    "name": "死亡凝视", "element": null,    "multiplier": 0,   "cd_turns": 7, "type": "debuff",  "debuff": [{ "type": "atk_down", "chance": 0.40, "value": 0.20, "duration_turns": 3 }, { "type": "slow", "chance": 0.40, "duration_turns": 2 }], "description": "死亡凝视，40%降ATK+减速" }
+      ]
+    },
+
+    "ultimate": {
+      "description": "T7-T8怪物技能，极致伤害和控制",
+      "skills": [
+        { "id": "m_divine_fire",    "name": "神火焚天", "element": "fire",  "multiplier": 5.0, "cd_turns": 6, "type": "attack",  "debuff": { "type": "burn", "chance": 0.50, "duration_turns": 5 }, "description": "神火，50%灼烧5回合" },
+        { "id": "m_absolute_zero",  "name": "绝对零度", "element": "water", "multiplier": 3.5, "cd_turns": 7, "type": "control", "debuff": { "type": "freeze", "chance": 0.35, "duration_turns": 2 }, "description": "极寒之力，35%冻结2回合" },
+        { "id": "m_world_tree",     "name": "世界树之怒","element": "wood", "multiplier": 4.0, "cd_turns": 6, "type": "debuff",  "debuff": { "type": "root", "chance": 0.45, "duration_turns": 2, "poison_chance": 0.45, "poison_turns": 4 }, "description": "世界树之力，45%束缚2回合+45%中毒4回合" },
+        { "id": "m_heaven_thunder", "name": "天罚神雷", "element": "metal", "multiplier": 6.0, "cd_turns": 7, "type": "attack",  "debuff": { "type": "stun", "chance": 0.25, "duration_turns": 1 }, "description": "天罚神雷，25%眩晕1回合" },
+        { "id": "m_earth_collapse", "name": "天崩地裂", "element": "earth", "multiplier": 4.5, "cd_turns": 7, "type": "control", "debuff": { "type": "stun", "chance": 0.20, "duration_turns": 1, "brittle_chance": 0.50, "brittle_value": 0.25, "brittle_turns": 4 }, "description": "天崩地裂，20%眩晕+50%脆弱(-25%DEF)4回合" },
+        { "id": "m_void_rend",      "name": "虚空撕裂", "element": null,    "multiplier": 5.0, "cd_turns": 6, "type": "attack",  "effect": "ignore_def_25%", "debuff": { "type": "silence", "chance": 0.30, "duration_turns": 2 }, "description": "撕裂虚空，无视25%防御，30%封印2回合" },
+        { "id": "m_immortal_body",  "name": "不朽之躯", "element": null,    "multiplier": 0,   "cd_turns": 10, "type": "buff",   "buff": { "type": "shield", "value": "ATK * 5.0", "duration_turns": 3, "regen_percent": 0.08 }, "description": "不朽护盾+每回合回8%血持续3回合" }
+      ]
+    },
+
+    "boss_passives": {
+      "description": "Boss专属被动效果，自动生效",
+      "passives": [
+        { "id": "bp_enrage",       "name": "狂怒",     "tier": [1,2], "effect": "气血低于30%时ATK+30%", "trigger": "hp_below_30%" },
+        { "id": "bp_thick_skin",   "name": "厚甲",     "tier": [1,2], "effect": "受到伤害-10%", "trigger": "always" },
+        { "id": "bp_regen",        "name": "妖力回复", "tier": [3,4], "effect": "每回合回复2%气血", "trigger": "per_turn" },
+        { "id": "bp_counter",      "name": "反击",     "tier": [3,4], "effect": "20%概率反击，造成50%ATK伤害", "trigger": "on_hit_taken" },
+        { "id": "bp_element_fury", "name": "属性狂暴", "tier": [5,6], "effect": "气血低于50%时对应属性伤害+40%", "trigger": "hp_below_50%" },
+        { "id": "bp_resist_aura",  "name": "抗性光环", "tier": [5,6], "effect": "控制效果持续时间-1回合(最低0)", "trigger": "always" },
+        { "id": "bp_divine_body",  "name": "神躯",     "tier": [7,8], "effect": "受到伤害-15%，免疫持续1回合以下的控制", "trigger": "always" },
+        { "id": "bp_fury_strike",  "name": "暴怒连击", "tier": [7,8], "effect": "气血低于30%时每回合攻击2次", "trigger": "hp_below_30%" }
+      ]
+    }
+  },
+
+  "map_selection": {
+    "description": "玩家从已解锁的地图列表中选择一张，角色前往该地图自动打怪",
+    "flow": [
+      "1. 打开地图界面，查看已解锁区域",
+      "2. 每张地图显示：推荐战力、怪物属性、特产掉落、灵气浓度",
+      "3. 选择地图后角色前往，开始自动战斗",
+      "4. 离线也会在当前地图持续打怪",
+      "5. 随时可切换地图（无冷却）"
+    ]
+  },
+
+  "maps": [
+    {
+      "id": "qingfeng_valley", "name": "清风谷", "tier": 1,
+      "realm_required": "练气一层", "recommended_power": 100,
+      "element": null, "spirit_density": 1.0,
+      "drop_focus": "均衡", "description": "灵气稀薄的山谷，新手历练之地",
+      "monsters": [
+        { "id": "wild_boar",    "name": "野猪妖", "power": 50,  "element": null,  "exp": 10, "drop_table": "common_t1", "role": "balanced" },
+        { "id": "gray_wolf",   "name": "灰狼",   "power": 80,  "element": null,  "exp": 15, "drop_table": "common_t1", "role": "balanced" },
+        { "id": "snake_spirit","name": "蛇妖",   "power": 120, "element": "wood","exp": 25, "drop_table": "common_t1", "role": "balanced" }
+      ],
+      "boss": { "id": "wolf_king", "name": "狼王", "power": 300, "element": null, "exp": 200, "drop_table": "boss_t1", "respawn_hours": 6 },
+      "special_drops": ["野猪牙", "狼皮", "蛇胆"],
+      "gathering_nodes": ["野草药", "粗铁矿"]
+    },
+    {
+      "id": "misty_swamp", "name": "迷雾沼泽", "tier": 1,
+      "realm_required": "练气五层", "recommended_power": 300,
+      "element": "water", "spirit_density": 1.2,
+      "drop_focus": "材料", "description": "毒瘴弥漫的湿地，盛产炼丹草药",
+      "monsters": [
+        { "id": "toad_spirit", "name": "蟾蜍精", "power": 200, "element": "water","exp": 20, "drop_table": "common_t1", "role": "balanced" },
+        { "id": "swamp_snake","name": "沼蛇",   "power": 280, "element": "water","exp": 30, "drop_table": "common_t1", "role": "balanced" },
+        { "id": "mud_golem",  "name": "泥傀儡", "power": 350, "element": "earth","exp": 40, "drop_table": "uncommon_t1", "role": "tank" }
+      ],
+      "boss": { "id": "swamp_king", "name": "沼泽蛟", "power": 600, "element": "water", "exp": 400, "drop_table": "boss_t1", "respawn_hours": 6 },
+      "special_drops": ["蟾酥", "沼泽灵泥", "毒囊"],
+      "gathering_nodes": ["毒蘑菇", "沼铁矿"]
+    },
+    {
+      "id": "sunset_mountain", "name": "落霞山", "tier": 2,
+      "realm_required": "筑基初期", "recommended_power": 1200,
+      "element": "fire", "spirit_density": 1.5,
+      "drop_focus": "装备", "description": "晚霞笼罩的火灵山，装备掉率较高",
+      "monsters": [
+        { "id": "fire_fox",     "name": "火狐妖", "power": 800,  "element": "fire", "exp": 80,  "drop_table": "common_t2", "role": "balanced" },
+        { "id": "magma_lizard","name": "熔岩蜥", "power": 1000, "element": "fire", "exp": 100, "drop_table": "common_t2", "role": "balanced" },
+        { "id": "flame_bird",  "name": "火鸦",   "power": 1500, "element": "fire", "exp": 150, "drop_table": "uncommon_t2", "role": "dps" }
+      ],
+      "boss": { "id": "fire_python", "name": "赤炎蟒", "power": 3000, "element": "fire", "exp": 1500, "drop_table": "boss_t2", "respawn_hours": 8 },
+      "special_drops": ["赤炎石", "火狐皮", "熔岩晶"],
+      "gathering_nodes": ["火灵草", "赤铁矿"]
+    },
+    {
+      "id": "jade_bamboo_forest", "name": "翠竹林", "tier": 2,
+      "realm_required": "筑基初期", "recommended_power": 1400,
+      "element": "wood", "spirit_density": 1.6,
+      "drop_focus": "功法", "description": "灵竹成林，常有修士在此悟道，功法残页掉率高",
+      "monsters": [
+        { "id": "bamboo_spirit","name": "竹灵",   "power": 900,  "element": "wood", "exp": 90,  "drop_table": "common_t2", "role": "balanced" },
+        { "id": "vine_demon",  "name": "藤妖",   "power": 1200, "element": "wood", "exp": 120, "drop_table": "common_t2", "role": "balanced" },
+        { "id": "jade_monkey", "name": "玉面猴", "power": 1600, "element": "wood", "exp": 160, "drop_table": "uncommon_t2", "role": "dps" }
+      ],
+      "boss": { "id": "bamboo_king", "name": "千年竹妖", "power": 3500, "element": "wood", "exp": 1800, "drop_table": "boss_t2", "respawn_hours": 8 },
+      "special_drops": ["灵竹节", "竹叶青露", "悟道残卷"],
+      "gathering_nodes": ["灵竹笋", "青玉矿"]
+    },
+    {
+      "id": "iron_ore_cave", "name": "黑铁矿洞", "tier": 2,
+      "realm_required": "筑基中期", "recommended_power": 1800,
+      "element": "metal", "spirit_density": 1.4,
+      "drop_focus": "材料", "description": "地下矿洞，盛产炼器矿石",
+      "monsters": [
+        { "id": "iron_golem",  "name": "铁傀儡", "power": 1200, "element": "metal","exp": 110, "drop_table": "common_t2", "role": "balanced" },
+        { "id": "cave_bat",    "name": "矿蝠",   "power": 1400, "element": "metal","exp": 130, "drop_table": "common_t2", "role": "balanced" },
+        { "id": "crystal_worm","name": "晶蚕",   "power": 2000, "element": "earth","exp": 180, "drop_table": "uncommon_t2", "role": "dps" }
+      ],
+      "boss": { "id": "ore_king", "name": "矿灵王", "power": 4000, "element": "metal", "exp": 2000, "drop_table": "boss_t2", "respawn_hours": 8 },
+      "special_drops": ["精铁锭", "矿晶石", "地心岩浆"],
+      "gathering_nodes": ["黑铁矿", "银辉石"]
+    },
+    {
+      "id": "myriad_demon_mountain", "name": "万妖山", "tier": 3,
+      "realm_required": "金丹初期", "recommended_power": 6000,
+      "element": "wood", "spirit_density": 2.0,
+      "drop_focus": "装备", "description": "妖兽盘踞深山，高品质装备掉率提升",
+      "monsters": [
+        { "id": "tree_demon",   "name": "树妖",  "power": 4000, "element": "wood", "exp": 400, "drop_table": "common_t3", "role": "balanced" },
+        { "id": "bear_spirit",  "name": "熊妖",  "power": 5500, "element": "earth","exp": 550, "drop_table": "common_t3", "role": "balanced" },
+        { "id": "flower_demon", "name": "花妖",  "power": 7000, "element": "wood", "exp": 700, "drop_table": "uncommon_t3", "role": "dps" }
+      ],
+      "boss": { "id": "demon_ape", "name": "妖猿王", "power": 15000, "element": "earth", "exp": 8000, "drop_table": "boss_t3", "respawn_hours": 10 },
+      "special_drops": ["千年灵芝", "妖丹", "万年藤"],
+      "gathering_nodes": ["灵芝", "翠玉矿"]
+    },
+    {
+      "id": "thunderpeak", "name": "雷鸣峰", "tier": 3,
+      "realm_required": "金丹初期", "recommended_power": 7000,
+      "element": "metal", "spirit_density": 2.2,
+      "drop_focus": "功法", "description": "雷电交加的山巅，金系功法的圣地",
+      "monsters": [
+        { "id": "thunder_hawk", "name": "雷鹰",   "power": 5000, "element": "metal","exp": 500, "drop_table": "common_t3", "role": "balanced" },
+        { "id": "storm_wolf",  "name": "风暴狼", "power": 6500, "element": "metal","exp": 650, "drop_table": "common_t3", "role": "balanced" },
+        { "id": "lightning_serpent","name": "雷蛇","power": 8000, "element": "metal","exp": 800, "drop_table": "uncommon_t3", "role": "dps" }
+      ],
+      "boss": { "id": "thunder_roc", "name": "雷鹏", "power": 18000, "element": "metal", "exp": 9000, "drop_table": "boss_t3", "respawn_hours": 10 },
+      "special_drops": ["雷精石", "风暴羽", "雷纹残页"],
+      "gathering_nodes": ["雷击木", "紫电矿"]
+    },
+    {
+      "id": "ancient_ruins", "name": "上古遗迹", "tier": 3,
+      "realm_required": "金丹中期", "recommended_power": 9000,
+      "element": "earth", "spirit_density": 2.5,
+      "drop_focus": "套装", "description": "远古修士留下的遗迹，套装部件掉落概率高",
+      "monsters": [
+        { "id": "stone_guard",   "name": "石卫士", "power": 6000, "element": "earth","exp": 600, "drop_table": "common_t3", "role": "balanced" },
+        { "id": "rune_puppet",   "name": "符傀儡", "power": 8000, "element": "earth","exp": 800, "drop_table": "uncommon_t3", "role": "dps" },
+        { "id": "ancient_wraith","name": "远古怨灵","power": 10000,"element": null,  "exp": 1000,"drop_table": "uncommon_t3", "role": "dps" }
+      ],
+      "boss": { "id": "ruin_guardian", "name": "遗迹守护者", "power": 22000, "element": "earth", "exp": 12000, "drop_table": "boss_t3", "respawn_hours": 12 },
+      "special_drops": ["远古符文", "遗迹碎片", "封印之钥"],
+      "gathering_nodes": ["灵石矿脉", "古玉"]
+    },
+    {
+      "id": "dark_sea", "name": "幽冥海", "tier": 4,
+      "realm_required": "元婴初期", "recommended_power": 25000,
+      "element": "water", "spirit_density": 2.5,
+      "drop_focus": "装备", "description": "深邃黑暗的海域，水系装备圣地",
+      "monsters": [
+        { "id": "sea_serpent",  "name": "海蛟",   "power": 18000,"element": "water","exp": 2000,"drop_table": "common_t4", "role": "balanced" },
+        { "id": "ghost_fish",  "name": "幽灵鱼", "power": 22000,"element": "water","exp": 2500,"drop_table": "common_t4", "role": "balanced" },
+        { "id": "kraken_spawn","name": "墨海兽", "power": 30000,"element": "water","exp": 3500,"drop_table": "uncommon_t4", "role": "dps" }
+      ],
+      "boss": { "id": "dragon_turtle", "name": "龙龟", "power": 60000, "element": "water", "exp": 30000, "drop_table": "boss_t4", "respawn_hours": 12 },
+      "special_drops": ["龙涎", "深海珊瑚", "玄冰晶"],
+      "gathering_nodes": ["海灵藻", "寒铁矿"]
+    },
+    {
+      "id": "soul_forest", "name": "噬魂林", "tier": 4,
+      "realm_required": "元婴初期", "recommended_power": 28000,
+      "element": "wood", "spirit_density": 2.8,
+      "drop_focus": "功法", "description": "诡异的黑森林，藏有上古功法残卷",
+      "monsters": [
+        { "id": "soul_tree",    "name": "噬魂树", "power": 20000,"element": "wood", "exp": 2200,"drop_table": "common_t4", "role": "balanced" },
+        { "id": "shadow_cat",   "name": "幽影猫", "power": 25000,"element": null,   "exp": 2800,"drop_table": "common_t4", "role": "balanced" },
+        { "id": "corpse_flower","name": "尸花",   "power": 32000,"element": "wood", "exp": 3800,"drop_table": "uncommon_t4", "role": "dps" }
+      ],
+      "boss": { "id": "soul_eater", "name": "噬魂古树", "power": 65000, "element": "wood", "exp": 35000, "drop_table": "boss_t4", "respawn_hours": 12 },
+      "special_drops": ["噬魂果", "暗影精华", "上古残卷"],
+      "gathering_nodes": ["幽冥花", "魂木"]
+    },
+    {
+      "id": "desert_of_sands", "name": "流沙大漠", "tier": 4,
+      "realm_required": "元婴中期", "recommended_power": 35000,
+      "element": "earth", "spirit_density": 2.3,
+      "drop_focus": "材料", "description": "无尽沙漠，稀有矿物和土系材料产地",
+      "monsters": [
+        { "id": "sand_scorpion","name": "沙蝎王", "power": 24000,"element": "earth","exp": 2600,"drop_table": "common_t4", "role": "balanced" },
+        { "id": "dust_wyrm",   "name": "沙虫",   "power": 30000,"element": "earth","exp": 3200,"drop_table": "common_t4", "role": "balanced" },
+        { "id": "mirage_fox",  "name": "蜃狐",   "power": 38000,"element": "fire", "exp": 4200,"drop_table": "uncommon_t4", "role": "dps" }
+      ],
+      "boss": { "id": "sand_emperor", "name": "流沙帝蝎", "power": 80000, "element": "earth", "exp": 40000, "drop_table": "boss_t4", "respawn_hours": 14 },
+      "special_drops": ["流沙晶", "蜃气石", "沙心玉"],
+      "gathering_nodes": ["沙灵石", "赤金矿"]
+    },
+    {
+      "id": "purgatory", "name": "九幽炼狱", "tier": 5,
+      "realm_required": "化神初期", "recommended_power": 120000,
+      "element": "fire", "spirit_density": 3.0,
+      "drop_focus": "装备", "description": "炼狱之地，极品装备产出",
+      "monsters": [
+        { "id": "hell_guard",   "name": "狱卒",   "power": 90000, "element": "fire", "exp": 10000,"drop_table": "common_t5", "role": "balanced" },
+        { "id": "demon_soldier","name": "魔兵",   "power": 110000,"element": "metal","exp": 12000,"drop_table": "uncommon_t5", "role": "dps" },
+        { "id": "bone_dragon",  "name": "骨龙",   "power": 150000,"element": "fire", "exp": 18000,"drop_table": "rare_t5", "role": "dps" }
+      ],
+      "boss": { "id": "purgatory_lord", "name": "炼狱魔君", "power": 350000, "element": "fire", "exp": 100000, "drop_table": "boss_t5", "respawn_hours": 24 },
+      "special_drops": ["地火精髓", "魔晶", "不灭骨"],
+      "gathering_nodes": ["地火莲", "玄铁矿"]
+    },
+    {
+      "id": "frozen_abyss", "name": "寒渊冰窟", "tier": 5,
+      "realm_required": "化神初期", "recommended_power": 130000,
+      "element": "water", "spirit_density": 3.2,
+      "drop_focus": "套装", "description": "极寒深渊，冰系套装部件产出地",
+      "monsters": [
+        { "id": "frost_giant",  "name": "霜巨人", "power": 95000, "element": "water","exp": 11000,"drop_table": "common_t5", "role": "balanced" },
+        { "id": "ice_wraith",   "name": "冰魄",   "power": 120000,"element": "water","exp": 14000,"drop_table": "uncommon_t5", "role": "dps" },
+        { "id": "blizzard_wyrm","name": "冰蛟龙", "power": 160000,"element": "water","exp": 19000,"drop_table": "rare_t5", "role": "dps" }
+      ],
+      "boss": { "id": "ice_emperor", "name": "寒渊冰帝", "power": 380000, "element": "water", "exp": 110000, "drop_table": "boss_t5", "respawn_hours": 24 },
+      "special_drops": ["万年玄冰", "冰魄精华", "寒渊之心"],
+      "gathering_nodes": ["冰灵芝", "寒玉矿"]
+    },
+    {
+      "id": "demon_battlefield", "name": "魔域战场", "tier": 5,
+      "realm_required": "化神中期", "recommended_power": 180000,
+      "element": null, "spirit_density": 3.5,
+      "drop_focus": "功法", "description": "人魔大战遗址，各属性功法均有掉落",
+      "monsters": [
+        { "id": "demon_general","name": "魔将",   "power": 130000,"element": "fire", "exp": 15000,"drop_table": "uncommon_t5", "role": "dps" },
+        { "id": "dark_knight",  "name": "暗骑士", "power": 160000,"element": "metal","exp": 18000,"drop_table": "uncommon_t5", "role": "dps" },
+        { "id": "war_demon",    "name": "战魔",   "power": 200000,"element": null,   "exp": 22000,"drop_table": "rare_t5", "role": "dps" }
+      ],
+      "boss": { "id": "demon_commander", "name": "魔帅", "power": 450000, "element": null, "exp": 150000, "drop_table": "boss_t5", "respawn_hours": 24 },
+      "special_drops": ["魔将令牌", "战魂", "古战场残卷"],
+      "gathering_nodes": ["魔铁矿", "战灵石"]
+    },
+    {
+      "id": "tribulation_wasteland", "name": "天劫荒原", "tier": 6,
+      "realm_required": "渡劫初期", "recommended_power": 600000,
+      "element": "metal", "spirit_density": 4.0,
+      "drop_focus": "装备", "description": "天劫频繁降临的荒原，顶级装备产出",
+      "monsters": [
+        { "id": "thunder_beast",  "name": "雷兽",     "power": 450000, "element": "metal","exp": 50000, "drop_table": "common_t6", "role": "balanced" },
+        { "id": "void_creature",  "name": "虚空生物", "power": 550000, "element": null,   "exp": 65000, "drop_table": "uncommon_t6", "role": "speed" },
+        { "id": "fallen_immortal","name": "堕仙",     "power": 700000, "element": "metal","exp": 85000, "drop_table": "rare_t6", "role": "dps" }
+      ],
+      "boss": { "id": "thunder_emperor", "name": "雷帝", "power": 1500000, "element": "metal", "exp": 500000, "drop_table": "boss_t6", "respawn_hours": 48 },
+      "special_drops": ["劫雷精华", "虚空碎片", "仙器残片"],
+      "gathering_nodes": ["雷灵根", "天外陨铁"]
+    },
+    {
+      "id": "void_rift", "name": "虚空裂缝", "tier": 6,
+      "realm_required": "渡劫初期", "recommended_power": 650000,
+      "element": null, "spirit_density": 4.5,
+      "drop_focus": "功法", "description": "时空裂缝中的异度空间，顶级功法产出",
+      "monsters": [
+        { "id": "void_stalker",   "name": "虚空猎手", "power": 480000, "element": null,   "exp": 55000, "drop_table": "common_t6", "role": "balanced" },
+        { "id": "time_phantom",   "name": "时光幻影", "power": 580000, "element": null,   "exp": 70000, "drop_table": "uncommon_t6", "role": "speed" },
+        { "id": "chaos_elemental","name": "混沌元素", "power": 750000, "element": null,   "exp": 90000, "drop_table": "rare_t6", "role": "dps" }
+      ],
+      "boss": { "id": "void_lord", "name": "虚空之主", "power": 1600000, "element": null, "exp": 550000, "drop_table": "boss_t6", "respawn_hours": 48 },
+      "special_drops": ["时空碎片", "混沌精华", "虚空功法残页"],
+      "gathering_nodes": ["虚空晶", "混沌矿"]
+    },
+    {
+      "id": "celestial_mountain", "name": "昆仑仙境", "tier": 7,
+      "realm_required": "大乘初期", "recommended_power": 2500000,
+      "element": "metal", "spirit_density": 5.0,
+      "drop_focus": "装备", "description": "传说中的仙山，仙器级装备掉率极高",
+      "monsters": [
+        { "id": "celestial_crane", "name": "仙鹤",   "power": 1800000,"element": "metal","exp": 200000,"drop_table": "common_t7", "role": "balanced" },
+        { "id": "jade_lion",       "name": "玉麒麟", "power": 2200000,"element": "earth","exp": 250000,"drop_table": "uncommon_t7", "role": "dps" },
+        { "id": "golden_dragon",   "name": "金龙",   "power": 2800000,"element": "metal","exp": 320000,"drop_table": "rare_t7", "role": "dps" }
+      ],
+      "boss": { "id": "kunlun_elder", "name": "昆仑仙尊", "power": 6000000, "element": "metal", "exp": 2000000, "drop_table": "boss_t7", "respawn_hours": 72 },
+      "special_drops": ["仙灵玉髓", "天材地宝", "仙器胚"],
+      "gathering_nodes": ["仙灵草", "昆仑玉"]
+    },
+    {
+      "id": "nether_realm", "name": "幽冥黄泉", "tier": 7,
+      "realm_required": "大乘中期", "recommended_power": 3500000,
+      "element": "water", "spirit_density": 5.5,
+      "drop_focus": "套装", "description": "生死之间的黄泉路，高阶套装产出",
+      "monsters": [
+        { "id": "nether_guard",  "name": "冥卫",   "power": 2500000,"element": "water","exp": 280000,"drop_table": "common_t7", "role": "balanced" },
+        { "id": "soul_reaper",   "name": "夺魂使", "power": 3000000,"element": null,   "exp": 350000,"drop_table": "uncommon_t7", "role": "dps" },
+        { "id": "death_dragon",  "name": "冥龙",   "power": 4000000,"element": "water","exp": 450000,"drop_table": "rare_t7", "role": "dps" }
+      ],
+      "boss": { "id": "nether_king", "name": "冥王", "power": 9000000, "element": "water", "exp": 3000000, "drop_table": "boss_t7", "respawn_hours": 72 },
+      "special_drops": ["冥王令", "黄泉之水", "轮回珠"],
+      "gathering_nodes": ["冥灵花", "幽冥石"]
+    },
+    {
+      "id": "immortal_realm", "name": "天界仙宫", "tier": 8,
+      "realm_required": "飞升·散仙", "recommended_power": 12000000,
+      "element": null, "spirit_density": 8.0,
+      "drop_focus": "装备", "description": "飞升后的仙界，太古神器掉落之地",
+      "monsters": [
+        { "id": "immortal_soldier","name": "天兵",   "power": 8000000, "element": "metal","exp": 800000, "drop_table": "common_t8", "role": "balanced" },
+        { "id": "divine_beast",   "name": "神兽",   "power": 10000000,"element": null,   "exp": 1000000,"drop_table": "uncommon_t8", "role": "dps" },
+        { "id": "ancient_god",    "name": "远古神灵","power": 15000000,"element": null,   "exp": 1500000,"drop_table": "rare_t8", "role": "dps" }
+      ],
+      "boss": { "id": "heavenly_lord", "name": "天帝", "power": 30000000, "element": null, "exp": 10000000, "drop_table": "boss_t8", "respawn_hours": 96 },
+      "special_drops": ["天帝令", "鸿蒙紫气", "太古神器碎片"],
+      "gathering_nodes": ["仙晶", "混沌神铁"]
+    },
+    {
+      "id": "chaos_origin", "name": "混沌本源", "tier": 8,
+      "realm_required": "飞升·金仙", "recommended_power": 25000000,
+      "element": null, "spirit_density": 10.0,
+      "drop_focus": "均衡", "description": "万物起源之地，终极历练场",
+      "monsters": [
+        { "id": "chaos_beast",    "name": "混沌兽", "power": 18000000,"element": null, "exp": 2000000, "drop_table": "common_t8", "role": "balanced" },
+        { "id": "primordial_fiend","name": "太古凶兽","power": 22000000,"element": null,"exp": 2500000, "drop_table": "rare_t8", "role": "dps" },
+        { "id": "dao_phantom",    "name": "道之幻影","power": 28000000,"element": null, "exp": 3200000, "drop_table": "rare_t8", "role": "dps" }
+      ],
+      "boss": { "id": "chaos_lord", "name": "混沌之主", "power": 50000000, "element": null, "exp": 20000000, "drop_table": "boss_t8", "respawn_hours": 96 },
+      "special_drops": ["混沌本源", "大道碎片", "鸿蒙之心"],
+      "gathering_nodes": ["混沌灵液", "鸿蒙石"]
+    }
+  ],
+
+  "drop_tables": {
+    "common_t1":   { "spirit_stone": [5, 15],       "equip_rate": 0.05, "equip_tier": 1, "material_rate": 0.20 },
+    "uncommon_t1": { "spirit_stone": [10, 30],      "equip_rate": 0.08, "equip_tier": 1, "material_rate": 0.30, "skill_page_rate": 0.01 },
+    "common_t2":   { "spirit_stone": [20, 60],      "equip_rate": 0.05, "equip_tier": 2, "material_rate": 0.20 },
+    "uncommon_t2": { "spirit_stone": [40, 100],     "equip_rate": 0.10, "equip_tier": 2, "material_rate": 0.30, "skill_page_rate": 0.02 },
+    "common_t3":   { "spirit_stone": [80, 200],     "equip_rate": 0.05, "equip_tier": 3, "material_rate": 0.20 },
+    "uncommon_t3": { "spirit_stone": [150, 400],    "equip_rate": 0.10, "equip_tier": 3, "material_rate": 0.30, "skill_page_rate": 0.02 },
+    "common_t4":   { "spirit_stone": [300, 800],    "equip_rate": 0.05, "equip_tier": 4, "material_rate": 0.20 },
+    "uncommon_t4": { "spirit_stone": [600, 1500],   "equip_rate": 0.10, "equip_tier": 4, "material_rate": 0.30, "skill_page_rate": 0.02 },
+    "common_t5":   { "spirit_stone": [1000, 3000],  "equip_rate": 0.05, "equip_tier": 5, "material_rate": 0.20 },
+    "uncommon_t5": { "spirit_stone": [2000, 6000],  "equip_rate": 0.10, "equip_tier": 5, "material_rate": 0.30, "skill_page_rate": 0.03 },
+    "rare_t5":     { "spirit_stone": [5000, 12000], "equip_rate": 0.15, "equip_tier": 5, "material_rate": 0.40, "skill_page_rate": 0.05 },
+    "common_t6":   { "spirit_stone": [5000, 15000], "equip_rate": 0.05, "equip_tier": 6, "material_rate": 0.20 },
+    "uncommon_t6": { "spirit_stone": [8000, 25000], "equip_rate": 0.10, "equip_tier": 6, "material_rate": 0.30, "skill_page_rate": 0.03 },
+    "rare_t6":     { "spirit_stone": [15000, 40000],"equip_rate": 0.15, "equip_tier": 6, "material_rate": 0.40, "skill_page_rate": 0.05 },
+    "common_t7":   { "spirit_stone": [30000, 80000],  "equip_rate": 0.05, "equip_tier": 7, "material_rate": 0.20 },
+    "uncommon_t7": { "spirit_stone": [50000, 150000], "equip_rate": 0.10, "equip_tier": 7, "material_rate": 0.30, "skill_page_rate": 0.04 },
+    "rare_t7":     { "spirit_stone": [80000, 250000],  "equip_rate": 0.15, "equip_tier": 7, "material_rate": 0.40, "skill_page_rate": 0.06 },
+    "common_t8":   { "spirit_stone": [200000, 500000],  "equip_rate": 0.06, "equip_tier": 8, "material_rate": 0.20 },
+    "uncommon_t8": { "spirit_stone": [400000, 1000000], "equip_rate": 0.12, "equip_tier": 8, "material_rate": 0.30, "skill_page_rate": 0.05 },
+    "rare_t8":     { "spirit_stone": [800000, 2000000], "equip_rate": 0.18, "equip_tier": 8, "material_rate": 0.40, "skill_page_rate": 0.08 },
+    "boss_t1":     { "spirit_stone": [100, 200],       "equip_rate": 1.0, "equip_tier": 1, "rare_material": true, "skill_page_rate": 0.10 },
+    "boss_t2":     { "spirit_stone": [500, 1000],      "equip_rate": 1.0, "equip_tier": 2, "rare_material": true, "skill_page_rate": 0.15 },
+    "boss_t3":     { "spirit_stone": [2000, 5000],     "equip_rate": 1.0, "equip_tier": 3, "rare_material": true, "skill_page_rate": 0.20 },
+    "boss_t4":     { "spirit_stone": [8000, 20000],    "equip_rate": 1.0, "equip_tier": 4, "rare_material": true, "skill_page_rate": 0.25 },
+    "boss_t5":     { "spirit_stone": [30000, 80000],   "equip_rate": 1.0, "equip_tier": 5, "rare_material": true, "skill_page_rate": 0.30 },
+    "boss_t6":     { "spirit_stone": [100000, 300000], "equip_rate": 1.0, "equip_tier": 6, "rare_material": true, "skill_page_rate": 0.50 },
+    "boss_t7":     { "spirit_stone": [500000, 1500000],"equip_rate": 1.0, "equip_tier": 7, "rare_material": true, "skill_page_rate": 0.60 },
+    "boss_t8":     { "spirit_stone": [2000000, 5000000],"equip_rate": 1.0, "equip_tier": 8, "rare_material": true, "skill_page_rate": 0.80 }
+  },
+
+  "equip_quality_weights": {
+    "description": "装备掉落时，根据地图tier决定品质概率权重",
+    "tiers": {
+      "1": { "凡器": 60, "灵器": 30, "法器": 9,  "灵宝": 1,   "仙器": 0,    "太古神器": 0 },
+      "2": { "凡器": 40, "灵器": 35, "法器": 18, "灵宝": 6,   "仙器": 1,    "太古神器": 0 },
+      "3": { "凡器": 20, "灵器": 35, "法器": 25, "灵宝": 15,  "仙器": 4.5,  "太古神器": 0.5 },
+      "4": { "凡器": 5,  "灵器": 25, "法器": 30, "灵宝": 25,  "仙器": 13,   "太古神器": 2 },
+      "5": { "凡器": 0,  "灵器": 10, "法器": 30, "灵宝": 30,  "仙器": 25,   "太古神器": 5 },
+      "6": { "凡器": 0,  "灵器": 0,  "法器": 20, "灵宝": 35,  "仙器": 35,   "太古神器": 10 },
+      "7": { "凡器": 0,  "灵器": 0,  "法器": 5,  "灵宝": 30,  "仙器": 45,   "太古神器": 20 },
+      "8": { "凡器": 0,  "灵器": 0,  "法器": 0,  "灵宝": 15,  "仙器": 50,   "太古神器": 35 }
+    },
+    "boss_quality_boost": {
+      "description": "Boss掉落时品质权重向上偏移一档",
+      "shift": "每个品质的权重向高一级转移30%"
+    }
+  },
+
+  "map_boss_mechanic": {
+    "description": "每张地图有一个限时刷新的Boss，击杀获得丰厚奖励",
+    "discovery": "在地图挂机时有概率遭遇Boss",
+    "encounter_rate_per_hour": 0.1,
+    "alternative": "也可消耗寻妖符主动寻找Boss"
+  }
+}

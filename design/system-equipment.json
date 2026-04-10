@@ -1,0 +1,143 @@
+{
+  "system_id": "equipment",
+  "system_name": "法宝装备系统",
+  "priority": "P0",
+  "description": "单角色穿戴装备，7槽位，4种武器类型分支，6套套装效果",
+
+  "equipment_slots": [
+    { "slot": "weapon",   "name": "兵器",   "primary_stat": "ATK",       "description": "剑/刀/枪/扇，不同类型不同特性" },
+    { "slot": "armor",    "name": "法袍",   "primary_stat": "DEF",       "description": "防御法衣" },
+    { "slot": "helmet",   "name": "法冠",   "primary_stat": "HP",        "description": "头部法器" },
+    { "slot": "boots",    "name": "步云靴", "primary_stat": "SPD",       "description": "脚部法器" },
+    { "slot": "treasure", "name": "法宝",   "primary_stat": "variable",  "description": "攻击型/防御型/辅助型法宝" },
+    { "slot": "ring",     "name": "灵戒",   "primary_stat": "CRIT_RATE", "description": "储物戒指兼战斗" },
+    { "slot": "pendant",  "name": "灵佩",   "primary_stat": "SPIRIT",    "description": "提升神识" }
+  ],
+
+  "weapon_types": [
+    {
+      "id": "sword", "name": "剑",
+      "stat_focus": "balanced",
+      "bonus": { "ATK_percent": 5, "CRIT_RATE_flat": 0.03 },
+      "description": "攻守兼备，暴击率小幅提升，适合泛用"
+    },
+    {
+      "id": "blade", "name": "刀",
+      "stat_focus": "burst",
+      "bonus": { "ATK_percent": 10, "CRIT_DMG_flat": 0.15 },
+      "description": "高攻高爆发，暴击伤害加成，适合暴击流"
+    },
+    {
+      "id": "spear", "name": "枪",
+      "stat_focus": "speed",
+      "bonus": { "ATK_percent": 3, "SPD_percent": 12, "LIFESTEAL_flat": 0.03 },
+      "description": "快攻吸血，高速多段攻击，适合持久战"
+    },
+    {
+      "id": "fan", "name": "扇",
+      "stat_focus": "skill_power",
+      "bonus": { "ATK_percent": 3, "skill_multiplier_bonus": 0.15, "SPIRIT_percent": 10 },
+      "description": "强化神通伤害，提升神识，适合法术流"
+    }
+  ],
+
+  "rarity": [
+    { "id": "white",  "name": "凡器",   "primary_stat_multiplier": 1.00, "sub_stat_count": 0, "color": "#CCCCCC" },
+    { "id": "green",  "name": "灵器",   "primary_stat_multiplier": 1.05, "sub_stat_count": 1, "color": "#00CC00" },
+    { "id": "blue",   "name": "法器",   "primary_stat_multiplier": 1.10, "sub_stat_count": 2, "color": "#0066FF" },
+    { "id": "purple", "name": "灵宝",   "primary_stat_multiplier": 1.18, "sub_stat_count": 3, "color": "#9933FF" },
+    { "id": "gold",   "name": "仙器",   "primary_stat_multiplier": 1.25, "sub_stat_count": 4, "color": "#FFAA00" },
+    { "id": "red",    "name": "太古神器", "primary_stat_multiplier": 1.35, "sub_stat_count": 4, "color": "#FF3333", "has_unique_passive": true }
+  ],
+
+  "set_bonuses": [
+    {
+      "set_id": "blazing_sun",
+      "name": "烈阳套",
+      "element": "fire",
+      "drop_location": ["落霞山", "九幽炼狱"],
+      "bonuses": [
+        { "pieces": 2, "effect": { "ATK_percent": 15 } },
+        { "pieces": 4, "effect": { "fire_damage_percent": 25, "burn_on_crit_chance": 0.3 } }
+      ]
+    },
+    {
+      "set_id": "deep_ocean",
+      "name": "渊海套",
+      "element": "water",
+      "drop_location": ["幽冥海", "寒渊冰窟"],
+      "bonuses": [
+        { "pieces": 2, "effect": { "DEF_percent": 20 } },
+        { "pieces": 4, "effect": { "damage_reduction_percent": 12, "counter_attack_chance": 0.15 } }
+      ]
+    },
+    {
+      "set_id": "ancient_wood",
+      "name": "万木套",
+      "element": "wood",
+      "drop_location": ["翠竹林", "万妖山", "噬魂林"],
+      "bonuses": [
+        { "pieces": 2, "effect": { "HP_percent": 20 } },
+        { "pieces": 4, "effect": { "heal_per_tick_percent": 2, "poison_on_hit_chance": 0.2 } }
+      ]
+    },
+    {
+      "set_id": "thunder_fury",
+      "name": "雷罚套",
+      "element": "metal",
+      "drop_location": ["雷鸣峰", "天劫荒原"],
+      "bonuses": [
+        { "pieces": 2, "effect": { "CRIT_RATE_flat": 0.12 } },
+        { "pieces": 4, "effect": { "CRIT_DMG_flat": 0.40, "chain_lightning_on_crit_chance": 0.2 } }
+      ]
+    },
+    {
+      "set_id": "earth_fortress",
+      "name": "磐岩套",
+      "element": "earth",
+      "drop_location": ["上古遗迹", "流沙大漠"],
+      "bonuses": [
+        { "pieces": 2, "effect": { "DEF_percent": 15, "HP_percent": 10 } },
+        { "pieces": 4, "effect": { "shield_on_low_hp_percent": 20, "stun_resist": 0.5 } }
+      ]
+    },
+    {
+      "set_id": "void_walker",
+      "name": "虚空套",
+      "element": null,
+      "drop_location": ["虚空裂缝", "混沌本源"],
+      "bonuses": [
+        { "pieces": 2, "effect": { "SPD_percent": 15, "DODGE_flat": 0.08 } },
+        { "pieces": 4, "effect": { "ignore_def_percent": 20, "extra_turn_chance": 0.1 } }
+      ]
+    }
+  ],
+
+  "sub_stats_pool": [
+    { "stat": "ATK_flat",       "range": [10, 50],  "weight": 20 },
+    { "stat": "ATK_percent",    "range": [2, 12],   "weight": 15 },
+    { "stat": "HP_flat",        "range": [50, 250], "weight": 20 },
+    { "stat": "HP_percent",     "range": [2, 12],   "weight": 15 },
+    { "stat": "DEF_flat",       "range": [5, 30],   "weight": 20 },
+    { "stat": "DEF_percent",    "range": [2, 12],   "weight": 15 },
+    { "stat": "SPD",            "range": [2, 10],   "weight": 10 },
+    { "stat": "CRIT_RATE",      "range": [1, 5],    "weight": 10 },
+    { "stat": "CRIT_DMG",       "range": [3, 15],   "weight": 10 },
+    { "stat": "DODGE",          "range": [1, 4],     "weight": 5 },
+    { "stat": "LIFESTEAL",      "range": [1, 5],     "weight": 5 }
+  ],
+
+  "enhance": {
+    "description": "消耗灵石强化装备等级",
+    "max_level": 20,
+    "stat_per_level_percent": 5,
+    "cost_formula": "base_cost * level^1.5",
+    "sub_stat_upgrade_at": [5, 10, 15, 20]
+  },
+
+  "equipment_source": {
+    "monster_drop": "打怪随机掉落",
+    "boss_drop": "Boss必掉",
+    "crafting": "炼器系统炼制(需材料+灵石)"
+  }
+}

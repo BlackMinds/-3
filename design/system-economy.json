@@ -1,0 +1,67 @@
+{
+  "system_id": "economy",
+  "system_name": "经济系统",
+  "priority": "P0",
+
+  "currencies": [
+    {
+      "id": "spirit_stone",
+      "name": "灵石",
+      "type": "soft",
+      "sources": ["打怪掉落", "出售物品", "每日任务"],
+      "sinks": ["强化装备", "炼丹", "修炼加速", "商店购买"],
+      "description": "基础货币，日常消耗"
+    },
+    {
+      "id": "immortal_jade",
+      "name": "仙玉",
+      "type": "hard",
+      "sources": ["每日任务", "成就", "首通奖励", "充值"],
+      "sinks": ["仙缘抽取", "高级商店", "外观"],
+      "description": "硬通货，对应充值货币"
+    },
+    {
+      "id": "cultivation_exp",
+      "name": "修为",
+      "type": "exp",
+      "sources": ["闭关修炼", "打怪", "丹药"],
+      "sinks": ["境界突破"],
+      "description": "经验值，积满突破境界"
+    },
+    {
+      "id": "merit",
+      "name": "功德",
+      "type": "prestige",
+      "sources": ["击杀Boss", "完成宗门任务", "除魔"],
+      "sinks": ["兑换稀有功法", "兑换法宝"],
+      "description": "声望类货币"
+    }
+  ],
+
+  "daily_budget_lv30": {
+    "spirit_stone": {
+      "income": { "idle_8h": 25000, "active_play": 12000, "daily_quest": 8000, "total": 45000 },
+      "expense": { "enhance": 20000, "alchemy": 10000, "cultivation": 10000, "total": 40000 },
+      "surplus": 5000
+    },
+    "immortal_jade": {
+      "income_free": 150,
+      "ten_pull_cost": 2800,
+      "days_per_ten_pull": 18.7
+    }
+  },
+
+  "monetization": {
+    "monthly_card": {
+      "price_cny": 30,
+      "daily_immortal_jade": 300,
+      "offline_bonus": 0.8,
+      "days_per_ten_pull": 6.2
+    },
+    "design_principles": [
+      "免费玩家体验完整，付费加速不超3倍",
+      "不卖直接战力数值",
+      "保底机制保证付费确定性"
+    ]
+  }
+}
