@@ -1,0 +1,49 @@
+name: Scheduled Tasks
+
+on:
+  schedule:
+    # Boss 过期检查 — 每 10 分钟
+    - cron: '*/10 * * * *'
+    # 每日重置 — 每天 UTC 16:00（北京 00:00）
+    - cron: '0 16 * * *'
+    # 每周重置 — 每周一 UTC 16:00（北京 00:00）
+    - cron: '0 16 * * 1'
+  workflow_dispatch:
+
+env:
+  APP_URL: ${{ secrets.APP_URL }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+jobs:
+  boss-expire:
+    if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check expired bosses
+        run: |
+          curl -sf -X POST "$APP_URL/api/cron/boss-expire" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 30
+
+  daily-reset:
+    if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Daily donation reset
+        run: |
+          curl -sf -X POST "$APP_URL/api/cron/daily-reset" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 30
+
+  weekly-reset:
+    if: github.event.schedule == '0 16 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Weekly contribution reset
+        run: |
+          curl -sf -X POST "$APP_URL/api/cron/weekly-reset" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 30

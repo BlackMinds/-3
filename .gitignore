@@ -1,6 +1,14 @@
 # Dependencies
 node_modules/
 
+# Nuxt build
+.nuxt/
+.output/
+.data/
+
+# Vercel build output
+.vercel/
+
 # Build output
 dist/
 dist-ssr/
@@ -9,6 +17,13 @@ dist-ssr/
 .env
 .env.*
 !.env.example
+
+# Database dump (contains user data, too large for git)
+*.sql
+!server/database/migration.sql
+
+# Legacy code (old Vue+Express project, kept locally for reference)
+_legacy/
 
 # Logs
 logs/
