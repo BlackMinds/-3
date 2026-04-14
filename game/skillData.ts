@@ -117,7 +117,7 @@ export const PASSIVE_SKILLS: Skill[] = [
   // 玄品
   { id: 'swift_step', name: '凌波微步', type: 'passive', rarity: 'blue', element: 'water', multiplier: 0, description: '闪避+8%,暴击率+5%,水抗+10%', effect: { DODGE_flat: 0.08, CRIT_RATE_flat: 0.05, RESIST_WATER: 0.10 } },
   { id: 'iron_skin', name: '铁布衫', type: 'passive', rarity: 'blue', element: 'metal', multiplier: 0, description: '防御+12%,控制抗性+10%,被暴击反弹10%', effect: { DEF_percent: 12, RESIST_CTRL: 0.10, reflect_on_crit_taken: 0.10 } },
-  { id: 'thorn_aura', name: '荆棘之体', type: 'passive', rarity: 'blue', element: 'wood', multiplier: 0, description: '反弹8%伤害,木抗+15%,被打10%中毒2回合', effect: { reflect_damage_percent: 8, RESIST_WOOD: 0.15, poison_on_hit_taken_chance: 0.10 } },
+  { id: 'thorn_aura', name: '荆棘之体', type: 'passive', rarity: 'blue', element: 'wood', multiplier: 0, description: '反弹8%伤害,木抗+15%,被打10%中毒2回合', effect: { reflect_damage_percent: 0.08, RESIST_WOOD: 0.15, poison_on_hit_taken_chance: 0.10 } },
   { id: 'flame_aura', name: '焚身火甲', type: 'passive', rarity: 'blue', element: 'fire', multiplier: 0, description: '攻击+10%,火抗+15%,被打10%灼烧2回合', effect: { ATK_percent: 10, RESIST_FIRE: 0.15, burn_on_hit_taken_chance: 0.10 } },
   { id: 'earth_wall', name: '厚土心法', type: 'passive', rarity: 'blue', element: 'earth', multiplier: 0, description: '防御+10%,气血+8%,土抗+15%', effect: { DEF_percent: 10, HP_percent: 8, RESIST_EARTH: 0.15 } },
   // 地品

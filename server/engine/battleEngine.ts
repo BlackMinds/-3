@@ -689,14 +689,17 @@ export function runWaveBattle(
       const hits = mSkill?.hitCount || 1;
 
       const pe = equippedSkills?.passiveEffects;
-      // 受伤处理函数（应用玩家脆弱/减伤/被动反弹/灼烧/中毒/反伤暴击）
-      const applyPlayerHit = (rawDmg: number, isCrit: boolean, sourceMonster: typeof m) => {
+      // 受伤处理函数（应用玩家脆弱/减伤，返回扣血后的实际伤害；反伤/触发型留给调用方后置）
+      const applyPlayerHit = (rawDmg: number) => {
         let dmg = rawDmg;
         const brittle = getBrittleBonus(player);
         if (brittle > 0) dmg = Math.floor(dmg * (1 + brittle));
         if (pe?.damageReductionFlat) dmg = Math.floor(dmg * (1 - pe.damageReductionFlat));
         player.hp -= dmg;
-        // 受击反弹
+        return dmg;
+      };
+      // 后置反伤/触发（在伤害日志之后展示）
+      const triggerRetaliate = (dmg: number, isCrit: boolean, sourceMonster: typeof m) => {
         if (pe?.reflectPercent && pe.reflectPercent > 0) {
           const rf = Math.floor(dmg * pe.reflectPercent);
           if (rf > 0) {
@@ -704,7 +707,6 @@ export function runWaveBattle(
             logs.push({ turn, text: `  【反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
           }
         }
-        // 被打触发中毒/灼烧（反伤类被动）
         if (pe?.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
           tryApplyDebuff(sourceMonster, sourceMonster.stats.name, { type: 'poison', chance: 1, duration: 2 }, player.atk, turn);
         }
@@ -716,7 +718,6 @@ export function runWaveBattle(
           sourceMonster.stats.hp -= rfc;
           logs.push({ turn, text: `  【暴击反弹】${sourceMonster.stats.name}受到 ${rfc} 点反震`, type: 'normal', ...snap() });
         }
-        return dmg;
       };
 
       if (hits > 1) {
@@ -725,9 +726,10 @@ export function runWaveBattle(
         for (let h = 0; h < hits; h++) {
           const mResult = calculateDamage(m.stats, player, perHitMul, skillElem);
           if (mResult.damage > 0) {
-            const dmg = applyPlayerHit(mResult.damage, mResult.isCrit, m);
+            const dmg = applyPlayerHit(mResult.damage);
             const critText = mResult.isCrit ? '暴击!' : '';
             logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dmg} 点伤害`, type: mResult.isCrit ? 'crit' : 'normal', ...snap() });
+            triggerRetaliate(dmg, mResult.isCrit, m);
           }
           if (player.hp <= 0) break;
         }
@@ -736,9 +738,10 @@ export function runWaveBattle(
         if (mResult.damage === 0) {
           logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}的攻击被你闪避了`, type: 'normal', ...snap() });
         } else {
-          const dmg = applyPlayerHit(mResult.damage, mResult.isCrit, m);
+          const dmg = applyPlayerHit(mResult.damage);
           const isSkillAttack = mSkill !== null;
           logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}${isSkillAttack ? '施展【' + skillName + '】，' : ''}攻击了你，造成 ${dmg} 点伤害`, type: mResult.isCrit ? 'crit' : 'normal', ...snap() });
+          triggerRetaliate(dmg, mResult.isCrit, m);
         }
       }
       // 应用怪技能 debuff 到玩家
