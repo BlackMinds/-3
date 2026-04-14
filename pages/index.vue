@@ -47,16 +47,18 @@
       <div class="dual-bars">
         <div class="bar-row">
           <span class="bar-label">Lv.{{ gameStore.charLevel }}</span>
-          <div class="exp-bar-wrap" :title="`当前等级经验: ${formatNum(gameStore.character?.level_exp || 0)} / ${gameStore.levelExpRequired === Infinity ? '满级' : formatNum(gameStore.levelExpRequired)}`">
+          <div class="exp-bar-wrap exp-bar-hover">
             <div class="exp-bar level-bar" :style="{ width: gameStore.levelExpPercent + '%' }"></div>
             <span class="exp-text">等级经验 {{ Math.floor(gameStore.levelExpPercent) }}%</span>
+            <div class="exp-tooltip">{{ formatNum(gameStore.character?.level_exp || 0) }} / {{ gameStore.levelExpRequired === Infinity ? '满级' : formatNum(gameStore.levelExpRequired) }}</div>
           </div>
         </div>
         <div class="bar-row">
           <span class="bar-label">{{ gameStore.realmName }}</span>
-          <div class="exp-bar-wrap" :title="`当前境界修为: ${formatNum(gameStore.character?.cultivation_exp || 0)} / ${formatNum(gameStore.expRequired)}`">
+          <div class="exp-bar-wrap exp-bar-hover">
             <div class="exp-bar" :style="{ width: gameStore.expPercent + '%' }"></div>
             <span class="exp-text">境界修为 {{ Math.floor(gameStore.expPercent) }}%</span>
+            <div class="exp-tooltip">{{ formatNum(gameStore.character?.cultivation_exp || 0) }} / {{ formatNum(gameStore.expRequired) }}</div>
           </div>
           <button v-if="gameStore.expPercent >= 100" class="realm-challenge-btn" @click="showRealmChallenge = true">突破</button>
         </div>
@@ -5203,8 +5205,33 @@ onUnmounted(() => {
   height: 14px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 7px;
-  overflow: hidden;
   position: relative;
+}
+
+.exp-bar-wrap .exp-bar {
+  overflow: hidden;
+}
+
+.exp-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 26, 0.96);
+  border: 1px solid var(--gold-ink);
+  color: var(--gold-ink);
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 100;
+}
+
+.exp-bar-hover:hover .exp-tooltip {
+  opacity: 1;
 }
 
 .exp-bar {
