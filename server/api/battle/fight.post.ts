@@ -5,7 +5,7 @@ import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
-import { applyCultivationExp } from '~/server/utils/realm'
+import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 
 // 战斗锁: 防止同一角色并发刷战斗
 const battleLock = new Map<number, number>()
@@ -579,20 +579,11 @@ export default defineEventHandler(async (event) => {
         [br.cultivation_exp, br.realm_tier, br.realm_stage, totalStone, levelExp, map_id, char.id]
       )
 
-      // 检查升级
-      let newLevel = char.level || 1
-      let newLevelExp = Number(char.level_exp || 0) + levelExp
-      while (newLevel < 200) {
-        let reqExp: number
-        if (newLevel <= 30) reqExp = Math.floor(80 * Math.pow(newLevel, 1.3))
-        else if (newLevel <= 80) reqExp = Math.floor(120 * Math.pow(newLevel, 1.4))
-        else if (newLevel <= 150) reqExp = Math.floor(200 * Math.pow(newLevel, 1.45))
-        else reqExp = Math.floor(350 * Math.pow(newLevel, 1.5))
-        if (newLevelExp >= reqExp) { newLevelExp -= reqExp; newLevel++; result.logs.push({ turn: 0, text: `等级提升!你已升至【Lv.${newLevel}】`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 }) }
-        else break
-      }
-      if (newLevel !== (char.level || 1)) {
-        await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [newLevel, newLevelExp, char.id])
+      // 检查升级（统一使用 realm.ts 的工具，与前端公式一致）
+      const lvResult = applyLevelExp(Number(char.level_exp || 0) + levelExp, char.level || 1)
+      if (lvResult.levelUps > 0) {
+        result.logs.push({ turn: 0, text: `等级提升!你已升至【Lv.${lvResult.level}】`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+        await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
       }
 
       // 自动出售判定

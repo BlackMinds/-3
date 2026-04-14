@@ -47,14 +47,14 @@
       <div class="dual-bars">
         <div class="bar-row">
           <span class="bar-label">Lv.{{ gameStore.charLevel }}</span>
-          <div class="exp-bar-wrap">
+          <div class="exp-bar-wrap" :title="`当前等级经验: ${formatNum(gameStore.character?.level_exp || 0)} / ${gameStore.levelExpRequired === Infinity ? '满级' : formatNum(gameStore.levelExpRequired)}`">
             <div class="exp-bar level-bar" :style="{ width: gameStore.levelExpPercent + '%' }"></div>
             <span class="exp-text">等级经验 {{ Math.floor(gameStore.levelExpPercent) }}%</span>
           </div>
         </div>
         <div class="bar-row">
           <span class="bar-label">{{ gameStore.realmName }}</span>
-          <div class="exp-bar-wrap">
+          <div class="exp-bar-wrap" :title="`当前境界修为: ${formatNum(gameStore.character?.cultivation_exp || 0)} / ${formatNum(gameStore.expRequired)}`">
             <div class="exp-bar" :style="{ width: gameStore.expPercent + '%' }"></div>
             <span class="exp-text">境界修为 {{ Math.floor(gameStore.expPercent) }}%</span>
           </div>

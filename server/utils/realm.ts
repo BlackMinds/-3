@@ -21,6 +21,35 @@ export function getExpRequired(tier: number, stage: number): number {
  * 累加后自动扣除并升级境界，保证 cultivation_exp 永远表示"当前境界剩余"。
  * 不会突破到顶（飞升 tier=8 的最后阶段会停住，多余经验保留）。
  */
+// 等级所需经验（与前端 stores/game.ts levelExpRequired 保持一致）
+export function getLevelExpRequired(lv: number): number {
+  if (lv >= 200) return Infinity
+  if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
+  if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
+  if (lv <= 150) return Math.floor(180 * Math.pow(lv, 1.42))
+  return Math.floor(320 * Math.pow(lv, 1.48))
+}
+
+/**
+ * 累加 levelExp 后自动扣除升级，保证 level_exp 始终小于当前等级所需。
+ */
+export function applyLevelExp(
+  levelExp: number,
+  level: number,
+): { level: number; level_exp: number; levelUps: number } {
+  let lv = Math.max(1, level || 1)
+  let exp = Math.max(0, levelExp)
+  let ups = 0
+  while (lv < 200) {
+    const req = getLevelExpRequired(lv)
+    if (exp < req) break
+    exp -= req
+    lv++
+    ups++
+  }
+  return { level: lv, level_exp: exp, levelUps: ups }
+}
+
 export function applyCultivationExp(
   cultivationExp: number,
   realmTier: number,

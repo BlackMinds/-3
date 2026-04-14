@@ -1,7 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { OFFLINE_MAP_DATA } from '~/server/utils/offlineMapData'
 import { checkAchievements } from '~/server/engine/achievementData'
-import { applyCultivationExp } from '~/server/utils/realm'
+import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -49,21 +49,12 @@ export default defineEventHandler(async (event) => {
       [br.cultivation_exp, br.realm_tier, br.realm_stage, stoneGained, levelExpGained, char.id]
     )
 
-    // 检查升级
-    let newLevel = char.level || 1
-    let newLevelExp = Number(char.level_exp || 0) + levelExpGained
-    let levelUps = 0
-    while (newLevel < 200) {
-      let reqExp: number
-      if (newLevel <= 30) reqExp = Math.floor(80 * Math.pow(newLevel, 1.3))
-      else if (newLevel <= 80) reqExp = Math.floor(120 * Math.pow(newLevel, 1.4))
-      else if (newLevel <= 150) reqExp = Math.floor(200 * Math.pow(newLevel, 1.45))
-      else reqExp = Math.floor(350 * Math.pow(newLevel, 1.5))
-      if (newLevelExp >= reqExp) { newLevelExp -= reqExp; newLevel++; levelUps++ }
-      else break
-    }
+    // 检查升级（统一使用 realm.ts 的工具，与前端公式一致）
+    const lvResult = applyLevelExp(Number(char.level_exp || 0) + levelExpGained, char.level || 1)
+    const newLevel = lvResult.level
+    const levelUps = lvResult.levelUps
     if (levelUps > 0) {
-      await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [newLevel, newLevelExp, char.id])
+      await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
     }
 
     // 生成掉落装备(简化: 只生成数量, 不生成具体属性太多了)

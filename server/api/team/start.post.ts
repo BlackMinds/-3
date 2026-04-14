@@ -9,7 +9,7 @@ import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/e
 import { getCharacterByUserId, ensureDailyReset, getRoomDetail } from '~/server/utils/team'
 import { generateSecretRealmDrops, distributeEquipments } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
-import { applyCultivationExp } from '~/server/utils/realm'
+import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -400,18 +400,10 @@ export default defineEventHandler(async (event) => {
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [battleId, c.characterId, c.damageDealt, c.healingDone, c.damageTaken, c.contribution]
         )
-        // --- 升级检查（同 battle/fight.post.ts 的逻辑） ---
-        let newLevel = member?.level || 1
-        let newLevelExp = Number(member?.level_exp || 0) + myExp
-        while (newLevel < 200) {
-          let reqExp: number
-          if (newLevel <= 30) reqExp = Math.floor(80 * Math.pow(newLevel, 1.3))
-          else if (newLevel <= 80) reqExp = Math.floor(120 * Math.pow(newLevel, 1.4))
-          else if (newLevel <= 150) reqExp = Math.floor(200 * Math.pow(newLevel, 1.45))
-          else reqExp = Math.floor(350 * Math.pow(newLevel, 1.5))
-          if (newLevelExp >= reqExp) { newLevelExp -= reqExp; newLevel++ }
-          else break
-        }
+        // --- 升级检查（统一使用 realm.ts 工具，与前端公式一致） ---
+        const lvResult = applyLevelExp(Number(member?.level_exp || 0) + myExp, member?.level || 1)
+        const newLevel = lvResult.level
+        const newLevelExp = lvResult.level_exp
 
         await client.query(
           `INSERT INTO secret_realm_rewards (battle_id, character_id, spirit_stone, exp_gained, level_exp, realm_points, equipment_ids, extra_drops)
