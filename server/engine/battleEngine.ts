@@ -554,7 +554,7 @@ export function runWaveBattle(
     return { playerHp: Math.max(0, player.hp), playerMaxHp: player.maxHp, monsterHp: t ? Math.max(0, t.stats.hp) : 0, monsterMaxHp: t ? t.stats.maxHp : 0, monstersHp: monsters.map(m => m.alive ? Math.max(0, m.stats.hp) : 0) };
   }
 
-  // 施加 debuff 到目标（返回是否命中）
+  // 施加 debuff 到目标（推独立日志，返回是否命中）
   function tryApplyDebuff(
     target: { debuffs: ActiveDebuff[]; frozenTurns: number; stats?: any; maxHp?: number; resists?: any },
     targetName: string,
@@ -563,7 +563,6 @@ export function runWaveBattle(
     turn: number,
   ): boolean {
     if (Math.random() >= debuff.chance) return false;
-    // 控制类抗性降低持续时间
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type);
     let duration = debuff.duration;
     if (isCtrl) {
@@ -573,13 +572,11 @@ export function runWaveBattle(
         return false;
       }
     }
-    // 冻结/眩晕/束缚合并到 frozenTurns
     if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
       target.frozenTurns = Math.max(target.frozenTurns, duration);
       logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合`, type: 'normal', ...snap() });
       return true;
     }
-    // DOT/其他 debuff
     const targetMaxHp = target.stats?.maxHp || target.maxHp || 0;
     const dmg = calcDotDamage(debuff.type, targetMaxHp, attackerAtk);
     const exists = target.debuffs.find(d => d.type === debuff.type);
@@ -598,24 +595,20 @@ export function runWaveBattle(
     return true;
   }
 
-  // 结算目标 DOT 伤害 & 递减剩余
+  // 结算目标 DOT 伤害 & 递减剩余（独立日志每类型一条）
   function tickDebuffs(target: { debuffs: ActiveDebuff[] }, targetName: string, turn: number): number {
-    let dot = 0;
+    let total = 0;
     for (const d of target.debuffs) {
       if (d.damagePerTurn > 0) {
-        dot += d.damagePerTurn;
+        total += d.damagePerTurn;
         logs.push({ turn, text: `  ${targetName}受到${DEBUFF_NAMES[d.type]} ${d.damagePerTurn} 点伤害`, type: 'normal', ...snap() });
       }
     }
-    // 递减
     for (let i = target.debuffs.length - 1; i >= 0; i--) {
       target.debuffs[i].remaining--;
-      if (target.debuffs[i].remaining <= 0) {
-        logs.push({ turn, text: `  ${targetName}的${DEBUFF_NAMES[target.debuffs[i].type]}效果结束`, type: 'normal', ...snap() });
-        target.debuffs.splice(i, 1);
-      }
+      if (target.debuffs[i].remaining <= 0) target.debuffs.splice(i, 1);
     }
-    return dot;
+    return total;
   }
 
   // 获取 debuff 加成系数
@@ -698,7 +691,7 @@ export function runWaveBattle(
         player.hp -= dmg;
         return dmg;
       };
-      // 后置反伤/触发（在伤害日志之后展示）
+      // 反伤/触发型被动（独立日志，在伤害日志之后展示）
       const triggerRetaliate = (dmg: number, isCrit: boolean, sourceMonster: typeof m) => {
         if (pe?.reflectPercent && pe.reflectPercent > 0) {
           const rf = Math.floor(dmg * pe.reflectPercent);

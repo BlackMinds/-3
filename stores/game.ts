@@ -164,7 +164,7 @@ export const useGameStore = defineStore('game', () => {
     isBattling.value = false
     isPaused.value = false
     if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
-    if (logTimer.value) { clearInterval(logTimer.value); logTimer.value = null }
+    if (logTimer.value) { clearTimeout(logTimer.value); logTimer.value = null }
     if (deathTimer.value) { clearInterval(deathTimer.value); deathTimer.value = null }
     logQueue.value = []
     pendingResult.value = null
@@ -252,28 +252,40 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function drainLogQueue() {
-    if (logTimer.value) { clearInterval(logTimer.value); logTimer.value = null }
+    if (logTimer.value) { clearTimeout(logTimer.value); logTimer.value = null }
 
     if (logQueue.value.length > 0) {
       emitLog(logQueue.value.shift()!)
     }
 
     if (logQueue.value.length > 0) {
-      logTimer.value = window.setInterval(() => {
-        if (logQueue.value.length === 0 || !isBattling.value) {
-          if (logTimer.value) clearInterval(logTimer.value)
-          logTimer.value = null
-          onBattleLogsFinished()
-          return
-        }
-        if (isPaused.value) return
-        emitLog(logQueue.value.shift()!)
-        if (logQueue.value.length === 0) {
-          if (logTimer.value) clearInterval(logTimer.value)
-          logTimer.value = null
-          onBattleLogsFinished()
-        }
-      }, 1000)
+      // 动态节奏：队列越长播放越快，短日志慢慢看
+      const tickInterval = () => {
+        const n = logQueue.value.length
+        if (n > 30) return 80
+        if (n > 15) return 150
+        if (n > 6) return 250
+        return 400
+      }
+      const scheduleNext = () => {
+        if (logTimer.value) clearTimeout(logTimer.value)
+        logTimer.value = window.setTimeout(() => {
+          if (logQueue.value.length === 0 || !isBattling.value) {
+            logTimer.value = null
+            onBattleLogsFinished()
+            return
+          }
+          if (isPaused.value) { scheduleNext(); return }
+          emitLog(logQueue.value.shift()!)
+          if (logQueue.value.length === 0) {
+            logTimer.value = null
+            onBattleLogsFinished()
+          } else {
+            scheduleNext()
+          }
+        }, tickInterval())
+      }
+      scheduleNext()
     } else {
       onBattleLogsFinished()
     }
