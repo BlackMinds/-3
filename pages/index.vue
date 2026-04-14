@@ -3082,6 +3082,7 @@ function onSectSubTabChange(tab: string) {
 // 切换到宗门标签时自动加载
 watch(() => gameStore.activeTab, (tab) => {
   if (tab === 'sect') loadSectInfo();
+  if (tab === 'cave') { gameStore.loadGameData(); loadCave(); }
 });
 
 const tabs = [
@@ -4131,9 +4132,8 @@ async function collectBuilding(building: BuildingDef) {
   try {
     const res: any = await $fetch('/api/cave/collect', { method: 'POST', body: { building_id: building.id }, headers: getAuthHeaders() });
     if (res.code === 200 && res.data.amount > 0) {
-      const { amount, type } = res.data;
-      if (type === 'exp' && gameStore.character) gameStore.character.cultivation_exp += amount;
-      else if (type === 'spirit_stone' && gameStore.character) gameStore.character.spirit_stone += amount;
+      // 用后端返回的 character 整体替换，避免显示跳跃
+      if (res.data.character && gameStore.character) gameStore.character = res.data.character;
       await loadCave();
     }
   } catch (err) {
@@ -4145,9 +4145,9 @@ async function collectBuilding(building: BuildingDef) {
 async function collectAllCave() {
   try {
     const res: any = await $fetch('/api/cave/collect-all', { method: 'POST', headers: getAuthHeaders() });
-    if (res.code === 200 && gameStore.character) {
-      gameStore.character.cultivation_exp += res.data.totalExp || 0;
-      gameStore.character.spirit_stone += res.data.totalStone || 0;
+    if (res.code === 200) {
+      // 用后端返回的 character 整体替换，避免显示跳跃
+      if (res.data.character && gameStore.character) gameStore.character = res.data.character;
       await loadCave();
     }
   } catch (err) {

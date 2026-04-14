@@ -48,7 +48,9 @@ export default defineEventHandler(async (event) => {
     // 宗门任务
     updateSectDailyTask(charId, 'cave', 1)
 
-    return { code: 200, data: { amount, type: config.output.type } }
+    // 返回最新 character（避免前端显示跳跃）
+    const { rows: updated } = await pool.query('SELECT * FROM characters WHERE id = $1', [charId])
+    return { code: 200, data: { amount, type: config.output.type, character: updated[0] } }
   } catch (error) {
     console.error('领取产出失败:', error)
     return { code: 500, message: '服务器错误' }
