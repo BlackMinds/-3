@@ -6,6 +6,7 @@ import { generateEquipName } from '~/server/engine/equipNameData'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
+import { SKILL_MAP } from '~/server/engine/skillData'
 
 // 战斗锁: 防止同一角色并发刷战斗
 const battleLock = new Map<number, number>()
@@ -711,7 +712,11 @@ export default defineEventHandler(async (event) => {
         monstersMaxHp: monsterList.map(m => m.stats.maxHp),
         monsterInfo,
         logs: result.logs,
-        drops: allDrops.map(d => d.type === 'equipment' ? d.data.name : (d.type === 'skill' ? d.data : '')).filter(Boolean),
+        drops: allDrops.map(d => {
+          if (d.type === 'equipment') return d.data.name
+          if (d.type === 'skill') return SKILL_MAP[d.data]?.name || d.data
+          return ''
+        }).filter(Boolean),
         character: updatedChar[0],
       },
     }

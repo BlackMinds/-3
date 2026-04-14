@@ -254,6 +254,8 @@ export const STAT_NAMES: Record<string, string> = {
   EARTH_DMG: '土系强化',
   SPIRIT_DENSITY: '灵气浓度',
   LUCK: '福缘',
+  DODGE: '闪避',
+  LIFESTEAL: '吸血',
 };
 
 // 哪些副属性是百分比 (显示时加 %)
