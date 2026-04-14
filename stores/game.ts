@@ -230,7 +230,7 @@ export const useGameStore = defineStore('game', () => {
         won: data.won,
         expGained: data.expGained || 0,
         spiritStoneGained: data.stoneGained || 0,
-        drops: [],
+        drops: data.drops || [],
       }
 
       logQueue.value = data.logs || []

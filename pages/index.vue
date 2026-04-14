@@ -2732,6 +2732,18 @@ async function onAvatarSelected(e: Event) {
 const showStats = ref(false);
 const showSecretRealm = ref(false);
 const battleStartTime = ref(0);
+const nowTick = ref(Date.now());
+let nowTickTimer: number | null = null;
+watch(showStats, (v) => {
+  if (v) {
+    nowTick.value = Date.now();
+    if (nowTickTimer) clearInterval(nowTickTimer);
+    nowTickTimer = window.setInterval(() => { nowTick.value = Date.now(); }, 1000);
+  } else if (nowTickTimer) {
+    clearInterval(nowTickTimer);
+    nowTickTimer = null;
+  }
+});
 
 // ===== Toast 提示 =====
 const toastMsg = ref('');
@@ -2746,14 +2758,14 @@ function showToast(msg: string, type: 'success' | 'error' | 'info' = 'info', dur
   toastTimer = window.setTimeout(() => { toastVisible.value = false; }, duration);
 }
 
-// 历练时间计算
+// 历练时间计算（nowTick 每秒响应式刷新）
 const battleMinutes = computed(() => {
   if (!battleStartTime.value) return 0;
-  return (Date.now() - battleStartTime.value) / 60000;
+  return (nowTick.value - battleStartTime.value) / 60000;
 });
 
 const battleTimeStr = computed(() => {
-  const ms = Date.now() - (battleStartTime.value || Date.now());
+  const ms = nowTick.value - (battleStartTime.value || nowTick.value);
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
   const h = Math.floor(m / 60);
