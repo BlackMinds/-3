@@ -29,7 +29,7 @@ export interface AchievementDef {
 export const ACHIEVEMENTS: AchievementDef[] = [
   // ===== 道途·修炼 (15) =====
   { id: 'dao_01', name: '踏入仙途', desc: '创建角色', category: 'dao', type: 'threshold', target: 1, event: 'char_created', reward: { spirit_stone: 500 } },
-  { id: 'dao_02', name: '初窥门径', desc: '达到练气九层', category: 'dao', type: 'threshold', target: 1, event: 'realm_tier', reward: { spirit_stone: 2000 } },
+  { id: 'dao_02', name: '初窥门径', desc: '达到练气九层', category: 'dao', type: 'threshold', target: 9, event: 'qi_stage', reward: { spirit_stone: 2000 } },
   { id: 'dao_03', name: '筑基成功', desc: '突破至筑基境界', category: 'dao', type: 'threshold', target: 2, event: 'realm_tier', reward: { spirit_stone: 5000, equip_box: 'normal', equip_box_count: 1 }, title: '筑基修士' },
   { id: 'dao_04', name: '金丹大道', desc: '突破至金丹境界', category: 'dao', type: 'threshold', target: 3, event: 'realm_tier', reward: { spirit_stone: 20000, equip_box: 'fine', equip_box_count: 1 }, title: '金丹真人' },
   { id: 'dao_05', name: '元婴出窍', desc: '突破至元婴境界', category: 'dao', type: 'threshold', target: 4, event: 'realm_tier', reward: { spirit_stone: 50000, equip_box: 'fine', equip_box_count: 1 }, title: '元婴老祖' },

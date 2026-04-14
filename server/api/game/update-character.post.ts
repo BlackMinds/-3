@@ -45,6 +45,10 @@ export default defineEventHandler(async (event) => {
       const { rows: charRows } = await pool.query('SELECT id FROM characters WHERE user_id = $1', [event.context.userId])
       if (charRows.length > 0) {
         checkAchievements(charRows[0].id, 'realm_tier', body.realm_tier).catch(() => {})
+        // 练气阶段成就（realm_tier=1时，用stage判断练气九层）
+        if (body.realm_tier === 1 && body.realm_stage !== undefined) {
+          checkAchievements(charRows[0].id, 'qi_stage', body.realm_stage).catch(() => {})
+        }
       }
     }
 

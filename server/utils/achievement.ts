@@ -19,6 +19,7 @@ export async function initAchievementsIfNeeded(charId: number) {
 
   // 境界
   if (c.realm_tier >= 1) await checkAchievements(charId, 'realm_tier', c.realm_tier)
+  if (c.realm_tier === 1 && (c.realm_stage || 1) > 1) await checkAchievements(charId, 'qi_stage', c.realm_stage || 1)
   // 等级
   if ((c.level || 1) > 1) await checkAchievements(charId, 'char_level', c.level || 1)
   // 角色已创建
