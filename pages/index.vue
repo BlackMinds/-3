@@ -113,6 +113,13 @@
           >
             结束离线
           </button>
+          <button
+            v-if="!gameStore.isBattling && !isOffline"
+            class="ctrl-btn secret-realm-btn"
+            @click="showSecretRealm = true"
+          >
+            秘境组队
+          </button>
           <template v-else>
             <button class="ctrl-btn pause-btn" @click="gameStore.togglePause()">
               {{ gameStore.isPaused ? '继续' : '暂停' }}
@@ -671,9 +678,9 @@
 
             <!-- 神通 -->
             <div class="skill-group">
-              <div class="skill-group-title">神通技能 (3)</div>
+              <div class="skill-group-title">神通技能 ({{ skillSlotLimits.divine }}/3<span v-if="skillSlotLimits.divine < 3" class="slot-lock-hint"> · 突破解锁</span>)</div>
               <div class="skill-cells-stack">
-                <div v-for="i in 3" :key="'d'+i" class="skill-cell" :class="{ filled: !!equippedDivines[i - 1] }" @click="openSkillPicker('divine', i - 1)">
+                <div v-for="i in skillSlotLimits.divine" :key="'d'+i" class="skill-cell" :class="{ filled: !!equippedDivines[i - 1] }" @click="openSkillPicker('divine', i - 1)">
                   <template v-if="equippedDivines[i - 1]">
                     <div class="cell-icon" :style="{ borderColor: skillRarityColor(equippedDivines[i - 1]!.rarity) }">
                       <span :style="{ color: skillRarityColor(equippedDivines[i - 1]!.rarity) }">通</span>
@@ -699,9 +706,9 @@
 
             <!-- 被动 -->
             <div class="skill-group">
-              <div class="skill-group-title">被动功法 (3)</div>
+              <div class="skill-group-title">被动功法 ({{ skillSlotLimits.passive }}/3<span v-if="skillSlotLimits.passive < 3" class="slot-lock-hint"> · 突破解锁</span>)</div>
               <div class="skill-cells-stack">
-                <div v-for="i in 3" :key="'p'+i" class="skill-cell" :class="{ filled: !!equippedPassives[i - 1] }" @click="openSkillPicker('passive', i - 1)">
+                <div v-for="i in skillSlotLimits.passive" :key="'p'+i" class="skill-cell" :class="{ filled: !!equippedPassives[i - 1] }" @click="openSkillPicker('passive', i - 1)">
                   <template v-if="equippedPassives[i - 1]">
                     <div class="cell-icon" :style="{ borderColor: skillRarityColor(equippedPassives[i - 1]!.rarity) }">
                       <span :style="{ color: skillRarityColor(equippedPassives[i - 1]!.rarity) }">被</span>
@@ -1453,7 +1460,7 @@
 
           <div class="help-section">
             <div class="help-title">种植时间</div>
-            <p class="help-text">基础 30 分钟,灵田每升 3 级减少 5 分钟,最低 15 分钟。</p>
+            <p class="help-text">按灵草品质递增: 凡品 20 分 / 灵品 45 分 / 玄品 90 分 / 地品 180 分 / 天品 360 分 / 仙品 720 分。灵田等级不再影响种植时间。</p>
           </div>
 
           <div class="help-section">
@@ -1963,6 +1970,22 @@
           <div class="help-section">
             <div class="help-title">境界系统</div>
             <p class="help-text">修为积满后手动突破。8 大境界: 练气(9层)→筑基→金丹→元婴→化神→渡劫→大乘→飞升(5阶)。突破后基础属性大幅提升,解锁更多地图。</p>
+            <p class="help-text" style="margin-top: 4px;">练气期采用线性快速突破曲线,新手可在首日突破到筑基。筑基及以后采用几何增长曲线,境界越高所需修为越多。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">闭关修炼</div>
+            <p class="help-text">消耗 <b>100 × 境界Tier</b> 灵石/小时,获得 <b>80 × Tier × 小时 × (1 + 阶段 × 0.1)</b> 修为。可选 1~8 小时。境界越高闭关效率越高。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">离线挂机</div>
+            <p class="help-text">在当前地图开启离线挂机,下线期间自动获得修为/灵石/等级经验/装备/功法/灵草。</p>
+            <p class="help-text" style="margin-top: 4px;">最长离线 12 小时,效率 85%。按每分钟 12 战 × 3 怪计算产出。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">宗门系统</div>
+            <p class="help-text">达到 <b>Lv.15</b> 后可加入或创建宗门。宗门提供修为/攻防加成、Boss 战、商店、宗门功法。</p>
+            <p class="help-text" style="margin-top: 4px;">每日签到获得 <b>100 + 宗门Lv×20 + 境界Tier×30</b> 贡献。捐献灵石按 0.3 换算为贡献(有每日上限)。完成日常/周常任务亦可获取贡献。</p>
+            <p class="help-text" style="margin-top: 4px;">宗门商店可购买强化保护符(2000 贡献,周限 3)、强化大师符(6000 贡献,Lv.5 解锁)等强力道具。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备系统</div>
@@ -1979,18 +2002,25 @@
             <div class="help-title">装备强化</div>
             <p class="help-text">消耗灵石强化已穿戴装备,最高 +10。每级主属性 +8%(满级 +80%)。</p>
             <table class="help-table"><tbody>
-              <tr><td>+1 ~ +5</td><td>100% 成功</td></tr>
-              <tr><td>+6</td><td>80% 成功,失败退 1 级</td></tr>
-              <tr><td>+7</td><td>70%</td></tr>
+              <tr><td>+1 ~ +6</td><td>100% 成功</td></tr>
+              <tr><td>+7</td><td>75%</td></tr>
               <tr><td>+8</td><td>55%</td></tr>
               <tr><td>+9</td><td>40%</td></tr>
               <tr><td>+10</td><td>25%</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">失败退 1 级(最低不低于 +5)。+5 和 +10 时触发副属性突破(随机一条 +30%,最少+1)。</p>
+            <p class="help-text" style="margin-top: 6px;">+7 起失败退 1 级(最低不低于 +6)。+5 和 +10 时触发副属性突破(随机一条 +30%,最少+1)。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">宗门商店可购买【强化保护符】失败不退级,【强化大师符】+7 必成。</p>
           </div>
           <div class="help-section">
             <div class="help-title">功法系统</div>
-            <p class="help-text">装备槽: 1 主修 + 3 神通 + 3 被动。功法最高 Lv.5,消耗同名残页升级,每级效果 +15%。功法按地图 tier 分级掉落:</p>
+            <p class="help-text">功法最高 Lv.5,消耗同名残页升级,每级效果 +15%。装备槽位按境界渐进解锁:</p>
+            <table class="help-table"><tbody>
+              <tr><td>练气</td><td>1 主修 + 1 神通 + 1 被动 (3 槽)</td></tr>
+              <tr><td>筑基</td><td>1 主修 + 2 神通 + 2 被动 (5 槽)</td></tr>
+              <tr><td>金丹</td><td>1 主修 + 2 神通 + 3 被动 (6 槽)</td></tr>
+              <tr><td>元婴及以上</td><td>1 主修 + 3 神通 + 3 被动 (7 槽)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">功法按地图 tier 分级掉落:</p>
             <table class="help-table"><tbody>
               <tr><td>T1-T2</td><td>灵品: 风刃术/缠藤术/寒冰掌/烈焰剑诀/裂地拳 + 基础被动</td></tr>
               <tr><td>T3-T4</td><td>玄品: 天火术/霜冻新星/厚土盾/地裂波/万藤缚/金钟罩 + 中级被动</td></tr>
@@ -2270,13 +2300,16 @@
         <span class="nav-label">{{ tab.label }}</span>
       </button>
     </nav>
+
+    <!-- 秘境组队弹窗 -->
+    <SecretRealmModal :open="showSecretRealm" @close="showSecretRealm = false" />
   </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 
-import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, type RealmBonus } from '~/game/data';
+import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, getSkillSlotLimits, type RealmBonus } from '~/game/data';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '~/game/skillData';
 import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_NAMES, SHOP_CATEGORY_COLORS, formatFund } from '~/game/sectData';
 import { SECT_ITEM_INFO } from '~/game/sectItems';
@@ -2697,6 +2730,7 @@ async function onAvatarSelected(e: Event) {
   input.value = ''; // 清空让同文件可再选
 }
 const showStats = ref(false);
+const showSecretRealm = ref(false);
 const battleStartTime = ref(0);
 
 // ===== Toast 提示 =====
@@ -3493,6 +3527,12 @@ const filteredSkillInventory = computed(() => {
 const equippedActive = ref<Skill | null>(null);
 const equippedDivines = ref<(Skill | null)[]>([null, null, null]);
 const equippedPassives = ref<(Skill | null)[]>([null, null, null]);
+
+// 功法槽位上限（按境界解锁）: 练气 1+1+1 → 筑基 1+2+2 → 金丹 1+2+3 → 元婴+ 1+3+3
+const skillSlotLimits = computed(() => {
+  const tier = gameStore.character?.realm_tier || 1;
+  return getSkillSlotLimits(tier);
+});
 
 const showSkillPicker = ref(false);
 const pickerSlotType = ref<'active' | 'divine' | 'passive'>('active');
@@ -5288,6 +5328,14 @@ onUnmounted(() => {
 }
 .offline-end-btn:hover {
   background: rgba(201, 168, 92, 0.18);
+}
+.secret-realm-btn {
+  background: rgba(163, 201, 114, 0.10);
+  border-color: rgba(163, 201, 114, 0.30);
+  color: #a3c972;
+}
+.secret-realm-btn:hover {
+  background: rgba(163, 201, 114, 0.18);
 }
 
 .offline-summary {
@@ -7593,6 +7641,12 @@ onUnmounted(() => {
   letter-spacing: 2px;
   margin-bottom: 6px;
   padding-left: 4px;
+}
+.slot-lock-hint {
+  color: #888;
+  font-size: 11px;
+  letter-spacing: 0;
+  margin-left: 4px;
 }
 
 .skill-cells-stack {

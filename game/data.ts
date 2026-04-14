@@ -219,49 +219,51 @@ export const MAPS: MapData[] = [
     ],
     boss: { id: 'void_lord', name: '虚空之主', power: 1600000, element: null, exp: 550000, spirit_stone_range: [100000, 300000], role: 'boss', drop_table: 'boss_t6' },
   },
+  // T7-T10 怪物 Power 平滑调整: 缓解飞升期断崖
+  // T7: ×0.70, T8: ×0.65, T9: ×0.60, T10: ×0.50
   {
     id: 'celestial_mountain', name: '昆仑仙境', tier: 7,
     realm_required: '大乘初期', recommended_power: 140,
     element: 'metal', description: '传说中的仙山，仙器级装备掉率极高',
     monsters: [
-      { id: 'celestial_crane', name: '仙鹤', power: 1800000, element: 'metal', exp: 200000, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
-      { id: 'jade_lion', name: '玉麒麟', power: 2200000, element: 'earth', exp: 250000, spirit_stone_range: [50000, 150000], role: 'dps', drop_table: 'uncommon_t7' },
-      { id: 'golden_dragon', name: '金龙', power: 2800000, element: 'metal', exp: 320000, spirit_stone_range: [80000, 250000], role: 'dps', drop_table: 'rare_t7' },
+      { id: 'celestial_crane', name: '仙鹤', power: 1260000, element: 'metal', exp: 200000, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
+      { id: 'jade_lion', name: '玉麒麟', power: 1540000, element: 'earth', exp: 250000, spirit_stone_range: [50000, 150000], role: 'dps', drop_table: 'uncommon_t7' },
+      { id: 'golden_dragon', name: '金龙', power: 1960000, element: 'metal', exp: 320000, spirit_stone_range: [80000, 250000], role: 'dps', drop_table: 'rare_t7' },
     ],
-    boss: { id: 'kunlun_elder', name: '昆仑仙尊', power: 6000000, element: 'metal', exp: 2000000, spirit_stone_range: [500000, 1500000], role: 'boss', drop_table: 'boss_t7' },
+    boss: { id: 'kunlun_elder', name: '昆仑仙尊', power: 4200000, element: 'metal', exp: 2000000, spirit_stone_range: [500000, 1500000], role: 'boss', drop_table: 'boss_t7' },
   },
   {
     id: 'nether_realm', name: '幽冥黄泉', tier: 7,
     realm_required: '大乘中期', recommended_power: 155,
     element: 'water', description: '生死之间的黄泉路，高阶套装产出',
     monsters: [
-      { id: 'nether_guard', name: '冥卫', power: 2500000, element: 'water', exp: 280000, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
-      { id: 'soul_reaper', name: '夺魂使', power: 3000000, element: null, exp: 350000, spirit_stone_range: [50000, 150000], role: 'dps', drop_table: 'uncommon_t7' },
-      { id: 'death_dragon', name: '冥龙', power: 4000000, element: 'water', exp: 450000, spirit_stone_range: [80000, 250000], role: 'dps', drop_table: 'rare_t7' },
+      { id: 'nether_guard', name: '冥卫', power: 1750000, element: 'water', exp: 280000, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
+      { id: 'soul_reaper', name: '夺魂使', power: 2100000, element: null, exp: 350000, spirit_stone_range: [50000, 150000], role: 'dps', drop_table: 'uncommon_t7' },
+      { id: 'death_dragon', name: '冥龙', power: 2800000, element: 'water', exp: 450000, spirit_stone_range: [80000, 250000], role: 'dps', drop_table: 'rare_t7' },
     ],
-    boss: { id: 'nether_king', name: '冥王', power: 9000000, element: 'water', exp: 3000000, spirit_stone_range: [500000, 1500000], role: 'boss', drop_table: 'boss_t7' },
+    boss: { id: 'nether_king', name: '冥王', power: 6300000, element: 'water', exp: 3000000, spirit_stone_range: [500000, 1500000], role: 'boss', drop_table: 'boss_t7' },
   },
   {
     id: 'immortal_realm', name: '天界仙宫', tier: 8,
     realm_required: '飞升·散仙', recommended_power: 170,
     element: null, description: '飞升后的仙界，太古神器掉落之地',
     monsters: [
-      { id: 'immortal_soldier', name: '天兵', power: 8000000, element: 'metal', exp: 800000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
-      { id: 'divine_beast', name: '神兽', power: 10000000, element: null, exp: 1000000, spirit_stone_range: [400000, 1000000], role: 'dps', drop_table: 'uncommon_t8' },
-      { id: 'ancient_god', name: '远古神灵', power: 15000000, element: null, exp: 1500000, spirit_stone_range: [800000, 2000000], role: 'dps', drop_table: 'rare_t8' },
+      { id: 'immortal_soldier', name: '天兵', power: 5200000, element: 'metal', exp: 800000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
+      { id: 'divine_beast', name: '神兽', power: 6500000, element: null, exp: 1000000, spirit_stone_range: [400000, 1000000], role: 'dps', drop_table: 'uncommon_t8' },
+      { id: 'ancient_god', name: '远古神灵', power: 9750000, element: null, exp: 1500000, spirit_stone_range: [800000, 2000000], role: 'dps', drop_table: 'rare_t8' },
     ],
-    boss: { id: 'heavenly_lord', name: '天帝', power: 30000000, element: null, exp: 10000000, spirit_stone_range: [2000000, 5000000], role: 'boss', drop_table: 'boss_t8' },
+    boss: { id: 'heavenly_lord', name: '天帝', power: 19500000, element: null, exp: 10000000, spirit_stone_range: [2000000, 5000000], role: 'boss', drop_table: 'boss_t8' },
   },
   {
     id: 'chaos_origin', name: '混沌本源', tier: 8,
     realm_required: '飞升·金仙', recommended_power: 180,
     element: null, description: '万物起源之地，终极历练场',
     monsters: [
-      { id: 'chaos_beast', name: '混沌兽', power: 18000000, element: null, exp: 2000000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
-      { id: 'primordial_fiend', name: '太古凶兽', power: 22000000, element: null, exp: 2500000, spirit_stone_range: [800000, 2000000], role: 'dps', drop_table: 'rare_t8' },
-      { id: 'dao_phantom', name: '道之幻影', power: 28000000, element: null, exp: 3200000, spirit_stone_range: [800000, 2000000], role: 'dps', drop_table: 'rare_t8' },
+      { id: 'chaos_beast', name: '混沌兽', power: 11700000, element: null, exp: 2000000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
+      { id: 'primordial_fiend', name: '太古凶兽', power: 14300000, element: null, exp: 2500000, spirit_stone_range: [800000, 2000000], role: 'dps', drop_table: 'rare_t8' },
+      { id: 'dao_phantom', name: '道之幻影', power: 18200000, element: null, exp: 3200000, spirit_stone_range: [800000, 2000000], role: 'dps', drop_table: 'rare_t8' },
     ],
-    boss: { id: 'chaos_lord', name: '混沌之主', power: 50000000, element: null, exp: 20000000, spirit_stone_range: [2000000, 5000000], role: 'boss', drop_table: 'boss_t8' },
+    boss: { id: 'chaos_lord', name: '混沌之主', power: 32500000, element: null, exp: 20000000, spirit_stone_range: [2000000, 5000000], role: 'boss', drop_table: 'boss_t8' },
   },
   // ===== T9 地图 =====
   {
@@ -269,33 +271,33 @@ export const MAPS: MapData[] = [
     realm_required: '飞升·太乙金仙', recommended_power: 185,
     element: 'metal', description: '圣者修行之地,剑意纵横',
     monsters: [
-      { id: 'void_knight', name: '虚空剑侍', power: 60000000, element: 'metal', exp: 5000000, spirit_stone_range: [500000, 1200000], role: 'balanced', drop_table: 'common_t9' },
-      { id: 'holy_guardian', name: '圣境守护', power: 75000000, element: 'earth', exp: 6500000, spirit_stone_range: [500000, 1200000], role: 'tank', drop_table: 'common_t9' },
-      { id: 'celestial_phoenix', name: '天凤', power: 90000000, element: 'fire', exp: 8000000, spirit_stone_range: [1000000, 2500000], role: 'dps', drop_table: 'uncommon_t9' },
+      { id: 'void_knight', name: '虚空剑侍', power: 36000000, element: 'metal', exp: 5000000, spirit_stone_range: [500000, 1200000], role: 'balanced', drop_table: 'common_t9' },
+      { id: 'holy_guardian', name: '圣境守护', power: 45000000, element: 'earth', exp: 6500000, spirit_stone_range: [500000, 1200000], role: 'tank', drop_table: 'common_t9' },
+      { id: 'celestial_phoenix', name: '天凤', power: 54000000, element: 'fire', exp: 8000000, spirit_stone_range: [1000000, 2500000], role: 'dps', drop_table: 'uncommon_t9' },
     ],
-    boss: { id: 'void_emperor', name: '太虚帝君', power: 150000000, element: 'metal', exp: 40000000, spirit_stone_range: [5000000, 12000000], role: 'boss', drop_table: 'boss_t9' },
+    boss: { id: 'void_emperor', name: '太虚帝君', power: 90000000, element: 'metal', exp: 40000000, spirit_stone_range: [5000000, 12000000], role: 'boss', drop_table: 'boss_t9' },
   },
   {
     id: 'hongmeng_realm', name: '鸿蒙秘境', tier: 9,
     realm_required: '飞升·太乙金仙', recommended_power: 190,
     element: 'wood', description: '鸿蒙未开之地,灵气最浓',
     monsters: [
-      { id: 'hongmeng_beast', name: '鸿蒙异兽', power: 70000000, element: 'wood', exp: 6000000, spirit_stone_range: [500000, 1200000], role: 'balanced', drop_table: 'common_t9' },
-      { id: 'origin_spirit', name: '本源精灵', power: 85000000, element: 'water', exp: 7500000, spirit_stone_range: [500000, 1200000], role: 'balanced', drop_table: 'common_t9' },
-      { id: 'primordial_dragon', name: '始祖龙', power: 100000000, element: null, exp: 9000000, spirit_stone_range: [1500000, 3000000], role: 'dps', drop_table: 'uncommon_t9' },
+      { id: 'hongmeng_beast', name: '鸿蒙异兽', power: 42000000, element: 'wood', exp: 6000000, spirit_stone_range: [500000, 1200000], role: 'balanced', drop_table: 'common_t9' },
+      { id: 'origin_spirit', name: '本源精灵', power: 51000000, element: 'water', exp: 7500000, spirit_stone_range: [500000, 1200000], role: 'balanced', drop_table: 'common_t9' },
+      { id: 'primordial_dragon', name: '始祖龙', power: 60000000, element: null, exp: 9000000, spirit_stone_range: [1500000, 3000000], role: 'dps', drop_table: 'uncommon_t9' },
     ],
-    boss: { id: 'hongmeng_lord', name: '鸿蒙道尊', power: 180000000, element: null, exp: 50000000, spirit_stone_range: [6000000, 15000000], role: 'boss', drop_table: 'boss_t9' },
+    boss: { id: 'hongmeng_lord', name: '鸿蒙道尊', power: 108000000, element: null, exp: 50000000, spirit_stone_range: [6000000, 15000000], role: 'boss', drop_table: 'boss_t9' },
   },
   {
     id: 'myriad_battlefield', name: '万界战场', tier: 9,
     realm_required: '飞升·太乙金仙', recommended_power: 195,
     element: null, description: '万界交锋之地,最强者汇聚',
     monsters: [
-      { id: 'realm_warrior', name: '界域战士', power: 80000000, element: 'fire', exp: 7000000, spirit_stone_range: [600000, 1500000], role: 'balanced', drop_table: 'common_t9' },
-      { id: 'void_assassin', name: '虚空刺客', power: 95000000, element: null, exp: 8500000, spirit_stone_range: [600000, 1500000], role: 'speed', drop_table: 'uncommon_t9' },
-      { id: 'ancient_titan', name: '远古泰坦', power: 120000000, element: 'earth', exp: 10000000, spirit_stone_range: [2000000, 4000000], role: 'tank', drop_table: 'uncommon_t9' },
+      { id: 'realm_warrior', name: '界域战士', power: 48000000, element: 'fire', exp: 7000000, spirit_stone_range: [600000, 1500000], role: 'balanced', drop_table: 'common_t9' },
+      { id: 'void_assassin', name: '虚空刺客', power: 57000000, element: null, exp: 8500000, spirit_stone_range: [600000, 1500000], role: 'speed', drop_table: 'uncommon_t9' },
+      { id: 'ancient_titan', name: '远古泰坦', power: 72000000, element: 'earth', exp: 10000000, spirit_stone_range: [2000000, 4000000], role: 'tank', drop_table: 'uncommon_t9' },
     ],
-    boss: { id: 'war_god', name: '万界战神', power: 200000000, element: null, exp: 60000000, spirit_stone_range: [8000000, 20000000], role: 'boss', drop_table: 'boss_t9' },
+    boss: { id: 'war_god', name: '万界战神', power: 120000000, element: null, exp: 60000000, spirit_stone_range: [8000000, 20000000], role: 'boss', drop_table: 'boss_t9' },
   },
   // ===== T10 地图 =====
   {
@@ -303,22 +305,22 @@ export const MAPS: MapData[] = [
     realm_required: '飞升·大罗金仙', recommended_power: 198,
     element: null, description: '天道考验,唯有至强者方能通过',
     monsters: [
-      { id: 'dao_puppet', name: '天道傀儡', power: 150000000, element: null, exp: 15000000, spirit_stone_range: [2000000, 5000000], role: 'balanced', drop_table: 'common_t10' },
-      { id: 'rule_enforcer', name: '规则执行者', power: 200000000, element: null, exp: 20000000, spirit_stone_range: [2000000, 5000000], role: 'dps', drop_table: 'uncommon_t10' },
-      { id: 'fate_weaver', name: '命运织者', power: 250000000, element: null, exp: 25000000, spirit_stone_range: [5000000, 10000000], role: 'dps', drop_table: 'uncommon_t10' },
+      { id: 'dao_puppet', name: '天道傀儡', power: 75000000, element: null, exp: 15000000, spirit_stone_range: [2000000, 5000000], role: 'balanced', drop_table: 'common_t10' },
+      { id: 'rule_enforcer', name: '规则执行者', power: 100000000, element: null, exp: 20000000, spirit_stone_range: [2000000, 5000000], role: 'dps', drop_table: 'uncommon_t10' },
+      { id: 'fate_weaver', name: '命运织者', power: 125000000, element: null, exp: 25000000, spirit_stone_range: [5000000, 10000000], role: 'dps', drop_table: 'uncommon_t10' },
     ],
-    boss: { id: 'dao_avatar', name: '天道化身', power: 500000000, element: null, exp: 100000000, spirit_stone_range: [20000000, 50000000], role: 'boss', drop_table: 'boss_t10' },
+    boss: { id: 'dao_avatar', name: '天道化身', power: 250000000, element: null, exp: 100000000, spirit_stone_range: [20000000, 50000000], role: 'boss', drop_table: 'boss_t10' },
   },
   {
     id: 'eternal_peak', name: '永恒之巅', tier: 10,
     realm_required: '飞升·大罗金仙', recommended_power: 200,
     element: null, description: '万界之巅,游戏终极地图',
     monsters: [
-      { id: 'eternal_guardian', name: '永恒守卫', power: 200000000, element: 'metal', exp: 20000000, spirit_stone_range: [3000000, 8000000], role: 'balanced', drop_table: 'common_t10' },
-      { id: 'time_lord', name: '时间领主', power: 300000000, element: 'water', exp: 30000000, spirit_stone_range: [3000000, 8000000], role: 'dps', drop_table: 'uncommon_t10' },
-      { id: 'creation_god', name: '创世之灵', power: 400000000, element: null, exp: 40000000, spirit_stone_range: [8000000, 20000000], role: 'dps', drop_table: 'uncommon_t10' },
+      { id: 'eternal_guardian', name: '永恒守卫', power: 100000000, element: 'metal', exp: 20000000, spirit_stone_range: [3000000, 8000000], role: 'balanced', drop_table: 'common_t10' },
+      { id: 'time_lord', name: '时间领主', power: 150000000, element: 'water', exp: 30000000, spirit_stone_range: [3000000, 8000000], role: 'dps', drop_table: 'uncommon_t10' },
+      { id: 'creation_god', name: '创世之灵', power: 200000000, element: null, exp: 40000000, spirit_stone_range: [8000000, 20000000], role: 'dps', drop_table: 'uncommon_t10' },
     ],
-    boss: { id: 'eternal_one', name: '永恒之主', power: 800000000, element: null, exp: 200000000, spirit_stone_range: [50000000, 100000000], role: 'boss', drop_table: 'boss_t10' },
+    boss: { id: 'eternal_one', name: '永恒之主', power: 400000000, element: null, exp: 200000000, spirit_stone_range: [50000000, 100000000], role: 'boss', drop_table: 'boss_t10' },
   },
 ];
 
@@ -376,6 +378,21 @@ export function getRealmBonusAtLevel(tier: number, stage: number): RealmBonus {
   };
 }
 
+// ========== 功法槽位按境界解锁 ==========
+// 渐进式解锁: 练气 1+1+1 → 筑基 1+2+2 → 金丹 1+2+3 → 元婴+ 1+3+3
+export interface SkillSlotLimits {
+  active: number;   // 主修槽位数
+  divine: number;   // 神通槽位数
+  passive: number;  // 被动槽位数
+}
+
+export function getSkillSlotLimits(realmTier: number): SkillSlotLimits {
+  if (realmTier <= 1) return { active: 1, divine: 1, passive: 1 }; // 练气
+  if (realmTier === 2) return { active: 1, divine: 2, passive: 2 }; // 筑基
+  if (realmTier === 3) return { active: 1, divine: 2, passive: 3 }; // 金丹
+  return { active: 1, divine: 3, passive: 3 }; // 元婴+
+}
+
 // ========== 境界名格式化 ==========
 export function getRealmName(tier: number, stage: number): string {
   const t = REALM_TIERS.find(r => r.tier === tier);
@@ -392,10 +409,13 @@ export function getRealmName(tier: number, stage: number): string {
 }
 
 // ========== 修为需求公式 ==========
+// 练气期: 线性快速突破（爽感期）
+// 筑基+: 几何增长（平缓曲线，指数从 1.6 降至 1.4 避免后期断崖）
 export function getExpRequired(tier: number, stage: number): number {
   const t = REALM_TIERS.find(r => r.tier === tier);
   if (!t) return Infinity;
-  return Math.floor(100 * t.exp_multiplier * Math.pow(stage + 1, 1.6));
+  if (tier === 1) return Math.floor(50 * Math.pow(stage, 1.2));
+  return Math.floor(100 * t.exp_multiplier * Math.pow(stage + 1, 1.4));
 }
 
 // ========== 根据角色境界获取可用地图 ==========

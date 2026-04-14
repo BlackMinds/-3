@@ -56,7 +56,7 @@ export const BUILDINGS: BuildingDef[] = [
     icon: '宝',
     description: '汇聚四方灵脉,产出灵石。',
     maxLevel: 20,
-    output: { type: 'spirit_stone', base: 500, perLevelMul: 1.22 },
+    output: { type: 'spirit_stone', base: 800, perLevelMul: 1.22 },
     baseCost: 2000,
     costMul: 1.8,
     baseTime: 0,

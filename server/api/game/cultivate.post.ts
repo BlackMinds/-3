@@ -28,7 +28,8 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: `灵石不足，需要${totalCost}灵石` }
     }
 
-    const expGain = Math.floor(50 * char.realm_tier * hours * (1 + char.realm_stage * 0.1))
+    // 闭关修为基础系数: 50 → 80（前期 +60% 提速，配合聚灵阵/洞府加成更显著）
+    const expGain = Math.floor(80 * char.realm_tier * hours * (1 + char.realm_stage * 0.1))
 
     await pool.query(
       `UPDATE characters

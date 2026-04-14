@@ -287,9 +287,9 @@ export function getEnhanceCost(rarity: string, currentLevel: number): number {
 }
 
 export function getEnhanceSuccessRate(nextLevel: number): number {
-  if (nextLevel <= 5) return 1.0;
-  if (nextLevel === 6) return 0.80;
-  if (nextLevel === 7) return 0.70;
+  // +6 改为必成（降低前期强化挫败感）
+  if (nextLevel <= 6) return 1.0;
+  if (nextLevel === 7) return 0.75;
   if (nextLevel === 8) return 0.55;
   if (nextLevel === 9) return 0.40;
   if (nextLevel === 10) return 0.25;

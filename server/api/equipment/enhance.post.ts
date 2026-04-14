@@ -54,18 +54,17 @@ export default defineEventHandler(async (event) => {
     updateSectDailyTask(charId, 'enhance', 1)
     updateSectWeeklyTaskByCharId(charId, 'weekly_enhance', 1)
 
-    // 成功率: +1~+5 必成功, +6起有失败率
+    // 成功率: +1~+6 必成功, +7起有失败率（与 equipData.ts:getEnhanceSuccessRate 保持同步）
     const nextLevel = currentLevel + 1
     let successRate = 1.0
-    if (nextLevel === 6) successRate = 0.80
-    else if (nextLevel === 7) successRate = 0.70
+    if (nextLevel === 7) successRate = 0.75
     else if (nextLevel === 8) successRate = 0.55
     else if (nextLevel === 9) successRate = 0.40
     else if (nextLevel === 10) successRate = 0.25
 
-    // 强化大师符: +7以下强化必成
+    // 强化大师符: +7以下强化必成（仅 +7 触发，+6 已默认必成）
     let usedMaster = false
-    if (nextLevel <= 6 && successRate < 1.0) {
+    if (nextLevel === 7 && successRate < 1.0) {
       const { rows: masterRows } = await pool.query(
         "SELECT id, count FROM character_pills WHERE character_id = $1 AND pill_id = 'enhance_guarantee' AND count > 0 LIMIT 1",
         [charId]
@@ -93,8 +92,8 @@ export default defineEventHandler(async (event) => {
         usedProtect = true
       }
 
-      // 失败退一级 (不会低于 +5)，使用保护符则不退级
-      const fallLevel = usedProtect ? currentLevel : Math.max(5, currentLevel - 1)
+      // 失败退一级 (不会低于 +6)，使用保护符则不退级
+      const fallLevel = usedProtect ? currentLevel : Math.max(6, currentLevel - 1)
       await pool.query(
         'UPDATE character_equipment SET enhance_level = $1 WHERE id = $2',
         [fallLevel, equip_id]

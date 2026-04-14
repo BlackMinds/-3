@@ -96,10 +96,11 @@ export const useGameStore = defineStore('game', () => {
   const levelExpRequired = computed(() => {
     const lv = charLevel.value
     if (lv >= 200) return Infinity
-    if (lv <= 30) return Math.floor(80 * Math.pow(lv, 1.3))
-    if (lv <= 80) return Math.floor(120 * Math.pow(lv, 1.4))
-    if (lv <= 150) return Math.floor(200 * Math.pow(lv, 1.45))
-    return Math.floor(350 * Math.pow(lv, 1.5))
+    // 经验曲线整体降档: 前30级 -33%, 150+ 段指数从 1.5 降至 1.48 让 Lv.200 可达
+    if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
+    if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
+    if (lv <= 150) return Math.floor(180 * Math.pow(lv, 1.42))
+    return Math.floor(320 * Math.pow(lv, 1.48))
   })
 
   const levelExpPercent = computed(() => {

@@ -86,7 +86,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   // 基础 (宗门1级)
   { key: 'sect_exp_pill',      name: '宗门聚灵丹',   description: '修为+2000',              cost: 1000,  weeklyLimit: 5,  requiredSectLevel: 1, category: 'basic', effect: { type: 'cultivation_exp', value: 2000 } },
   { key: 'sect_stone_bag',     name: '宗门灵石袋',   description: '获得50,000灵石',          cost: 2000,  weeklyLimit: 3,  requiredSectLevel: 1, category: 'basic', effect: { type: 'spirit_stone', value: 50000 } },
-  { key: 'enhance_protect',    name: '强化保护符',   description: '强化失败不退级(一次性)',    cost: 3000,  weeklyLimit: 2,  requiredSectLevel: 1, category: 'basic', effect: { type: 'enhance_protect', value: 1 } },
+  { key: 'enhance_protect',    name: '强化保护符',   description: '强化失败不退级(一次性)',    cost: 2000,  weeklyLimit: 3,  requiredSectLevel: 1, category: 'basic', effect: { type: 'enhance_protect', value: 1 } },
   { key: 'herb_seed_pack',     name: '灵草种子礼包', description: '随机3种灵草(蓝品质+)',     cost: 1500,  weeklyLimit: 3,  requiredSectLevel: 1, category: 'basic', effect: { type: 'herb_pack', minQuality: 'blue', count: 3 } },
 
   // 进阶 (宗门3级)
@@ -222,7 +222,7 @@ export const ROLE_CONTRIBUTION_REQ: Record<string, number> = {
 export const SECT_CREATE_COST = 100000;
 export const SECT_CREATE_MIN_REALM_TIER = 3;  // 金丹
 export const SECT_CREATE_MIN_LEVEL = 50;
-export const SECT_JOIN_MIN_LEVEL = 10;
+export const SECT_JOIN_MIN_LEVEL = 15; // 10 → 15: 让玩家先完整体验装备/功法系统再接入宗门
 export const SECT_QUIT_COOLDOWN_HOURS = 24;
 
 // 每日捐献上限 = 100,000 * 宗门等级
@@ -230,7 +230,8 @@ export function getDailyDonateLimit(sectLevel: number): number {
   return 100000 * sectLevel;
 }
 
-// 签到贡献 = 100 + 宗门等级 * 20
-export function getSignInContribution(sectLevel: number): number {
-  return 100 + sectLevel * 20;
+// 签到贡献 = 100 + 宗门等级 * 20 + 角色境界 * 30
+// 高境界玩家给更多贡献（鼓励长线角色）
+export function getSignInContribution(sectLevel: number, realmTier: number = 0): number {
+  return 100 + sectLevel * 20 + realmTier * 30;
 }

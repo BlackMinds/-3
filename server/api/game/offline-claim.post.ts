@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
     const battlesPerMin = 12
     const monstersPerBattle = 3
     const totalKills = Math.floor(offlineMin * battlesPerMin) * monstersPerBattle
-    const efficiency = 0.70
+    const efficiency = 0.85 // 离线效率 70% → 85%
 
     const expGained = Math.floor(totalKills * mapData.avgExp * efficiency)
     const stoneGained = Math.floor(totalKills * mapData.avgStone * efficiency)

@@ -212,8 +212,9 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const rate = (isBoss ? 1.0 : 0.20) * luckMul
   if (Math.random() >= rate) return null
   const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
+  // T1-T2 品质权重上调（前期装备更新频繁带来爽感）
   const weights: Record<number, number[]> = {
-    1: [60,30,9,1,0,0], 2: [40,35,18,6,1,0], 3: [20,35,25,15,4.5,0.5],
+    1: [40,40,17,3,0,0], 2: [30,40,22,7,1,0], 3: [20,35,25,15,4.5,0.5],
     4: [5,25,30,25,13,2], 5: [0,10,30,35,22,3], 6: [0,0,20,40,35,5],
     7: [0,0,10,35,45,10], 8: [0,0,5,25,55,15], 9: [0,0,0,20,60,20], 10: [0,0,0,10,60,30],
   }
@@ -541,7 +542,9 @@ export default defineEventHandler(async (event) => {
     // 应用经验加成
     const expMul = 1 + (expBonusPercent || 0) / 100
     const totalExp = Math.floor(result.totalExp * expMul)
-    const totalStone = result.totalStone
+    // 灵石产出: T1-T3 地图 +20%（新手爽感期）
+    const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
+    const totalStone = Math.floor(result.totalStone * stoneTierBonus)
     const levelExp = totalExp
 
     // 掉落生成

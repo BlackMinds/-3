@@ -109,7 +109,7 @@ function randFloat(min: number, max: number): number {
 
 // ========== 怪物技能系统 ==========
 
-interface MonsterSkillDef {
+export interface MonsterSkillDef {
   name: string;
   multiplier: number;
   cdTurns: number;
@@ -122,14 +122,14 @@ interface MonsterSkillDef {
   description: string;
 }
 
-interface MonsterSkillState {
+export interface MonsterSkillState {
   skills: MonsterSkillDef[];
   cds: number[];
   berserkTriggered: boolean;
   bossEnrageTriggered: boolean;
 }
 
-function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDef[] {
+export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDef[] {
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
   const elem = template.element;
   const isBoss = template.role === 'boss';
@@ -251,12 +251,12 @@ export function buildMonsterSkillDescriptions(template: MonsterTemplate): string
   return skills.map(s => `${s.name}: ${s.description}`);
 }
 
-function initMonsterSkillState(template: MonsterTemplate): MonsterSkillState {
+export function initMonsterSkillState(template: MonsterTemplate): MonsterSkillState {
   const skills = buildMonsterSkillPool(template);
   return { skills, cds: skills.map(() => 0), berserkTriggered: false, bossEnrageTriggered: false };
 }
 
-function monsterChooseSkill(state: MonsterSkillState, monsterHp: number, monsterMaxHp: number, isBoss: boolean): MonsterSkillDef | null {
+export function monsterChooseSkill(state: MonsterSkillState, monsterHp: number, monsterMaxHp: number, isBoss: boolean): MonsterSkillDef | null {
   const hpRatio = monsterHp / monsterMaxHp;
   if (hpRatio < 0.40) {
     let bestHeal: { skill: MonsterSkillDef; index: number } | null = null;
@@ -283,7 +283,7 @@ function monsterChooseSkill(state: MonsterSkillState, monsterHp: number, monster
   return null;
 }
 
-function tickMonsterCds(state: MonsterSkillState) {
+export function tickMonsterCds(state: MonsterSkillState) {
   for (let i = 0; i < state.cds.length; i++) { if (state.cds[i] > 0) state.cds[i]--; }
 }
 
@@ -347,7 +347,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
 
 // ========== 伤害计算 ==========
 
-function calculateDamage(
+export function calculateDamage(
   attacker: BattlerStats, defender: BattlerStats,
   skillMultiplier: number = 1.0, skillElement: string | null = null,
   ignoreDef: number = 0, ignoreDodge: boolean = false

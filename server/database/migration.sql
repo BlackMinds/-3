@@ -375,3 +375,102 @@ CREATE TABLE IF NOT EXISTS character_achievements (
   claimed_at TIMESTAMP DEFAULT NULL,
   UNIQUE (character_id, achievement_id)
 );
+
+-- ========================================
+-- 秘境组队系统
+-- ========================================
+
+-- 角色增加秘境相关字段
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS realm_points INT DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_daily_count SMALLINT DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_daily_date DATE DEFAULT NULL;
+
+-- 队伍房间表
+CREATE TABLE IF NOT EXISTS team_rooms (
+  id SERIAL PRIMARY KEY,
+  leader_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  secret_realm_id VARCHAR(10) NOT NULL,
+  difficulty SMALLINT NOT NULL DEFAULT 1,
+  status VARCHAR(20) NOT NULL DEFAULT 'waiting',
+  max_members SMALLINT NOT NULL DEFAULT 4,
+  current_members SMALLINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  started_at TIMESTAMP DEFAULT NULL,
+  finished_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_rooms_lobby ON team_rooms (status, secret_realm_id, difficulty, created_at DESC);
+
+-- 队伍成员表
+CREATE TABLE IF NOT EXISTS team_members (
+  id SERIAL PRIMARY KEY,
+  room_id INT NOT NULL REFERENCES team_rooms(id) ON DELETE CASCADE,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  is_ready BOOLEAN NOT NULL DEFAULT FALSE,
+  is_leader BOOLEAN NOT NULL DEFAULT FALSE,
+  join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (room_id, character_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_members_char ON team_members (character_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_room ON team_members (room_id);
+
+-- 秘境战斗记录
+CREATE TABLE IF NOT EXISTS secret_realm_battles (
+  id SERIAL PRIMARY KEY,
+  room_id INT NOT NULL REFERENCES team_rooms(id),
+  secret_realm_id VARCHAR(10) NOT NULL,
+  difficulty SMALLINT NOT NULL,
+  result VARCHAR(10),
+  waves_cleared SMALLINT NOT NULL DEFAULT 0,
+  total_turns INT NOT NULL DEFAULT 0,
+  rating CHAR(1) DEFAULT NULL,
+  battle_log JSONB,
+  started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  finished_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_srb_room ON secret_realm_battles (room_id);
+
+-- 秘境个人贡献
+CREATE TABLE IF NOT EXISTS secret_realm_contributions (
+  id SERIAL PRIMARY KEY,
+  battle_id INT NOT NULL REFERENCES secret_realm_battles(id) ON DELETE CASCADE,
+  character_id INT NOT NULL REFERENCES characters(id),
+  damage_dealt BIGINT NOT NULL DEFAULT 0,
+  healing_done BIGINT NOT NULL DEFAULT 0,
+  damage_taken BIGINT NOT NULL DEFAULT 0,
+  contribution REAL NOT NULL DEFAULT 0,
+  UNIQUE (battle_id, character_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_src_char ON secret_realm_contributions (character_id);
+
+-- 秘境奖励记录
+CREATE TABLE IF NOT EXISTS secret_realm_rewards (
+  id SERIAL PRIMARY KEY,
+  battle_id INT NOT NULL REFERENCES secret_realm_battles(id) ON DELETE CASCADE,
+  character_id INT NOT NULL REFERENCES characters(id),
+  spirit_stone BIGINT NOT NULL DEFAULT 0,
+  exp_gained BIGINT NOT NULL DEFAULT 0,
+  level_exp BIGINT NOT NULL DEFAULT 0,
+  realm_points INT NOT NULL DEFAULT 0,
+  equipment_ids JSONB,
+  extra_drops JSONB,
+  claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (battle_id, character_id)
+);
+
+-- 秘境通关记录（首通判定）
+CREATE TABLE IF NOT EXISTS secret_realm_clears (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  secret_realm_id VARCHAR(10) NOT NULL,
+  difficulty SMALLINT NOT NULL,
+  first_clear_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  best_rating CHAR(1) DEFAULT NULL,
+  clear_count INT NOT NULL DEFAULT 1,
+  UNIQUE (character_id, secret_realm_id, difficulty)
+);
+
+CREATE INDEX IF NOT EXISTS idx_src_clear_char ON secret_realm_clears (character_id);

@@ -1,0 +1,299 @@
+// 秘境组队系统静态数据
+// MVP 阶段：仅实现 SR-1 / SR-2 / SR-3，普通难度
+
+import type { MonsterTemplate } from './battleEngine'
+
+export interface SecretRealmWave {
+  /** 波次内的怪物模板（实际数量由 runtime 生成器决定） */
+  monsterPool: MonsterTemplate[]
+  /** 本波怪物数量 */
+  monsterCount: number
+  /** 是否 Boss 波 */
+  isBoss?: boolean
+}
+
+export interface SecretRealmDifficultyConfig {
+  /** 难度显示名 */
+  name: string
+  /** 怪物战力倍率 */
+  powerMul: number
+  /** 奖励倍率 */
+  rewardMul: number
+  /** 波次列表 */
+  waves: SecretRealmWave[]
+  /** 最大回合数 = 每波回合上限 × 波次数 */
+  turnsPerWave: number
+  /** 基础秘境积分奖励（满贡献值） */
+  basePoints: number
+}
+
+export interface SecretRealmDef {
+  id: string
+  name: string
+  /** 境界要求 (realm_tier) */
+  reqRealmTier: number
+  /** 等级要求 */
+  reqLevel: number
+  /** 元素主题 */
+  element: string | null
+  /** 简介 */
+  description: string
+  /** 对应装备/掉落的 tier */
+  dropTier: number
+  difficulties: Record<1 | 2 | 3, SecretRealmDifficultyConfig>
+}
+
+// ==================== 辅助：按 tier 调整战力 ====================
+function monster(name: string, power: number, element: string | null, role: string, tier: number): MonsterTemplate {
+  return {
+    name,
+    power,
+    element,
+    role,
+    exp: Math.floor(power * 0.5),
+    stone_min: Math.floor(power * 0.02),
+    stone_max: Math.floor(power * 0.08),
+    drop_table: `common_t${tier}`,
+  }
+}
+
+function boss(name: string, power: number, element: string | null, tier: number): MonsterTemplate {
+  return {
+    name,
+    power,
+    element,
+    role: 'boss',
+    exp: Math.floor(power * 2),
+    stone_min: Math.floor(power * 0.1),
+    stone_max: Math.floor(power * 0.25),
+    drop_table: `boss_t${tier}`,
+  }
+}
+
+// ==================== SR-1 灵草谷（筑基，T2） ====================
+// drop_table tier 降一档用 T1 技能池，避免新手被高倍率 T2+ 技能压制
+// Boss 也使用 T1，禁用"首领恢复"等让战斗僵持的回血技能
+const SR1_MONSTERS = [
+  monster('灵草妖', 500, 'wood', 'balanced', 1),
+  monster('毒藤', 650, 'wood', 'dps', 1),
+  monster('青木傀儡', 800, 'wood', 'tank', 1),
+]
+const SR1_ELITE = [
+  monster('木灵护卫', 1100, 'wood', 'balanced', 1),
+  monster('怒藤勇者', 1300, 'wood', 'dps', 1),
+]
+const SR1_BOSS = boss('千年藤王', 2200, 'wood', 1)
+
+// ==================== SR-2 烈焰窟（金丹，T4） ====================
+// 普通难度统一用 t1 技能池 + 去除 tank role（防止回血拖时间）
+const SR2_MONSTERS = [
+  monster('炎鼠', 6000, 'fire', 'speed', 1),
+  monster('熔岩怪', 8000, 'fire', 'balanced', 1),
+  monster('赤鳞蜥', 7000, 'fire', 'balanced', 1),
+]
+const SR2_ELITE = [
+  monster('焚烬士', 12000, 'fire', 'dps', 1),
+  monster('火灵守卫', 13000, 'fire', 'balanced', 1),
+]
+const SR2_BOSS = boss('赤焰魔君', 30000, 'fire', 1)
+
+// ==================== SR-3 幽冥渊（元婴，T5） ====================
+// 统一用 t1 技能池（禁用"连续撕咬"等 T2+ 多段技能，避免数值失控）
+const SR3_MONSTERS = [
+  monster('水鬼', 18000, 'water', 'balanced', 1),
+  monster('深海巨蛟', 22000, 'water', 'balanced', 1),
+  monster('幽灵鱼', 20000, 'water', 'dps', 1),
+]
+const SR3_ELITE = [
+  monster('冥卫', 35000, 'water', 'dps', 1),
+  monster('冰魄师', 38000, 'water', 'balanced', 1),
+]
+const SR3_BOSS = boss('幽冥水帝', 85000, 'water', 1)
+
+// ==================== 秘境定义 ====================
+export const SECRET_REALMS: Record<string, SecretRealmDef> = {
+  'SR-1': {
+    id: 'SR-1',
+    name: '灵草谷',
+    reqRealmTier: 2, // 筑基
+    reqLevel: 15,
+    element: 'wood',
+    description: '灵草异变，妖兽横行。木灵之力在此汇聚。',
+    dropTier: 2,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 100,
+        waves: [
+          { monsterPool: SR1_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR1_ELITE, monsterCount: 2 },
+          { monsterPool: [SR1_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 250,
+        waves: [
+          { monsterPool: SR1_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR1_ELITE, monsterCount: 3 },
+          { monsterPool: [SR1_BOSS, ...SR1_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR1_ELITE, monsterCount: 3 },
+          { monsterPool: [SR1_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 500,
+        waves: [
+          { monsterPool: SR1_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR1_ELITE, monsterCount: 3 },
+          { monsterPool: [SR1_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR1_ELITE, monsterCount: 4 },
+          { monsterPool: [SR1_BOSS, SR1_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR1_ELITE, monsterCount: 4 },
+          { monsterPool: [SR1_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-2': {
+    id: 'SR-2',
+    name: '烈焰窟',
+    reqRealmTier: 3, // 金丹
+    reqLevel: 40,
+    element: 'fire',
+    description: '上古炼器遗址，火灵暴走。烈焰肆虐。',
+    dropTier: 4,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 200,
+        waves: [
+          { monsterPool: SR2_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR2_ELITE, monsterCount: 2 },
+          { monsterPool: [SR2_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 500,
+        waves: [
+          { monsterPool: SR2_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR2_ELITE, monsterCount: 3 },
+          { monsterPool: [SR2_BOSS, ...SR2_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR2_ELITE, monsterCount: 3 },
+          { monsterPool: [SR2_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 1000,
+        waves: [
+          { monsterPool: SR2_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR2_ELITE, monsterCount: 3 },
+          { monsterPool: [SR2_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR2_ELITE, monsterCount: 4 },
+          { monsterPool: [SR2_BOSS, SR2_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR2_ELITE, monsterCount: 4 },
+          { monsterPool: [SR2_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-3': {
+    id: 'SR-3',
+    name: '幽冥渊',
+    reqRealmTier: 4, // 元婴
+    reqLevel: 65,
+    element: 'water',
+    description: '深海秘境，魂魄侵蚀。阴寒彻骨。',
+    dropTier: 5,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 350,
+        waves: [
+          { monsterPool: SR3_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR3_ELITE, monsterCount: 2 },
+          { monsterPool: [SR3_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 875,
+        waves: [
+          { monsterPool: SR3_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR3_ELITE, monsterCount: 3 },
+          { monsterPool: [SR3_BOSS, ...SR3_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR3_ELITE, monsterCount: 3 },
+          { monsterPool: [SR3_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 1750,
+        waves: [
+          { monsterPool: SR3_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR3_ELITE, monsterCount: 3 },
+          { monsterPool: [SR3_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR3_ELITE, monsterCount: 4 },
+          { monsterPool: [SR3_BOSS, SR3_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR3_ELITE, monsterCount: 4 },
+          { monsterPool: [SR3_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+}
+
+// ==================== 工具函数 ====================
+
+export function getSecretRealm(id: string): SecretRealmDef | null {
+  return SECRET_REALMS[id] || null
+}
+
+/** 每日次数：按境界大阶给 */
+export function getDailyCountByRealm(realmTier: number): number {
+  if (realmTier <= 3) return 2  // 筑基~金丹
+  if (realmTier <= 5) return 3  // 元婴~化神
+  if (realmTier <= 7) return 4  // 渡劫~大乘
+  return 5                       // 飞升
+}
+
+/** 放大怪物 template 的战力（用于难度倍率） */
+export function scaleMonsterTemplate(m: MonsterTemplate, mul: number): MonsterTemplate {
+  return {
+    ...m,
+    power: Math.floor(m.power * mul),
+    exp: Math.floor(m.exp * mul),
+    stone_min: Math.floor(m.stone_min * mul),
+    stone_max: Math.floor(m.stone_max * mul),
+  }
+}

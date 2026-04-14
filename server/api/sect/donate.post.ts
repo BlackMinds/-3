@@ -22,7 +22,8 @@ export default defineEventHandler(async (event) => {
     if (canDonate <= 0) return { code: 400, message: '今日捐献已达上限' }
 
     const actualAmount = Math.min(amount, canDonate)
-    const contribution = Math.floor(actualAmount * 0.5)
+    // 捐献贡献换算: 0.5 → 0.3，防止富豪玩家秒刷满贡献
+    const contribution = Math.floor(actualAmount * 0.3)
 
     await pool.query('UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2', [actualAmount, char.id])
     await pool.query('UPDATE sects SET fund = fund + $1 WHERE id = $2', [actualAmount, membership.sect_id])

@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
       : null
     if (lastSign === today) return { code: 400, message: '今日已签到' }
 
-    const contribution = getSignInContribution(membership.sect_level)
+    const contribution = getSignInContribution(membership.sect_level, char.realm_tier || 0)
 
     await pool.query(
       'UPDATE sect_members SET contribution = contribution + $1, weekly_contribution = weekly_contribution + $2, last_sign_date = $3 WHERE sect_id = $4 AND character_id = $5',
