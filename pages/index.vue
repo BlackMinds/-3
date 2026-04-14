@@ -3200,8 +3200,8 @@ const secondaryStats = computed(() => {
   return [
     { label: '会心率', value: ((Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100).toFixed(1) + '%' },
     { label: '会心伤害', value: ((Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100).toFixed(0) + '%' },
-    { label: '闪避率', value: ((Number(c.dodge) * 100) + rb.dodge * 100).toFixed(1) + '%' },
-    { label: '吸血', value: ((Number(c.lifesteal) * 100) + wb.LIFESTEAL_flat).toFixed(1) + '%' },
+    { label: '闪避率', value: ((Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100).toFixed(1) + '%' },
+    { label: '吸血', value: ((Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat).toFixed(1) + '%' },
     { label: '神识', value: String((c.spirit || 0) + eb.SPIRIT + spiritBonus) },
     { label: '破甲', value: xb.ARMOR_PEN.toFixed(1) + '%' },
     { label: '命中', value: xb.ACCURACY.toFixed(1) + '%' },
