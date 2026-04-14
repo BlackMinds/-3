@@ -3,6 +3,8 @@ import {
   DAILY_TASK_TYPES, WEEKLY_TASK_TYPES,
 } from '~/server/engine/sectData'
 
+import { rand } from '~/server/utils/random'
+
 // ===== 工具函数 =====
 export async function getCharByUserId(userId: number) {
   const pool = getPool()
@@ -29,10 +31,6 @@ export function weekStartStr() {
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   const monday = new Date(d.setDate(diff))
   return monday.toISOString().slice(0, 10)
-}
-
-export function rand(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
 // 生成每日任务(内部调用)

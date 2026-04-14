@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
-import { getCharByUserId, rand, weekStartStr } from '~/server/utils/sect'
+import { getCharByUserId, weekStartStr } from '~/server/utils/sect'
+import { rand } from '~/server/utils/random'
 import { WEEKLY_TASK_TYPES } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
 

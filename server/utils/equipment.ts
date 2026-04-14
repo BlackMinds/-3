@@ -1,8 +1,6 @@
 import { getPool } from '~/server/database/db'
 
-export function rand(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min
-}
+import { rand } from '~/server/utils/random'
 
 export async function consumeSpecialItem(charId: number, pillId: string): Promise<boolean> {
   const pool = getPool()

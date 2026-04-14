@@ -710,6 +710,7 @@ export default defineEventHandler(async (event) => {
         stoneGained: totalStone,
         levelExpGained: levelExp,
         monsterNames,
+        monstersMaxHp: monsterList.map(m => m.stats.maxHp),
         monsterInfo,
         logs: result.logs,
         drops: allDrops.map(d => d.type === 'equipment' ? d.data.name : (d.type === 'skill' ? d.data : '')).filter(Boolean),

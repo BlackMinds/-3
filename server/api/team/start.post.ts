@@ -399,14 +399,6 @@ export default defineEventHandler(async (event) => {
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [battleId, c.characterId, c.damageDealt, c.healingDone, c.damageTaken, c.contribution]
         )
-        await client.query(
-          `INSERT INTO secret_realm_rewards (battle_id, character_id, spirit_stone, exp_gained, level_exp, realm_points, equipment_ids, extra_drops)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [battleId, c.characterId, myStone, myExp, myExp, myPoints,
-            JSON.stringify(equipIds),
-            JSON.stringify({ herbs: herbList, skill_pages: pageList })]
-        )
-
         // --- 升级检查（同 battle/fight.post.ts 的逻辑） ---
         let newLevel = member?.level || 1
         let newLevelExp = Number(member?.level_exp || 0) + myExp
@@ -419,6 +411,14 @@ export default defineEventHandler(async (event) => {
           if (newLevelExp >= reqExp) { newLevelExp -= reqExp; newLevel++ }
           else break
         }
+
+        await client.query(
+          `INSERT INTO secret_realm_rewards (battle_id, character_id, spirit_stone, exp_gained, level_exp, realm_points, equipment_ids, extra_drops)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [battleId, c.characterId, myStone, myExp, newLevelExp, myPoints,
+            JSON.stringify(equipIds),
+            JSON.stringify({ herbs: herbList, skill_pages: pageList })]
+        )
 
         // 更新角色（含等级）
         await client.query(

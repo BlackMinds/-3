@@ -159,7 +159,7 @@
               <div v-for="(name, i) in gameStore.waveMonsterNames" :key="i" class="wave-monster-cell">
                 <div class="wave-cell-name">{{ name }}</div>
                 <div class="wave-cell-bar">
-                  <div class="wave-cell-fill" :style="{ width: (i === 0 ? monsterHpPercent : 100) + '%' }"></div>
+                  <div class="wave-cell-fill" :style="{ width: (gameStore.waveMonsterMaxHps[i] ? Math.max(0, gameStore.waveMonsterHps[i] / gameStore.waveMonsterMaxHps[i] * 100) : 100) + '%' }"></div>
                 </div>
               </div>
             </div>

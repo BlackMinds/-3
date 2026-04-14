@@ -415,6 +415,55 @@ CREATE TABLE IF NOT EXISTS team_members (
 CREATE INDEX IF NOT EXISTS idx_team_members_char ON team_members (character_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_room ON team_members (room_id);
 
+-- 秘境战斗记录表
+CREATE TABLE IF NOT EXISTS secret_realm_battles (
+  id SERIAL PRIMARY KEY,
+  room_id INT NOT NULL REFERENCES team_rooms(id) ON DELETE CASCADE,
+  secret_realm_id VARCHAR(10) NOT NULL,
+  difficulty SMALLINT NOT NULL,
+  result VARCHAR(10) NOT NULL,
+  waves_cleared SMALLINT NOT NULL DEFAULT 0,
+  total_turns SMALLINT NOT NULL DEFAULT 0,
+  rating VARCHAR(2) DEFAULT NULL,
+  battle_log JSONB DEFAULT NULL,
+  finished_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 秘境个人奖励表
+CREATE TABLE IF NOT EXISTS secret_realm_rewards (
+  id SERIAL PRIMARY KEY,
+  battle_id INT NOT NULL REFERENCES secret_realm_battles(id) ON DELETE CASCADE,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  spirit_stone INT NOT NULL DEFAULT 0,
+  exp_gained BIGINT NOT NULL DEFAULT 0,
+  level_exp BIGINT NOT NULL DEFAULT 0,
+  realm_points INT NOT NULL DEFAULT 0,
+  equipment_ids JSONB DEFAULT '[]',
+  extra_drops JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 秘境贡献表
+CREATE TABLE IF NOT EXISTS secret_realm_contributions (
+  id SERIAL PRIMARY KEY,
+  battle_id INT NOT NULL REFERENCES secret_realm_battles(id) ON DELETE CASCADE,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  damage_dealt BIGINT NOT NULL DEFAULT 0,
+  healing_done BIGINT NOT NULL DEFAULT 0,
+  damage_taken BIGINT NOT NULL DEFAULT 0,
+  contribution INT NOT NULL DEFAULT 0
+);
+
+-- 秘境通关记录表
+CREATE TABLE IF NOT EXISTS secret_realm_clears (
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  secret_realm_id VARCHAR(10) NOT NULL,
+  difficulty SMALLINT NOT NULL,
+  best_rating VARCHAR(2) DEFAULT NULL,
+  clear_count INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (character_id, secret_realm_id, difficulty)
+);
+
 -- 秘境战斗记录
 CREATE TABLE IF NOT EXISTS secret_realm_battles (
   id SERIAL PRIMARY KEY,

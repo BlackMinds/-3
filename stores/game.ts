@@ -25,6 +25,8 @@ export const useGameStore = defineStore('game', () => {
   const displayMonsterMaxHp = ref(0)
   const currentMonsterInfo = ref<MonsterBattleInfo | null>(null)
   const waveMonsterNames = ref<string[]>([])
+  const waveMonsterHps = ref<number[]>([])
+  const waveMonsterMaxHps = ref<number[]>([])
   const inFight = ref(false)
 
   // 死亡冷却
@@ -218,6 +220,8 @@ export const useGameStore = defineStore('game', () => {
       }
 
       waveMonsterNames.value = data.monsterNames || []
+      waveMonsterMaxHps.value = (data.monsterNames || []).map((_: string, i: number) => data.monstersMaxHp?.[i] ?? (data.monsterInfo?.maxHp ?? 0))
+      waveMonsterHps.value = [...waveMonsterMaxHps.value]
       currentMonsterInfo.value = data.monsterInfo || null
       displayPlayerHp.value = character.value!.max_hp
       displayPlayerMaxHp.value = character.value!.max_hp
@@ -244,6 +248,7 @@ export const useGameStore = defineStore('game', () => {
     if (log.playerMaxHp !== undefined) displayPlayerMaxHp.value = log.playerMaxHp
     if (log.monsterHp !== undefined) displayMonsterHp.value = Math.max(0, log.monsterHp)
     if (log.monsterMaxHp !== undefined) displayMonsterMaxHp.value = log.monsterMaxHp
+    if (log.monstersHp !== undefined) waveMonsterHps.value = log.monstersHp.map(h => Math.max(0, h))
   }
 
   function drainLogQueue() {
@@ -385,7 +390,7 @@ export const useGameStore = defineStore('game', () => {
     character, loaded, battleLogs, isBattling, currentMapId, isPaused,
     killCount, sessionExp, sessionStone, sessionDrops, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
-    currentMonsterInfo, waveMonsterNames, inFight,
+    currentMonsterInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
     loadGameData, changeMap, startBattle, stopBattle, togglePause, clearLogs, addLog, flushSave, forceBreakthrough,

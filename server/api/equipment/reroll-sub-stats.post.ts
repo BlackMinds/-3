@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
-import { getCharId, consumeSpecialItem, SUB_STAT_POOL, rand } from '~/server/utils/equipment'
+import { getCharId, consumeSpecialItem, SUB_STAT_POOL } from '~/server/utils/equipment'
+import { rand } from '~/server/utils/random'
 
 export default defineEventHandler(async (event) => {
   try {

@@ -31,6 +31,7 @@ export interface BattleLogEntry {
   playerMaxHp?: number;
   monsterHp?: number;
   monsterMaxHp?: number;
+  monstersHp?: number[];
 }
 
 export interface MonsterTemplate {
@@ -534,7 +535,7 @@ export function runWaveBattle(
 
   function snap() {
     const t = monsters.find(m => m.alive);
-    return { playerHp: Math.max(0, player.hp), playerMaxHp: player.maxHp, monsterHp: t ? Math.max(0, t.stats.hp) : 0, monsterMaxHp: t ? t.stats.maxHp : 0 };
+    return { playerHp: Math.max(0, player.hp), playerMaxHp: player.maxHp, monsterHp: t ? Math.max(0, t.stats.hp) : 0, monsterMaxHp: t ? t.stats.maxHp : 0, monstersHp: monsters.map(m => m.alive ? Math.max(0, m.stats.hp) : 0) };
   }
 
   // 怪物攻击逻辑(提取为函数,先后手复用)
