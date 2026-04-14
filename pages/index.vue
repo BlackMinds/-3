@@ -3142,7 +3142,7 @@ const mainStats = computed(() => {
   const atkBonus = (p ? Math.floor(c.atk * p.atkPercent / 100) : 0) + eb.ATK + weaponAtkBonus + lb.atk + realmAtkBonus;
   const defBonus = (p ? Math.floor(c.def * p.defPercent / 100) : 0) + eb.DEF + lb.def + realmDefBonus;
   const hpBonus = (p ? Math.floor(c.max_hp * p.hpPercent / 100) : 0) + eb.HP + lb.hp + realmHpBonus;
-  const spdBonus = eb.SPD + weaponSpdBonus + lb.spd + realmSpdBonus;
+  const spdBonus = (p ? Math.floor(c.spd * p.spdPercent / 100) : 0) + eb.SPD + weaponSpdBonus + lb.spd + realmSpdBonus;
   return [
     { label: '气血', value: formatNum(c.max_hp + hpBonus), bonus: hpBonus },
     { label: '攻击', value: formatNum(c.atk + atkBonus), bonus: atkBonus },
