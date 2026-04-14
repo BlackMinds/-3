@@ -322,23 +322,29 @@ export const useGameStore = defineStore('game', () => {
     if (!character.value.realm_tier) character.value.realm_tier = 1
     if (!character.value.realm_stage) character.value.realm_stage = 1
 
-    const req = expRequired.value
-    if (character.value.cultivation_exp >= req) {
-      character.value.cultivation_exp -= req
+    let breakthroughs = 0
+    while (true) {
       const t = REALM_TIERS.find(r => r.tier === character.value!.realm_tier)
-      if (!t) return
+      if (!t) break
+      const req = getExpRequired(character.value.realm_tier, character.value.realm_stage)
+      if (character.value.cultivation_exp < req) break
+      // 飞升末阶不再突破
+      if (character.value.realm_tier === 8 && character.value.realm_stage >= t.stages) break
 
+      character.value.cultivation_exp -= req
+      breakthroughs++
       if (character.value.realm_stage >= t.stages) {
         if (character.value.realm_tier < 8) {
           character.value.realm_tier++
           character.value.realm_stage = 1
-        }
+        } else break
       } else {
         character.value.realm_stage++
       }
+    }
 
-      addLog(0, `突破成功！你已晋升为【${realmName.value}】`, 'system')
-
+    if (breakthroughs > 0) {
+      addLog(0, `突破 ${breakthroughs} 次！当前境界：【${realmName.value}】`, 'system')
       fetchApi('/game/update-character', {
         method: 'POST',
         body: {

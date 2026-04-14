@@ -9,6 +9,7 @@ import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/e
 import { getCharacterByUserId, ensureDailyReset, getRoomDetail } from '~/server/utils/team'
 import { generateSecretRealmDrops, distributeEquipments } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { applyCultivationExp } from '~/server/utils/realm'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -420,19 +421,25 @@ export default defineEventHandler(async (event) => {
             JSON.stringify({ herbs: herbList, skill_pages: pageList })]
         )
 
-        // 更新角色（含等级）
+        // 累加 cultivation_exp 并自动扣除突破
+        const newExpTotal = Number(member?.cultivation_exp || 0) + myExp
+        const br = applyCultivationExp(newExpTotal, member?.realm_tier || 1, member?.realm_stage || 1)
+
+        // 更新角色（含等级+境界）
         await client.query(
           `UPDATE characters SET
              spirit_stone = spirit_stone + $1,
-             cultivation_exp = cultivation_exp + $2,
-             level_exp = $3,
-             level = $4,
-             realm_points = realm_points + $5,
+             cultivation_exp = $2,
+             realm_tier = $3,
+             realm_stage = $4,
+             level_exp = $5,
+             level = $6,
+             realm_points = realm_points + $7,
              sr_daily_count = sr_daily_count + 1,
              sr_daily_date = CURRENT_DATE,
              last_online = NOW()
-           WHERE id = $6`,
-          [myStone, myExp, newLevelExp, newLevel, myPoints, c.characterId]
+           WHERE id = $8`,
+          [myStone, br.cultivation_exp, br.realm_tier, br.realm_stage, newLevelExp, newLevel, myPoints, c.characterId]
         )
 
         rewards.push({

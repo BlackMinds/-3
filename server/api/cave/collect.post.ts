@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getChar, BUILDINGS, calcOutput } from '~/server/utils/cave'
 import { updateSectDailyTask } from '~/server/utils/sect'
+import { applyCultivationExp } from '~/server/utils/realm'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -28,7 +29,12 @@ export default defineEventHandler(async (event) => {
 
     // 加到对应资源
     if (config.output.type === 'exp') {
-      await pool.query('UPDATE characters SET cultivation_exp = cultivation_exp + $1 WHERE id = $2', [amount, charId])
+      const newExpTotal = Number(char.cultivation_exp || 0) + amount
+      const br = applyCultivationExp(newExpTotal, char.realm_tier || 1, char.realm_stage || 1)
+      await pool.query(
+        'UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3 WHERE id = $4',
+        [br.cultivation_exp, br.realm_tier, br.realm_stage, charId]
+      )
     } else if (config.output.type === 'spirit_stone') {
       await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [amount, charId])
     }

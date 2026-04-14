@@ -5,6 +5,7 @@ import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { applyCultivationExp } from '~/server/utils/realm'
 
 // 战斗锁: 防止同一角色并发刷战斗
 const battleLock = new Map<number, number>()
@@ -567,9 +568,15 @@ export default defineEventHandler(async (event) => {
 
     // 存入数据库
     if (result.won && totalExp > 0) {
+      // 累加 cultivation_exp 并自动扣除突破
+      const newExpTotal = Number(char.cultivation_exp || 0) + totalExp
+      const br = applyCultivationExp(newExpTotal, char.realm_tier || 1, char.realm_stage || 1)
+      if (br.breakthroughs > 0) {
+        result.logs.push({ turn: 0, text: `突破 ${br.breakthroughs} 次境界！`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+      }
       await pool.query(
-        `UPDATE characters SET cultivation_exp = cultivation_exp + $1, spirit_stone = spirit_stone + $2, level_exp = level_exp + $3, current_map = $4, last_online = NOW() WHERE id = $5`,
-        [totalExp, totalStone, levelExp, map_id, char.id]
+        `UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, spirit_stone = spirit_stone + $4, level_exp = level_exp + $5, current_map = $6, last_online = NOW() WHERE id = $7`,
+        [br.cultivation_exp, br.realm_tier, br.realm_stage, totalStone, levelExp, map_id, char.id]
       )
 
       // 检查升级

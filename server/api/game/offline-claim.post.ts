@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { OFFLINE_MAP_DATA } from '~/server/utils/offlineMapData'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { applyCultivationExp } from '~/server/utils/realm'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -30,16 +31,22 @@ export default defineEventHandler(async (event) => {
     const stoneGained = Math.floor(totalKills * mapData.avgStone * efficiency)
     const levelExpGained = expGained
 
+    // 累加 cultivation_exp 并自动扣除突破
+    const newExpTotal = Number(char.cultivation_exp || 0) + expGained
+    const br = applyCultivationExp(newExpTotal, char.realm_tier || 1, char.realm_stage || 1)
+
     // 更新角色数据 + 清除离线状态
     await pool.query(
       `UPDATE characters SET
-        cultivation_exp = cultivation_exp + $1,
-        spirit_stone = spirit_stone + $2,
-        level_exp = level_exp + $3,
+        cultivation_exp = $1,
+        realm_tier = $2,
+        realm_stage = $3,
+        spirit_stone = spirit_stone + $4,
+        level_exp = level_exp + $5,
         offline_start = NULL,
         last_online = NOW()
-      WHERE id = $4`,
-      [expGained, stoneGained, levelExpGained, char.id]
+      WHERE id = $6`,
+      [br.cultivation_exp, br.realm_tier, br.realm_stage, stoneGained, levelExpGained, char.id]
     )
 
     // 检查升级

@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { updateSectDailyTask } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { applyCultivationExp } from '~/server/utils/realm'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -31,13 +32,19 @@ export default defineEventHandler(async (event) => {
     // 闭关修为基础系数: 50 → 80（前期 +60% 提速，配合聚灵阵/洞府加成更显著）
     const expGain = Math.floor(80 * char.realm_tier * hours * (1 + char.realm_stage * 0.1))
 
+    // 累加 cultivation_exp 并自动扣除突破
+    const newExpTotal = Number(char.cultivation_exp || 0) + expGain
+    const br = applyCultivationExp(newExpTotal, char.realm_tier || 1, char.realm_stage || 1)
+
     await pool.query(
       `UPDATE characters
        SET spirit_stone = spirit_stone - $1,
-           cultivation_exp = cultivation_exp + $2,
+           cultivation_exp = $2,
+           realm_tier = $3,
+           realm_stage = $4,
            last_online = NOW()
-       WHERE user_id = $3`,
-      [totalCost, expGain, event.context.userId]
+       WHERE user_id = $5`,
+      [totalCost, br.cultivation_exp, br.realm_tier, br.realm_stage, event.context.userId]
     )
 
     // 宗门任务
