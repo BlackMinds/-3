@@ -190,10 +190,19 @@ CREATE TABLE IF NOT EXISTS character_cave_plots (
   character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
   plot_index INT NOT NULL,
   herb_id VARCHAR(50) DEFAULT NULL,
+  herb_quality VARCHAR(20) DEFAULT NULL,
+  plant_time TIMESTAMP DEFAULT NULL,
+  mature_time TIMESTAMP DEFAULT NULL,
+  yield_count SMALLINT DEFAULT 0,
   planted_at TIMESTAMP DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (character_id, plot_index)
 );
+-- 旧库兼容字段
+ALTER TABLE character_cave_plots ADD COLUMN IF NOT EXISTS herb_quality VARCHAR(20) DEFAULT NULL;
+ALTER TABLE character_cave_plots ADD COLUMN IF NOT EXISTS plant_time TIMESTAMP DEFAULT NULL;
+ALTER TABLE character_cave_plots ADD COLUMN IF NOT EXISTS mature_time TIMESTAMP DEFAULT NULL;
+ALTER TABLE character_cave_plots ADD COLUMN IF NOT EXISTS yield_count SMALLINT DEFAULT 0;
 
 -- ========================================
 -- 灵草背包
