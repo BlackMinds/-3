@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken'
+import { getPool } from '~/server/database/db'
 
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
@@ -25,5 +26,16 @@ export default defineEventHandler(async (event) => {
     event.context.userId = decoded.id
   } catch {
     throw createError({ statusCode: 401, statusMessage: '登录已过期' })
+  }
+
+  // 标记活跃度（用于天道造化抽奖候选池），失败不影响主流程
+  try {
+    const pool = getPool()
+    await pool.query(
+      'UPDATE characters SET last_active_at = NOW() WHERE user_id = $1',
+      [event.context.userId]
+    )
+  } catch {
+    // 静默失败
   }
 })

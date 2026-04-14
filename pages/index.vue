@@ -24,6 +24,9 @@
         </div>
         <button class="drop-table-btn" @click="showDropTable = true">掉落表</button>
         <button class="drop-table-btn" @click="openRanking">风云榜</button>
+        <button class="drop-table-btn fengyun-btn" @click="eventStore.openPanel()">
+          风云阁<span v-if="eventStore.unreadLegendaryCount > 0" class="ach-badge">{{ eventStore.unreadLegendaryCount }}</span>
+        </button>
         <button class="drop-table-btn" @click="openAchievement">
           成就<span v-if="achClaimable > 0" class="ach-badge">{{ achClaimable }}</span>
         </button>
@@ -2305,6 +2308,10 @@
 
     <!-- 秘境组队弹窗 -->
     <SecretRealmModal :open="showSecretRealm" @close="showSecretRealm = false" />
+
+    <!-- 天道造化：中奖弹窗 + 风云阁面板 -->
+    <EventPopup />
+    <WorldBroadcastPanel />
   </div>
 </template>
 
@@ -2337,6 +2344,7 @@ function getAuthHeaders() {
 }
 
 const userStore = useUserStore();
+const eventStore = useEventStore();
 const gameStore = useGameStore();
 
 const logContainer = ref<HTMLElement | null>(null);
@@ -3435,10 +3443,16 @@ onMounted(async () => {
   loadPlots();
   checkOfflineRewards();
   loadSettings();
+  // 天道造化轮询：60 秒一次
+  eventStore.startPolling();
   // 每秒触发响应式刷新(用于显示待领取数量和升级倒计时)
   caveTickTimer.value = window.setInterval(() => {
     caveTick.value++;
   }, 1000);
+});
+
+onUnmounted(() => {
+  eventStore.stopPolling();
 });
 
 async function loadSkillInventory() {

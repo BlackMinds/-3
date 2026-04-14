@@ -532,3 +532,46 @@ CREATE TABLE IF NOT EXISTS secret_realm_clears (
 );
 
 CREATE INDEX IF NOT EXISTS idx_src_clear_char ON secret_realm_clears (character_id);
+
+-- ========================================
+-- 随机事件系统（天道造化 / 风云阁）
+-- ========================================
+
+-- characters 扩展字段（用于抽奖候选池与中奖待领取）
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS event_last_won_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS event_pending_id INT DEFAULT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_char_active ON characters (last_active_at);
+
+-- 事件日志（个人流水）
+CREATE TABLE IF NOT EXISTS character_event_log (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  event_id VARCHAR(10) NOT NULL,          -- E001 ~ E020
+  rarity VARCHAR(20) NOT NULL,            -- common/rare/epic/legendary
+  is_positive BOOLEAN NOT NULL DEFAULT TRUE,
+  triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  claimed BOOLEAN NOT NULL DEFAULT FALSE,
+  reward JSONB NOT NULL                   -- 实际生效的奖励/损失详情
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_log_char ON character_event_log (character_id, triggered_at DESC);
+
+-- 风云阁广播（全服热榜，冗余表加速查询）
+CREATE TABLE IF NOT EXISTS world_broadcast (
+  id SERIAL PRIMARY KEY,
+  log_id INT NOT NULL REFERENCES character_event_log(id) ON DELETE CASCADE,
+  character_id INT NOT NULL,
+  character_name VARCHAR(8) NOT NULL,     -- 冗余
+  sect_id INT DEFAULT NULL,               -- 冗余
+  event_id VARCHAR(10) NOT NULL,
+  rarity VARCHAR(20) NOT NULL,
+  is_positive BOOLEAN NOT NULL DEFAULT TRUE,
+  rendered_text TEXT NOT NULL,            -- 预渲染广播文案
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_broadcast_recent ON world_broadcast (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_broadcast_rarity ON world_broadcast (rarity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_broadcast_sect ON world_broadcast (sect_id, created_at DESC);

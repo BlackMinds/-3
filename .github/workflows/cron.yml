@@ -8,6 +8,8 @@ on:
     - cron: '0 16 * * *'
     # 每周重置 — 每周一 UTC 16:00（北京 00:00）
     - cron: '0 16 * * 1'
+    # 天道造化抽奖 — 北京 08:00~23:30 每 30 分钟（= UTC 00:00~15:30）
+    - cron: '*/30 0-15 * * *'
   workflow_dispatch:
 
 env:
@@ -44,6 +46,17 @@ jobs:
       - name: Weekly contribution reset
         run: |
           curl -sf -X POST "$APP_URL/api/cron/weekly-reset" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 30
+
+  random-event-tick:
+    if: github.event.schedule == '*/30 0-15 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Random event draw
+        run: |
+          curl -sf -X POST "$APP_URL/api/cron/random-event-tick" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
