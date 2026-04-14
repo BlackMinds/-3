@@ -3093,10 +3093,12 @@ function onSectSubTabChange(tab: string) {
   else if (tab === 'manage') loadApplications();
 }
 
-// 切换到宗门标签时自动加载
+// 切换标签时自动刷新对应数据
 watch(() => gameStore.activeTab, (tab) => {
   if (tab === 'sect') loadSectInfo();
   if (tab === 'cave') { gameStore.loadGameData(); loadCave(); }
+  if (tab === 'character') { gameStore.loadGameData(); loadEquipList(); }
+  if (tab === 'skills') { gameStore.loadGameData(); loadSkillInventory(); }
 });
 
 const tabs = [
