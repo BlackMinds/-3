@@ -1923,16 +1923,28 @@
         <div class="modal-body">
           <div class="help-section">
             <div class="help-title">基本操作</div>
-            <p class="help-text">选择地图 → 开始历练 → 自动战斗打怪 → 获得修为/灵石/装备/功法/灵草。每波随机 1-5 只怪物同时出现,1% 概率遇到 Boss。战斗在服务器计算,无法作弊。</p>
+            <p class="help-text">选择地图 → 开始历练 → 自动战斗打怪 → 获得修为/灵石/等级经验/装备/功法/灵草。每波随机 1-5 只怪物同时出现,低概率遇到 Boss。战斗完全在服务器计算,无法作弊。</p>
           </div>
           <div class="help-section">
-            <div class="help-title">五个标签页</div>
+            <div class="help-title">六个标签页</div>
             <table class="help-table"><tbody>
-              <tr><td>历练</td><td>选地图,自动挂机打怪,查看战斗日志和统计</td></tr>
-              <tr><td>角色</td><td>属性面板,装备穿戴/强化/管理</td></tr>
-              <tr><td>炼丹</td><td>用灵草炼制丹药,战前 buff 或突破修为</td></tr>
-              <tr><td>功法</td><td>装备主修/神通/被动,升级功法</td></tr>
-              <tr><td>洞府</td><td>建筑升级,灵田种植灵草</td></tr>
+              <tr><td>历练</td><td>选地图,自动挂机打怪,查看战斗日志/统计/离线挂机</td></tr>
+              <tr><td>角色</td><td>属性面板,装备穿戴/强化/鉴定/升品,洗髓/道果结晶</td></tr>
+              <tr><td>炼丹</td><td>用灵草炼制丹药,战前 buff 或直接突破修为</td></tr>
+              <tr><td>功法</td><td>装备主修/神通/被动,功法升级/万能残页</td></tr>
+              <tr><td>洞府</td><td>建筑升级,灵田种植灵草,产出累积</td></tr>
+              <tr><td>宗门</td><td>加入/创建宗门,任务/Boss/商店/宗门功法</td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">顶部功能按钮</div>
+            <table class="help-table"><tbody>
+              <tr><td>掉落表</td><td>查看当前地图怪物的掉落概率和档次</td></tr>
+              <tr><td>风云榜</td><td>境界/等级/灵石/宗门 4 种全服排行</td></tr>
+              <tr><td>风云阁</td><td>全服传奇掉落/事件播报,红点提示新传奇</td></tr>
+              <tr><td>成就</td><td>多维度成就追踪,领取奖励,佩戴称号</td></tr>
+              <tr><td>秘境</td><td>2-4 人组队副本,独占高品质奖励(开发中)</td></tr>
+              <tr><td>设置</td><td>背景主题/自动出售规则(按品质和阶位)</td></tr>
             </tbody></table>
           </div>
           <div class="help-section">
@@ -2001,13 +2013,14 @@
               <tr><td>枪</td><td>攻击+3%, 身法+12%, 吸血+3% (持久)</td></tr>
               <tr><td>扇</td><td>攻击+3%, 神通+15%, 神识+10% (法术)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/元素强化/灵气浓度/福缘等 15 种。装备有等级需求(T1=Lv1, T5=Lv80, T10=Lv195)。</p>
+            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘等 15 种。装备有等级需求(T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195)。</p>
+            <p class="help-text" style="margin-top: 4px;">低阶图品质权重前期已上调,更易刷出蓝紫装。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备强化</div>
             <p class="help-text">消耗灵石强化已穿戴装备,最高 +10。每级主属性 +8%(满级 +80%)。</p>
             <table class="help-table"><tbody>
-              <tr><td>+1 ~ +6</td><td>100% 成功</td></tr>
+              <tr><td>+1 ~ +6</td><td>100% 必成</td></tr>
               <tr><td>+7</td><td>75%</td></tr>
               <tr><td>+8</td><td>55%</td></tr>
               <tr><td>+9</td><td>40%</td></tr>
@@ -2015,6 +2028,15 @@
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;">+7 起失败退 1 级(最低不低于 +6)。+5 和 +10 时触发副属性突破(随机一条 +30%,最少+1)。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">宗门商店可购买【强化保护符】失败不退级,【强化大师符】+7 必成。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">装备进阶</div>
+            <table class="help-table"><tbody>
+              <tr><td>鉴定符</td><td>重随装备副属性(保留主属性和强化等级)</td></tr>
+              <tr><td>太古精魂</td><td>装备升品(如 法器→灵宝,最高升至太古神器)</td></tr>
+              <tr><td>套装碎片</td><td>合成 6 套套装(烈阳/渊海/万木/雷罚/磐岩/虚空)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">上述道具可通过宗门商店购买,或打怪/成就掉落。</p>
           </div>
           <div class="help-section">
             <div class="help-title">功法系统</div>
@@ -2073,6 +2095,31 @@
           <div class="help-section">
             <div class="help-title">死亡惩罚</div>
             <p class="help-text">战败损失 5% 灵石,3 秒后原地复活继续战斗。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">角色成长道具</div>
+            <table class="help-table"><tbody>
+              <tr><td>洗髓丹</td><td>重置灵根属性(保留境界/等级/装备)</td></tr>
+              <tr><td>道果结晶</td><td>永久提升单项基础属性,叠加无上限</td></tr>
+              <tr><td>突破丹</td><td>直接获得大量修为,助力境界突破</td></tr>
+              <tr><td>万能残页</td><td>合成任意功法残页(配合 ON CONFLICT 堆叠机制)</td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">成就与称号</div>
+            <p class="help-text">多维度追踪: 境界/等级/战斗/收集/炼丹/洞府/宗门等。完成成就领取灵石/装备箱/功法箱,部分成就解锁专属称号。</p>
+            <p class="help-text" style="margin-top: 4px;">在成就面板选择已解锁称号进行佩戴,展示在角色信息中。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">风云榜 · 风云阁</div>
+            <p class="help-text"><b>风云榜</b>: 境界/等级/灵石/宗门 4 种全服排行,查看自己在天道秩序中的位置。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>风云阁</b>: 全服传奇事件播报(传说级装备掉落/首通 Boss/突破飞升等),红点提示未读传奇。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>天道造化</b>: 战斗中随机触发稀有事件(仙缘/机缘/异宝),弹窗即时展示奖励。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">秘境组队 (新)</div>
+            <p class="help-text">2-4 人协作副本,公开大厅制,点【秘境】进入组队页面。</p>
+            <p class="help-text" style="margin-top: 4px;">6 大秘境 × 3 难度(普通/困难/噩梦),独占高品质装备/首通奖励/高倍经验。同宗门成员组队额外 +10% 全属性加成。</p>
           </div>
         </div>
       </div>
