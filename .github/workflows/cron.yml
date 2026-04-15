@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Check expired bosses
         run: |
-          curl -sf -X POST "$APP_URL/api/cron/boss-expire" \
+          curl -sfL --post301 --post302 --post307 -X POST "$APP_URL/api/cron/boss-expire" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Daily donation reset
         run: |
-          curl -sf -X POST "$APP_URL/api/cron/daily-reset" \
+          curl -sfL --post301 --post302 --post307 -X POST "$APP_URL/api/cron/daily-reset" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Weekly contribution reset
         run: |
-          curl -sf -X POST "$APP_URL/api/cron/weekly-reset" \
+          curl -sfL --post301 --post302 --post307 -X POST "$APP_URL/api/cron/weekly-reset" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
@@ -56,7 +56,7 @@ jobs:
     steps:
       - name: Random event draw
         run: |
-          curl -sf -X POST "$APP_URL/api/cron/random-event-tick" \
+          curl -sfL --post301 --post302 --post307 -X POST "$APP_URL/api/cron/random-event-tick" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
