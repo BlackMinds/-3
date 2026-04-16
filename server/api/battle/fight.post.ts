@@ -339,7 +339,7 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
   for (const eq of equipRows) {
     if (!eq.slot) continue
     const enhLv = eq.enhance_level || 0
-    const primary = Math.floor(eq.primary_value * (1 + enhLv * 0.08))
+    const primary = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
     if (eq.primary_stat === 'ATK') atk += primary
     else if (eq.primary_stat === 'DEF') def += primary
     else if (eq.primary_stat === 'HP') maxHp += primary

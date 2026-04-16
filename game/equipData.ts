@@ -76,14 +76,14 @@ export const EQUIP_SLOTS = [
   { slot: 'pendant',  name: '灵佩',   primaryStat: 'SPIRIT' },
 ];
 
-// 品质定义
+// 品质定义 (v2.0 装备驱动型: 拉大级差让换装有爽感 — 每档 +15~22%)
 export const RARITIES = [
   { id: 'white',  name: '凡器',   color: '#CCCCCC', statMul: 1.00, subCount: 0 },
-  { id: 'green',  name: '灵器',   color: '#00CC00', statMul: 1.05, subCount: 1 },
-  { id: 'blue',   name: '法器',   color: '#0066FF', statMul: 1.10, subCount: 2 },
-  { id: 'purple', name: '灵宝',   color: '#9933FF', statMul: 1.18, subCount: 3 },
-  { id: 'gold',   name: '仙器',   color: '#FFAA00', statMul: 1.25, subCount: 4 },
-  { id: 'red',    name: '太古神器', color: '#FF3333', statMul: 1.35, subCount: 4 },
+  { id: 'green',  name: '灵器',   color: '#00CC00', statMul: 1.15, subCount: 1 },
+  { id: 'blue',   name: '法器',   color: '#0066FF', statMul: 1.35, subCount: 2 },
+  { id: 'purple', name: '灵宝',   color: '#9933FF', statMul: 1.60, subCount: 3 },
+  { id: 'gold',   name: '仙器',   color: '#FFAA00', statMul: 1.90, subCount: 4 },
+  { id: 'red',    name: '太古神器', color: '#FF3333', statMul: 2.30, subCount: 4 },
 ];
 
 // 品质权重（按地图tier）
@@ -298,9 +298,9 @@ export function getEnhanceSuccessRate(nextLevel: number): number {
   return 0;
 }
 
-// 强化后的主属性值
+// 强化后的主属性值 (v2.0: 每级 +10%, 满 +10 = +100%, 强化爽感更明显)
 export function getEnhancedPrimaryValue(basePrimary: number, enhanceLevel: number): number {
-  return Math.floor(basePrimary * (1 + enhanceLevel * 0.08));
+  return Math.floor(basePrimary * (1 + enhanceLevel * 0.10));
 }
 
 // 强化加成量

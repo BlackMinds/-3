@@ -307,6 +307,7 @@ export function tickMonsterCds(state: MonsterSkillState) {
 
 export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const power = template.power * randFloat(0.85, 1.15);
+  // v2.0 方案 A: Boss role 保持原版平衡, 通过整体 power 压缩和装备品质提升让战斗更舒服
   const ratios: Record<string, { hp: number; atk: number; def: number; spd: number }> = {
     balanced: { hp: 0.30, atk: 0.30, def: 0.25, spd: 0.15 },
     tank:     { hp: 0.40, atk: 0.15, def: 0.35, spd: 0.10 },
@@ -379,6 +380,7 @@ export function calculateDamage(
 
   const totalArmorPen = ignoreDef + (attacker.armorPen || 0) / 100;
   const effectiveDef = defender.def * Math.max(0, 1 - totalArmorPen);
+  // 保持原版 DEF 权重 0.5 (v2.0 方案 A 验证过 0.7 会让后期玩家打不动 Boss)
   const atkDefRatio = attacker.atk / (attacker.atk + effectiveDef * 0.5);
 
   let elementDmgBonus = 1.0;
@@ -478,6 +480,13 @@ export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
       }
     }
   }
+
+  // v2.0: 同类百分比加成硬上限 +40%, 避免堆叠爆炸
+  const PASSIVE_PCT_CAP = 40;
+  pe.atkPercent = Math.min(pe.atkPercent, PASSIVE_PCT_CAP);
+  pe.defPercent = Math.min(pe.defPercent, PASSIVE_PCT_CAP);
+  pe.hpPercent = Math.min(pe.hpPercent, PASSIVE_PCT_CAP);
+  pe.spdPercent = Math.min(pe.spdPercent, PASSIVE_PCT_CAP);
 
   return { activeSkill, divineSkills, passiveEffects: pe };
 }
