@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
             'SELECT COUNT(*) AS cnt FROM sects WHERE level > $1 OR (level = $2 AND fund > $3)',
             [myRows[0].level, myRows[0].level, myRows[0].fund]
           )
-          mySectRank = (cntRows[0]?.cnt || 0) + 1
+          mySectRank = Number(cntRows[0]?.cnt || 0) + 1
         }
       }
     }

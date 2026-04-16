@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
         'SELECT COUNT(*) AS cnt FROM characters WHERE spirit_stone > $1',
         [c.spirit_stone]
       )
-      myRank = (countRows[0]?.cnt || 0) + 1
+      myRank = Number(countRows[0]?.cnt || 0) + 1
     }
 
     return { code: 200, data: { list, myRank } }

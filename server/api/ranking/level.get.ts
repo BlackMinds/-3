@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
         'SELECT COUNT(*) AS cnt FROM characters WHERE level > $1 OR (level = $2 AND level_exp > $3)',
         [c.level || 1, c.level || 1, c.level_exp || 0]
       )
-      myRank = (countRows[0]?.cnt || 0) + 1
+      myRank = Number(countRows[0]?.cnt || 0) + 1
     }
 
     return { code: 200, data: { list, myRank } }

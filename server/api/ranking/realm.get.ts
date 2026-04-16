@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
         WHERE realm_tier > $1 OR (realm_tier = $2 AND realm_stage > $3)
            OR (realm_tier = $4 AND realm_stage = $5 AND cultivation_exp > $6)
       `, [c.realm_tier, c.realm_tier, c.realm_stage, c.realm_tier, c.realm_stage, c.cultivation_exp])
-      myRank = (countRows[0]?.cnt || 0) + 1
+      myRank = Number(countRows[0]?.cnt || 0) + 1
     }
 
     return { code: 200, data: { list, myRank } }
