@@ -2055,6 +2055,8 @@
               <tr><td>T7+</td><td>天品+仙品: 万剑归宗/天罚雷劫/时光凝滞/道心通明/不灭金身等</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">技能类型: 群攻(全体)/多目标(2-3只)/多段(溢出到下一只)/治疗/增益/控制。</p>
+            <p class="help-text" style="margin-top: 6px; color: #c45c4a;">⚠ 被动百分比加成上限: 多个被动功法叠加的 ATK%/HP%/DEF%/SPD% 各自最高 +40%（超出部分截断）。建议搭配不同方向的被动(如攻+防+血各一个),而非单项堆到满。</p>
+            <p class="help-text" style="margin-top: 4px;">不受上限影响: 五行抗性/控制抗性/暴击率/暴击伤害/闪避/吸血/免死/反弹/每回合回血/破甲/命中/CD 缩减等特殊效果仍可叠加。</p>
           </div>
           <div class="help-section">
             <div class="help-title">炼丹系统</div>
