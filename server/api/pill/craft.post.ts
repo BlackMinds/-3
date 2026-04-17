@@ -131,8 +131,8 @@ export default defineEventHandler(async (event) => {
     }
 
     // 宗门任务
-    updateSectDailyTask(char.id, 'pill', 1)
-    updateSectWeeklyTaskByCharId(char.id, 'weekly_pill', 1)
+    await updateSectDailyTask(char.id, 'pill', 1)
+    await updateSectWeeklyTaskByCharId(char.id, 'weekly_pill', 1)
 
     // 成就触发
     if (success) {

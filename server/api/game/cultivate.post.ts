@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     )
 
     // 宗门任务
-    updateSectDailyTask(char.id, 'cultivate', 1)
+    await updateSectDailyTask(char.id, 'cultivate', 1)
     // 成就：闭关
     checkAchievements(char.id, 'cultivate_count', 1).catch(() => {})
 

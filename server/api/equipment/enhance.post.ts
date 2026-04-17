@@ -51,8 +51,8 @@ export default defineEventHandler(async (event) => {
     )
 
     // 宗门任务: 强化次数+1
-    updateSectDailyTask(charId, 'enhance', 1)
-    updateSectWeeklyTaskByCharId(charId, 'weekly_enhance', 1)
+    await updateSectDailyTask(charId, 'enhance', 1)
+    await updateSectWeeklyTaskByCharId(charId, 'weekly_enhance', 1)
 
     // 成功率: +1~+6 必成功, +7起有失败率（与 equipData.ts:getEnhanceSuccessRate 保持同步）
     const nextLevel = currentLevel + 1

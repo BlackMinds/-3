@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
     )
 
     // 宗门任务
-    updateSectDailyTask(charId, 'cave', 1)
+    await updateSectDailyTask(charId, 'cave', 1)
 
     // 返回最新 character（避免前端显示跳跃）
     const { rows: updated } = await pool.query('SELECT * FROM characters WHERE id = $1', [charId])

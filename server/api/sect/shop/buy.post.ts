@@ -5,36 +5,56 @@ import { SHOP_ITEMS } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
 
 export default defineEventHandler(async (event) => {
+  const pool = getPool()
+  const { item_key } = await readBody(event)
+  const char = await getCharByUserId(event.context.userId)
+  if (!char) return { code: 400, message: '角色不存在' }
+
+  const membership = await getMembership(char.id)
+  if (!membership) return { code: 400, message: '未加入宗门' }
+
+  const item = SHOP_ITEMS.find(i => i.key === item_key)
+  if (!item) return { code: 400, message: '商品不存在' }
+  if (membership.sect_level < item.requiredSectLevel) return { code: 400, message: '宗门等级不足' }
+  if (Number(membership.contribution) < item.cost) return { code: 400, message: '贡献度不足' }
+
+  const ws = weekStartStr()
+
+  // 前置检查: unlock_pill_recipe 提前检查是否已解锁, 避免进入事务后才回滚
+  if (item.effect.type === 'unlock_pill_recipe') {
+    const { rows: existing } = await pool.query(
+      'SELECT id FROM character_unlocked_recipes WHERE character_id = $1 AND pill_id = $2',
+      [char.id, item.effect.pill_id]
+    )
+    if (existing.length > 0) return { code: 400, message: '该丹方已解锁,无需重复购买' }
+  }
+
+  const client = await pool.connect()
   try {
-    const pool = getPool()
-    const { item_key } = await readBody(event)
-    const char = await getCharByUserId(event.context.userId)
-    if (!char) return { code: 400, message: '角色不存在' }
+    await client.query('BEGIN')
 
-    const membership = await getMembership(char.id)
-    if (!membership) return { code: 400, message: '未加入宗门' }
-
-    const item = SHOP_ITEMS.find(i => i.key === item_key)
-    if (!item) return { code: 400, message: '商品不存在' }
-    if (membership.sect_level < item.requiredSectLevel) return { code: 400, message: '宗门等级不足' }
-    if (Number(membership.contribution) < item.cost) return { code: 400, message: '贡献度不足' }
-
-    // 检查限购
-    const ws = weekStartStr()
-    const { rows: boughtRows } = await pool.query(
+    // 事务内复查限购 (防并发超购)
+    const { rows: boughtRows } = await client.query(
       'SELECT COALESCE(SUM(quantity), 0) as bought FROM sect_shop_purchases WHERE character_id = $1 AND item_key = $2 AND week_start = $3',
       [char.id, item_key, ws]
     )
-    if (Number(boughtRows[0].bought) >= item.weeklyLimit) return { code: 400, message: '本周已达购买上限' }
+    if (Number(boughtRows[0].bought) >= item.weeklyLimit) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '本周已达购买上限' }
+    }
 
-    // 扣贡献
-    await pool.query(
-      'UPDATE sect_members SET contribution = contribution - $1 WHERE character_id = $2',
+    // 扣贡献 (带条件避免并发下贡献变成负数)
+    const { rowCount: deducted } = await client.query(
+      'UPDATE sect_members SET contribution = contribution - $1 WHERE character_id = $2 AND contribution >= $1',
       [item.cost, char.id]
     )
+    if (!deducted) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '贡献度不足' }
+    }
 
     // 记录购买
-    await pool.query(
+    await client.query(
       'INSERT INTO sect_shop_purchases (character_id, item_key, quantity, cost_contribution, week_start) VALUES ($1, $2, 1, $3, $4)',
       [char.id, item_key, item.cost, ws]
     )
@@ -45,17 +65,17 @@ export default defineEventHandler(async (event) => {
 
     switch (eff.type) {
       case 'cultivation_exp':
-        await pool.query('UPDATE characters SET cultivation_exp = cultivation_exp + $1 WHERE id = $2', [eff.value, char.id])
+        await client.query('UPDATE characters SET cultivation_exp = cultivation_exp + $1 WHERE id = $2', [eff.value, char.id])
         resultMsg = `获得${eff.value}修为`
         break
 
       case 'spirit_stone':
-        await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [eff.value, char.id])
+        await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [eff.value, char.id])
         resultMsg = `获得${eff.value}灵石`
         break
 
       case 'enhance_protect':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'enhance_protect']
@@ -71,7 +91,7 @@ export default defineEventHandler(async (event) => {
           const hId = herbIds[rand(0, herbIds.length - 1)]
           const qIdx = Math.min(qualities.length - 1, minQIdx + rand(0, 1))
           const q = qualities[qIdx]
-          await pool.query(
+          await client.query(
             `INSERT INTO character_materials (character_id, material_id, quality, count) VALUES ($1, $2, $3, 1)
              ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + 1`,
             [char.id, hId, q]
@@ -82,7 +102,7 @@ export default defineEventHandler(async (event) => {
       }
 
       case 'breakthrough_boost':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'breakthrough_boost']
@@ -91,7 +111,7 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'reroll_sub_stat':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'reroll_sub_stat']
@@ -105,7 +125,7 @@ export default defineEventHandler(async (event) => {
         }
         const pool_ = skillPools[eff.quality] || skillPools['purple']
         const skillId = pool_[rand(0, pool_.length - 1)]
-        await pool.query(
+        await client.query(
           `INSERT INTO character_skill_inventory (character_id, skill_id, count) VALUES ($1, $2, 1)
            ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
           [char.id, skillId]
@@ -115,7 +135,7 @@ export default defineEventHandler(async (event) => {
       }
 
       case 'enhance_guarantee':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'enhance_guarantee']
@@ -124,7 +144,7 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'set_fragment':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'set_fragment']
@@ -133,7 +153,7 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'reset_root':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'reset_root']
@@ -142,7 +162,7 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'universal_skill_page':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'universal_skill_page']
@@ -164,7 +184,7 @@ export default defineEventHandler(async (event) => {
         const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
         const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
         const equipName = generateEquipName(rarity, slots[slotIdx], weaponType, tier, ps, null, '宝箱')
-        await pool.query(
+        await client.query(
           'INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, base_slot, weapon_type, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)',
           [char.id, equipName, rarity, ps, pv, '[]', tier, slots[slotIdx], weaponType, tierReqLevels[tier] || 1]
         )
@@ -173,7 +193,7 @@ export default defineEventHandler(async (event) => {
       }
 
       case 'equip_upgrade':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'equip_upgrade']
@@ -182,7 +202,7 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'permanent_stat':
-        await pool.query(
+        await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
            ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
           [char.id, 'permanent_stat']
@@ -191,18 +211,16 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'unlock_pill_recipe': {
-        // 检查是否已解锁
-        const { rows: existing } = await pool.query(
+        // 事务内再复查一次(外部已初筛), 防并发两次购买
+        const { rows: existing } = await client.query(
           'SELECT id FROM character_unlocked_recipes WHERE character_id = $1 AND pill_id = $2',
           [char.id, eff.pill_id]
         )
         if (existing.length > 0) {
-          // 已解锁 → 回滚扣贡献和购买记录
-          await pool.query('UPDATE sect_members SET contribution = contribution + $1 WHERE character_id = $2', [item.cost, char.id])
-          await pool.query('DELETE FROM sect_shop_purchases WHERE character_id = $1 AND item_key = $2 AND week_start = $3', [char.id, item_key, ws])
+          await client.query('ROLLBACK')
           return { code: 400, message: '该丹方已解锁,无需重复购买' }
         }
-        await pool.query(
+        await client.query(
           'INSERT INTO character_unlocked_recipes (character_id, pill_id) VALUES ($1, $2)',
           [char.id, eff.pill_id]
         )
@@ -214,9 +232,13 @@ export default defineEventHandler(async (event) => {
         resultMsg = '购买成功'
     }
 
+    await client.query('COMMIT')
     return { code: 200, message: resultMsg }
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('购买商品失败:', error)
     return { code: 500, message: '服务器错误' }
+  } finally {
+    client.release()
   }
 })

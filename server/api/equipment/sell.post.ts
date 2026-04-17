@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     const newSpiritStone = updRows[0]?.spirit_stone
 
     // 宗门任务
-    updateSectDailyTask(charId, 'sell', 1)
+    await updateSectDailyTask(charId, 'sell', 1)
     // 成就：出售
     checkAchievements(charId, 'equip_sell', 1).catch(() => {})
 

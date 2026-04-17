@@ -672,10 +672,10 @@ export default defineEventHandler(async (event) => {
 
     // 宗门任务进度
     if (result.won) {
-      updateSectDailyTask(char.id, 'battle', 1)
-      updateSectWeeklyTaskByCharId(char.id, 'weekly_battle', result.monstersKilled.length)
+      await updateSectDailyTask(char.id, 'battle', 1)
+      await updateSectWeeklyTaskByCharId(char.id, 'weekly_battle', result.monstersKilled.length)
       const hasElite = result.monstersKilled.some(m => m.template.role === 'boss')
-      if (hasElite) updateSectDailyTask(char.id, 'elite', 1)
+      if (hasElite) await updateSectDailyTask(char.id, 'elite', 1)
 
       // === 成就触发 ===
       checkAchievements(char.id, 'battle_count', 1).catch(() => {})
