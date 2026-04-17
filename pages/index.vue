@@ -631,6 +631,37 @@
           </div>
           <div v-else class="inventory-hint">还没有灵草,去灵田种植或打怪掉落</div>
         </div>
+
+        <!-- 我的丹房 -->
+        <div class="pill-room-section">
+          <div class="pill-room-title">我的丹房</div>
+          <div v-if="pillRoomGroups.length > 0" class="pill-room-grid">
+            <div
+              v-for="g in pillRoomGroups"
+              :key="g.pill_id"
+              class="pill-room-card"
+            >
+              <div class="pill-room-head">
+                <span class="pill-room-name" :style="{ color: getPillColor(g.recipe.rarity) }">{{ g.recipe.name }}</span>
+                <span class="pill-room-type">{{ g.recipe.type === 'battle' ? '战斗' : '突破' }}</span>
+              </div>
+              <div class="pill-room-desc">{{ formatPillEffect(g.recipe) }}</div>
+              <div class="pill-room-variants">
+                <div
+                  v-for="v in g.variants"
+                  :key="v.quality_factor"
+                  class="pill-room-variant"
+                  :style="{ borderColor: getPillColor(g.recipe.rarity) }"
+                >
+                  <span class="pill-room-qf" :style="{ color: getPillColor(g.recipe.rarity) }">{{ v.quality_factor }}x</span>
+                  <span class="pill-room-count">× {{ v.count }}</span>
+                  <button class="pill-use-btn-small" @click="useVariant(g.recipe, v)">使用</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="inventory-hint">炉内尚未成丹,去炼制几颗试试</div>
+        </div>
       </div>
 
       <!-- ===== 功法标签页 ===== -->
@@ -4383,6 +4414,31 @@ function switchPillType(t: 'battle' | 'breakthrough') {
   selectedPillType.value = t;
   selectedPillId.value = '';
 }
+
+// 我的丹房: 按丹方分组所有已炼成的丹药
+const pillRoomGroups = computed(() => {
+  const map = new Map<string, any[]>();
+  for (const p of pillInventory.value) {
+    if (!p.count || p.count <= 0) continue;
+    const recipe = getPillById(p.pill_id);
+    if (!recipe) continue; // 过滤掉非丹药(如宗门物品)
+    if (!map.has(p.pill_id)) map.set(p.pill_id, []);
+    map.get(p.pill_id)!.push(p);
+  }
+  const groups: { pill_id: string; recipe: any; variants: any[] }[] = [];
+  for (const [pill_id, variants] of map.entries()) {
+    const recipe = getPillById(pill_id);
+    variants.sort((a, b) => Number(b.quality_factor) - Number(a.quality_factor));
+    groups.push({ pill_id, recipe, variants });
+  }
+  // 战斗丹在前,突破丹在后,同类按 tierRequired 升序
+  groups.sort((a, b) => {
+    const typeOrder = (a.recipe.type === 'battle' ? 0 : 1) - (b.recipe.type === 'battle' ? 0 : 1);
+    if (typeOrder !== 0) return typeOrder;
+    return (a.recipe.tierRequired || 0) - (b.recipe.tierRequired || 0);
+  });
+  return groups;
+});
 
 // 灵草选择: { 'pill_id': ['white', 'green', ...] }
 const herbSelections = ref<Record<string, string[]>>({});
@@ -8736,6 +8792,120 @@ onUnmounted(() => {
   border: 1px solid rgba(184, 154, 90, 0.2);
   border-radius: 14px;
   font-size: 12px;
+}
+
+/* ========== 我的丹房 ========== */
+.pill-room-section {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(200, 121, 255, 0.04), rgba(168, 224, 188, 0.02));
+  border: 1px solid rgba(232, 204, 138, 0.2);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.pill-room-section::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle at 70% 30%, rgba(232, 204, 138, 0.08), transparent 70%);
+  pointer-events: none;
+}
+.pill-room-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gold-ink);
+  letter-spacing: 3px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pill-room-title::before {
+  content: '丹';
+  font-family: 'ZCOOL XiaoWei', serif;
+  color: var(--cinnabar);
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--cinnabar);
+  border-radius: 50%;
+  letter-spacing: 0;
+}
+
+.pill-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.pill-room-card {
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(232, 204, 138, 0.04), rgba(0, 0, 0, 0.15));
+  border: 1px solid rgba(184, 154, 90, 0.2);
+  border-radius: 4px;
+  transition: all 0.2s;
+  position: relative;
+}
+.pill-room-card:hover {
+  border-color: rgba(232, 204, 138, 0.45);
+  box-shadow: 0 2px 10px rgba(232, 204, 138, 0.08);
+}
+
+.pill-room-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.pill-room-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px currentColor;
+}
+.pill-room-type {
+  font-size: 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--ink-faint);
+  border-radius: 8px;
+  color: var(--ink-faint);
+  letter-spacing: 2px;
+}
+.pill-room-desc {
+  font-size: 12px;
+  color: var(--ink-light);
+  margin-bottom: 6px;
+  line-height: 1.4;
+  font-style: italic;
+}
+.pill-room-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.pill-room-variant {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid;
+  border-radius: 14px;
+  font-size: 12px;
+}
+.pill-room-qf {
+  font-weight: 600;
+  font-size: 12px;
+}
+.pill-room-count {
+  color: var(--ink-medium);
+  font-size: 11px;
 }
 
 /* ========== 功法页面 ========== */
