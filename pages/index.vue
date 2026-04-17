@@ -482,11 +482,137 @@
 
       <!-- ===== 炼丹标签页 ===== -->
       <div v-show="gameStore.activeTab === 'cultivate'" class="tab-panel cultivate-panel">
-        <div class="pill-header-row">
-          <div class="panel-title">炼丹炉</div>
+        <!-- 当前buff -->
+        <div v-if="activeBuffs.length > 0" class="buff-bar">
+          <span
+            v-for="b in activeBuffs"
+            :key="b.pill_id"
+            class="buff-tag"
+            @mouseenter="onBuffHover($event, b)"
+            @mouseleave="hoverBuff = null"
+          >
+            {{ getPillName(b.pill_id) }} ({{ formatBuffTime(b) }})
+          </span>
         </div>
 
-        <!-- 灵草背包 -->
+        <!-- 炼丹炉主工作台 -->
+        <div class="alchemy-workbench">
+          <!-- 左:丹炉 -->
+          <div class="alchemy-stove" :class="{ 'stove-active': !!currentRecipe }">
+            <div class="stove-halo"></div>
+            <div class="stove-smoke">
+              <span class="smoke s1"></span>
+              <span class="smoke s2"></span>
+              <span class="smoke s3"></span>
+            </div>
+            <img :src="cauldronImg" alt="炼丹炉" class="stove-img" />
+            <div class="stove-fire">
+              <span class="fire-blade fb1"></span>
+              <span class="fire-blade fb2"></span>
+              <span class="fire-blade fb3"></span>
+              <span class="fire-blade fb4"></span>
+              <span class="fire-blade fb5"></span>
+            </div>
+            <div class="stove-ember">
+              <span v-for="n in 6" :key="n" :style="{ animationDelay: (n * 0.3) + 's', left: (15 + n * 12) + '%' }" class="ember"></span>
+            </div>
+            <div class="stove-label">青铜 · 炼丹炉</div>
+          </div>
+
+          <!-- 右:配方区 -->
+          <div class="alchemy-panel">
+            <div class="alchemy-tabs">
+              <button
+                class="alchemy-tab-btn"
+                :class="{ active: selectedPillType === 'battle' }"
+                @click="switchPillType('battle')"
+              >战斗丹药</button>
+              <button
+                class="alchemy-tab-btn"
+                :class="{ active: selectedPillType === 'breakthrough' }"
+                @click="switchPillType('breakthrough')"
+              >突破丹药</button>
+            </div>
+
+            <div class="alchemy-field">
+              <label class="alchemy-label">丹方</label>
+              <select class="alchemy-select alchemy-select-lg" v-model="selectedPillId">
+                <option value="">选择丹方</option>
+                <option
+                  v-for="r in currentRecipeList"
+                  :key="r.id"
+                  :value="r.id"
+                >{{ r.name }} (拥有 {{ getPillTotalCount(r.id) }})</option>
+              </select>
+            </div>
+
+            <div v-if="currentRecipe" class="alchemy-effect" :style="{ color: getPillColor(currentRecipe.rarity) }">
+              {{ formatPillEffect(currentRecipe) }}
+            </div>
+
+            <div v-if="currentRecipe" class="alchemy-field-group">
+              <label class="alchemy-label">灵草</label>
+              <div v-for="(hc, i) in currentRecipe.herbCost" :key="i" class="alchemy-herb-row">
+                <span class="alchemy-herb-name">{{ getHerbName(hc.herb_id) }} × {{ hc.count }}</span>
+                <select
+                  class="alchemy-select"
+                  :value="getHerbSelection(currentRecipe.id)[i]"
+                  @change="onHerbSelect(currentRecipe.id, i, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">选品质</option>
+                  <option
+                    v-for="q in getAvailableQualities(hc.herb_id, hc.count)"
+                    :key="q.id"
+                    :value="q.id"
+                    :disabled="!isQualityEnough(hc.herb_id, q.id, hc.count)"
+                  >
+                    {{ q.name }} (持有{{ getHerbCount(hc.herb_id, q.id) }}{{ !isQualityEnough(hc.herb_id, q.id, hc.count) ? '·不足' : '' }})
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div v-if="currentRecipe" class="alchemy-preview">
+              <div class="preview-row">
+                <span class="preview-key">成功率</span>
+                <span class="preview-val">{{ (currentRecipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100) * 100).toFixed(0) }}%</span>
+              </div>
+              <div class="preview-row">
+                <span class="preview-key">灵石</span>
+                <span class="preview-val">{{ formatNum(Math.floor(currentRecipe.cost * (getCraftPreview(currentRecipe).factor || 1))) }}</span>
+              </div>
+              <div class="preview-row" v-if="getCraftPreview(currentRecipe).factor > 0">
+                <span class="preview-key">品质系数</span>
+                <span class="preview-val" style="color: var(--gold-ink)">{{ getCraftPreview(currentRecipe).factor.toFixed(2) }}x</span>
+              </div>
+            </div>
+
+            <button
+              class="alchemy-craft-btn"
+              v-if="currentRecipe"
+              @click="craftPill(currentRecipe)"
+              :disabled="crafting || !canCraft(currentRecipe)"
+            >
+              <span class="craft-btn-text">开炉炼制</span>
+              <span class="craft-btn-sub">点火候开始</span>
+            </button>
+
+            <!-- 已有丹药 -->
+            <div v-if="currentRecipe && getPillVariants(currentRecipe.id).length > 0" class="alchemy-variants">
+              <div class="variants-title">炉中已成</div>
+              <div class="variants-list">
+                <div v-for="v in getPillVariants(currentRecipe.id)" :key="v.id" class="alchemy-variant">
+                  <span class="variant-info" :style="{ color: getPillColor(currentRecipe.rarity) }">
+                    {{ v.quality_factor }}x × {{ v.count }}
+                  </span>
+                  <button class="pill-use-btn-small" @click="useVariant(currentRecipe, v)">使用</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 灵草库存 -->
         <div class="herb-bag-section">
           <div class="herb-bag-title">灵草库存</div>
           <div class="herb-bag-grid" v-if="herbInventory.length > 0">
@@ -504,147 +630,6 @@
             </div>
           </div>
           <div v-else class="inventory-hint">还没有灵草,去灵田种植或打怪掉落</div>
-        </div>
-
-        <!-- 当前buff -->
-        <div v-if="activeBuffs.length > 0" class="buff-bar">
-          <span
-            v-for="b in activeBuffs"
-            :key="b.pill_id"
-            class="buff-tag"
-            @mouseenter="onBuffHover($event, b)"
-            @mouseleave="hoverBuff = null"
-          >
-            {{ getPillName(b.pill_id) }} ({{ formatBuffTime(b) }})
-          </span>
-        </div>
-
-        <!-- 战斗丹方列表 -->
-        <div class="pill-type-title">战斗丹药</div>
-        <div class="pill-list pill-grid">
-          <div
-            v-for="recipe in battleRecipes"
-            :key="recipe.id"
-            class="pill-card"
-          >
-            <div class="pill-header">
-              <span class="pill-name" :style="{ color: getPillColor(recipe.rarity) }">{{ recipe.name }}</span>
-              <span class="pill-count">拥有: {{ getPillTotalCount(recipe.id) }}</span>
-            </div>
-            <p class="pill-desc">{{ formatPillEffect(recipe) }}</p>
-
-            <!-- 灵草需求和选择 -->
-            <div class="pill-herb-needs">
-              <div v-for="(hc, i) in recipe.herbCost" :key="i" class="pill-herb-need-row">
-                <span class="pill-herb-need-name">{{ getHerbName(hc.herb_id) }} × {{ hc.count }}</span>
-                <select
-                  class="pill-herb-select"
-                  :value="getHerbSelection(recipe.id)[i]"
-                  @change="onHerbSelect(recipe.id, i, ($event.target as HTMLSelectElement).value)"
-                >
-                  <option value="">选品质</option>
-                  <option
-                    v-for="q in getAvailableQualities(hc.herb_id, hc.count)"
-                    :key="q.id"
-                    :value="q.id"
-                    :disabled="!isQualityEnough(hc.herb_id, q.id, hc.count)"
-                  >
-                    {{ q.name }} (持有{{ getHerbCount(hc.herb_id, q.id) }}{{ !isQualityEnough(hc.herb_id, q.id, hc.count) ? '·不足' : '' }})
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <p class="pill-rate">
-              成功率: {{ (recipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100) * 100).toFixed(0) }}% · 灵石: {{ formatNum(Math.floor(recipe.cost * (getCraftPreview(recipe).factor || 1))) }}
-              <span v-if="getCraftPreview(recipe).factor > 0" class="pill-preview">
-                · 品质系数: {{ getCraftPreview(recipe).factor.toFixed(2) }}x
-              </span>
-            </p>
-
-            <div class="pill-actions">
-              <button
-                class="pill-craft-btn"
-                @click="craftPill(recipe)"
-                :disabled="crafting || !canCraft(recipe)"
-              >
-                炼制
-              </button>
-            </div>
-
-            <!-- 已有的丹药列表 -->
-            <div v-if="getPillVariants(recipe.id).length > 0" class="pill-variants">
-              <div v-for="v in getPillVariants(recipe.id)" :key="v.id" class="pill-variant">
-                <span class="variant-info" :style="{ color: getPillColor(recipe.rarity) }">
-                  {{ v.quality_factor }}x × {{ v.count }}
-                </span>
-                <button class="pill-use-btn-small" @click="useVariant(recipe, v)">使用</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 突破丹方列表 -->
-        <div class="pill-type-title">突破丹药</div>
-        <div class="pill-list pill-grid">
-          <div
-            v-for="recipe in breakthroughRecipes"
-            :key="recipe.id"
-            class="pill-card"
-          >
-            <div class="pill-header">
-              <span class="pill-name" :style="{ color: getPillColor(recipe.rarity) }">{{ recipe.name }}</span>
-              <span class="pill-count">拥有: {{ getPillTotalCount(recipe.id) }}</span>
-            </div>
-            <p class="pill-desc">{{ formatPillEffect(recipe) }}</p>
-
-            <div class="pill-herb-needs">
-              <div v-for="(hc, i) in recipe.herbCost" :key="i" class="pill-herb-need-row">
-                <span class="pill-herb-need-name">{{ getHerbName(hc.herb_id) }} × {{ hc.count }}</span>
-                <select
-                  class="pill-herb-select"
-                  :value="getHerbSelection(recipe.id)[i]"
-                  @change="onHerbSelect(recipe.id, i, ($event.target as HTMLSelectElement).value)"
-                >
-                  <option value="">选品质</option>
-                  <option
-                    v-for="q in getAvailableQualities(hc.herb_id, hc.count)"
-                    :key="q.id"
-                    :value="q.id"
-                    :disabled="!isQualityEnough(hc.herb_id, q.id, hc.count)"
-                  >
-                    {{ q.name }} (持有{{ getHerbCount(hc.herb_id, q.id) }}{{ !isQualityEnough(hc.herb_id, q.id, hc.count) ? '·不足' : '' }})
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <p class="pill-rate">
-              成功率: {{ (recipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100) * 100).toFixed(0) }}% · 灵石: {{ formatNum(Math.floor(recipe.cost * (getCraftPreview(recipe).factor || 1))) }}
-              <span v-if="getCraftPreview(recipe).factor > 0" class="pill-preview">
-                · 品质系数: {{ getCraftPreview(recipe).factor.toFixed(2) }}x
-              </span>
-            </p>
-
-            <div class="pill-actions">
-              <button
-                class="pill-craft-btn"
-                @click="craftPill(recipe)"
-                :disabled="crafting || !canCraft(recipe)"
-              >
-                炼制
-              </button>
-            </div>
-
-            <div v-if="getPillVariants(recipe.id).length > 0" class="pill-variants">
-              <div v-for="v in getPillVariants(recipe.id)" :key="v.id" class="pill-variant">
-                <span class="variant-info" :style="{ color: getPillColor(recipe.rarity) }">
-                  {{ v.quality_factor }}x × {{ v.count }}
-                </span>
-                <button class="pill-use-btn-small" @click="useVariant(recipe, v)">使用</button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -952,6 +937,122 @@
             <button class="plant-confirm-btn" @click="confirmPlant" :disabled="!plantHerbId">
               开始种植
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 炼丹火候弹窗 ===== -->
+      <div v-if="showFireMeter" class="modal-overlay fire-overlay" @click="!fireLocked && closeFireMeter()">
+        <div class="fire-modal" @click.stop>
+          <!-- 头部 -->
+          <div class="fire-header">
+            <div class="fire-title-row">
+              <span class="fire-rune">丹</span>
+              <div>
+                <div class="fire-title">{{ fireRecipe?.name }}</div>
+                <div class="fire-subtitle">{{ fireRecipe ? formatPillEffect(fireRecipe) : '' }}</div>
+              </div>
+            </div>
+            <button v-if="!fireLocked" class="modal-close" @click="closeFireMeter">×</button>
+          </div>
+
+          <!-- 丹炉动画区 -->
+          <div class="fire-furnace" :class="{
+            'furnace-burning': fireRunning,
+            'furnace-true': fireResult && fireResult.fire_tier === 'true',
+            'furnace-explode': fireResult && fireResult.fire_tier === 'explode',
+            'furnace-success': fireResult && fireResult.success,
+          }">
+            <div class="furnace-body">
+              <div class="furnace-glow"></div>
+              <div class="furnace-flames">
+                <span class="flame f1"></span>
+                <span class="flame f2"></span>
+                <span class="flame f3"></span>
+                <span class="flame f4"></span>
+                <span class="flame f5"></span>
+              </div>
+              <div class="furnace-rune">
+                <span v-if="fireResult">{{ fireResult.success ? '丹' : '✗' }}</span>
+                <span v-else>炉</span>
+              </div>
+            </div>
+            <!-- 异象光晕 -->
+            <div v-if="fireResult && fireResult.true_fire_bonus" class="furnace-aura"></div>
+          </div>
+
+          <!-- 结果显示(覆盖在火候条上) -->
+          <div v-if="fireResult" class="fire-result" :class="{
+            'result-explode': fireResult.fire_tier === 'explode',
+            'result-true': fireResult.fire_tier === 'true',
+            'result-success': fireResult.success && fireResult.fire_tier !== 'true',
+            'result-fail': !fireResult.success && fireResult.fire_tier !== 'explode',
+          }">
+            <div class="fire-result-title">
+              <span v-if="fireResult.error">✗ {{ fireResult.error }}</span>
+              <span v-else-if="fireResult.fire_tier === 'explode'">炸炉 · 丹毁材损</span>
+              <span v-else-if="!fireResult.success">丹成未满 · 化作灵烟</span>
+              <span v-else-if="fireResult.true_fire_bonus">真火异象 · 双丹同生!</span>
+              <span v-else>{{ fireResult.fire_tier_name }}成丹</span>
+            </div>
+            <div class="fire-result-detail" v-if="!fireResult.error">
+              <span>原丹力 {{ fireResult.raw_quality_factor }}x</span>
+              <span v-if="fireResult.fire_multiplier > 1.0">· 火候 ×{{ fireResult.fire_multiplier }}</span>
+              <span v-if="fireResult.success">· 成丹 {{ fireResult.quality_factor }}x × {{ fireResult.yield_count }}</span>
+            </div>
+            <button class="fire-confirm-btn" @click="closeFireMeter">确认</button>
+          </div>
+
+          <!-- 火候条(结果未出时显示) -->
+          <div v-if="!fireResult" class="fire-meter-wrap">
+            <div class="fire-meter-label">
+              <span class="fire-tier-badge" :style="{ color: getFireTierInfo(getFireTier(firePosition)).color, borderColor: getFireTierInfo(getFireTier(firePosition)).color }">
+                {{ getFireTierInfo(getFireTier(firePosition)).name }}
+              </span>
+              <span class="fire-tier-desc">{{ getFireTierInfo(getFireTier(firePosition)).desc }}</span>
+            </div>
+
+            <div class="fire-meter">
+              <!-- 7 档区域 -->
+              <div class="fire-zone zone-explode-l" style="left: 0; width: 10%;"></div>
+              <div class="fire-zone zone-gentle-l"  style="left: 10%; width: 20%;"></div>
+              <div class="fire-zone zone-strong-l"  style="left: 30%; width: 15%;"></div>
+              <div class="fire-zone zone-true"      style="left: 45%; width: 10%;"></div>
+              <div class="fire-zone zone-strong-r"  style="left: 55%; width: 15%;"></div>
+              <div class="fire-zone zone-gentle-r"  style="left: 70%; width: 20%;"></div>
+              <div class="fire-zone zone-explode-r" style="left: 90%; width: 10%;"></div>
+              <!-- 刻度 -->
+              <div class="fire-tick" style="left: 10%;"></div>
+              <div class="fire-tick" style="left: 30%;"></div>
+              <div class="fire-tick" style="left: 45%;"></div>
+              <div class="fire-tick" style="left: 55%;"></div>
+              <div class="fire-tick" style="left: 70%;"></div>
+              <div class="fire-tick" style="left: 90%;"></div>
+              <!-- 指针 -->
+              <div class="fire-pointer" :class="{ locked: fireLocked }" :style="{ left: firePosition + '%' }">
+                <div class="pointer-head"></div>
+                <div class="pointer-stem"></div>
+              </div>
+            </div>
+
+            <!-- 区域图例 -->
+            <div class="fire-legend">
+              <span class="legend-item" style="color: #e88a78;">■ 炸炉</span>
+              <span class="legend-item" style="color: #a8e0bc;">■ 文火 ×1.10</span>
+              <span class="legend-item" style="color: #e8cc8a;">■ 武火 ×1.20</span>
+              <span class="legend-item" style="color: #c879ff;">■ 真火 ×1.35</span>
+            </div>
+
+            <div class="fire-actions">
+              <label class="fire-safe-toggle">
+                <input type="checkbox" v-model="fireSafeMode" />
+                <span>保守炼制(稳得文火)</span>
+              </label>
+              <button class="fire-confirm-btn" @click="confirmFire" :disabled="crafting || fireLocked">
+                <span v-if="!fireLocked">凝 · 丹</span>
+                <span v-else>炼制中...</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -4267,6 +4368,22 @@ const breakthroughRecipes = computed(() =>
   PILL_RECIPES.filter(r => r.type === 'breakthrough' && r.tierRequired <= (gameStore.character?.realm_tier || 1))
 );
 
+// 炼丹面板: 分类 + 选中丹方
+const cauldronImg = '/images/cauldron.svg';
+const selectedPillType = ref<'battle' | 'breakthrough'>('battle');
+const selectedPillId = ref<string>('');
+const currentRecipeList = computed(() =>
+  selectedPillType.value === 'battle' ? battleRecipes.value : breakthroughRecipes.value
+);
+const currentRecipe = computed<PillRecipe | null>(() => {
+  if (!selectedPillId.value) return null;
+  return currentRecipeList.value.find(r => r.id === selectedPillId.value) || null;
+});
+function switchPillType(t: 'battle' | 'breakthrough') {
+  selectedPillType.value = t;
+  selectedPillId.value = '';
+}
+
 // 灵草选择: { 'pill_id': ['white', 'green', ...] }
 const herbSelections = ref<Record<string, string[]>>({});
 
@@ -4359,9 +4476,89 @@ function getPillName(pillId: string): string {
   return getPillById(pillId)?.name || pillId;
 }
 
-async function craftPill(recipe: PillRecipe) {
-  if (crafting.value || !canCraft(recipe)) return;
+// ========== 火候系统 ==========
+const showFireMeter = ref(false);
+const fireRecipe = ref<PillRecipe | null>(null);
+const firePosition = ref(0);      // 指示器 0~100
+const fireRunning = ref(false);   // 指示器是否运行中
+const fireLocked = ref(false);    // 是否已凝丹(锁定)
+const fireSafeMode = ref(false);  // 保守模式(固定文火位)
+const fireResult = ref<any>(null); // 炼制结果
+let fireAnimHandle: number | null = null;
+let fireDirection = 1;
+const FIRE_SPEED = 0.9;           // 每帧位置变化(基础)
 
+function getFireTier(pos: number): 'explode'|'gentle'|'strong'|'true' {
+  if (pos < 10 || pos >= 90) return 'explode';
+  if (pos < 30 || pos >= 70) return 'gentle';
+  if (pos < 45 || pos >= 55) return 'strong';
+  return 'true';
+}
+
+function getFireTierInfo(tier: 'explode'|'gentle'|'strong'|'true') {
+  switch (tier) {
+    case 'explode': return { name: '炸炉', color: '#e88a78', desc: '火候失控,丹毁材损' };
+    case 'gentle':  return { name: '文火', color: '#a8e0bc', desc: '丹力 ×1.10' };
+    case 'strong':  return { name: '武火', color: '#e8cc8a', desc: '丹力 ×1.20' };
+    case 'true':    return { name: '真火', color: '#c879ff', desc: '丹力 ×1.35 · 异象可成双' };
+  }
+}
+
+function openFireMeter(recipe: PillRecipe) {
+  if (crafting.value || !canCraft(recipe)) return;
+  fireRecipe.value = recipe;
+  firePosition.value = 0;
+  fireDirection = 1;
+  fireRunning.value = true;
+  fireLocked.value = false;
+  fireResult.value = null;
+  fireSafeMode.value = false;
+  showFireMeter.value = true;
+  startFireAnim();
+}
+
+function startFireAnim() {
+  let last = performance.now();
+  const tick = (now: number) => {
+    if (!fireRunning.value) return;
+    const dt = now - last;
+    last = now;
+    // dt(ms) * speed(per frame @ 60fps) / 16.6
+    firePosition.value += fireDirection * FIRE_SPEED * (dt / 16.6);
+    if (firePosition.value >= 100) { firePosition.value = 100; fireDirection = -1; }
+    if (firePosition.value <= 0)   { firePosition.value = 0; fireDirection = 1; }
+    fireAnimHandle = requestAnimationFrame(tick);
+  };
+  fireAnimHandle = requestAnimationFrame(tick);
+}
+
+function stopFireAnim() {
+  fireRunning.value = false;
+  if (fireAnimHandle !== null) {
+    cancelAnimationFrame(fireAnimHandle);
+    fireAnimHandle = null;
+  }
+}
+
+function closeFireMeter() {
+  stopFireAnim();
+  showFireMeter.value = false;
+  fireRecipe.value = null;
+  fireResult.value = null;
+  fireLocked.value = false;
+}
+
+async function confirmFire() {
+  if (fireLocked.value || !fireRecipe.value) return;
+  fireLocked.value = true;
+  stopFireAnim();
+  // 保守模式: 强制把指示器置于文火稳妥位(20%)
+  const finalPos = fireSafeMode.value ? 20 : firePosition.value;
+  firePosition.value = finalPos;
+  await executeCraft(fireRecipe.value, finalPos);
+}
+
+async function executeCraft(recipe: PillRecipe, fire_position: number) {
   const selection = herbSelections.value[recipe.id] || [];
   const herbs_used = recipe.herbCost.map((hc, i) => ({
     herb_id: hc.herb_id,
@@ -4376,24 +4573,26 @@ async function craftPill(recipe: PillRecipe) {
       cost: recipe.cost,
       success_rate: Math.min(0.95, recipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100)),
       herbs_used,
+      fire_position,
     }, headers: getAuthHeaders() });
     if (res.code === 200) {
       gameStore.character!.spirit_stone = res.data.new_spirit_stone;
+      fireResult.value = res.data;
       await loadHerbs();
       await loadPills();
-      if (res.data.success) {
-        showToast(`炼丹成功! 品质系数: ${res.data.quality_factor}x`, 'success');
-      } else {
-        showToast('炼丹失败，材料已损耗', 'error');
-      }
     } else {
-      showToast(res.message || '炼丹失败', 'error');
+      fireResult.value = { error: res.message || '炼丹失败' };
     }
   } catch (err) {
     console.error('炼丹失败', err);
-    showToast('炼丹请求失败', 'error');
+    fireResult.value = { error: '网络错误' };
   }
   crafting.value = false;
+}
+
+// 兼容旧入口(template 还在调用)
+function craftPill(recipe: PillRecipe) {
+  openFireMeter(recipe);
 }
 
 async function useVariant(recipe: PillRecipe, variant: any) {
@@ -7711,6 +7910,832 @@ onUnmounted(() => {
 .pill-use-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ========== 炼丹页面美化 v2 ========== */
+.cultivate-panel {
+  padding: 16px;
+}
+.cultivate-panel .panel-title {
+  position: relative;
+  padding-left: 14px;
+}
+.cultivate-panel .panel-title::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 4px; height: 18px;
+  margin-top: -9px;
+  background: linear-gradient(180deg, var(--gold-ink), var(--cinnabar));
+  border-radius: 2px;
+}
+
+.herb-bag-section {
+  background: linear-gradient(135deg, rgba(232, 204, 138, 0.04), rgba(168, 224, 188, 0.02));
+  border: 1px solid rgba(232, 204, 138, 0.18);
+  border-radius: 6px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.herb-bag-section::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle at 70% 30%, rgba(232, 204, 138, 0.08), transparent 70%);
+  pointer-events: none;
+}
+.herb-bag-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gold-ink);
+  letter-spacing: 3px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.herb-bag-title::before {
+  content: '❖';
+  color: var(--jade);
+  font-size: 12px;
+}
+.herb-bag-item {
+  padding: 5px 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(184, 154, 90, 0.25);
+  border-radius: 14px;
+  transition: all 0.2s;
+}
+.herb-bag-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.pill-type-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pill-type-title::before,
+.pill-type-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 204, 138, 0.3), transparent);
+}
+
+.pill-card {
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(232, 204, 138, 0.04) 0%, rgba(0, 0, 0, 0.15) 100%),
+    var(--paper);
+  border: 1px solid rgba(184, 154, 90, 0.2);
+  border-radius: 6px;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.pill-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--gold-ink), transparent);
+  opacity: 0.5;
+}
+.pill-card:hover {
+  border-color: rgba(232, 204, 138, 0.45);
+  box-shadow: 0 4px 16px rgba(232, 204, 138, 0.08);
+  transform: translateY(-2px);
+}
+.pill-card .pill-name {
+  font-size: 16px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.pill-craft-btn {
+  padding: 6px 18px;
+  background: linear-gradient(135deg, rgba(232, 204, 138, 0.15), rgba(232, 204, 138, 0.05));
+  border: 1px solid var(--gold-ink);
+  color: var(--gold-light);
+  font-weight: 600;
+  letter-spacing: 4px;
+  transition: all 0.2s;
+}
+.pill-craft-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(232, 204, 138, 0.3), rgba(232, 204, 138, 0.1));
+  box-shadow: 0 0 12px rgba(232, 204, 138, 0.4);
+}
+
+/* ========== 火候炼丹弹窗 ========== */
+.fire-overlay {
+  backdrop-filter: blur(3px);
+}
+.fire-modal {
+  width: 90%;
+  max-width: 520px;
+  background:
+    radial-gradient(ellipse at top, rgba(232, 204, 138, 0.08), transparent 50%),
+    linear-gradient(180deg, var(--paper-warm) 0%, var(--paper-dark) 100%);
+  border: 1px solid var(--gold-ink);
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px rgba(232, 204, 138, 0.1),
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 80px rgba(232, 204, 138, 0.1);
+  padding: 20px 24px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.fire-modal::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(circle, rgba(232, 204, 138, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  animation: fireAmbient 8s ease-in-out infinite;
+}
+@keyframes fireAmbient {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(20px, -20px) rotate(180deg); }
+}
+
+.fire-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  position: relative;
+}
+.fire-title-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.fire-rune {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-family: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
+  color: var(--gold-light);
+  background: radial-gradient(circle, rgba(232, 204, 138, 0.2), rgba(232, 204, 138, 0.05));
+  border: 1px solid var(--gold-ink);
+  border-radius: 50%;
+  text-shadow: 0 0 12px var(--gold-ink);
+}
+.fire-title {
+  font-size: 18px;
+  color: var(--gold-light);
+  letter-spacing: 3px;
+  font-weight: 600;
+}
+.fire-subtitle {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+/* 丹炉区 */
+.fire-furnace {
+  position: relative;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.furnace-body {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 30%, #3a2a1c, #1a1208 70%),
+    radial-gradient(circle, #000, #0a0604);
+  border: 2px solid rgba(184, 154, 90, 0.5);
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    inset 0 -10px 20px rgba(232, 140, 90, 0.2),
+    0 0 20px rgba(232, 140, 90, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.furnace-glow {
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 140, 40, 0.4), rgba(232, 80, 40, 0.2) 50%, transparent 80%);
+  filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.furnace-burning .furnace-glow { opacity: 1; animation: furnaceFlicker 0.8s ease-in-out infinite alternate; }
+@keyframes furnaceFlicker {
+  from { transform: scale(0.9); opacity: 0.7; }
+  to { transform: scale(1.05); opacity: 1; }
+}
+.furnace-flames {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-evenly;
+  padding-bottom: 8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.furnace-burning .furnace-flames { opacity: 1; }
+.flame {
+  width: 8px;
+  height: 30px;
+  background: linear-gradient(180deg, #ffe880 0%, #ff9a50 40%, #ff5030 70%, transparent 100%);
+  border-radius: 50% 50% 20% 20%;
+  filter: blur(1.5px);
+  transform-origin: bottom center;
+  animation: flameRise 0.6s ease-in-out infinite alternate;
+}
+.flame.f1 { animation-delay: 0s;    height: 28px; }
+.flame.f2 { animation-delay: 0.1s;  height: 36px; }
+.flame.f3 { animation-delay: 0.2s;  height: 42px; }
+.flame.f4 { animation-delay: 0.15s; height: 34px; }
+.flame.f5 { animation-delay: 0.05s; height: 26px; }
+@keyframes flameRise {
+  from { transform: scaleY(0.85) scaleX(1.1); opacity: 0.9; }
+  to   { transform: scaleY(1.15) scaleX(0.85); opacity: 1; }
+}
+.furnace-rune {
+  position: relative;
+  z-index: 2;
+  font-size: 32px;
+  color: var(--gold-light);
+  font-family: 'ZCOOL XiaoWei', serif;
+  text-shadow:
+    0 0 10px var(--gold-ink),
+    0 0 20px rgba(232, 140, 40, 0.6);
+}
+
+.furnace-true .furnace-glow { background: radial-gradient(circle, rgba(200, 121, 255, 0.6), rgba(120, 80, 200, 0.3) 50%, transparent 80%); }
+.furnace-true .flame { background: linear-gradient(180deg, #fff 0%, #e8cc8a 30%, #c879ff 70%, transparent 100%); }
+
+.furnace-explode .furnace-body {
+  border-color: var(--cinnabar);
+  animation: explodeShake 0.5s;
+}
+.furnace-explode .furnace-rune { color: var(--cinnabar); }
+@keyframes explodeShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px) rotate(-2deg); }
+  40% { transform: translateX(6px) rotate(2deg); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.furnace-success .furnace-rune {
+  animation: successPop 0.6s ease-out;
+}
+@keyframes successPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.furnace-aura {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 121, 255, 0.3), transparent 60%);
+  animation: auraPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes auraPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.95); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+/* 火候条 */
+.fire-meter-wrap {
+  position: relative;
+}
+.fire-meter-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+.fire-tier-badge {
+  padding: 3px 12px;
+  border: 1px solid;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+.fire-tier-desc {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.fire-meter {
+  position: relative;
+  height: 36px;
+  background: var(--paper-dark);
+  border: 1px solid rgba(184, 154, 90, 0.3);
+  border-radius: 4px;
+  overflow: visible;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+  margin-bottom: 10px;
+}
+.fire-zone {
+  position: absolute;
+  top: 0; bottom: 0;
+}
+.zone-explode-l, .zone-explode-r {
+  background: linear-gradient(180deg, rgba(232, 138, 120, 0.6), rgba(180, 60, 40, 0.4));
+}
+.zone-gentle-l, .zone-gentle-r {
+  background: linear-gradient(180deg, rgba(168, 224, 188, 0.45), rgba(100, 180, 130, 0.25));
+}
+.zone-strong-l, .zone-strong-r {
+  background: linear-gradient(180deg, rgba(232, 204, 138, 0.55), rgba(180, 140, 60, 0.3));
+}
+.zone-true {
+  background: linear-gradient(180deg, rgba(200, 121, 255, 0.7), rgba(140, 70, 200, 0.4));
+  box-shadow: 0 0 12px rgba(200, 121, 255, 0.4);
+  animation: trueZonePulse 1.2s ease-in-out infinite;
+}
+@keyframes trueZonePulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+.fire-tick {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.4);
+}
+.fire-pointer {
+  position: absolute;
+  top: -8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  transition: none;
+}
+.fire-pointer.locked {
+  animation: pointerLock 0.3s ease-out;
+}
+@keyframes pointerLock {
+  0% { transform: translateX(-50%) scale(1.3); filter: brightness(1.5); }
+  100% { transform: translateX(-50%) scale(1); filter: brightness(1); }
+}
+.pointer-head {
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 12px solid var(--gold-light);
+  filter: drop-shadow(0 0 6px var(--gold-ink));
+}
+.pointer-stem {
+  width: 2px;
+  height: 44px;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold-ink));
+  margin: -2px auto 0;
+  box-shadow: 0 0 6px var(--gold-ink);
+}
+
+.fire-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.legend-item { letter-spacing: 1px; }
+
+.fire-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.fire-safe-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-light);
+  cursor: pointer;
+  user-select: none;
+}
+.fire-safe-toggle input {
+  accent-color: var(--jade);
+}
+.fire-confirm-btn {
+  padding: 10px 32px;
+  background: linear-gradient(135deg, rgba(232, 204, 138, 0.25), rgba(232, 140, 90, 0.15));
+  border: 1px solid var(--gold-ink);
+  border-radius: 4px;
+  font-family: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
+  font-size: 16px;
+  letter-spacing: 6px;
+  color: var(--gold-light);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-shadow: 0 0 10px rgba(232, 204, 138, 0.4);
+  box-shadow: 0 0 20px rgba(232, 204, 138, 0.15);
+}
+.fire-confirm-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(232, 204, 138, 0.45), rgba(232, 140, 90, 0.3));
+  box-shadow: 0 0 30px rgba(232, 204, 138, 0.4);
+  transform: translateY(-1px);
+}
+.fire-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 结果显示 */
+.fire-result {
+  text-align: center;
+  padding: 10px 0 0;
+  animation: resultFadeIn 0.4s ease-out;
+}
+@keyframes resultFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fire-result-title {
+  font-size: 20px;
+  font-family: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
+  letter-spacing: 5px;
+  margin-bottom: 8px;
+}
+.result-success .fire-result-title { color: var(--gold-light); text-shadow: 0 0 20px var(--gold-ink); }
+.result-true .fire-result-title { color: #c879ff; text-shadow: 0 0 20px #c879ff; }
+.result-explode .fire-result-title { color: var(--cinnabar); }
+.result-fail .fire-result-title { color: var(--ink-faint); }
+.fire-result-detail {
+  font-size: 12px;
+  color: var(--ink-medium);
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ========== 炼丹工作台(中央丹炉) ========== */
+.alchemy-workbench {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+@media (max-width: 820px) {
+  .alchemy-workbench { grid-template-columns: 1fr; }
+}
+
+/* 丹炉容器 */
+.alchemy-stove {
+  position: relative;
+  min-height: 380px;
+  border: 1px solid rgba(232, 204, 138, 0.25);
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 50% 80%, rgba(232, 120, 40, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 30%, rgba(168, 224, 188, 0.06), transparent 50%),
+    linear-gradient(180deg, var(--paper-dark) 0%, #0a0806 100%);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+/* 丹炉光晕 */
+.stove-halo {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 65%, rgba(232, 140, 40, 0.35), transparent 45%);
+  filter: blur(12px);
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+.stove-active .stove-halo { opacity: 1; animation: stoveHaloPulse 2.4s ease-in-out infinite; }
+@keyframes stoveHaloPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+/* 丹炉图 */
+.stove-img {
+  width: 220px;
+  height: 220px;
+  filter:
+    brightness(0.85)
+    drop-shadow(0 0 12px rgba(232, 140, 40, 0.3))
+    drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6));
+  z-index: 2;
+  transition: filter 0.4s, transform 0.4s;
+}
+.stove-active .stove-img {
+  filter:
+    brightness(1)
+    drop-shadow(0 0 20px rgba(232, 180, 90, 0.55))
+    drop-shadow(0 0 40px rgba(232, 120, 40, 0.35))
+    drop-shadow(0 10px 24px rgba(0, 0, 0, 0.7));
+  animation: stoveBreath 3.5s ease-in-out infinite;
+}
+@keyframes stoveBreath {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.02); }
+}
+
+.stove-label {
+  position: absolute;
+  bottom: 14px;
+  font-size: 12px;
+  letter-spacing: 6px;
+  color: var(--ink-faint);
+  font-family: 'ZCOOL XiaoWei', serif;
+  z-index: 3;
+}
+
+/* 火焰 */
+.stove-fire {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 60px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.stove-active .stove-fire { opacity: 1; }
+.fire-blade {
+  width: 10px;
+  background: linear-gradient(180deg, #fff6d0 0%, #ffcf60 25%, #ff8030 60%, #ff3010 90%, transparent 100%);
+  border-radius: 50% 50% 30% 30%;
+  filter: blur(2px);
+  transform-origin: bottom center;
+  animation: fireBladeFlicker 0.7s ease-in-out infinite alternate;
+  box-shadow: 0 0 15px rgba(255, 140, 40, 0.6);
+}
+.fb1 { height: 32px; animation-delay: 0s; }
+.fb2 { height: 48px; animation-delay: 0.12s; }
+.fb3 { height: 56px; animation-delay: 0.2s; }
+.fb4 { height: 44px; animation-delay: 0.05s; }
+.fb5 { height: 30px; animation-delay: 0.18s; }
+@keyframes fireBladeFlicker {
+  0%   { transform: scaleY(0.85) scaleX(1.15) skewX(-4deg); opacity: 0.85; }
+  100% { transform: scaleY(1.15) scaleX(0.85) skewX(5deg);  opacity: 1; }
+}
+
+/* 烟雾 */
+.stove-smoke {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 120px;
+  pointer-events: none;
+  z-index: 1;
+}
+.smoke {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 204, 138, 0.25), rgba(168, 224, 188, 0.08) 50%, transparent 70%);
+  filter: blur(10px);
+  opacity: 0;
+}
+.stove-active .smoke { animation: smokeRise 4s ease-out infinite; }
+.smoke.s1 { animation-delay: 0s; }
+.smoke.s2 { animation-delay: 1.3s; }
+.smoke.s3 { animation-delay: 2.6s; }
+@keyframes smokeRise {
+  0%   { transform: translateX(-50%) translateY(0) scale(0.5); opacity: 0; }
+  30%  { opacity: 0.6; }
+  100% { transform: translateX(-50%) translateY(-140px) scale(2); opacity: 0; }
+}
+
+/* 炉底火星 */
+.stove-ember {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  pointer-events: none;
+  z-index: 1;
+}
+.ember {
+  position: absolute;
+  bottom: 20px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffcc66;
+  box-shadow: 0 0 8px #ff9944, 0 0 4px #ff6622;
+  opacity: 0;
+}
+.stove-active .ember { animation: emberFloat 3s ease-out infinite; }
+@keyframes emberFloat {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translateY(-200px) translateX(var(--drift, 10px)); opacity: 0; }
+}
+
+/* 配方面板 */
+.alchemy-panel {
+  border: 1px solid rgba(184, 154, 90, 0.2);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(232, 204, 138, 0.03), rgba(0, 0, 0, 0.15));
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.alchemy-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(184, 154, 90, 0.15);
+  padding-bottom: 10px;
+}
+.alchemy-tab-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(184, 154, 90, 0.25);
+  border-radius: 4px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.alchemy-tab-btn:hover { color: var(--ink-light); border-color: rgba(232, 204, 138, 0.4); }
+.alchemy-tab-btn.active {
+  background: linear-gradient(135deg, rgba(232, 204, 138, 0.2), rgba(232, 140, 40, 0.1));
+  border-color: var(--gold-ink);
+  color: var(--gold-light);
+  box-shadow: 0 0 12px rgba(232, 204, 138, 0.2);
+}
+
+.alchemy-field { margin-bottom: 12px; }
+.alchemy-field-group { margin-bottom: 10px; }
+.alchemy-label {
+  display: block;
+  font-size: 12px;
+  color: var(--gold-ink);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+.alchemy-select {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--paper-dark);
+  border: 1px solid rgba(184, 154, 90, 0.3);
+  border-radius: 4px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px;
+  color: var(--ink-medium);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.alchemy-select:hover { border-color: var(--gold-ink); }
+.alchemy-select:focus { outline: none; border-color: var(--gold-ink); box-shadow: 0 0 8px rgba(232, 204, 138, 0.2); }
+.alchemy-select-lg { font-size: 14px; padding: 10px 12px; }
+
+.alchemy-effect {
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 2px solid currentColor;
+  border-radius: 2px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  font-style: italic;
+}
+
+.alchemy-herb-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.alchemy-herb-name {
+  font-size: 13px;
+  color: var(--ink-light);
+}
+
+.alchemy-preview {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px dashed rgba(184, 154, 90, 0.2);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin: 10px 0 14px;
+}
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+.preview-key { color: var(--ink-faint); letter-spacing: 2px; }
+.preview-val { color: var(--ink-medium); font-weight: 600; }
+
+.alchemy-craft-btn {
+  width: 100%;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(232, 180, 90, 0.28) 0%, rgba(232, 120, 40, 0.2) 100%),
+    radial-gradient(circle at 50% 50%, rgba(232, 140, 40, 0.15), transparent 70%);
+  border: 1px solid var(--gold-ink);
+  border-radius: 6px;
+  font-family: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
+  color: var(--gold-light);
+  cursor: pointer;
+  transition: all 0.25s;
+  text-shadow: 0 0 10px rgba(232, 204, 138, 0.5);
+  box-shadow: 0 0 20px rgba(232, 204, 138, 0.1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.alchemy-craft-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 220, 130, 0.25), transparent);
+  transition: left 0.5s;
+}
+.alchemy-craft-btn:hover:not(:disabled)::before { left: 100%; }
+.alchemy-craft-btn:hover:not(:disabled) {
+  box-shadow: 0 0 30px rgba(232, 204, 138, 0.4), inset 0 0 20px rgba(232, 140, 40, 0.1);
+  transform: translateY(-2px);
+}
+.alchemy-craft-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.craft-btn-text { font-size: 18px; letter-spacing: 8px; }
+.craft-btn-sub { font-size: 11px; letter-spacing: 3px; opacity: 0.7; }
+
+.alchemy-variants {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(184, 154, 90, 0.2);
+}
+.variants-title {
+  font-size: 12px;
+  color: var(--gold-ink);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+.variants-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.alchemy-variant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(184, 154, 90, 0.2);
+  border-radius: 14px;
+  font-size: 12px;
 }
 
 /* ========== 功法页面 ========== */

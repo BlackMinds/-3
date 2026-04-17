@@ -6,11 +6,29 @@ const QUALITY_MUL: Record<string, number> = {
   white: 1.00, green: 1.20, blue: 1.50, purple: 2.00, gold: 3.00, red: 5.00,
 }
 
+// 火候系统: 指示器位置 0~100 映射到火候档位
+type FireTier = 'explode' | 'gentle' | 'strong' | 'true'
+function resolveFireTier(pos: number): FireTier {
+  if (pos < 10 || pos >= 90) return 'explode'
+  if (pos < 30 || pos >= 70) return 'gentle'
+  if (pos < 45 || pos >= 55) return 'strong'
+  return 'true'
+}
+const FIRE_MULTIPLIER: Record<FireTier, number> = {
+  explode: 1.0,
+  gentle: 1.10,
+  strong: 1.20,
+  true: 1.35,
+}
+const FIRE_NAME: Record<FireTier, string> = {
+  explode: '炸炉', gentle: '文火', strong: '武火', true: '真火',
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
     const userId = event.context.userId
-    const { pill_id, cost, success_rate, herbs_used } = await readBody(event)
+    const { pill_id, cost, success_rate, herbs_used, fire_position } = await readBody(event)
 
     const { rows: charRows } = await pool.query(
       'SELECT * FROM characters WHERE user_id = $1',
@@ -44,10 +62,16 @@ export default defineEventHandler(async (event) => {
       totalCount += h.count
       totalWeight += mul * h.count
     }
-    const qualityFactor = totalCount > 0 ? Math.round((totalWeight / totalCount) * 100) / 100 : 1.0
+    const rawFactor = totalCount > 0 ? totalWeight / totalCount : 1.0
 
-    // 灵石消耗按品质系数调整
-    const actualCost = Math.floor(cost * qualityFactor)
+    // 火候裁决
+    const firePos = typeof fire_position === 'number' ? Math.max(0, Math.min(100, fire_position)) : 50
+    const fireTier = resolveFireTier(firePos)
+    const fireMul = FIRE_MULTIPLIER[fireTier]
+    const qualityFactor = Math.round(rawFactor * fireMul * 100) / 100
+
+    // 灵石消耗按原始品质系数调整(火候不影响灵石消耗)
+    const actualCost = Math.floor(cost * rawFactor)
 
     if (char.spirit_stone < actualCost) {
       return { code: 400, message: `灵石不足,需要 ${actualCost}(品质加成)` }
@@ -67,16 +91,29 @@ export default defineEventHandler(async (event) => {
       )
     }
 
-    // 判断成功
-    const success = Math.random() < success_rate
+    // 炸炉 → 强制失败
+    let success: boolean
+    if (fireTier === 'explode') {
+      success = false
+    } else {
+      success = Math.random() < success_rate
+    }
+
+    // 真火档有 15% 概率产双份
+    let yieldCount = 1
+    let trueFireBonus = false
+    if (success && fireTier === 'true' && Math.random() < 0.15) {
+      yieldCount = 2
+      trueFireBonus = true
+    }
 
     if (success) {
       // 添加丹药(同品质系数合并)
       await pool.query(
         `INSERT INTO character_pills (character_id, pill_id, count, quality_factor)
-         VALUES ($1, $2, 1, $3)
-         ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
-        [char.id, pill_id, qualityFactor]
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + $3`,
+        [char.id, pill_id, yieldCount, qualityFactor]
       )
     }
 
@@ -96,6 +133,12 @@ export default defineEventHandler(async (event) => {
       data: {
         success,
         quality_factor: qualityFactor,
+        raw_quality_factor: Math.round(rawFactor * 100) / 100,
+        fire_tier: fireTier,
+        fire_tier_name: FIRE_NAME[fireTier],
+        fire_multiplier: fireMul,
+        yield_count: yieldCount,
+        true_fire_bonus: trueFireBonus,
         new_spirit_stone: Number(char.spirit_stone) - actualCost,
       },
     }
