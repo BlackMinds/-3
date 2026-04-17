@@ -4227,6 +4227,8 @@ async function harvestPlot(plotIndex: number) {
   try {
     const res: any = await $fetch('/api/cave/harvest', { method: 'POST', body: { plot_index: plotIndex }, headers: getAuthHeaders() });
     if (res.code === 200) {
+      const { herb_id, quality, count } = res.data;
+      showToast(`收获 ${getQualityName(quality)}${getHerbName(herb_id)} ×${count}`, 'success');
       await loadPlots();
       await loadHerbs();
     }
@@ -4252,6 +4254,22 @@ async function harvestAllPlots() {
   try {
     const res: any = await $fetch('/api/cave/harvest-all', { method: 'POST', headers: getAuthHeaders() });
     if (res.code === 200) {
+      const harvested = res.data?.harvested || [];
+      if (harvested.length === 0) {
+        showToast('没有可收获的地块', 'info');
+      } else {
+        // 合并同名同品质
+        const merged: Record<string, number> = {};
+        for (const h of harvested) {
+          const key = `${h.quality}|${h.herb_id}`;
+          merged[key] = (merged[key] || 0) + h.count;
+        }
+        const parts = Object.entries(merged).map(([key, c]) => {
+          const [q, id] = key.split('|');
+          return `${getQualityName(q)}${getHerbName(id)}×${c}`;
+        });
+        showToast(`收获 ${harvested.length} 块：${parts.join('、')}`, 'success', 4000);
+      }
       await loadPlots();
       await loadHerbs();
     }
