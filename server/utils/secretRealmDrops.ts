@@ -164,12 +164,34 @@ export function generateSecretRealmSkillPage(tier: number, isBoss: boolean, owne
   return pool[pool.length - 1]
 }
 
+// ========== 附灵道具掉落 ==========
+// 附灵石 awaken_stone: 整场 roll 一次（普通 25% / 困难 50% / 噩梦 80%），Boss 额外保底 +1（噩梦 +2）
+// 灵枢玉 awaken_reroll: 整场 roll 一次（普通 5% / 困难 15% / 噩梦 35%），噩梦 Boss 30% 额外追加
+function rollAwakenStoneBase(difficulty: 1 | 2 | 3): number {
+  const rate = difficulty === 1 ? 0.25 : difficulty === 2 ? 0.50 : 0.80
+  return Math.random() < rate ? 1 : 0
+}
+function rollAwakenStoneBossBonus(difficulty: 1 | 2 | 3): number {
+  // 每个 Boss 都触发保底
+  return difficulty === 3 ? 2 : 1
+}
+function rollRerollStoneBase(difficulty: 1 | 2 | 3): number {
+  const rate = difficulty === 1 ? 0.05 : difficulty === 2 ? 0.15 : 0.35
+  return Math.random() < rate ? 1 : 0
+}
+function rollRerollStoneBossBonus(difficulty: 1 | 2 | 3): number {
+  if (difficulty !== 3) return 0
+  return Math.random() < 0.30 ? 1 : 0
+}
+
 // ========== 掉落批量生成（按秘境设计） ==========
 export interface SecretRealmDropResult {
   equipments: any[]          // 全部装备列表（未分配）
   bossEquipments: any[]      // Boss 保底装备
   herbs: any[]               // 灵草
   skillPages: string[]       // 功法残页 ID 列表
+  awakenStones: number       // 附灵石总数
+  rerollStones: number       // 灵枢玉总数
 }
 
 /**
@@ -191,6 +213,12 @@ export function generateSecretRealmDrops(
   const bossEquipments: any[] = []
   const herbs: any[] = []
   const skillPages: string[] = []
+  let awakenStones = 0
+  let rerollStones = 0
+
+  // 整场一次附灵道具 roll
+  awakenStones += rollAwakenStoneBase(difficulty)
+  rerollStones += rollRerollStoneBase(difficulty)
 
   // 每只怪物有概率掉落常规装备（数量按秘境设计，每场 2-6 件）
   // 粗略：普通 40% / 困难 55% / 噩梦 70%
@@ -207,6 +235,9 @@ export function generateSecretRealmDrops(
       for (let i = 0; i < bossExtraCount; i++) {
         bossEquipments.push(generateSecretRealmEquip(dropTier, difficulty, true, m.element))
       }
+      // Boss 波附灵道具保底
+      awakenStones += rollAwakenStoneBossBonus(difficulty)
+      rerollStones += rollRerollStoneBossBonus(difficulty)
     }
     // 灵草
     const herb = generateSecretRealmHerb(dropTier, m.element, m.isBoss)
@@ -228,7 +259,55 @@ export function generateSecretRealmDrops(
     }
   }
 
-  return { equipments, bossEquipments, herbs, skillPages }
+  return { equipments, bossEquipments, herbs, skillPages, awakenStones, rerollStones }
+}
+
+/**
+ * 附灵道具分配：附灵石按人头均分（余数随机），灵枢玉按贡献加权
+ */
+export function distributeAwakenItems(
+  awakenStones: number,
+  rerollStones: number,
+  contributions: { characterId: number; contribution: number }[],
+): Map<number, { awaken_stone: number; awaken_reroll: number }> {
+  const result = new Map<number, { awaken_stone: number; awaken_reroll: number }>()
+  for (const c of contributions) result.set(c.characterId, { awaken_stone: 0, awaken_reroll: 0 })
+
+  if (contributions.length === 0) return result
+
+  // 附灵石：均分
+  const stonePerPerson = Math.floor(awakenStones / contributions.length)
+  const stoneRemainder = awakenStones % contributions.length
+  for (const c of contributions) {
+    result.get(c.characterId)!.awaken_stone = stonePerPerson
+  }
+  // 余数随机分配
+  const shuffled = [...contributions].sort(() => Math.random() - 0.5)
+  for (let i = 0; i < stoneRemainder; i++) {
+    result.get(shuffled[i].characterId)!.awaken_stone += 1
+  }
+
+  // 灵枢玉：按贡献加权（贡献第一 ×1.5）
+  if (rerollStones > 0) {
+    const sortedByContrib = [...contributions].sort((a, b) => b.contribution - a.contribution)
+    const topId = sortedByContrib[0].characterId
+    for (let i = 0; i < rerollStones; i++) {
+      const weights = contributions.map(c => {
+        const w = c.contribution + 0.1
+        return c.characterId === topId ? w * 1.5 : w
+      })
+      const total = weights.reduce((a, b) => a + b, 0)
+      let r = Math.random() * total
+      let target = contributions[0].characterId
+      for (let j = 0; j < contributions.length; j++) {
+        r -= weights[j]
+        if (r <= 0) { target = contributions[j].characterId; break }
+      }
+      result.get(target)!.awaken_reroll += 1
+    }
+  }
+
+  return result
 }
 
 /**

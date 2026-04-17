@@ -55,3 +55,5 @@ Thumbs.db
 
 dogfood-output
 
+# Local test scripts (自测辅助, 不随仓库分发)
+scripts/test/

@@ -123,12 +123,16 @@ CREATE TABLE IF NOT EXISTS character_equipment (
   primary_stat VARCHAR(20) NOT NULL,
   primary_value INT NOT NULL DEFAULT 0,
   sub_stats JSONB DEFAULT NULL,
+  awaken_effect JSONB DEFAULT NULL,
   set_id VARCHAR(50) DEFAULT NULL,
   enhance_level INT DEFAULT 0,
   req_level INT DEFAULT 1,
   tier INT DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 增量迁移（兼容已有 character_equipment 表）
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS awaken_effect JSONB DEFAULT NULL;
 
 -- ========================================
 -- 角色功法背包

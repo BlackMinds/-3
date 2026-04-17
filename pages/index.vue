@@ -331,31 +331,7 @@
               <div v-else class="equip-slot-empty">空</div>
               <!-- 悬浮提示 -->
               <div v-if="hoverSlotEquip && hoverSlotEquip === getEquippedItem(slotDef.slot)" class="slot-tooltip">
-                <div class="tooltip-name" :style="{ color: getEquipColor(hoverSlotEquip) }">
-                  {{ hoverSlotEquip.name }}
-                  <span v-if="hoverSlotEquip.enhance_level > 0" class="enhance-tag">+{{ hoverSlotEquip.enhance_level }}</span>
-                </div>
-                <div v-if="hoverSlotEquip.weapon_type" class="tooltip-weapon-type">
-                  类型: {{ getWeaponTypeDef(hoverSlotEquip.weapon_type)?.name }}
-                </div>
-                <div class="tooltip-sub">阶位: T{{ hoverSlotEquip.tier || 1 }} · {{ getRarityName(hoverSlotEquip.rarity) }}</div>
-                <div class="tooltip-sub" :style="{ color: (gameStore.charLevel >= (hoverSlotEquip.req_level || 1)) ? 'var(--jade)' : 'var(--cinnabar)' }">
-                  需要等级: Lv.{{ hoverSlotEquip.req_level || 1 }}
-                </div>
-                <div class="tooltip-main">
-                  {{ getStatName(hoverSlotEquip.primary_stat) }} +{{ getEnhancedPrimaryValue(hoverSlotEquip.primary_value, hoverSlotEquip.enhance_level || 0) }}
-                  <span v-if="hoverSlotEquip.enhance_level > 0" style="color: var(--jade); font-size: 12px;">
-                    (强化+{{ getEnhanceBonus(hoverSlotEquip.primary_value, hoverSlotEquip.enhance_level) }})
-                  </span>
-                </div>
-                <div v-for="(sub, i) in parseSubs(hoverSlotEquip.sub_stats)" :key="i" class="tooltip-sub">
-                  {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
-                </div>
-                <div v-if="hoverSlotEquip.weapon_type" class="tooltip-weapon-bonus">
-                  <div v-for="(line, i) in formatWeaponBonus(hoverSlotEquip.weapon_type)" :key="i" class="tooltip-sub" style="color: var(--gold-ink);">
-                    {{ line }}
-                  </div>
-                </div>
+                <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" />
               </div>
             </div>
           </div>
@@ -411,22 +387,37 @@
             </div>
           </div>
 
-          <!-- ===== 宗门道具 ===== -->
+          <!-- ===== 道具（原宗门道具）===== -->
           <div class="panel-title sub-title" style="margin-top: 16px;">
-            宗门道具 ({{ sectItemList.length }})
+            道具 ({{ sectItemList.length }})
           </div>
-          <div class="sect-items-grid" v-if="sectItemList.length > 0">
-            <div v-for="item in sectItemList" :key="item.pill_id" class="sect-item-card">
+          <div v-if="sectItemList.length > 0" class="item-category-tabs">
+            <button
+              v-for="cat in ITEM_CATEGORIES"
+              :key="cat.id"
+              :class="['item-cat-tab', { active: itemTabId === cat.id }]"
+              @click="itemTabId = cat.id"
+            >
+              {{ cat.name }}
+              <span class="item-cat-count" v-if="getItemCountByCategory(cat.id) > 0">
+                ({{ getItemCountByCategory(cat.id) }})
+              </span>
+            </button>
+          </div>
+          <div class="sect-items-grid" v-if="filteredItemList.length > 0">
+            <div v-for="item in filteredItemList" :key="item.pill_id" class="sect-item-card">
               <div class="sect-item-header">
                 <span class="sect-item-name">{{ item.info.name }}</span>
                 <span class="sect-item-count">x{{ item.count }}</span>
               </div>
               <div class="sect-item-desc">{{ item.info.description }}</div>
-              <button v-if="item.info.category !== 'enhance'" class="sect-item-use-btn" @click="useSectItem(item)">使用</button>
-              <button v-else class="sect-item-use-btn auto" disabled>自动消耗</button>
+              <button v-if="item.info.category === 'enhance'" class="sect-item-use-btn auto" disabled>自动消耗</button>
+              <button v-else-if="item.info.category === 'awaken'" class="sect-item-use-btn" disabled title="请在装备面板使用">装备面板</button>
+              <button v-else class="sect-item-use-btn" @click="useSectItem(item)">使用</button>
             </div>
           </div>
-          <div v-else class="inventory-hint">暂无宗门道具,可在宗门商店购买</div>
+          <div v-else-if="sectItemList.length > 0" class="inventory-hint">该分类暂无道具</div>
+          <div v-else class="inventory-hint">暂无道具,可在宗门商店购买或副本掉落</div>
 
             </div>
           </div>
@@ -1400,54 +1391,12 @@
           <!-- 左侧：背包装备（新） -->
           <div class="compare-col">
             <div class="compare-label">背包装备</div>
-            <div class="tooltip-name" :style="{ color: getEquipColor(hoverEquip) }">
-              {{ hoverEquip.name }}
-              <span v-if="hoverEquip.enhance_level > 0" class="enhance-tag">+{{ hoverEquip.enhance_level }}</span>
-            </div>
-            <div v-if="hoverEquip.weapon_type" class="tooltip-sub">类型: {{ getWeaponTypeDef(hoverEquip.weapon_type)?.name }}</div>
-            <div class="tooltip-sub">阶位: T{{ hoverEquip.tier || 1 }} · {{ getRarityName(hoverEquip.rarity) }}</div>
-            <div class="tooltip-sub" :style="{ color: (gameStore.charLevel >= (hoverEquip.req_level || 1)) ? 'var(--jade)' : 'var(--cinnabar)' }">
-              需要等级: Lv.{{ hoverEquip.req_level || 1 }}
-            </div>
-            <div class="tooltip-main">
-              {{ getStatName(hoverEquip.primary_stat) }} +{{ getEnhancedPrimaryValue(hoverEquip.primary_value, hoverEquip.enhance_level || 0) }}
-              <span v-if="hoverEquip.enhance_level > 0" style="color: var(--jade); font-size: 12px;">
-                (强化+{{ getEnhanceBonus(hoverEquip.primary_value, hoverEquip.enhance_level) }})
-              </span>
-            </div>
-            <div v-for="(sub, i) in parseSubs(hoverEquip.sub_stats)" :key="i" class="tooltip-sub">
-              {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
-            </div>
-            <div v-if="hoverEquip.weapon_type" class="tooltip-weapon-bonus">
-              <div v-for="(line, i) in formatWeaponBonus(hoverEquip.weapon_type)" :key="i" class="tooltip-sub" style="color: var(--gold-ink);">
-                {{ line }}
-              </div>
-            </div>
+            <EquipDetail :equip="hoverEquip" :char-level="gameStore.charLevel" :show-req-level="true" />
           </div>
           <!-- 右侧：当前穿戴 -->
           <div class="compare-col compare-current" v-if="hoverCompareEquip">
             <div class="compare-label">当前穿戴</div>
-            <div class="tooltip-name" :style="{ color: getEquipColor(hoverCompareEquip) }">
-              {{ hoverCompareEquip.name }}
-              <span v-if="hoverCompareEquip.enhance_level > 0" class="enhance-tag">+{{ hoverCompareEquip.enhance_level }}</span>
-            </div>
-            <div v-if="hoverCompareEquip.weapon_type" class="tooltip-sub">类型: {{ getWeaponTypeDef(hoverCompareEquip.weapon_type)?.name }}</div>
-            <div class="tooltip-sub">阶位: T{{ hoverCompareEquip.tier || 1 }} · {{ getRarityName(hoverCompareEquip.rarity) }}</div>
-            <div class="tooltip-sub">需要等级: Lv.{{ hoverCompareEquip.req_level || 1 }}</div>
-            <div class="tooltip-main">
-              {{ getStatName(hoverCompareEquip.primary_stat) }} +{{ getEnhancedPrimaryValue(hoverCompareEquip.primary_value, hoverCompareEquip.enhance_level || 0) }}
-              <span v-if="hoverCompareEquip.enhance_level > 0" style="color: var(--jade); font-size: 12px;">
-                (强化+{{ getEnhanceBonus(hoverCompareEquip.primary_value, hoverCompareEquip.enhance_level) }})
-              </span>
-            </div>
-            <div v-for="(sub, i) in parseSubs(hoverCompareEquip.sub_stats)" :key="i" class="tooltip-sub">
-              {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
-            </div>
-            <div v-if="hoverCompareEquip.weapon_type" class="tooltip-weapon-bonus">
-              <div v-for="(line, i) in formatWeaponBonus(hoverCompareEquip.weapon_type)" :key="i" class="tooltip-sub" style="color: var(--gold-ink);">
-                {{ line }}
-              </div>
-            </div>
+            <EquipDetail :equip="hoverCompareEquip" :show-req-level="true" />
           </div>
           <div class="compare-col compare-empty" v-else>
             <div class="compare-label">当前穿戴</div>
@@ -1461,34 +1410,17 @@
     <!-- ==================== 装备点击面板 ==================== -->
     <Teleport to="body">
       <div v-if="clickedEquip" class="equip-action-panel" :style="{ top: clickedEquipY + 'px', left: clickedEquipX + 'px' }">
-        <div class="tooltip-name" :style="{ color: getEquipColor(clickedEquip) }">
-          {{ clickedEquip.name }}
-          <span v-if="clickedEquip.enhance_level > 0" class="enhance-tag">+{{ clickedEquip.enhance_level }}</span>
-        </div>
-        <div v-if="clickedEquip.weapon_type" class="tooltip-weapon-type">
-          类型: {{ getWeaponTypeDef(clickedEquip.weapon_type)?.name }}
-        </div>
-        <div class="tooltip-sub">阶位: T{{ clickedEquip.tier || 1 }} · {{ getRarityName(clickedEquip.rarity) }}</div>
-        <div class="tooltip-sub" :style="{ color: (gameStore.charLevel >= (clickedEquip.req_level || 1)) ? 'var(--jade)' : 'var(--cinnabar)' }">
-          需要等级: Lv.{{ clickedEquip.req_level || 1 }}
-        </div>
-        <div class="tooltip-main">
-          {{ getStatName(clickedEquip.primary_stat) }} +{{ getEnhancedPrimaryValue(clickedEquip.primary_value, clickedEquip.enhance_level || 0) }}
-          <span v-if="clickedEquip.enhance_level > 0" style="color: var(--jade); font-size: 12px;">
-            (强化+{{ getEnhanceBonus(clickedEquip.primary_value, clickedEquip.enhance_level) }})
-          </span>
-        </div>
-        <div v-for="(sub, i) in parseSubs(clickedEquip.sub_stats)" :key="i" class="tooltip-sub">
-          {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
-        </div>
-        <div v-if="clickedEquip.weapon_type" class="tooltip-weapon-bonus">
-          <div v-for="(line, i) in formatWeaponBonus(clickedEquip.weapon_type)" :key="i" class="tooltip-sub" style="color: var(--gold-ink);">
-            {{ line }}
-          </div>
-        </div>
+        <EquipDetail :equip="clickedEquip" :char-level="gameStore.charLevel" :show-req-level="true" />
         <div class="equip-action-btns">
           <button v-if="!clickedEquip.slot" class="equip-action-btn-green" @click="quickEquip(clickedEquip)">装备</button>
           <button v-if="(clickedEquip.enhance_level || 0) < 10" class="equip-action-btn-gold" @click="openEnhance(clickedEquip); clickedEquip = null">强化</button>
+          <button
+            v-if="canEquipAwaken(clickedEquip)"
+            :class="['equip-action-btn-awaken', { 'awaken-breathing': !clickedEquip.awaken_effect }]"
+            @click="openAwakenDialog(clickedEquip); clickedEquip = null"
+          >
+            {{ clickedEquip.awaken_effect ? '洗练 ✦' : '附灵 ✦' }}
+          </button>
           <button v-if="clickedEquip.slot" class="equip-action-btn-red" @click="quickUnequip(clickedEquip)">卸下</button>
           <button v-if="!clickedEquip.slot" class="equip-action-btn-red" @click="quickSell(clickedEquip)">出售</button>
           <button class="equip-action-btn-close" @click="clickedEquip = null">关闭</button>
@@ -1674,6 +1606,9 @@
               <span v-if="getEquippedItem(currentPickSlot).weapon_type" v-for="(line, i) in formatWeaponBonus(getEquippedItem(currentPickSlot).weapon_type)" :key="'wb'+i" class="picker-sub" style="color: var(--gold-ink);">
                 {{ line }}
               </span>
+              <span v-if="getAwakenDisplay(getEquippedItem(currentPickSlot))" class="picker-sub" style="color: #FFAA00; font-weight: 600;">
+                ✦ 附灵·{{ getAwakenDisplay(getEquippedItem(currentPickSlot))!.name }} · {{ getAwakenDisplay(getEquippedItem(currentPickSlot))!.desc }}
+              </span>
             </div>
             <button class="picker-unequip-btn" @click="doUnequip()">卸下</button>
           </div>
@@ -1704,6 +1639,9 @@
               </span>
               <span v-if="eq.weapon_type" v-for="(line, i) in formatWeaponBonus(eq.weapon_type)" :key="'wb'+i" class="picker-sub" style="color: var(--gold-ink);">
                 {{ line }}
+              </span>
+              <span v-if="getAwakenDisplay(eq)" class="picker-sub" style="color: #FFAA00; font-weight: 600;">
+                ✦ 附灵·{{ getAwakenDisplay(eq)!.name }} · {{ getAwakenDisplay(eq)!.desc }}
               </span>
             </div>
           </div>
@@ -1822,6 +1760,66 @@
             <div class="stats-drops-title">掉落物品</div>
             <p class="stats-no-drops">暂无掉落</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 附灵/洗练弹窗 ==================== -->
+    <div v-if="showAwaken && awakenTarget" class="modal-overlay" @click="closeAwakenDialog()">
+      <div class="modal-content" @click.stop style="max-width: 480px;">
+        <div class="modal-header">
+          <h3>{{ awakenTarget.awaken_effect ? '装备洗练 ✦' : '装备附灵 ✦' }}</h3>
+          <button class="modal-close" @click="closeAwakenDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="awaken-equip-info">
+            <div class="enhance-equip-name" :style="{ color: getEquipColor(awakenTarget) }">
+              {{ awakenTarget.name }}
+              <span class="enhance-tag" v-if="awakenTarget.enhance_level > 0">+{{ awakenTarget.enhance_level }}</span>
+            </div>
+            <div class="awaken-slot-tag">{{ getSlotName(awakenTarget.base_slot || awakenTarget.slot) }} · {{ getRarityName(awakenTarget.rarity) }}</div>
+          </div>
+
+          <div v-if="awakenTarget.awaken_effect" class="awaken-current-block">
+            <div class="awaken-label">当前附灵</div>
+            <div class="awaken-effect-row">
+              ✦ 附灵·{{ awakenTarget.awaken_effect.name }}
+              <div class="awaken-effect-desc">{{ describeAwakenFromEquip(awakenTarget.awaken_effect) }}</div>
+            </div>
+          </div>
+
+          <div class="awaken-cost-block">
+            <div class="awaken-label">消耗</div>
+            <div class="awaken-cost-row">
+              <span class="awaken-item-name">{{ awakenTarget.awaken_effect ? '灵枢玉' : '附灵石' }}</span>
+              ×1
+              <span class="awaken-item-stock">（拥有 {{ getItemCount(awakenTarget.awaken_effect ? 'awaken_reroll' : 'awaken_stone') }}）</span>
+            </div>
+            <div class="awaken-hint">
+              {{ awakenTarget.awaken_effect
+                ? '将在该装备的' + getSlotName(awakenTarget.base_slot || awakenTarget.slot) + '池内随机一条附灵（保证与当前不同）。'
+                : '将在该装备的' + getSlotName(awakenTarget.base_slot || awakenTarget.slot) + '池内随机一条附灵，品质档位取决于装备品质。' }}
+            </div>
+          </div>
+
+          <div v-if="awakenResult" class="awaken-result-block">
+            <div class="awaken-label awaken-label-new">新附灵</div>
+            <div class="awaken-effect-row" style="color: #FFAA00;">
+              ✦ 附灵·{{ awakenResult.name }}
+              <div class="awaken-effect-desc">{{ describeAwakenFromEquip(awakenResult) }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            v-if="!awakenResult"
+            :disabled="awakenBusy || getItemCount(awakenTarget.awaken_effect ? 'awaken_reroll' : 'awaken_stone') < 1"
+            class="enhance-btn"
+            @click="confirmAwaken()"
+          >
+            {{ awakenBusy ? '处理中...' : (awakenTarget.awaken_effect ? '洗练' : '附灵') }}
+          </button>
+          <button v-else class="enhance-btn" @click="closeAwakenDialog()">完成</button>
         </div>
       </div>
     </div>
@@ -2502,7 +2500,8 @@ definePageMeta({ middleware: 'auth' })
 import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, getSkillSlotLimits, type RealmBonus } from '~/game/data';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '~/game/skillData';
 import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_NAMES, SHOP_CATEGORY_COLORS, formatFund } from '~/game/sectData';
-import { SECT_ITEM_INFO } from '~/game/sectItems';
+import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
+import { AWAKEN_POOLS, AWAKEN_DEF_MAP, canSlotAwaken, canRarityAwaken, describeAwakenEffect, type AwakenEffect } from '~/game/awakenData';
 import { EQUIP_SLOTS, STAT_NAMES, PERCENT_STATS, getRarityColor, getSlotName, getWeaponTypeDef, getEnhanceCost, getEnhanceSuccessRate, getEnhancedPrimaryValue, getEnhanceBonus, setForgeQualityBonus } from '~/game/equipData';
 import { PILL_RECIPES, getPillById, getRarityColor as getPillColor } from '~/game/pillData';
 import type { PillRecipe } from '~/game/pillData';
@@ -3328,10 +3327,17 @@ const mainStats = computed(() => {
   const realmHpBonus = rb.hp + Math.floor(c.max_hp * rb.hp_pct / 100);
   const realmSpdBonus = rb.spd;
 
-  const atkBonus = (p ? Math.floor(c.atk * p.atkPercent / 100) : 0) + eb.ATK + weaponAtkBonus + lb.atk + realmAtkBonus;
-  const defBonus = (p ? Math.floor(c.def * p.defPercent / 100) : 0) + eb.DEF + lb.def + realmDefBonus;
-  const hpBonus = (p ? Math.floor(c.max_hp * p.hpPercent / 100) : 0) + eb.HP + lb.hp + realmHpBonus;
-  const spdBonus = (p ? Math.floor(c.spd * p.spdPercent / 100) : 0) + eb.SPD + weaponSpdBonus + lb.spd + realmSpdBonus;
+  // 附灵主属性 %（以 base 为基数，与 fight.post.ts 的算法口径一致）
+  const ab = awakenBonus.value;
+  const awakenAtkBonus = Math.floor(c.atk * ab.atkPct);
+  const awakenDefBonus = Math.floor(c.def * ab.defPct);
+  const awakenHpBonus  = Math.floor(c.max_hp * ab.hpPct);
+  const awakenSpdBonus = Math.floor(c.spd * ab.spdPct);
+
+  const atkBonus = (p ? Math.floor(c.atk * p.atkPercent / 100) : 0) + eb.ATK + weaponAtkBonus + lb.atk + realmAtkBonus + awakenAtkBonus;
+  const defBonus = (p ? Math.floor(c.def * p.defPercent / 100) : 0) + eb.DEF + lb.def + realmDefBonus + awakenDefBonus;
+  const hpBonus = (p ? Math.floor(c.max_hp * p.hpPercent / 100) : 0) + eb.HP + lb.hp + realmHpBonus + awakenHpBonus;
+  const spdBonus = (p ? Math.floor(c.spd * p.spdPercent / 100) : 0) + eb.SPD + weaponSpdBonus + lb.spd + realmSpdBonus + awakenSpdBonus;
   return [
     { label: '气血', value: formatNum(c.max_hp + hpBonus), bonus: hpBonus },
     { label: '攻击', value: formatNum(c.atk + atkBonus), bonus: atkBonus },
@@ -3381,6 +3387,50 @@ const weaponBonus = computed(() => {
   return result;
 });
 
+// 装备附灵聚合（v1.2 — 只聚合影响常态面板的属性加成；运行时触发型不在此处）
+const awakenBonus = computed(() => {
+  const r = {
+    atkPct: 0, defPct: 0, hpPct: 0, spdPct: 0,          // 主属性 %
+    critRate: 0, critDmg: 0, dodge: 0, lifesteal: 0,    // 二级
+    spirit: 0, accuracy: 0,                              // 神识 / 命中 flat
+    luck: 0, spiritDensity: 0, armorPen: 0,              // 福缘 / 灵气浓度 / 破甲
+    ctrlResist: 0, allResist: 0,                         // 抗性
+    fireDmg: 0, metalDmg: 0, waterDmg: 0, woodDmg: 0, earthDmg: 0,  // 元素强化
+  };
+  for (const eq of equipList.value) {
+    if (!eq.slot) continue;
+    const raw = eq.awaken_effect;
+    if (!raw) continue;
+    let eff: any;
+    try { eff = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { continue; }
+    const v = Number(eff.value) || 0;
+    switch (eff.stat) {
+      case 'atkPct':      r.atkPct += v; break;
+      case 'defPct':      r.defPct += v; break;
+      case 'hpPct':       r.hpPct  += v; break;
+      case 'spdPct':      r.spdPct += v; break;
+      case 'harmonyPct':  r.atkPct += v; r.defPct += v; r.hpPct += v; break;
+      case 'critRate':    r.critRate += v; break;
+      case 'critDmg':     r.critDmg  += v; break;
+      case 'dodge':       r.dodge    += v; break;
+      case 'lifesteal':   r.lifesteal += v; break;
+      case 'spirit':      r.spirit   += v; break;
+      case 'accuracyBonus': r.accuracy += v; break;
+      case 'luckBonus':   r.luck += v; break;
+      case 'spiritDensityBonus': r.spiritDensity += v; break;
+      case 'armorPenPct': r.armorPen += v; break;
+      case 'ctrlResist':  r.ctrlResist += v; break;
+      case 'allResistBonus': r.allResist += v; break;
+      case 'FIRE_DMG_PCT':  r.fireDmg  += v; break;
+      case 'METAL_DMG_PCT': r.metalDmg += v; break;
+      case 'WATER_DMG_PCT': r.waterDmg += v; break;
+      case 'WOOD_DMG_PCT':  r.woodDmg  += v; break;
+      case 'EARTH_DMG_PCT': r.earthDmg += v; break;
+    }
+  }
+  return r;
+});
+
 // 二级属性
 const secondaryStats = computed(() => {
   const c = gameStore.character;
@@ -3388,18 +3438,19 @@ const secondaryStats = computed(() => {
   const eb = equipBonus.value;
   const wb = weaponBonus.value;
   const xb = equipExtendedBonus.value;
+  const ab = awakenBonus.value;
   const spiritBonus = Math.floor((c.spirit || 0) * wb.SPIRIT_percent / 100);
   const rb = currentRealmBonus.value;
   return [
-    { label: '会心率', value: ((Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100).toFixed(1) + '%' },
-    { label: '会心伤害', value: ((Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100).toFixed(0) + '%' },
-    { label: '闪避率', value: ((Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100).toFixed(1) + '%' },
-    { label: '吸血', value: ((Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat).toFixed(1) + '%' },
-    { label: '神识', value: String((c.spirit || 0) + eb.SPIRIT + spiritBonus) },
-    { label: '破甲', value: xb.ARMOR_PEN.toFixed(1) + '%' },
-    { label: '命中', value: xb.ACCURACY.toFixed(1) + '%' },
-    { label: '灵气浓度', value: xb.SPIRIT_DENSITY.toFixed(1) + '%' },
-    { label: '福缘', value: xb.LUCK.toFixed(1) + '%' },
+    { label: '会心率', value: ((Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100 + ab.critRate * 100).toFixed(1) + '%' },
+    { label: '会心伤害', value: ((Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100 + ab.critDmg * 100).toFixed(0) + '%' },
+    { label: '闪避率', value: ((Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100 + ab.dodge * 100).toFixed(1) + '%' },
+    { label: '吸血', value: ((Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat + ab.lifesteal * 100).toFixed(1) + '%' },
+    { label: '神识', value: String((c.spirit || 0) + eb.SPIRIT + spiritBonus + ab.spirit) },
+    { label: '破甲', value: (xb.ARMOR_PEN + ab.armorPen * 100).toFixed(1) + '%' },
+    { label: '命中', value: (xb.ACCURACY + ab.accuracy).toFixed(1) + '%' },
+    { label: '灵气浓度', value: (xb.SPIRIT_DENSITY + ab.spiritDensity * 100).toFixed(1) + '%' },
+    { label: '福缘', value: (xb.LUCK + ab.luck * 100).toFixed(1) + '%' },
   ];
 });
 
@@ -3408,12 +3459,13 @@ const resistStats = computed(() => {
   const c = gameStore.character;
   if (!c) return [];
   const p = gameStore.equippedSkills?.passiveEffects;
-  const rm = Number(c.resist_metal || 0) + (p?.resistMetal || 0);
-  const rw = Number(c.resist_wood || 0) + (p?.resistWood || 0);
-  const rwa = Number(c.resist_water || 0) + (p?.resistWater || 0);
-  const rf = Number(c.resist_fire || 0) + (p?.resistFire || 0);
-  const re = Number(c.resist_earth || 0) + (p?.resistEarth || 0);
-  const rc = Number(c.resist_ctrl || 0) + (p?.resistCtrl || 0);
+  const ab = awakenBonus.value;
+  const rm = Number(c.resist_metal || 0) + (p?.resistMetal || 0) + ab.allResist;
+  const rw = Number(c.resist_wood || 0) + (p?.resistWood || 0) + ab.allResist;
+  const rwa = Number(c.resist_water || 0) + (p?.resistWater || 0) + ab.allResist;
+  const rf = Number(c.resist_fire || 0) + (p?.resistFire || 0) + ab.allResist;
+  const re = Number(c.resist_earth || 0) + (p?.resistEarth || 0) + ab.allResist;
+  const rc = Number(c.resist_ctrl || 0) + (p?.resistCtrl || 0) + ab.ctrlResist;
   return [
     { label: '金抗', value: (rm * 100).toFixed(1) + '%', percent: rm * 100 / 0.7, color: '#c9a85c' },
     { label: '木抗', value: (rw * 100).toFixed(1) + '%', percent: rw * 100 / 0.7, color: '#6baa7d' },
@@ -3427,12 +3479,13 @@ const resistStats = computed(() => {
 // 元素强化
 const elementDmgStats = computed(() => {
   const xb = equipExtendedBonus.value;
+  const ab = awakenBonus.value;
   return [
-    { label: '金系强化', value: xb.METAL_DMG.toFixed(1) + '%', color: '#c9a85c' },
-    { label: '木系强化', value: xb.WOOD_DMG.toFixed(1) + '%',  color: '#6baa7d' },
-    { label: '水系强化', value: xb.WATER_DMG.toFixed(1) + '%', color: '#5b8eaa' },
-    { label: '火系强化', value: xb.FIRE_DMG.toFixed(1) + '%',  color: '#c45c4a' },
-    { label: '土系强化', value: xb.EARTH_DMG.toFixed(1) + '%', color: '#a08a60' },
+    { label: '金系强化', value: (xb.METAL_DMG + ab.metalDmg * 100).toFixed(1) + '%', color: '#c9a85c' },
+    { label: '木系强化', value: (xb.WOOD_DMG  + ab.woodDmg  * 100).toFixed(1) + '%', color: '#6baa7d' },
+    { label: '水系强化', value: (xb.WATER_DMG + ab.waterDmg * 100).toFixed(1) + '%', color: '#5b8eaa' },
+    { label: '火系强化', value: (xb.FIRE_DMG  + ab.fireDmg  * 100).toFixed(1) + '%', color: '#c45c4a' },
+    { label: '土系强化', value: (xb.EARTH_DMG + ab.earthDmg * 100).toFixed(1) + '%', color: '#a08a60' },
   ];
 });
 
@@ -4565,6 +4618,87 @@ function getPillName(pillId: string): string {
   return getPillById(pillId)?.name || pillId;
 }
 
+// ========== 装备附灵（v1.2）==========
+const showAwaken = ref(false);
+const awakenTarget = ref<any>(null);
+const awakenResult = ref<AwakenEffect | null>(null);
+const awakenBusy = ref(false);
+
+// 按 item id 统计玩家拥有数量（通用，附灵石/灵枢玉走 pillInventory）
+function getItemCount(itemId: string): number {
+  return pillInventory.value
+    .filter((i: any) => i.pill_id === itemId)
+    .reduce((sum, i) => sum + i.count, 0);
+}
+
+function canEquipAwaken(eq: any): boolean {
+  if (!eq) return false;
+  const slot = eq.base_slot || eq.slot;
+  return canSlotAwaken(slot) && canRarityAwaken(eq.rarity);
+}
+
+function getAwakenDisplay(eq: any): { name: string; desc: string } | null {
+  if (!eq?.awaken_effect) return null;
+  const aw: AwakenEffect = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect;
+  return { name: aw.name, desc: describeAwakenFromEquip(aw) };
+}
+
+function describeAwakenFromEquip(aw: AwakenEffect): string {
+  // 对于五行·X meta 带 element，走主池 desc 会使用 meta
+  return describeAwakenEffect(aw);
+}
+
+function openAwakenDialog(eq: any) {
+  if (!canEquipAwaken(eq)) {
+    showToast('该装备不支持附灵', 'error');
+    return;
+  }
+  awakenTarget.value = eq;
+  awakenResult.value = null;
+  showAwaken.value = true;
+}
+
+function closeAwakenDialog() {
+  showAwaken.value = false;
+  awakenTarget.value = null;
+  awakenResult.value = null;
+  awakenBusy.value = false;
+}
+
+async function confirmAwaken() {
+  if (!awakenTarget.value) return;
+  const eq = awakenTarget.value;
+  const itemId = eq.awaken_effect ? 'awaken_reroll' : 'awaken_stone';
+  if (getItemCount(itemId) < 1) {
+    showToast(`缺少${itemId === 'awaken_stone' ? '附灵石' : '灵枢玉'}`, 'error');
+    return;
+  }
+  awakenBusy.value = true;
+  try {
+    const res: any = await $fetch('/api/equipment/awaken', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: { equip_id: eq.id, item_id: itemId },
+    });
+    if (res.code === 200) {
+      awakenResult.value = res.data.new_effect;
+      // 更新本地装备缓存
+      eq.awaken_effect = res.data.new_effect;
+      // 重载背包（道具数量变了）和游戏数据（刷新面板）
+      await loadPills();
+      await gameStore.loadGameData();
+      showToast('附灵完成', 'success');
+    } else {
+      showToast(res.message || '附灵失败', 'error');
+    }
+  } catch (err) {
+    console.error('附灵请求失败', err);
+    showToast('附灵请求失败', 'error');
+  } finally {
+    awakenBusy.value = false;
+  }
+}
+
 // ========== 火候系统 ==========
 const showFireMeter = ref(false);
 const fireRecipe = ref<PillRecipe | null>(null);
@@ -4728,7 +4862,7 @@ function getSkillNameById(sid: string): string {
 }
 
 const sectItemList = computed(() => {
-  // 从 pillInventory 里筛选出 sect items
+  // 从 pillInventory 里筛选出通用道具（原 sect items）
   const items: any[] = [];
   for (const p of pillInventory.value) {
     const info = SECT_ITEM_INFO[p.pill_id];
@@ -4744,6 +4878,15 @@ const sectItemList = computed(() => {
   }
   return items;
 });
+
+// 道具分类 Tab（v1.2）
+const itemTabId = ref<string>('enhance');
+const filteredItemList = computed(() => {
+  return sectItemList.value.filter(i => i.info.category === itemTabId.value);
+});
+function getItemCountByCategory(catId: string): number {
+  return sectItemList.value.filter(i => i.info.category === catId).length;
+}
 
 const sectItemDialog = ref<{
   show: boolean;
@@ -7055,7 +7198,8 @@ onUnmounted(() => {
 .equip-action-btn-green,
 .equip-action-btn-gold,
 .equip-action-btn-red,
-.equip-action-btn-close {
+.equip-action-btn-close,
+.equip-action-btn-awaken {
   flex: 1;
   min-width: 50px;
   padding: 5px 0;
@@ -7065,6 +7209,86 @@ onUnmounted(() => {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.equip-action-btn-awaken {
+  border: 1px solid #5ACBFF;
+  color: #5ACBFF;
+}
+.equip-action-btn-awaken:hover { background: rgba(90, 203, 255, 0.1); }
+.equip-action-btn-awaken.awaken-breathing {
+  animation: awaken-breathing 1.8s ease-in-out infinite;
+}
+@keyframes awaken-breathing {
+  0%, 100% { box-shadow: 0 0 0 rgba(90, 203, 255, 0); }
+  50%      { box-shadow: 0 0 10px rgba(90, 203, 255, 0.8); }
+}
+
+.tooltip-awaken-row {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 170, 0, 0.4);
+  color: #FFAA00;
+  font-weight: 600;
+  font-size: 13px;
+}
+.tooltip-awaken-desc {
+  display: block;
+  font-weight: normal;
+  color: rgba(255, 170, 0, 0.75);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.awaken-equip-info {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--ink-faint);
+  margin-bottom: 10px;
+}
+.awaken-slot-tag {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+.awaken-label {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-bottom: 4px;
+}
+.awaken-label-new { color: #FFAA00; }
+.awaken-effect-row {
+  font-weight: 600;
+  padding: 8px;
+  background: rgba(255, 170, 0, 0.08);
+  border: 1px dashed rgba(255, 170, 0, 0.3);
+  border-radius: 4px;
+  color: #FFAA00;
+}
+.awaken-effect-desc {
+  font-weight: normal;
+  font-size: 12px;
+  color: rgba(255, 170, 0, 0.8);
+  margin-top: 4px;
+}
+.awaken-current-block,
+.awaken-cost-block,
+.awaken-result-block {
+  margin: 10px 0;
+}
+.awaken-cost-row {
+  padding: 6px 8px;
+  background: rgba(90, 203, 255, 0.08);
+  border: 1px dashed rgba(90, 203, 255, 0.3);
+  border-radius: 4px;
+  color: #5ACBFF;
+}
+.awaken-item-name { font-weight: 600; margin-right: 4px; }
+.awaken-item-stock { font-size: 12px; color: var(--ink-faint); margin-left: 4px; }
+.awaken-hint {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
 .equip-action-btn-green {
@@ -10027,6 +10251,31 @@ onUnmounted(() => {
 }
 
 /* ==================== 宗门道具 ==================== */
+.item-category-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+  flex-wrap: wrap;
+}
+.item-cat-tab {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid #554;
+  color: #aaa;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Noto Serif SC', serif;
+}
+.item-cat-tab:hover { background: rgba(255, 170, 0, 0.08); color: #ddd; }
+.item-cat-tab.active {
+  background: rgba(232, 204, 138, 0.15);
+  border-color: var(--gold-ink);
+  color: var(--gold-ink);
+}
+.item-cat-count { font-size: 11px; opacity: 0.7; margin-left: 2px; }
+
 .sect-items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

@@ -301,6 +301,22 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
   let dodge = Number(char.dodge || 0)
   let lifesteal = Number(char.lifesteal || 0)
 
+  // v1.2 附灵运行时状态
+  const awaken: any = {
+    burnOnHitChance: 0, poisonOnHitChance: 0, bleedOnHitChance: 0,
+    chainAttackChance: 0, armorPenPct: 0, executeBonus: 0,
+    lowHpAtkBonus: 0, lowHpDefBonus: 0,
+    damageReduction: 0, critTakenReduction: 0,
+    regenPerTurn: 0, cleanseInterval: 0,
+    frenzyOpening: 0, vsBossBonus: 0, vsEliteBonus: 0,
+    debuffDurationBonus: 0,
+    poisonOnHitTaken: 0, burnOnHitTaken: 0, reflectOnCrit: 0,
+  }
+  let awakenExpBonus = 0
+  let awakenSectContribBonus = 0
+  let awakenLuckBonus = 0
+  let awakenSpiritDensityBonus = 0
+
   // 等级加成
   const lv = char.level || 1
   for (let i = 1; i < lv; i++) {
@@ -378,6 +394,77 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
       else if (sub.stat === 'SPIRIT') spirit += sub.value
       else if (sub.stat === 'SPIRIT_DENSITY') spiritDensity += sub.value
       else if (sub.stat === 'LUCK') luck += sub.value
+    }
+
+    // v1.2 附灵聚合（仅 weapon/armor/pendant 槽位有效）
+    const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
+    if (aw && aw.stat) {
+      const v = Number(aw.value) || 0
+      switch (aw.stat) {
+        // 属性加成类（直接叠加到 BattlerStats）
+        case 'lifesteal':          lifesteal += v; break
+        case 'critRate':           critRate += v; break
+        case 'critDmg':            critDmg += v; break
+        case 'dodge':              dodge += v; break
+        case 'spirit':             spirit += v; break
+        case 'atkPct':             atk = Math.floor(atk * (1 + v)); break
+        case 'defPct':             def = Math.floor(def * (1 + v)); break
+        case 'hpPct':              maxHp = Math.floor(maxHp * (1 + v)); break
+        case 'spdPct':             spd = Math.floor(spd * (1 + v)); break
+        case 'harmonyPct':
+          atk = Math.floor(atk * (1 + v))
+          def = Math.floor(def * (1 + v))
+          maxHp = Math.floor(maxHp * (1 + v))
+          break
+        // 五行·X 元素伤害加成（value 是 0-1 的小数，转到 elementDmg 的百分比值）
+        case 'FIRE_DMG_PCT':       elementDmg.fire += v * 100; break
+        case 'METAL_DMG_PCT':      elementDmg.metal += v * 100; break
+        case 'WATER_DMG_PCT':      elementDmg.water += v * 100; break
+        case 'WOOD_DMG_PCT':       elementDmg.wood += v * 100; break
+        case 'EARTH_DMG_PCT':      elementDmg.earth += v * 100; break
+        // 破甲（叠加到 armor_pen flat）
+        case 'armorPenPct':        awaken.armorPenPct = (awaken.armorPenPct || 0) + v; break
+        // 命中（flat）
+        case 'accuracyBonus':      accuracy += v; break
+        // 控制抗性
+        case 'ctrlResist':
+          if (!(char as any).__resistCtrlAwaken) (char as any).__resistCtrlAwaken = 0
+          ;(char as any).__resistCtrlAwaken += v
+          break
+        // 五系抗性
+        case 'allResistBonus':
+          if (!(char as any).__resistAllAwaken) (char as any).__resistAllAwaken = 0
+          ;(char as any).__resistAllAwaken += v
+          break
+        // 战斗外奖励类
+        case 'luckBonus':          awakenLuckBonus += v; break
+        case 'spiritDensityBonus': awakenSpiritDensityBonus += v; break
+        case 'expBonus':           awakenExpBonus += v; break
+        case 'sectContribBonus':   awakenSectContribBonus += v; break
+        // 复用现有钩子（Max-Merge）
+        case 'poisonOnHitTaken':   awaken.poisonOnHitTaken = Math.max(awaken.poisonOnHitTaken, v); break
+        case 'burnOnHitTaken':     awaken.burnOnHitTaken = Math.max(awaken.burnOnHitTaken, v); break
+        case 'reflectOnCrit':      awaken.reflectOnCrit = Math.max(awaken.reflectOnCrit, v); break
+        // 运行时触发类（传递到 runWaveBattle）
+        case 'burnOnHitChance':    awaken.burnOnHitChance = (awaken.burnOnHitChance || 0) + v; break
+        case 'poisonOnHitChance':  awaken.poisonOnHitChance = (awaken.poisonOnHitChance || 0) + v; break
+        case 'bleedOnHitChance':   awaken.bleedOnHitChance = (awaken.bleedOnHitChance || 0) + v; break
+        case 'chainAttackChance':  awaken.chainAttackChance = (awaken.chainAttackChance || 0) + v; break
+        case 'executeBonus':       awaken.executeBonus = (awaken.executeBonus || 0) + v; break
+        case 'lowHpAtkBonus':      awaken.lowHpAtkBonus = (awaken.lowHpAtkBonus || 0) + v; break
+        case 'lowHpDefBonus':      awaken.lowHpDefBonus = (awaken.lowHpDefBonus || 0) + v; break
+        case 'damageReduction':    awaken.damageReduction = Math.min(0.20, (awaken.damageReduction || 0) + v); break
+        case 'critTakenReduction': awaken.critTakenReduction = Math.min(0.50, (awaken.critTakenReduction || 0) + v); break
+        case 'regenPerTurn':       awaken.regenPerTurn = (awaken.regenPerTurn || 0) + v; break
+        case 'cleanseInterval':
+          // 取最短间隔（多个洗髓时玩家更舒服）
+          if (v > 0) awaken.cleanseInterval = awaken.cleanseInterval ? Math.min(awaken.cleanseInterval, v) : v
+          break
+        case 'frenzyOpening':      awaken.frenzyOpening = (awaken.frenzyOpening || 0) + v; break
+        case 'vsBossBonus':        awaken.vsBossBonus = (awaken.vsBossBonus || 0) + v; break
+        case 'vsEliteBonus':       awaken.vsEliteBonus = (awaken.vsEliteBonus || 0) + v; break
+        case 'debuffDurationBonus':awaken.debuffDurationBonus = (awaken.debuffDurationBonus || 0) + v; break
+      }
     }
   }
 
@@ -476,22 +563,32 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
     }
   }
 
+  // 附灵抗性叠加（取自 buildPlayerStats 内部临时挂载到 char 上的字段）
+  const awakenCtrlResist = (char as any).__resistCtrlAwaken || 0
+  const awakenAllResist = (char as any).__resistAllAwaken || 0
+  ;(char as any).__resistCtrlAwaken = 0
+  ;(char as any).__resistAllAwaken = 0
+
   return {
     stats: {
       name: char.name, maxHp, hp: maxHp, atk, def, spd,
       crit_rate: critRate, crit_dmg: critDmg, dodge, lifesteal,
       element: char.spiritual_root,
       resists: {
-        metal: Number(char.resist_metal || 0), wood: Number(char.resist_wood || 0),
-        water: Number(char.resist_water || 0), fire: Number(char.resist_fire || 0),
-        earth: Number(char.resist_earth || 0), ctrl: Number(char.resist_ctrl || 0),
+        metal: Number(char.resist_metal || 0) + awakenAllResist,
+        wood: Number(char.resist_wood || 0) + awakenAllResist,
+        water: Number(char.resist_water || 0) + awakenAllResist,
+        fire: Number(char.resist_fire || 0) + awakenAllResist,
+        earth: Number(char.resist_earth || 0) + awakenAllResist,
+        ctrl: Number(char.resist_ctrl || 0) + awakenCtrlResist,
       },
       spiritualRoot: char.spiritual_root,
       armorPen, accuracy, elementDmg,
       spirit,
+      awaken,
     },
-    expBonusPercent: expBonusPercent + spiritDensity,
-    luckPercent: luck,
+    expBonusPercent: expBonusPercent + spiritDensity + awakenExpBonus * 100 + awakenSpiritDensityBonus * 100,
+    luckPercent: luck + awakenLuckBonus * 100,
   }
 }
 

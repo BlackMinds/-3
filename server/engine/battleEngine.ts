@@ -3,6 +3,35 @@ import { Skill, SKILL_MAP, type DebuffType, type BuffType, type SkillDebuff, typ
 
 // ========== 类型定义 ==========
 
+export interface PlayerAwakenState {
+  // 运行时触发类（主动）
+  burnOnHitChance?: number;
+  poisonOnHitChance?: number;
+  bleedOnHitChance?: number;
+  chainAttackChance?: number;
+  armorPenPct?: number;
+  executeBonus?: number;
+  lowHpAtkBonus?: number;
+  lowHpDefBonus?: number;
+  // 被动受伤类
+  damageReduction?: number;
+  critTakenReduction?: number;
+  // 被动每回合
+  regenPerTurn?: number;
+  cleanseInterval?: number;
+  // 开场一次性
+  frenzyOpening?: number;
+  // 对象加成
+  vsBossBonus?: number;
+  vsEliteBonus?: number;
+  // debuff
+  debuffDurationBonus?: number;
+  // 复用现有钩子（Max-Merge 合并进 passive）
+  poisonOnHitTaken?: number;
+  burnOnHitTaken?: number;
+  reflectOnCrit?: number;
+}
+
 export interface BattlerStats {
   name: string;
   maxHp: number;
@@ -21,6 +50,7 @@ export interface BattlerStats {
   accuracy?: number;
   elementDmg?: { metal: number; wood: number; water: number; fire: number; earth: number };
   spirit?: number; // 神识: 每点+0.5%神通伤害
+  awaken?: PlayerAwakenState; // 装备附灵运行时状态（v1.2 新增）
 }
 
 export interface BattleLogEntry {
@@ -378,7 +408,9 @@ export function calculateDamage(
     resistFactor = 1.0 - Math.min(0.7, r);
   }
 
-  const totalArmorPen = ignoreDef + (attacker.armorPen || 0) / 100;
+  // v1.2 附灵破甲叠加
+  const awakenArmorPenPct = (attacker as any).awakenState?.armorPenPct || 0;
+  const totalArmorPen = ignoreDef + (attacker.armorPen || 0) / 100 + awakenArmorPenPct;
   const effectiveDef = defender.def * Math.max(0, 1 - totalArmorPen);
   // 保持原版 DEF 权重 0.5 (v2.0 方案 A 验证过 0.7 会让后期玩家打不动 Boss)
   const atkDefRatio = attacker.atk / (attacker.atk + effectiveDef * 0.5);
@@ -389,7 +421,28 @@ export function calculateDamage(
     elementDmgBonus = 1 + ed / 100;
   }
 
-  let damage = attacker.atk * skillMultiplier * elementMulti * resistFactor * atkDefRatio * elementDmgBonus;
+  // v1.2 附灵条件型伤害加成
+  const awakenState = (attacker as any).awakenState;
+  let awakenDmgMul = 1.0;
+  if (awakenState) {
+    // 斩杀：目标 HP < 30%
+    if (awakenState.executeBonus > 0 && defender.maxHp > 0 && defender.hp / defender.maxHp < 0.30) {
+      awakenDmgMul *= 1 + awakenState.executeBonus;
+    }
+    // 逆鳞：自身 HP < 50%
+    if (awakenState.lowHpAtkBonus > 0 && attacker.maxHp > 0 && attacker.hp / attacker.maxHp < 0.50) {
+      awakenDmgMul *= 1 + awakenState.lowHpAtkBonus;
+    }
+    // 对象加成：Boss / 精英（tank/dps）
+    const defRole = (defender as any)._role;
+    if (defRole === 'boss' && awakenState.vsBossBonus > 0) {
+      awakenDmgMul *= 1 + awakenState.vsBossBonus;
+    } else if ((defRole === 'tank' || defRole === 'dps') && awakenState.vsEliteBonus > 0) {
+      awakenDmgMul *= 1 + awakenState.vsEliteBonus;
+    }
+  }
+
+  let damage = attacker.atk * skillMultiplier * elementMulti * resistFactor * atkDefRatio * elementDmgBonus * awakenDmgMul;
 
   const isCrit = Math.random() < attacker.crit_rate;
   if (isCrit) damage *= attacker.crit_dmg;
@@ -512,17 +565,21 @@ export function runWaveBattle(
   let totalExp = 0, totalStone = 0;
   const monstersKilled: { template: MonsterTemplate }[] = [];
 
-  const monsters = monsterList.map(m => ({
-    stats: { ...m.stats },
-    template: m.template,
-    alive: true,
-    skillState: initMonsterSkillState(m.template),
-    baseAtk: m.stats.atk,
-    baseDef: m.stats.def,
-    buffs: [] as ActiveBuff[],
-    debuffs: [] as ActiveDebuff[],
-    frozenTurns: 0,
-  }));
+  const monsters = monsterList.map(m => {
+    const stats: any = { ...m.stats };
+    stats._role = m.template.role; // v1.2 附灵对象加成用
+    return {
+      stats,
+      template: m.template,
+      alive: true,
+      skillState: initMonsterSkillState(m.template),
+      baseAtk: m.stats.atk,
+      baseDef: m.stats.def,
+      buffs: [] as ActiveBuff[],
+      debuffs: [] as ActiveDebuff[],
+      frozenTurns: 0,
+    };
+  });
 
   // 应用被动
   if (equippedSkills?.passiveEffects) {
@@ -544,6 +601,39 @@ export function runWaveBattle(
     player.resists.fire += p.resistFire || 0;
     player.resists.earth += p.resistEarth || 0;
     player.resists.ctrl += p.resistCtrl || 0;
+  }
+
+  // v1.2 附灵运行时状态注入 + 与功法被动同位钩子 Max-Merge
+  const aw = (playerStats as any).awaken || {};
+  player.awakenState = {
+    burnOnHitChance: aw.burnOnHitChance || 0,
+    poisonOnHitChance: aw.poisonOnHitChance || 0,
+    bleedOnHitChance: aw.bleedOnHitChance || 0,
+    chainAttackChance: aw.chainAttackChance || 0,
+    armorPenPct: aw.armorPenPct || 0,
+    executeBonus: aw.executeBonus || 0,
+    lowHpAtkBonus: aw.lowHpAtkBonus || 0,
+    lowHpDefBonus: aw.lowHpDefBonus || 0,
+    damageReduction: aw.damageReduction || 0,
+    critTakenReduction: aw.critTakenReduction || 0,
+    regenPerTurn: aw.regenPerTurn || 0,
+    cleanseInterval: aw.cleanseInterval || 0,
+    vsBossBonus: aw.vsBossBonus || 0,
+    vsEliteBonus: aw.vsEliteBonus || 0,
+    debuffDurationBonus: aw.debuffDurationBonus || 0,
+  };
+  player.awakenTurnCounter = 0; // 用于 cleanseInterval 计数
+  // 附灵与功法被动同类钩子：取最大值叠加到 passiveEffects（战斗循环读的是 pe.*）
+  if (equippedSkills?.passiveEffects) {
+    const pe = equippedSkills.passiveEffects;
+    if (aw.poisonOnHitTaken) pe.poisonOnHitTaken = Math.max(pe.poisonOnHitTaken || 0, aw.poisonOnHitTaken);
+    if (aw.burnOnHitTaken)   pe.burnOnHitTaken   = Math.max(pe.burnOnHitTaken   || 0, aw.burnOnHitTaken);
+    if (aw.reflectOnCrit)    pe.reflectOnCrit    = Math.max(pe.reflectOnCrit    || 0, aw.reflectOnCrit);
+  }
+  // 开场狂怒：立即注入一个 atk_up buff，持续 4 回合
+  if (aw.frenzyOpening && aw.frenzyOpening > 0) {
+    if (!player.buffs) player.buffs = [];
+    player.buffs.push({ type: 'atk_up', remaining: 4, value: aw.frenzyOpening });
   }
 
   const activeSkill: SkillRefInfo = equippedSkills?.activeSkill || { name: '基础剑法', multiplier: 1.0, element: null };
@@ -646,6 +736,76 @@ export function runWaveBattle(
   // 每回合累计玩家吸血汇总
   let turnLifestealTotal = 0;
 
+  // v1.2 附灵工具：命中后 roll 主动触发 DOT（焚魂/淬毒/裂魂）
+  function triggerAwakenOnHit(target: any, targetName: string, turn: number) {
+    const st = player.awakenState;
+    if (!st) return;
+    const durBonus = st.debuffDurationBonus || 0;
+    if (st.burnOnHitChance > 0 && Math.random() < st.burnOnHitChance) {
+      const ok = tryApplyDebuff(target, targetName, { type: 'burn', chance: 1.0, duration: 2 + durBonus }, player.atk, turn);
+      if (ok) logs.push({ turn, text: `  ✦【焚魂】${targetName}被烈焰灼烧`, type: 'buff', ...snap() });
+    }
+    if (st.poisonOnHitChance > 0 && Math.random() < st.poisonOnHitChance) {
+      const ok = tryApplyDebuff(target, targetName, { type: 'poison', chance: 1.0, duration: 2 + durBonus }, player.atk, turn);
+      if (ok) logs.push({ turn, text: `  ✦【淬毒】${targetName}中毒`, type: 'buff', ...snap() });
+    }
+    if (st.bleedOnHitChance > 0 && Math.random() < st.bleedOnHitChance) {
+      const ok = tryApplyDebuff(target, targetName, { type: 'bleed', chance: 1.0, duration: 2 + durBonus }, player.atk, turn);
+      if (ok) logs.push({ turn, text: `  ✦【裂魂】${targetName}流血不止`, type: 'buff', ...snap() });
+    }
+  }
+
+  // v1.2 附灵工具：每回合开始的玩家自身效果（回血 + 洗髓）
+  function runAwakenTurnStart(turn: number) {
+    const st = player.awakenState;
+    if (!st) return;
+    player.awakenTurnCounter = (player.awakenTurnCounter || 0) + 1;
+    // 回春
+    if (st.regenPerTurn > 0 && player.hp > 0 && player.hp < player.maxHp) {
+      const heal = Math.max(1, Math.floor(player.maxHp * st.regenPerTurn));
+      const before = player.hp;
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      if (player.hp > before) {
+        logs.push({ turn, text: `  ✦【回春】回复 ${player.hp - before} 点气血`, type: 'buff', ...snap() });
+      }
+    }
+    // 洗髓：每 N 回合清除 1 个减益
+    // 优先级: 控制类(freeze/stun/root → frozenTurns; silence) → 其次清最老 debuff
+    if (st.cleanseInterval > 0 && (player.awakenTurnCounter % st.cleanseInterval === 0)) {
+      if (player.frozenTurns > 0) {
+        // freeze/stun/root 合并到 frozenTurns, 一次清干净
+        player.frozenTurns = 0;
+        logs.push({ turn, text: `  ✦【洗髓】解除了控制状态`, type: 'buff', ...snap() });
+      } else if (player.debuffs && player.debuffs.length > 0) {
+        // 先找 silence（也是控制类）
+        const silenceIdx = player.debuffs.findIndex((d: ActiveDebuff) => d.type === 'silence');
+        let removed: ActiveDebuff;
+        if (silenceIdx >= 0) {
+          removed = player.debuffs.splice(silenceIdx, 1)[0];
+        } else {
+          // 其次：最老的一个（shift 第 0 个，FIFO）
+          removed = player.debuffs.shift();
+        }
+        logs.push({ turn, text: `  ✦【洗髓】清除了 ${DEBUFF_NAMES[removed.type] || removed.type}`, type: 'buff', ...snap() });
+      }
+    }
+  }
+
+  // v1.2 附灵工具：玩家受伤减免（返回修正后的伤害）
+  function applyAwakenIncomingReduction(damage: number, isCrit: boolean): number {
+    const st = player.awakenState;
+    if (!st) return damage;
+    let d = damage;
+    if (st.damageReduction > 0) d = d * (1 - st.damageReduction);
+    if (isCrit && st.critTakenReduction > 0) d = d * (1 - st.critTakenReduction);
+    // 不屈：HP<30% 时 DEF 动态 +X%（在 applyIncoming 前已经过 dealDamage 计算，DEF 不动态变）
+    // 改为折扣实际伤害近似生效：加成 def → 伤害 × def/(def*bonus) ≈ 1/(1+bonus)
+    if (st.lowHpDefBonus > 0 && player.maxHp > 0 && player.hp / player.maxHp < 0.30) {
+      d = d * (1 / (1 + st.lowHpDefBonus));
+    }
+    return Math.max(1, Math.floor(d));
+  }
+
   // 怪物攻击逻辑(提取为函数,先后手复用)
   function executeMonsterAttacks(turn: number) {
     for (const m of monsters.filter(mm => mm.alive)) {
@@ -698,12 +858,14 @@ export function runWaveBattle(
       const hits = mSkill?.hitCount || 1;
 
       const pe = equippedSkills?.passiveEffects;
-      // 受伤处理函数（应用玩家脆弱/减伤，返回扣血后的实际伤害；反伤/触发型留给调用方后置）
-      const applyPlayerHit = (rawDmg: number) => {
+      // 受伤处理函数（应用玩家脆弱/减伤/附灵减伤，返回扣血后的实际伤害；反伤/触发型留给调用方后置）
+      const applyPlayerHit = (rawDmg: number, isCrit: boolean = false) => {
         let dmg = rawDmg;
         const brittle = getBrittleBonus(player);
         if (brittle > 0) dmg = Math.floor(dmg * (1 + brittle));
         if (pe?.damageReductionFlat) dmg = Math.floor(dmg * (1 - pe.damageReductionFlat));
+        // v1.2 附灵：受伤减免 + 暴击额外减免 + 不屈（低血 DEF 叠加→近似减伤）
+        dmg = applyAwakenIncomingReduction(dmg, isCrit);
         player.hp -= dmg;
         return dmg;
       };
@@ -735,7 +897,7 @@ export function runWaveBattle(
         for (let h = 0; h < hits; h++) {
           const mResult = calculateDamage(m.stats, player, perHitMul, skillElem);
           if (mResult.damage > 0) {
-            const dmg = applyPlayerHit(mResult.damage);
+            const dmg = applyPlayerHit(mResult.damage, mResult.isCrit);
             const critText = mResult.isCrit ? '暴击!' : '';
             logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dmg} 点伤害`, type: mResult.isCrit ? 'crit' : 'normal', ...snap() });
             triggerRetaliate(dmg, mResult.isCrit, m);
@@ -747,7 +909,7 @@ export function runWaveBattle(
         if (mResult.damage === 0) {
           logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}的攻击被你闪避了`, type: 'normal', ...snap() });
         } else {
-          const dmg = applyPlayerHit(mResult.damage);
+          const dmg = applyPlayerHit(mResult.damage, mResult.isCrit);
           const isSkillAttack = mSkill !== null;
           logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}${isSkillAttack ? '施展【' + skillName + '】，' : ''}攻击了你，造成 ${dmg} 点伤害`, type: mResult.isCrit ? 'crit' : 'normal', ...snap() });
           triggerRetaliate(dmg, mResult.isCrit, m);
@@ -766,6 +928,9 @@ export function runWaveBattle(
     if (aliveMonsters.length === 0) break;
 
     turnLifestealTotal = 0;
+
+    // v1.2 附灵每回合开始：回春 + 洗髓
+    runAwakenTurnStart(turn);
 
     // 结算玩家 DOT
     const playerDot = tickDebuffs(player, '你', turn);
@@ -949,6 +1114,8 @@ export function runWaveBattle(
             const critText = dmgResult.isCrit ? '暴击!' : '';
             logs.push({ turn, text: `  第${hitsDone + 1}段 ${critText}对${curTarget.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
             if (usedSkill.debuff) tryApplyDebuff(curTarget, curTarget.stats.name, usedSkill.debuff as any, player.atk, turn);
+            // v1.2 附灵：命中触发 DOT
+            triggerAwakenOnHit(curTarget, curTarget.stats.name, turn);
           }
           hitsDone++;
         }
@@ -966,6 +1133,23 @@ export function runWaveBattle(
               logs.push({ turn, text: `  ${critText}对${t.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
             }
             if (usedSkill.debuff) tryApplyDebuff(t, t.stats.name, usedSkill.debuff as any, player.atk, turn);
+            // v1.2 附灵：命中触发 DOT
+            triggerAwakenOnHit(t, t.stats.name, turn);
+          }
+        }
+
+        // v1.2 附灵：连击（仅普攻，即 mul === activeSkill.multiplier 且无 hits>1）
+        const awakenState = player.awakenState;
+        if (awakenState?.chainAttackChance > 0 && usedSkill === activeSkill && attackTargets.length > 0) {
+          if (Math.random() < awakenState.chainAttackChance) {
+            const chainTarget = monsters.find(m => m.alive && m.stats.hp > 0);
+            if (chainTarget) {
+              const dmgResult = calculateDamage(player, chainTarget.stats, mul * 0.6, usedSkill.element, usedSkill.ignoreDef);
+              if (dmgResult.damage > 0) {
+                const finalDmg = dealDamage(chainTarget, dmgResult.damage);
+                logs.push({ turn, text: `  ✦【连击】再次出手，对${chainTarget.stats.name}造成 ${finalDmg} 伤害`, type: 'buff', ...snap() });
+              }
+            }
           }
         }
       }

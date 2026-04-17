@@ -7,7 +7,7 @@ import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/
 import { getSecretRealm, getDailyCountByRealm } from '~/server/engine/secretRealmData'
 import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/engine/teamBattleEngine'
 import { getCharacterByUserId, ensureDailyReset, getRoomDetail } from '~/server/utils/team'
-import { generateSecretRealmDrops, distributeEquipments } from '~/server/utils/secretRealmDrops'
+import { generateSecretRealmDrops, distributeEquipments, distributeAwakenItems } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 
@@ -300,7 +300,7 @@ export default defineEventHandler(async (event) => {
       const battleId = bRows[0].id
 
       // ========== 生成装备/灵草/功法掉落（战斗胜利才给） ==========
-      let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], skillPages: [] as string[] }
+      let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], skillPages: [] as string[], awakenStones: 0, rerollStones: 0 }
       if (result.won) {
         // 聚合全队的功法背包（用于权重递减掉落）
         const allOwnedSkills: Record<string, number> = {}
@@ -351,6 +351,9 @@ export default defineEventHandler(async (event) => {
         playerSkillPages.get(contribList[idx].characterId)!.push(sp)
       }
 
+      // 附灵道具分配：附灵石按人头均分，灵枢玉按贡献加权
+      const playerAwakenItems = distributeAwakenItems(drops.awakenStones, drops.rerollStones, contribList)
+
       // 按贡献计算每个人的实际奖励 + 保存装备/灵草/功法
       const rewards: any[] = []
       for (const c of result.contributions) {
@@ -393,6 +396,19 @@ export default defineEventHandler(async (event) => {
              ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
             [c.characterId, sp]
           )
+        }
+
+        // --- 保存附灵道具到 character_pills（与 SECT_ITEM_INFO 其他道具一致）---
+        const awakenItemShare = playerAwakenItems.get(c.characterId) || { awaken_stone: 0, awaken_reroll: 0 }
+        for (const [itemId, cnt] of Object.entries(awakenItemShare)) {
+          if (cnt > 0) {
+            await client.query(
+              `INSERT INTO character_pills (character_id, pill_id, quality_factor, count)
+               VALUES ($1, $2, 1.0, $3)
+               ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + $3`,
+              [c.characterId, itemId, cnt]
+            )
+          }
         }
 
         await client.query(
@@ -447,6 +463,7 @@ export default defineEventHandler(async (event) => {
           equipments: equipList.map(e => ({ id: null, name: e.name, rarity: e.rarity, tier: e.tier, base_slot: e.base_slot })),
           herbs: herbList,
           skill_pages: pageList,
+          awaken_items: awakenItemShare,
           level_up: newLevel > (member?.level || 1) ? newLevel : null,
         })
 
