@@ -389,20 +389,49 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
   critDmg += weaponCritDmgFlat / 100
   lifesteal += weaponLifestealFlat / 100
 
-  // 丹药buff加成
+  // 丹药buff加成 (v3.0 三级体系 + 40% 硬上限)
+  // 固定值丹药: 直接累加(受 qf 放大), 无上限
+  // 百分比丹药: 累加百分比, 每类属性独立 clamp 到 40%
+  const PILL_PCT_CAP = 0.40
+  let pillAtkPct = 0, pillDefPct = 0, pillHpPct = 0, pillSpdPct = 0
+  let pillAtkFlat = 0, pillDefFlat = 0, pillHpFlat = 0, pillSpdFlat = 0
+  let pillCritFlat = 0
   for (const buff of buffRows) {
     if (buff.expire_time && new Date(buff.expire_time).getTime() <= Date.now()) continue
     const qf = Number(buff.quality_factor) || 1.0
-    if (buff.pill_id === 'atk_pill_1') atk = Math.floor(atk * (1 + 0.15 * qf))
-    if (buff.pill_id === 'def_pill_1') def = Math.floor(def * (1 + 0.15 * qf))
-    if (buff.pill_id === 'hp_pill_1') maxHp = Math.floor(maxHp * (1 + 0.20 * qf))
-    if (buff.pill_id === 'crit_pill_1') critRate += 0.08 * qf
-    if (buff.pill_id === 'full_pill_1') {
-      atk = Math.floor(atk * (1 + 0.10 * qf))
-      def = Math.floor(def * (1 + 0.10 * qf))
-      maxHp = Math.floor(maxHp * (1 + 0.10 * qf))
+    switch (buff.pill_id) {
+      // --- 初级固定值 ---
+      case 'basic_atk_pill':  pillAtkFlat  += 20  * qf; break
+      case 'basic_def_pill':  pillDefFlat  += 15  * qf; break
+      case 'basic_hp_pill':   pillHpFlat   += 300 * qf; break
+      case 'basic_crit_pill': pillCritFlat += 0.03 * qf; break
+      // --- 中级低百分比 ---
+      case 'atk_pill_1': pillAtkPct += 0.06 * qf; break
+      case 'def_pill_1': pillDefPct += 0.06 * qf; break
+      case 'hp_pill_1':  pillHpPct  += 0.08 * qf; break
+      // --- 高级中等百分比 ---
+      case 'elite_atk_pill': pillAtkPct += 0.10 * qf; break
+      case 'elite_def_pill': pillDefPct += 0.10 * qf; break
+      case 'elite_hp_pill':  pillHpPct  += 0.12 * qf; break
+      case 'crit_pill_1':    pillCritFlat += 0.05 * qf; break
+      case 'full_pill_1':
+        pillAtkPct += 0.06 * qf
+        pillDefPct += 0.06 * qf
+        pillHpPct  += 0.06 * qf
+        break
     }
   }
+  // clamp 百分比到 40%
+  pillAtkPct = Math.min(pillAtkPct, PILL_PCT_CAP)
+  pillDefPct = Math.min(pillDefPct, PILL_PCT_CAP)
+  pillHpPct  = Math.min(pillHpPct,  PILL_PCT_CAP)
+  pillSpdPct = Math.min(pillSpdPct, PILL_PCT_CAP)
+  // 应用: 固定值先加, 再乘百分比
+  atk   = Math.floor((atk   + pillAtkFlat) * (1 + pillAtkPct))
+  def   = Math.floor((def   + pillDefFlat) * (1 + pillDefPct))
+  maxHp = Math.floor((maxHp + pillHpFlat)  * (1 + pillHpPct))
+  spd   = Math.floor((spd   + pillSpdFlat) * (1 + pillSpdPct))
+  critRate += pillCritFlat
 
   // 洞府
   let expBonusPercent = 0

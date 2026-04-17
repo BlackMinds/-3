@@ -156,6 +156,18 @@ CREATE TABLE IF NOT EXISTS character_pills (
 );
 
 -- ========================================
+-- 已解锁高级丹方(通过宗门商店购买解锁)
+-- ========================================
+CREATE TABLE IF NOT EXISTS character_unlocked_recipes (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  pill_id VARCHAR(50) NOT NULL,
+  unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (character_id, pill_id)
+);
+CREATE INDEX IF NOT EXISTS idx_unlocked_recipes_char ON character_unlocked_recipes(character_id);
+
+-- ========================================
 -- 激活buff
 -- ========================================
 CREATE TABLE IF NOT EXISTS character_buffs (

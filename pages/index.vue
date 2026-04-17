@@ -3618,6 +3618,7 @@ onMounted(async () => {
   loadSkillInventory();
   loadEquipList();
   loadPills();
+  loadUnlockedRecipes();
   loadBuffs();
   loadCave();
   loadHerbs();
@@ -4392,11 +4393,25 @@ async function loadHerbs() {
   } catch {}
 }
 
+// 已解锁的高级丹方
+const unlockedRecipes = ref<string[]>([]);
+async function loadUnlockedRecipes() {
+  try {
+    const res: any = await $fetch('/api/pill/unlocked', { headers: getAuthHeaders() });
+    if (res.code === 200) unlockedRecipes.value = res.data || [];
+  } catch {}
+}
+
+function isRecipeAccessible(r: PillRecipe): boolean {
+  if (!r.requireUnlock) return true;
+  return unlockedRecipes.value.includes(r.id);
+}
+
 const battleRecipes = computed(() =>
-  PILL_RECIPES.filter(r => r.type === 'battle' && r.tierRequired <= (gameStore.character?.realm_tier || 1))
+  PILL_RECIPES.filter(r => r.type === 'battle' && r.tierRequired <= (gameStore.character?.realm_tier || 1) && isRecipeAccessible(r))
 );
 const breakthroughRecipes = computed(() =>
-  PILL_RECIPES.filter(r => r.type === 'breakthrough' && r.tierRequired <= (gameStore.character?.realm_tier || 1))
+  PILL_RECIPES.filter(r => r.type === 'breakthrough' && r.tierRequired <= (gameStore.character?.realm_tier || 1) && isRecipeAccessible(r))
 );
 
 // 炼丹面板: 分类 + 选中丹方
@@ -5007,7 +5022,7 @@ async function quickSell(eq: any) {
     const res: any = await $fetch('/api/equipment/sell', { method: 'POST', body: { equip_id: eq.id }, headers: getAuthHeaders() });
     if (res.code === 200 && res.data) {
       equipList.value = equipList.value.filter(e => e.id !== eq.id);
-      if (gameStore.character) gameStore.character.spirit_stone += res.data.price;
+      if (gameStore.character) gameStore.character.spirit_stone = res.data.newSpiritStone;
       clickedEquip.value = null;
       showToast(`出售获得 ${res.data.price} 灵石`, 'success');
     }
@@ -5071,17 +5086,22 @@ async function batchSell() {
   if (toSell.length === 0) return;
 
   let totalPrice = 0;
+  let lastNewSpiritStone: any = null;
   for (const eq of toSell) {
     try {
       const res: any = await $fetch('/api/equipment/sell', { method: 'POST', body: { equip_id: eq.id }, headers: getAuthHeaders() });
       if (res.code === 200 && res.data) {
         totalPrice += res.data.price;
+        lastNewSpiritStone = res.data.newSpiritStone;
         equipList.value = equipList.value.filter(e => e.id !== eq.id);
       }
     } catch {}
   }
-  if (gameStore.character && totalPrice > 0) {
-    gameStore.character.spirit_stone += totalPrice;
+  if (gameStore.character && lastNewSpiritStone != null) {
+    gameStore.character.spirit_stone = lastNewSpiritStone;
+  }
+  if (totalPrice > 0) {
+    showToast(`共出售 ${toSell.length} 件，获得 ${totalPrice} 灵石`, 'success');
   }
 }
 
@@ -5193,7 +5213,7 @@ async function sellEquip(equipId: number) {
     if (res.code === 200 && res.data) {
       equipList.value = equipList.value.filter(e => e.id !== equipId);
       if (gameStore.character) {
-        gameStore.character.spirit_stone += res.data.price;
+        gameStore.character.spirit_stone = res.data.newSpiritStone;
       }
       showToast(`出售获得 ${res.data.price} 灵石`, 'success');
     }

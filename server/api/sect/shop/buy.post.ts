@@ -190,6 +190,26 @@ export default defineEventHandler(async (event) => {
         resultMsg = '获得道果结晶x1'
         break
 
+      case 'unlock_pill_recipe': {
+        // 检查是否已解锁
+        const { rows: existing } = await pool.query(
+          'SELECT id FROM character_unlocked_recipes WHERE character_id = $1 AND pill_id = $2',
+          [char.id, eff.pill_id]
+        )
+        if (existing.length > 0) {
+          // 已解锁 → 回滚扣贡献和购买记录
+          await pool.query('UPDATE sect_members SET contribution = contribution + $1 WHERE character_id = $2', [item.cost, char.id])
+          await pool.query('DELETE FROM sect_shop_purchases WHERE character_id = $1 AND item_key = $2 AND week_start = $3', [char.id, item_key, ws])
+          return { code: 400, message: '该丹方已解锁,无需重复购买' }
+        }
+        await pool.query(
+          'INSERT INTO character_unlocked_recipes (character_id, pill_id) VALUES ($1, $2)',
+          [char.id, eff.pill_id]
+        )
+        resultMsg = `成功解锁丹方:${item.name.replace('·残卷','').replace('方','')}`
+        break
+      }
+
       default:
         resultMsg = '购买成功'
     }

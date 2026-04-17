@@ -24,14 +24,18 @@ export default defineEventHandler(async (event) => {
     const price = Math.floor((sellPrices[equipRows[0].rarity] || 10) * equipRows[0].tier * (1 + enhLv * 0.1))
 
     await pool.query('DELETE FROM character_equipment WHERE id = $1', [equip_id])
-    await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [price, charId])
+    const { rows: updRows } = await pool.query(
+      'UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2 RETURNING spirit_stone',
+      [price, charId]
+    )
+    const newSpiritStone = updRows[0]?.spirit_stone
 
     // 宗门任务
     updateSectDailyTask(charId, 'sell', 1)
     // 成就：出售
     checkAchievements(charId, 'equip_sell', 1).catch(() => {})
 
-    return { code: 200, message: `出售获得 ${price} 灵石`, data: { price } }
+    return { code: 200, message: `出售获得 ${price} 灵石`, data: { price, newSpiritStone } }
   } catch (error) {
     console.error('出售装备失败:', error)
     return { code: 500, message: '服务器错误' }

@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { getPillById } from '~/game/pillData'
 
 const QUALITY_MUL: Record<string, number> = {
   white: 1.00, green: 1.20, blue: 1.50, purple: 2.00, gold: 3.00, red: 5.00,
@@ -40,6 +41,18 @@ export default defineEventHandler(async (event) => {
 
     if (!Array.isArray(herbs_used) || herbs_used.length === 0) {
       return { code: 400, message: '灵草参数错误' }
+    }
+
+    // 校验高级丹方是否已解锁
+    const recipe = getPillById(pill_id)
+    if (recipe?.requireUnlock) {
+      const { rows: unlockRows } = await pool.query(
+        'SELECT id FROM character_unlocked_recipes WHERE character_id = $1 AND pill_id = $2',
+        [char.id, pill_id]
+      )
+      if (unlockRows.length === 0) {
+        return { code: 400, message: '该丹方尚未解锁,请先在宗门商店购买' }
+      }
     }
 
     // 校验灵草是否够

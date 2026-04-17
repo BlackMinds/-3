@@ -81,6 +81,7 @@ export type ShopItemEffect =
   | { type: 'random_equip_box'; minRarity: string }
   | { type: 'equip_upgrade'; value: number }
   | { type: 'permanent_stat'; value: number }
+  | { type: 'unlock_pill_recipe'; pill_id: string }
 
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -94,14 +95,19 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: 'breakthrough_pill',  name: '宗门突破丹',   description: '突破成功率+20%(一次性)',   cost: 5000,  weeklyLimit: 2,  requiredSectLevel: 3, category: 'advanced', effect: { type: 'breakthrough_boost', value: 20 } },
   { key: 'high_herb_pack',     name: '高级灵草包',   description: '随机3种灵草(紫品质+)',     cost: 4000,  weeklyLimit: 2,  requiredSectLevel: 3, category: 'advanced', effect: { type: 'herb_pack', minQuality: 'purple', count: 3 } },
   { key: 'reroll_sub',         name: '装备鉴定符',   description: '重随装备1条副属性',        cost: 3000,  weeklyLimit: 3,  requiredSectLevel: 3, category: 'advanced', effect: { type: 'reroll_sub_stat', value: 1 } },
+  { key: 'recipe_crit',        name: '破妄丹方·残卷', description: '永久解锁【破妄丹】炼制配方', cost: 3000,  weeklyLimit: 1, requiredSectLevel: 3, category: 'advanced', effect: { type: 'unlock_pill_recipe', pill_id: 'crit_pill_1' } },
 
   // 稀有 (宗门5级)
   { key: 'sect_skill_page',    name: '宗门秘法残页', description: '随机地品功法残页x1',       cost: 10000, weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'skill_page', quality: 'purple' } },
   { key: 'premium_herb_pack',  name: '仙品灵草包',   description: '随机2种灵草(金品质+)',     cost: 8000,  weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'herb_pack', minQuality: 'gold', count: 2 } },
   { key: 'enhance_master',     name: '强化大师符',   description: '+7以下强化必成(一次性)',    cost: 6000,  weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'enhance_guarantee', maxLevel: 6 } },
+  { key: 'recipe_elite_atk',   name: '大聚灵丹方',   description: '永久解锁【大聚灵丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_atk_pill' } },
+  { key: 'recipe_elite_def',   name: '大铁皮丹方',   description: '永久解锁【大铁皮丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_def_pill' } },
+  { key: 'recipe_elite_hp',    name: '大培元丹方',   description: '永久解锁【大培元丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_hp_pill' } },
 
   // 宗门套装 (宗门6级)
   { key: 'set_fragment',       name: '宗门套装碎片', description: '收集5个合成宗门套装部件',  cost: 15000, weeklyLimit: 1,  requiredSectLevel: 6, category: 'set', effect: { type: 'set_fragment', value: 1 } },
+  { key: 'recipe_full',        name: '天元丹方',     description: '永久解锁【天元丹】炼制配方',    cost: 15000, weeklyLimit: 1, requiredSectLevel: 6, category: 'set', effect: { type: 'unlock_pill_recipe', pill_id: 'full_pill_1' } },
 
   // 传说 (宗门8级)
   { key: 'reset_root',         name: '天道洗髓丹',   description: '重置灵根属性',             cost: 30000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'reset_root', value: 1 } },
