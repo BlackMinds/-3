@@ -591,3 +591,227 @@ CREATE TABLE IF NOT EXISTS world_broadcast (
 CREATE INDEX IF NOT EXISTS idx_broadcast_recent ON world_broadcast (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_broadcast_rarity ON world_broadcast (rarity, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_broadcast_sect ON world_broadcast (sect_id, created_at DESC);
+
+-- ========================================
+-- 站内邮件系统（共用基础设施）
+-- ========================================
+CREATE TABLE IF NOT EXISTS mails (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  category VARCHAR(30) NOT NULL,
+  title VARCHAR(80) NOT NULL,
+  content TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  ref_type VARCHAR(30),
+  ref_id VARCHAR(50),
+  is_read BOOLEAN DEFAULT FALSE,
+  is_claimed BOOLEAN DEFAULT FALSE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  read_at TIMESTAMP DEFAULT NULL,
+  claimed_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_mail_char_unread ON mails (character_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mail_char_unclaimed ON mails (character_id, is_claimed) WHERE is_claimed = FALSE;
+CREATE INDEX IF NOT EXISTS idx_mail_expires ON mails (expires_at);
+
+-- ========================================
+-- 通用限时 Buff 表（玩法奖励专用，非丹药）
+-- ========================================
+CREATE TABLE IF NOT EXISTS timed_buffs (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  source_type VARCHAR(30) NOT NULL,
+  source_id VARCHAR(50) NOT NULL DEFAULT '',
+  stat_key VARCHAR(20) NOT NULL,
+  stat_value DECIMAL(6,2) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (character_id, source_type, source_id, stat_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_timed_buff_char ON timed_buffs (character_id, expires_at);
+CREATE INDEX IF NOT EXISTS idx_timed_buff_source ON timed_buffs (source_type, source_id);
+
+-- ========================================
+-- 宗门战专用表
+-- ========================================
+CREATE TABLE IF NOT EXISTS sect_war_season (
+  id SERIAL PRIMARY KEY,
+  season_no INT NOT NULL UNIQUE,
+  start_date TIMESTAMP NOT NULL,
+  end_date TIMESTAMP NOT NULL,
+  status VARCHAR(15) NOT NULL CHECK (status IN ('registering','betting','fighting','settled')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sect_war_registration (
+  id SERIAL PRIMARY KEY,
+  season_id INT NOT NULL REFERENCES sect_war_season(id) ON DELETE CASCADE,
+  sect_id INT NOT NULL REFERENCES sects(id) ON DELETE CASCADE,
+  roster_duel JSONB NOT NULL,
+  roster_team_a JSONB NOT NULL,
+  roster_team_b JSONB NOT NULL,
+  total_power BIGINT NOT NULL,
+  registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (season_id, sect_id)
+);
+
+CREATE TABLE IF NOT EXISTS sect_war_match (
+  id SERIAL PRIMARY KEY,
+  season_id INT NOT NULL REFERENCES sect_war_season(id) ON DELETE CASCADE,
+  round_no SMALLINT NOT NULL DEFAULT 1,
+  sect_a_id INT NOT NULL REFERENCES sects(id),
+  sect_b_id INT NOT NULL REFERENCES sects(id),
+  odds_a DECIMAL(5,2) NOT NULL,
+  odds_b DECIMAL(5,2) NOT NULL,
+  winner_sect_id INT DEFAULT NULL,
+  score_a INT DEFAULT 0,
+  score_b INT DEFAULT 0,
+  mvp_character_id INT DEFAULT NULL,
+  fought_at TIMESTAMP DEFAULT NULL,
+  settled_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sect_war_battle (
+  id SERIAL PRIMARY KEY,
+  match_id INT NOT NULL REFERENCES sect_war_match(id) ON DELETE CASCADE,
+  round_no SMALLINT NOT NULL,
+  battle_type VARCHAR(10) NOT NULL CHECK (battle_type IN ('duel','team')),
+  side_a_chars JSONB NOT NULL,
+  side_b_chars JSONB NOT NULL,
+  winner_side VARCHAR(1) NOT NULL CHECK (winner_side IN ('a','b')),
+  battle_log JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sect_war_bet (
+  id SERIAL PRIMARY KEY,
+  match_id INT NOT NULL REFERENCES sect_war_match(id) ON DELETE CASCADE,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  bet_side VARCHAR(1) NOT NULL CHECK (bet_side IN ('a','b')),
+  bet_amount BIGINT NOT NULL,
+  odds_at_bet DECIMAL(5,2) NOT NULL,
+  payout BIGINT DEFAULT 0,
+  status VARCHAR(12) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','won','lost','refunded')),
+  placed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  settled_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_bet_match_char ON sect_war_bet (match_id, character_id);
+CREATE INDEX IF NOT EXISTS idx_match_season ON sect_war_match (season_id, winner_sect_id);
+CREATE INDEX IF NOT EXISTS idx_registration_season ON sect_war_registration (season_id);
+CREATE INDEX IF NOT EXISTS idx_battle_match_round ON sect_war_battle (match_id, round_no);
+
+-- ========================================
+-- 灵脉潮汐专用表
+-- ========================================
+CREATE TABLE IF NOT EXISTS spirit_vein_node (
+  id SMALLINT PRIMARY KEY,
+  name VARCHAR(20) NOT NULL,
+  tier VARCHAR(10) NOT NULL CHECK (tier IN ('low','mid','high','supreme')),
+  stone_reward INT NOT NULL,
+  exp_reward INT NOT NULL,
+  guard_limit SMALLINT NOT NULL,
+  min_sect_level SMALLINT NOT NULL
+);
+
+-- 初始化 6 个节点（静态配置）
+INSERT INTO spirit_vein_node (id, name, tier, stone_reward, exp_reward, guard_limit, min_sect_level) VALUES
+  (1, '青木灵脉', 'low',     2000,  500, 2, 1),
+  (2, '赤焰灵脉', 'low',     2000,  500, 2, 1),
+  (3, '玄水灵脉', 'mid',     5000, 1200, 3, 3),
+  (4, '黄土灵脉', 'mid',     5000, 1200, 3, 3),
+  (5, '白金灵脉', 'high',   12000, 3000, 4, 5),
+  (6, '九天灵脉', 'supreme',25000, 6000, 5, 7)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS spirit_vein_occupation (
+  node_id SMALLINT PRIMARY KEY REFERENCES spirit_vein_node(id),
+  sect_id INT DEFAULT NULL REFERENCES sects(id) ON DELETE SET NULL,
+  current_guard_count SMALLINT DEFAULT 0,
+  occupied_at TIMESTAMP DEFAULT NULL,
+  next_surge_at TIMESTAMP NOT NULL,
+  vacuum_until TIMESTAMP DEFAULT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 初始化 occupation 行（每个节点一行）
+INSERT INTO spirit_vein_occupation (node_id, next_surge_at) VALUES
+  (1, date_trunc('hour', NOW()) + INTERVAL '2 hours'),
+  (2, date_trunc('hour', NOW()) + INTERVAL '2 hours'),
+  (3, date_trunc('hour', NOW()) + INTERVAL '2 hours'),
+  (4, date_trunc('hour', NOW()) + INTERVAL '2 hours'),
+  (5, date_trunc('hour', NOW()) + INTERVAL '2 hours'),
+  (6, date_trunc('hour', NOW()) + INTERVAL '2 hours')
+ON CONFLICT (node_id) DO NOTHING;
+
+CREATE TRIGGER set_sv_occupation_updated_at
+  BEFORE UPDATE ON spirit_vein_occupation
+  FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+CREATE TABLE IF NOT EXISTS spirit_vein_guard (
+  id SERIAL PRIMARY KEY,
+  node_id SMALLINT NOT NULL REFERENCES spirit_vein_node(id),
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  sect_id INT NOT NULL REFERENCES sects(id) ON DELETE CASCADE,
+  started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  UNIQUE (node_id, character_id)
+);
+
+CREATE TABLE IF NOT EXISTS spirit_vein_cooldown (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  cd_type VARCHAR(20) NOT NULL CHECK (cd_type IN ('defend_injured','attack_injured','attack_node')),
+  target_node_id SMALLINT DEFAULT NULL REFERENCES spirit_vein_node(id),
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS spirit_vein_surge_log (
+  id SERIAL PRIMARY KEY,
+  node_id SMALLINT NOT NULL REFERENCES spirit_vein_node(id),
+  sect_id INT DEFAULT NULL REFERENCES sects(id) ON DELETE SET NULL,
+  surge_at TIMESTAMP NOT NULL,
+  sect_stone_granted INT DEFAULT 0,
+  rare_drops JSONB DEFAULT '[]'::jsonb,
+  guards_snapshot JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS spirit_vein_raid (
+  id SERIAL PRIMARY KEY,
+  node_id SMALLINT NOT NULL REFERENCES spirit_vein_node(id),
+  attacker_sect_id INT NOT NULL REFERENCES sects(id),
+  defender_sect_id INT DEFAULT NULL REFERENCES sects(id),
+  attackers JSONB NOT NULL,
+  defenders JSONB NOT NULL,
+  winner_side VARCHAR(10) NOT NULL CHECK (winner_side IN ('attacker','defender')),
+  battle_log JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS spirit_vein_daily_raid_count (
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  raid_date DATE NOT NULL,
+  count SMALLINT DEFAULT 0,
+  PRIMARY KEY (character_id, raid_date)
+);
+
+CREATE TABLE IF NOT EXISTS spirit_vein_jackpot (
+  week_start DATE PRIMARY KEY,
+  pool_amount BIGINT DEFAULT 0,
+  raid_count_total INT DEFAULT 0,
+  settled BOOLEAN DEFAULT FALSE,
+  settled_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sv_guard_node ON spirit_vein_guard (node_id);
+CREATE INDEX IF NOT EXISTS idx_sv_guard_char ON spirit_vein_guard (character_id);
+CREATE INDEX IF NOT EXISTS idx_sv_guard_expires ON spirit_vein_guard (expires_at);
+CREATE INDEX IF NOT EXISTS idx_sv_cd_char_type ON spirit_vein_cooldown (character_id, cd_type, expires_at);
+CREATE INDEX IF NOT EXISTS idx_sv_surge_node_time ON spirit_vein_surge_log (node_id, surge_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sv_raid_node ON spirit_vein_raid (node_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sv_occ_sect ON spirit_vein_occupation (sect_id);

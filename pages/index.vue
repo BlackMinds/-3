@@ -1170,6 +1170,35 @@
             </div>
           </div>
 
+          <!-- 新玩法入口（独立页面） -->
+          <div class="sect-quick-entry">
+            <NuxtLink to="/sect-war" class="sect-entry-btn war">
+              <span class="entry-icon">⚔️</span>
+              <span class="entry-text">
+                <b>宗门战 · 问道大比</b>
+                <span v-if="sectWarStage" :class="['entry-stage', sectWarStage]">{{ stageLabel(sectWarStage) }}</span>
+                <br><small>周度 PVP · 押注系统</small>
+              </span>
+            </NuxtLink>
+            <NuxtLink to="/spirit-vein" class="sect-entry-btn vein">
+              <span class="entry-icon">🌀</span>
+              <span class="entry-text">
+                <b>灵脉潮汐</b>
+                <span v-if="myVeinOccupyCount > 0" class="entry-stage occupy">占 {{ myVeinOccupyCount }} 节点</span>
+                <br><small>节点争夺 · 24h 异步</small>
+              </span>
+            </NuxtLink>
+            <button class="sect-entry-btn mail" @click="showGlobalMail = true">
+              <span class="entry-icon">📬</span>
+              <span v-if="globalMailUnread > 0" class="entry-red-dot">{{ globalMailUnread > 99 ? '99+' : globalMailUnread }}</span>
+              <span class="entry-text">
+                <b>邮箱</b>
+                <span v-if="globalMailUnclaimed > 0" class="entry-stage claim">{{ globalMailUnclaimed }} 待领</span>
+                <br><small>奖励/战报/通知</small>
+              </span>
+            </button>
+          </div>
+
           <!-- 子功能切换 -->
           <div class="sect-sub-tabs">
             <button v-for="st in sectSubTabs" :key="st.id" :class="['sect-sub-btn', { active: sectSubTab === st.id }]" @click="sectSubTab = st.id; onSectSubTabChange(st.id)">
@@ -2133,6 +2162,60 @@
             <p class="help-text">达到 <b>Lv.15</b> 后可加入或创建宗门。宗门提供修为/攻防加成、Boss 战、商店、宗门功法。</p>
             <p class="help-text" style="margin-top: 4px;">每日签到获得 <b>100 + 宗门Lv×20 + 境界Tier×30</b> 贡献。捐献灵石按 0.3 换算为贡献(有每日上限)。完成日常/周常任务亦可获取贡献。</p>
             <p class="help-text" style="margin-top: 4px;">宗门商店可购买强化保护符(2000 贡献,周限 3)、强化大师符(6000 贡献,Lv.5 解锁)等强力道具。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">宗门 Tab 顶部三个快捷入口: ⚔️ 宗门战 · 🌀 灵脉潮汐 · 📬 邮箱。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">宗门战 · 问道大比</div>
+            <p class="help-text">每周一届的宗门对抗赛,同时兼顾个人单挑荣誉和宗门团体胜负。赛制 BO5:</p>
+            <table class="help-table"><tbody>
+              <tr><td>1~3 场</td><td>个人单挑(问道大比),各 1 分,禁用丹药</td></tr>
+              <tr><td>第 4 场</td><td>3v3 团战, 2 分</td></tr>
+              <tr><td>第 5 场</td><td>3v3 终局战, 3 分(翻盘场)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;">赛程节点(均为中国时区):</p>
+            <table class="help-table"><tbody>
+              <tr><td>周一 00:00</td><td>开启报名 — 宗主/副宗主挑选 9 名弟子(境界需筑基以上)</td></tr>
+              <tr><td>周三 00:00</td><td>自动按战力匹配对阵 + 押注窗口开启(持续 48h)</td></tr>
+              <tr><td>周五 20:00</td><td>正式开赛 + 奖励/押注即时结算</td></tr>
+              <tr><td>周日 24:00</td><td>赛季关闭,下周重新报名</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;"><b>奖励体系:</b></p>
+            <table class="help-table"><tbody>
+              <tr><td>宗门胜方</td><td>+250,000 资金 + 全员 atk/def +5% (7 天)</td></tr>
+              <tr><td>宗门败方</td><td>+80,000 资金(保底)</td></tr>
+              <tr><td>参战胜方</td><td>+2,000 贡献 + 50,000 灵石</td></tr>
+              <tr><td>参战败方</td><td>+500 贡献 + 10,000 灵石</td></tr>
+              <tr><td>论道之星</td><td>单挑 MVP 获得"论道之星"称号(7 天) + atk/def/hp +3%</td></tr>
+              <tr><td>问道魁首</td><td>累计 3 次论道之星,授予永久称号</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;"><b>押注系统:</b>所有玩家可在周三~周五押注"宗门胜方",单场上限 5 万灵石。<span style="color: #c45c4a;">⚠ 禁止押注自家宗门(防内部套利)</span>。手续费 5%。</p>
+            <p class="help-text" style="margin-top: 6px;"><b>PvP 平衡系数</b>(区别于单人历练,让战斗更有策略深度):</p>
+            <table class="help-table"><tbody>
+              <tr><td>单挑 1v1</td><td>角色 HP ×1.3,伤害 ×0.7,DOT ×0.6,暴伤 -15%。战斗约 4~8 回合</td></tr>
+              <tr><td>团战 3v3</td><td>角色 HP ×1.5,伤害 ×0.5,DOT ×0.5,暴伤 -20%。战斗约 5~10 回合</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: #8a8a7a;">※ 同一角色在宗门战和历练中看到的血量会不同:宗门战下的 HP 会放大,让单次暴击 AoE 不再一击制胜,给神通 CD、debuff 持续、灵根相克等策略留出博弈空间。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">灵脉潮汐 · 节点争夺</div>
+            <p class="help-text">24 小时运转的异步 PVP 玩法,不依赖固定开赛时间。全服共 <b>6 个灵脉节点</b>:</p>
+            <table class="help-table"><tbody>
+              <tr><td>下品(青木/赤焰)</td><td>2,000 灵石 + 500 修为 / 2h,守卫上限 2 人,宗门 Lv.1 可入</td></tr>
+              <tr><td>中品(玄水/黄土)</td><td>5,000 灵石 + 1,200 修为 / 2h,守卫上限 3 人,宗门 Lv.3</td></tr>
+              <tr><td>上品(白金)</td><td>12,000 灵石 + 3,000 修为 / 2h,守卫上限 4 人,Lv.5 (3% 概率掉落丹方)</td></tr>
+              <tr><td>极品(九天)</td><td>25,000 灵石 + 6,000 修为 / 2h,守卫上限 5 人,Lv.7 (5% 掉觉醒石/附灵石)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;"><b>核心循环:</b></p>
+            <p class="help-text" style="margin-top: 2px;">派弟子驻守节点 → 每 2 小时自动涌灵结算 → 其他宗门可偷袭抢夺 → 胜方接管节点。每周一 00:00 全图重置。</p>
+            <p class="help-text" style="margin-top: 6px;"><b>涌灵分成:</b>宗门仓库 60% / 在守玩家 30%(邮件下发,按登录时间权重) / 全服奖池 10%。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>偷袭规则:</b>进场费 500 灵石 · 单人每日 10 次上限 · 同节点偷袭 CD 30 分钟 · 战败进入 2h 冷却。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>战斗平衡:</b>偷袭战复用团战 NvN 公式(HP ×1.5、伤害 ×0.5、DOT ×0.5),让多人 AoE 神通不至于瞬杀,保留反击与持续性伤害的博弈空间。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">新宗门(Lv ≤ 2 且创建 7 天内)享保护期,所占节点免疫偷袭,但占领上限 2 个。占领 ≥ 4 节点的宗门 2 小时后会被标记"众矢之敌",被偷袭奖励翻倍。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">站内邮件系统</div>
+            <p class="help-text">宗门战结算、押注返利、灵脉涌灵分成、被偷袭通知等<b>所有异步奖励</b>均通过邮件下发,离线上线即可查看 + 一键领取。</p>
+            <p class="help-text" style="margin-top: 4px;">邮件分类: 宗门战 / 押注 / 灵脉涌灵 / 灵脉偷袭 / 奖池。邮件 30 天过期前会<b>自动发放附件</b>,避免漏领。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备系统</div>
@@ -2491,6 +2574,9 @@
     <!-- 天道造化：中奖弹窗 + 风云阁面板 -->
     <EventPopup />
     <WorldBroadcastPanel />
+
+    <!-- 站内邮件抽屉（宗门战/灵脉潮汐奖励通知） -->
+    <MailDrawer v-model="showGlobalMail" />
   </div>
 </template>
 
@@ -2987,7 +3073,42 @@ const sectCreateName = ref('');
 const sectCreateAnn = ref('');
 const sectListData = ref<any[]>([]);
 const sectSubTab = ref('members');
+const showGlobalMail = ref(false);
+const globalMailUnread = ref(0);
+const globalMailUnclaimed = ref(0);
+const sectWarStage = ref<string | null>(null);
+const myVeinOccupyCount = ref(0);
 const donateAmount = ref(10000);
+
+function stageLabel(s: string) {
+  return { registering: '报名中', betting: '押注中', fighting: '激战中', settled: '已结束' }[s] || '';
+}
+
+async function loadSectTabMeta() {
+  const calls = [
+    $fetch('/api/mail/unread-count', { headers: { Authorization: 'Bearer ' + (useUserStore().token || '') } }).catch(() => null),
+    $fetch('/api/sect/war/season', { headers: { Authorization: 'Bearer ' + (useUserStore().token || '') } }).catch(() => null),
+    $fetch('/api/spirit-vein/map', { headers: { Authorization: 'Bearer ' + (useUserStore().token || '') } }).catch(() => null),
+  ];
+  const [mail, season, vein] = await Promise.all(calls);
+  if (mail?.code === 200) {
+    globalMailUnread.value = mail.data.unread;
+    globalMailUnclaimed.value = mail.data.unclaimed;
+  }
+  if (season?.code === 200) sectWarStage.value = season.data.stage;
+  if (vein?.code === 200 && gameStore.character?.sect_id) {
+    myVeinOccupyCount.value = vein.data.sectOccupyMap[gameStore.character.sect_id] || 0;
+  }
+}
+
+// 切换到宗门 Tab 时刷新
+watch(() => gameStore.activeTab, (t) => {
+  if (t === 'sect') loadSectTabMeta();
+});
+// 关闭邮件抽屉时刷新红点
+watch(showGlobalMail, (v) => {
+  if (!v) loadSectTabMeta();
+});
 const sectDailyTasks = ref<any[]>([]);
 const sectWeeklyTasks = ref<any[]>([]);
 const sectBossList = ref<{ active: any[]; available: any[] }>({ active: [], available: [] });
@@ -3030,10 +3151,19 @@ function getBossDisplayName(key: string) { return BOSS_NAMES[key] || key; }
 function getShopCategoryColor(cat: string) { return SHOP_CATEGORY_COLORS[cat] || '#aaa'; }
 function getShopCategoryName(cat: string) { return SHOP_CATEGORY_NAMES[cat] || cat; }
 
-async function loadSectInfo() {
+async function loadSectInfo(options: { expectJoined?: boolean } = {}) {
   try {
     const res: any = await $fetch('/api/sect/info', { headers: getAuthHeaders() });
-    if (res.code === 200) sectInfo.value = res.data;
+    if (res.code === 200) {
+      // 期望已加入却拿到 null（刚 create 成功后的事务可见性延迟）→ 短延迟后重试一次
+      if (options.expectJoined && res.data == null) {
+        await new Promise(r => setTimeout(r, 250));
+        const retry: any = await $fetch('/api/sect/info', { headers: getAuthHeaders() });
+        if (retry.code === 200) sectInfo.value = retry.data;
+      } else {
+        sectInfo.value = res.data;
+      }
+    }
   } catch {}
 }
 
@@ -3056,7 +3186,11 @@ async function doCreateSect() {
   if (!sectCreateName.value.trim()) return showToast('请输入宗门名称', 'error');
   try {
     const res: any = await $fetch('/api/sect/create', { method: 'POST', body: { name: sectCreateName.value.trim(), announcement: sectCreateAnn.value }, headers: getAuthHeaders() });
-    if (res.code === 200) { showToast(res.message, 'success'); await loadSectInfo(); await gameStore.loadGameData(); }
+    if (res.code === 200) {
+      showToast(res.message, 'success');
+      await gameStore.loadGameData();
+      await loadSectInfo({ expectJoined: true });
+    }
     else showToast(res.message, 'error');
   } catch { showToast('创建失败', 'error'); }
 }
@@ -3064,7 +3198,13 @@ async function doCreateSect() {
 async function doApplySect(s: any) {
   try {
     const res: any = await $fetch('/api/sect/apply', { method: 'POST', body: { sect_id: s.id }, headers: getAuthHeaders() });
-    if (res.code === 200) { showToast(res.message, 'success'); if (s.join_mode === 'free') { await loadSectInfo(); await gameStore.loadGameData(); } }
+    if (res.code === 200) {
+      showToast(res.message, 'success');
+      if (s.join_mode === 'free') {
+        await gameStore.loadGameData();
+        await loadSectInfo({ expectJoined: true });
+      }
+    }
     else showToast(res.message, 'error');
   } catch { showToast('操作失败', 'error'); }
 }
@@ -10409,6 +10549,44 @@ onUnmounted(() => {
 .sect-ann { color: #a09880; font-size: 12px; margin-bottom: 6px; font-style: italic; }
 .sect-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #b0a890; margin-bottom: 4px; }
 .sect-my-info { display: flex; gap: 12px; font-size: 12px; color: #c9a85c; }
+
+.sect-quick-entry {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-bottom: 12px;
+}
+.sect-entry-btn {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: rgba(40, 35, 25, 0.85); border: 1px solid #444; border-radius: 6px;
+  color: #ddd; cursor: pointer; text-decoration: none;
+  transition: all 0.15s; position: relative;
+}
+.sect-entry-btn:hover { background: rgba(60, 50, 30, 0.95); border-color: #c9a85c; }
+.sect-entry-btn.war:hover { border-color: #c9a85c; box-shadow: 0 0 8px rgba(201, 168, 92, 0.35); }
+.sect-entry-btn.vein:hover { border-color: #5ca8c9; box-shadow: 0 0 8px rgba(92, 168, 201, 0.35); }
+.sect-entry-btn.mail:hover { border-color: #a85cc9; box-shadow: 0 0 8px rgba(168, 92, 201, 0.35); }
+.entry-icon { font-size: 26px; flex-shrink: 0; }
+.entry-text { flex: 1; font-size: 15px; line-height: 1.4; }
+.entry-text b { color: #ffd700; font-size: 15px; }
+.entry-text small { color: #8a8a7a; font-size: 13px; }
+.entry-stage {
+  display: inline-block;
+  background: #555; color: #fff; padding: 1px 8px; border-radius: 3px;
+  font-size: 12px; margin-left: 6px; font-weight: normal;
+}
+.entry-stage.registering { background: #3a7; }
+.entry-stage.betting { background: #d69e3c; color: #000; }
+.entry-stage.fighting { background: #d33; animation: pulse 1s infinite; }
+.entry-stage.settled { background: #555; }
+.entry-stage.occupy { background: #5ca8c9; }
+.entry-stage.claim { background: #d69e3c; color: #000; }
+.entry-red-dot {
+  position: absolute; top: -5px; right: -5px;
+  background: #f44; color: #fff; border-radius: 11px;
+  font-size: 12px; padding: 1px 6px; min-width: 18px; height: 18px;
+  text-align: center; line-height: 16px; font-weight: bold;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+@keyframes pulse { 50% { opacity: 0.6; } }
 
 .sect-sub-tabs {
   display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap;

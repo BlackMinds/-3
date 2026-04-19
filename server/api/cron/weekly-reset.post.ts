@@ -1,4 +1,5 @@
 import { getPool } from '~/server/database/db'
+import { weeklyResetMap, settleJackpot } from '~/server/utils/spiritVeinEngine'
 
 export default defineEventHandler(async (event) => {
   const authHeader = getHeader(event, 'authorization')
@@ -11,5 +12,11 @@ export default defineEventHandler(async (event) => {
   // Reset weekly contribution for all sect members
   await pool.query('UPDATE sect_members SET weekly_contribution = 0')
 
-  return { ok: true }
+  // 灵脉奖池结算（本周结果）
+  const jackpotRes = await settleJackpot()
+
+  // 灵脉全图重置
+  const veinReset = await weeklyResetMap()
+
+  return { ok: true, jackpot: jackpotRes, veinReset }
 })

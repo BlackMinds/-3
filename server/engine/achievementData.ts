@@ -128,6 +128,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'hid_03', name: '欧皇降临', desc: '+0直接强化到+6无失败', category: 'hidden', type: 'counter', target: 1, event: 'enhance_lucky', reward: { spirit_stone: 50000, equip_box: 'legend', equip_box_count: 1 }, title: '欧皇' },
   { id: 'hid_04', name: '非酋附体', desc: '连续强化失败10次', category: 'hidden', type: 'counter', target: 1, event: 'enhance_unlucky', reward: { spirit_stone: 10000, skill_box: 'fine', skill_box_count: 1 }, title: '非酋' },
   { id: 'hid_05', name: '万界至尊', desc: '完成所有非隐藏成就', category: 'hidden', type: 'threshold', target: 81, event: 'total_completed', reward: { spirit_stone: 1000000, equip_box: 'legend', equip_box_count: 5, skill_box: 'legend', skill_box_count: 3 }, title: '万界至尊' },
+
+  // ===== 宗门战 · 论道之星 =====
+  { id: 'sect_war_mvp_1', name: '论道之星', desc: '宗门战单挑 MVP 1 次', category: 'sect', type: 'counter', target: 1, event: 'sect_war_mvp', reward: { spirit_stone: 20000 }, title: '论道之星' },
+  { id: 'sect_war_mvp_3', name: '问道魁首', desc: '累计获得 3 次宗门战单挑 MVP', category: 'sect', type: 'counter', target: 3, event: 'sect_war_mvp', reward: { spirit_stone: 100000 }, title: '问道魁首' },
+  { id: 'sect_war_win_1', name: '初战告捷', desc: '参与宗门战并获胜 1 次', category: 'sect', type: 'counter', target: 1, event: 'sect_war_win', reward: { spirit_stone: 10000 } },
+  { id: 'sect_war_win_10', name: '百战宗师', desc: '参与宗门战并获胜 10 次', category: 'sect', type: 'counter', target: 10, event: 'sect_war_win', reward: { spirit_stone: 80000 }, title: '百战宗师' },
+  { id: 'spirit_vein_raid_1', name: '灵脉行者', desc: '灵脉偷袭首胜', category: 'sect', type: 'counter', target: 1, event: 'spirit_vein_raid_win', reward: { spirit_stone: 5000 } },
+  { id: 'spirit_vein_raid_20', name: '灵脉霸主', desc: '灵脉偷袭累计胜利 20 次', category: 'sect', type: 'counter', target: 20, event: 'spirit_vein_raid_win', reward: { spirit_stone: 50000 }, title: '灵脉霸主' },
 ];
 
 // 按事件名索引，加速查找
@@ -182,6 +190,10 @@ export const TITLES: Record<string, TitleDef> = {
   '欧皇':     { id: '欧皇',     name: '欧皇',     quality: 'gold' },
   '非酋':     { id: '非酋',     name: '非酋',     quality: 'gold' },
   '万界至尊': { id: '万界至尊', name: '万界至尊', quality: 'gold' },
+  '论道之星': { id: '论道之星', name: '论道之星', quality: 'gold' },
+  '问道魁首': { id: '问道魁首', name: '问道魁首', quality: 'gold' },
+  '百战宗师': { id: '百战宗师', name: '百战宗师', quality: 'purple' },
+  '灵脉霸主': { id: '灵脉霸主', name: '灵脉霸主', quality: 'purple' },
 };
 
 // ========== 等级 → Tier 映射 ==========

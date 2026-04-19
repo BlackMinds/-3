@@ -1,9 +1,130 @@
 # 宗门战 · 问道大比 融合玩法设计
 
-> 版本: v1.0
+> 版本: v1.1
 > 日期: 2026-04-18
 > 状态: 待开发
 > 父文档: [`system-sect.md`](./system-sect.md)
+
+---
+
+## 零、前置基础设施 · 站内邮件系统
+
+> 📌 本章定义一套共用的"站内邮件 + 附件"基础设施，同时服务于宗门战、灵脉潮汐及未来所有**异步结算类玩法**。
+> 📌 [`system-spirit-vein.md`](./system-spirit-vein.md) 直接引用本章，不再重复定义。
+
+### 0.1 为什么需要
+
+异步/定时玩法（宗门战结算、灵脉涌灵、偷袭胜负通知、押注返利……）的结果**不保证玩家在线**。仅靠 Toast 推送会丢失：
+
+- 玩家下线期间的结算通知无法重新看到
+- 奖励（灵石/丹方/称号）若只靠事务内直接入账，遇到异常难以补偿
+- 异步战报需要"可追溯"的归档入口
+
+邮件系统统一解决以上问题：**结果写入 → 邮件归档 → 上线即看 → 附件一键领**。所有异步玩法的个人奖励**必须**通过邮件下发，禁止直接写背包。
+
+### 0.2 数据表
+
+```sql
+-- ========================================
+-- 站内邮件（含奖励附件）
+-- ========================================
+CREATE TABLE IF NOT EXISTS mails (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  category VARCHAR(30) NOT NULL,    -- 'sect_war' / 'sect_war_bet' /
+                                    -- 'spirit_vein_surge' / 'spirit_vein_raid' /
+                                    -- 'spirit_vein_jackpot' / 'system'
+  title VARCHAR(80) NOT NULL,
+  content TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  /* attachments 示例:
+     [
+       { "type": "spirit_stone", "amount": 50000 },
+       { "type": "contribution", "amount": 2000 },
+       { "type": "exp",          "amount": 1200 },
+       { "type": "material",     "itemId": "awaken_stone", "qty": 1 },
+       { "type": "recipe",       "recipeId": "pill_advanced_gold_core" },
+       { "type": "title",        "titleKey": "论道之星", "duration": 604800 },
+       { "type": "timed_buff",   "statKey": "atk_pct", "statValue": 5, "duration": 604800 }
+     ]
+  */
+  ref_type VARCHAR(30),             -- 'match' / 'bet' / 'raid' / 'surge' / ...
+  ref_id VARCHAR(50),               -- 业务主键字符串化
+  is_read BOOLEAN DEFAULT FALSE,
+  is_claimed BOOLEAN DEFAULT FALSE, -- 附件是否已领取；无附件邮件创建时直接 TRUE
+  expires_at TIMESTAMP NOT NULL,    -- 默认 30 天后
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  read_at TIMESTAMP DEFAULT NULL,
+  claimed_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_mail_char_unread ON mails (character_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mail_char_unclaimed ON mails (character_id, is_claimed) WHERE is_claimed = FALSE;
+CREATE INDEX IF NOT EXISTS idx_mail_expires ON mails (expires_at);
+```
+
+### 0.3 发送工具函数
+
+`server/utils/mail.ts` 对外暴露：
+
+```typescript
+type MailAttachment =
+  | { type: 'spirit_stone'; amount: number }
+  | { type: 'contribution'; amount: number }
+  | { type: 'exp';          amount: number }
+  | { type: 'material';     itemId: string; qty: number }
+  | { type: 'recipe';       recipeId: string }
+  | { type: 'title';        titleKey: string; duration: number }  // 秒
+  | { type: 'timed_buff';   statKey: string; statValue: number; duration: number };
+
+export async function sendMail(params: {
+  characterId: number;
+  category: MailCategory;
+  title: string;
+  content: string;
+  attachments?: MailAttachment[];
+  refType?: string;
+  refId?: string | number;
+  ttlDays?: number;  // 默认 30
+}): Promise<number>;
+
+// 宗门群发 / 守卫群发时使用事务批写入
+export async function sendMailBatch(items: SendMailParams[]): Promise<void>;
+```
+
+### 0.4 API
+
+| 路由 | 方法 | 功能 |
+|------|------|------|
+| `/api/mail/list` | GET | 分页列表（`?category=&page=&pageSize=`） |
+| `/api/mail/unread-count` | GET | 红点：未读数 + 未领数 |
+| `/api/mail/read` | POST | 标记单封/批量已读 |
+| `/api/mail/claim` | POST | 领取单封附件（事务内写背包/贡献/修为/timed_buffs） |
+| `/api/mail/claim-all` | POST | 一键领取所有未领取邮件 |
+| `/api/mail/delete` | POST | 删除已读且已领取邮件（或无附件通知邮件） |
+
+### 0.5 定时清理
+
+| 频率 | 任务 |
+|------|------|
+| 每日 04:00 | 清理 `expires_at < NOW()` 邮件；**仍有未领附件的过期邮件，自动执行一次发放后再删除**（兜底：玩家错过过期不丢失奖励） |
+
+### 0.6 触发场景一览
+
+| 场景 | category | 附件 |
+|------|---------|------|
+| 宗门战结算（参战弟子） | `sect_war` | contribution / spirit_stone |
+| 宗门战胜方全员 Buff | `sect_war` | timed_buff × 2 |
+| 论道之星称号发放 | `sect_war` | title + timed_buff × 3 |
+| 押注返利 / 退款 | `sect_war_bet` | spirit_stone |
+| 灵脉涌灵分成 | `spirit_vein_surge` | spirit_stone / exp / contribution |
+| 灵脉稀有掉落（觉醒石/丹方） | `spirit_vein_surge` | material / recipe |
+| 灵脉被偷袭失败通知（离线守卫） | `spirit_vein_raid` | 无附件（纯通知） |
+| 灵脉奖池每周结算 | `spirit_vein_jackpot` | spirit_stone |
+
+### 0.7 前端入口
+
+全局右上角通用"邮件"图标（与任务/通知图标并列），红点 = 未读数 + 未领数。点击打开邮件列表抽屉，分类 Tab（宗门战 / 灵脉 / 系统）。
 
 ---
 
@@ -58,6 +179,8 @@
 
 **阵容提交截止：** 周三 00:00（即对阵表公布前）
 - 截止后阵容锁定，赛中不可换人（弟子掉线/下线仍按当前战力结算）
+- **弟子退宗/转宗：** 其应战场次自动判负（己方 0 分，个人无奖励），其他场次不受影响；若 3 个单挑组全部退宗或宗门解散，整届赛事该宗门直接弃权，押注按 §4.4 全额退还
+- **截止前重组：** 宗主/副宗主可通过 `DELETE /api/sect/war/register` 撤回阵容后重新提交（周三 00:00 后不可操作）
 
 ### 2.2 赛制 (BO5 · 3 胜制)
 
@@ -66,12 +189,17 @@
 | 第 1 场 | 个人单挑 · 先锋战 | 1 分 | 胜方宗门 +1 |
 | 第 2 场 | 个人单挑 · 中军战 | 1 分 | 胜方宗门 +1 |
 | 第 3 场 | 个人单挑 · 主将战 | 1 分 | 胜方宗门 +1 |
-| 第 4 场 | 3v3 团战 · 上阵 | 1 分 | 胜方宗门 +1 |
-| 第 5 场 | 3v3 团战 · 终局 | 2 分 | 胜方宗门 +2（翻盘机会） |
+| 第 4 场 | 3v3 团战 · 上阵 | 2 分 | 胜方宗门 +2 |
+| 第 5 场 | 3v3 团战 · 终局 | 3 分 | 胜方宗门 +3（翻盘机会） |
 
-**胜负判定：** 总积分高者胜。最高可达 6 分，先达 **4 分** 可提前锁定胜利（不再播后续场次，但参战数据保留）。
+**胜负判定：** 总积分高者胜。最高可达 8 分，先达 **5 分** 可提前锁定胜利（不再播后续场次，但参战数据保留）。
 
-> 设计意图：单挑 3 场 + 团战 1 场 = 4 场可决出胜负；若单挑 3 场平 + 团战 1 胜 1 负，则终局场 2 分一锤定音。避免平局。
+**提前终止规则：**
+- 单挑 3 场结束后，若一方 **0 胜（0:3 落后）**，团战最大 5 分仍无法翻盘（最多追平），直接判已胜方获胜，跳过团战场次
+- 单挑 3:0 一方 + 团战第 1 场 2:0 → 总分 5:0 锁定胜利
+- 否则必须打完团战至分出胜负（最坏情况单挑 1:2 + 团战 3+2 = 5 分翻盘）
+
+> 设计意图：团战权重提升到 2 分/3 分，让"单挑负、团战胜"的翻盘路径**真正可行**；单挑 0:3 直接判负避免无意义的收尾战报；不设平局。
 
 ### 2.3 对阵匹配
 
@@ -101,7 +229,7 @@
 |------|------|
 | 宗门等级被动 | 全员享受己方宗门等级加成（攻/防/修为） |
 | 宗门技能 | 可使用，CD 按战斗内结算，**跨场次重置** |
-| 丹药 | **禁用** 战斗中丹药（避免氪金不平衡） |
+| 丹药 | **禁用** 战斗中丹药（避免氪金不平衡）。实现：战斗 context 传入 `forbidPills: true` flag，`battleEngine.ts` 角色构建阶段跳过 `character_buffs` 读取 |
 | 装备 / 附灵 | 全部生效 |
 | 境界压制 | 禁用（保留压制会让高境界碾压，宗门战重策略） |
 | 战败惩罚 | 无（不掉血不扣经验，纯荣誉赛制） |
@@ -126,7 +254,7 @@
 | 规则 | 说明 |
 |------|------|
 | 开放对象 | 所有玩家（不限是否参战宗门） |
-| 参战宗门弟子 | 可押注**自己宗门**（赔率降低，详见 4.3） |
+| 参战宗门弟子 | **不可押注自家宗门**（防止宗主/成员利用内部阵容信息套利）；可自由押注其他对阵 |
 | 押注上限 | 每场比赛（=每个对阵）每人最多押注 **50,000 灵石** |
 | 押注窗口 | 周三 00:00 ~ 周五 20:00（开赛前） |
 
@@ -146,8 +274,8 @@
 | 5%-15% | 1.5x     | 2.5x      |
 | 15%-20% | 1.3x    | 3.5x      |
 
-- **押注自家宗门：** 赔率 × 0.8（避免"必赢套利"）
 - **手续费：** 奖池抽成 5%，返还宗门资金池（给对阵两方平分）
+- **校验：** `POST /api/sect/war/bet` 入参需校验 `bet_side` 对应的宗门 ≠ 玩家所属宗门，否则 400
 
 ### 4.4 结算
 
@@ -169,7 +297,7 @@
 
 | 名次 | 宗门资金 (fund) | 成员全员限时 Buff | 备注 |
 |------|--------------|--------------|------|
-| 胜方 | +250,000 | atk_pct +5%, def_pct +5% (持续 7 天) | Buff 可续期叠加（取较长 expires_at） |
+| 胜方 | +250,000 | atk_pct +5%, def_pct +5% (持续 7 天) | 连胜续期仅刷新 `expires_at`，不叠加数值（见 §6.1.1 UPSERT 语义） |
 | 败方 | +80,000 | — | 保底避免垫底宗门摆烂 |
 | 轮空 | +100,000 | — | 未参与对阵的宗门 |
 
@@ -228,18 +356,35 @@ CREATE TABLE IF NOT EXISTS timed_buffs (
   id SERIAL PRIMARY KEY,
   character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
   source_type VARCHAR(30) NOT NULL,         -- 'sect_war_win' / 'sect_war_mvp' / 'vein_node' ...
-  source_id VARCHAR(50),                    -- 来源引用ID（match_id / node_id 等，字符串化）
+  source_id VARCHAR(50) NOT NULL DEFAULT '',-- 来源引用ID（match_id 等）；无则空串，不用 NULL 便于 UNIQUE
   stat_key VARCHAR(20) NOT NULL,            -- 'atk_pct' / 'def_pct' / 'hp_pct' / 'spd_pct' / 'crit_rate' ...
   stat_value DECIMAL(6,2) NOT NULL,         -- 加成数值（百分比按整数存，如 5 = 5%）
   expires_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (character_id, source_type, source_id, stat_key)
 );
 
 CREATE INDEX IF NOT EXISTS idx_timed_buff_char ON timed_buffs (character_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_timed_buff_source ON timed_buffs (source_type, source_id);
 ```
 
-**战斗引擎对接方式：** `battleEngine.ts` 的角色构建阶段，除读取 `character_buffs`（丹药 buff）外，新增一段读取 `SELECT stat_key, stat_value FROM timed_buffs WHERE character_id = $1 AND expires_at > NOW()`，按 `stat_key` 归类合并到最终属性上。同 key 的多条记录**累加**（符合"Buff 续期叠加取较长 expires_at"的设计 — 实际上续期时应 UPDATE 现有行，不是 INSERT 新行）。
+**战斗引擎对接方式：** `battleEngine.ts` 的角色构建阶段，除读取 `character_buffs`（丹药 buff）外，新增一段读取 `SELECT stat_key, stat_value FROM timed_buffs WHERE character_id = $1 AND expires_at > NOW()`，按 `stat_key` 归类合并到最终属性上。
+
+**合并语义（重要，避免数值飞升）：**
+
+- **不同 `source_type` 之间：** 同 `stat_key` 的记录**属性值累加**。例如：宗门战胜利 Buff +5% atk_pct 与论道之星 +3% atk_pct 叠加为 +8%。
+- **同 `source_type + source_id` 之间：** 写入走 **UPSERT**（连胜续期只刷新 `expires_at`，不重复插入），防止连胜宗门越滚越强。
+- **唯一约束：** 表级 `UNIQUE (character_id, source_type, source_id, stat_key)` 是 UPSERT 的基础。
+
+```sql
+-- 续期/发放 Buff 的标准写法
+INSERT INTO timed_buffs (character_id, source_type, source_id, stat_key, stat_value, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (character_id, source_type, source_id, stat_key)
+DO UPDATE SET
+  stat_value = EXCLUDED.stat_value,             -- 源值变化时以最新为准
+  expires_at = GREATEST(timed_buffs.expires_at, EXCLUDED.expires_at);  -- 续期只向后延
+```
 
 **定时清理：** `cron/daily-reset` 追加一条 `DELETE FROM timed_buffs WHERE expires_at < NOW()`。
 
@@ -274,6 +419,7 @@ CREATE TABLE IF NOT EXISTS sect_war_registration (
 CREATE TABLE IF NOT EXISTS sect_war_match (
   id SERIAL PRIMARY KEY,
   season_id INT NOT NULL REFERENCES sect_war_season(id) ON DELETE CASCADE,
+  round_no SMALLINT NOT NULL DEFAULT 1,                      -- 轮次（v1 固定为 1，预留多轮淘汰制扩展）
   sect_a_id INT NOT NULL REFERENCES sects(id),
   sect_b_id INT NOT NULL REFERENCES sects(id),
   odds_a DECIMAL(5,2) NOT NULL,                              -- 押注 A 方赔率
@@ -334,6 +480,7 @@ CREATE INDEX IF NOT EXISTS idx_battle_match_round ON sect_war_battle (match_id, 
 |------|------|------|------|
 | `/api/sect/war/season` | GET | 获取当前赛季状态 | 所有玩家 |
 | `/api/sect/war/register` | POST | 提交宗门参战阵容 | 宗主/副宗主 |
+| `/api/sect/war/register` | DELETE | 截止前撤回阵容（用于重组） | 宗主/副宗主 |
 | `/api/sect/war/roster` | GET | 查看己方报名阵容 | 宗门成员 |
 | `/api/sect/war/match` | GET | 获取本届所有对阵表 | 所有玩家 |
 | `/api/sect/war/match/:id` | GET | 查看单场对阵详情（含战报） | 所有玩家 |
@@ -350,9 +497,11 @@ CREATE INDEX IF NOT EXISTS idx_battle_match_round ON sect_war_battle (match_id, 
 | 周一 00:00 | 开启赛季 | 创建 season 记录，进入 registering 状态 |
 | 周三 00:00 | 阵容锁定 + 匹配 | 扫描 registration，生成 match；进入 betting 状态 |
 | 周五 20:00 | 开赛 | 调用战斗引擎批量执行 5 场战斗；进入 fighting → 秒级完成 |
-| 周五 20:10 | 押注结算 | 根据 winner_sect_id 结算 bet |
-| 周五 20:15 | 奖励发放 | 宗门资金 / 贡献 / 灵石 / 称号 / Buff |
+| 周五 20:10 | 押注结算 | 根据 winner_sect_id 结算 bet；**每笔结算结果通过 `sendMail` 下发**（category=`sect_war_bet`，附件=灵石） |
+| 周五 20:15 | 奖励发放 | 宗门资金直接入账；**个人奖励（贡献/灵石/称号/Buff）全部走 `sendMail`**（category=`sect_war`，见 §零 0.6）；胜方全员 Buff 通过 `sendMailBatch` 批量下发 |
 | 周日 24:00 | 赛季关闭 | status = settled，历史归档 |
+
+> 📌 **为什么走邮件：** 周五结算时可能有大量玩家在线/离线，Toast 只对在线玩家有效。通过邮件下发后，玩家上线自动看到"宗门战捷报"红点，点击即可一键领取附件，避免奖励丢失。**宗门资金**因为是"公共资源"不涉及个人通知，仍然直接 UPDATE `sects.fund`。
 
 ---
 
@@ -399,10 +548,14 @@ CREATE INDEX IF NOT EXISTS idx_battle_match_round ON sect_war_battle (match_id, 
 ## 十一、开发任务拆分
 
 ### 阶段一：基础设施（先做）
-1. migration.sql 新增 **`timed_buffs` 通用表** + 索引
-2. `battleEngine.ts` 修改角色构建阶段：合并 `character_buffs` + `timed_buffs` 到最终属性
-3. `cron/daily-reset` 加入 `timed_buffs` 过期清理
-4. 扩展 `achievementData.ts`：新增 `sect_war_mvp_1` / `sect_war_mvp_3` 成就 + `TITLES` 补充论道之星/问道魁首
+1. migration.sql 新增 **`mails` 邮件表** + 索引（见 §零 0.2）
+2. `server/utils/mail.ts` — `sendMail` / `sendMailBatch` 工具函数
+3. `/api/mail/*` 接口套件（list / unread-count / read / claim / claim-all / delete）
+4. 前端全局"邮件"图标 + 邮件抽屉组件（分类 tab + 红点 + 一键领取）
+5. migration.sql 新增 **`timed_buffs` 通用表** + 索引 + `UNIQUE (character_id, source_type, source_id, stat_key)` 约束
+6. `battleEngine.ts` 修改角色构建阶段：合并 `character_buffs` + `timed_buffs` 到最终属性；新增 `forbidPills` context flag 支持（单挑场次启用）
+7. `cron/daily-reset` 加入 `timed_buffs` / `mails` 过期清理（邮件过期前自动发放附件兜底）
+8. 扩展 `achievementData.ts`：新增 `sect_war_mvp_1` / `sect_war_mvp_3` 成就 + `TITLES` 补充论道之星/问道魁首
 
 ### 阶段二：数据 + 后端核心
 5. migration.sql 新增 5 张宗门战专用表 + 索引

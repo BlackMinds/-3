@@ -46,14 +46,18 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Claude Code local settings
-.claude/settings.local.json
-.claude/CLAUDE.md
+# Claude Code local settings (整个 .claude 目录都是本地个人配置)
+.claude/
 
 # Local overrides
 *.local
 
-dogfood-output
+# 浏览器自测产物 (agent-browser 截图/视频)
+dogfood-output/
 
-# Local test scripts (自测辅助, 不随仓库分发)
+# 本地开发/测试辅助脚本 (连本地数据库 / 依赖测试种子数据 / 一次性迁移)
 scripts/test/
+scripts/*.mjs
+
+# 测试账号快照 (dump 出来的临时统计, 由 scripts/dump-test-accounts.mjs 生成)
+design/test-accounts.txt
