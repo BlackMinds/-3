@@ -132,6 +132,7 @@ export async function buildCharacterSnapshot(
   // 装备 - 主属性 + 武器百分比 + 副属性
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
+  let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -172,12 +173,20 @@ export async function buildCharacterSnapshot(
       else if (sub.stat === 'FIRE_DMG') elementDmg.fire += sub.value
       else if (sub.stat === 'EARTH_DMG') elementDmg.earth += sub.value
       else if (sub.stat === 'SPIRIT') spirit += sub.value
+      else if (sub.stat === 'ATK_PCT') equipAtkPct += sub.value
+      else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
+      else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
+      else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
     }
   }
 
-  // 武器百分比
-  if (weaponAtkPct > 0) atk = Math.floor(atk * (1 + weaponAtkPct / 100))
-  if (weaponSpdPct > 0) spd = Math.floor(spd * (1 + weaponSpdPct / 100))
+  // 武器 + 装备副属性百分比（合并一次乘法）
+  const totalAtkPct = weaponAtkPct + equipAtkPct
+  const totalSpdPct = weaponSpdPct + equipSpdPct
+  if (totalAtkPct > 0) atk = Math.floor(atk * (1 + totalAtkPct / 100))
+  if (equipDefPct > 0) def = Math.floor(def * (1 + equipDefPct / 100))
+  if (equipHpPct > 0) maxHp = Math.floor(maxHp * (1 + equipHpPct / 100))
+  if (totalSpdPct > 0) spd = Math.floor(spd * (1 + totalSpdPct / 100))
   if (weaponSpiritPct > 0) spirit = Math.floor(spirit * (1 + weaponSpiritPct / 100))
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100

@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getCharId, SUB_STAT_POOL } from '~/server/utils/equipment'
+import { getCharId, rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 
@@ -27,17 +27,13 @@ export default defineEventHandler(async (event) => {
     const slotIdx = rand(0, slots.length - 1)
     const slot = slots[slotIdx]
     const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
-    const primaryBases: Record<string, number> = { ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 3, SPIRIT: 8 }
+    const primaryBases: Record<string, number> = { ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 1, SPIRIT: 8 }
     const ps = primaryStats[slot]
     const tier = rand(6, 8)
     const pv = Math.floor((primaryBases[ps] || 30) * tier * 1.25)
 
-    // 4条副属性
-    const shuffled = [...SUB_STAT_POOL].sort(() => Math.random() - 0.5)
-    const subs = shuffled.slice(0, 4).map(s => ({
-      stat: s.stat,
-      value: Math.floor(rand(s.min, s.max) * tier * 0.5 * 1.6),
-    }))
+    // 4条副属性（金品 rarityIdx=4）
+    const subs = rollSubStats(4, tier, 4)
 
     const tierReqLevels: Record<number, number> = { 1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195 }
     const weaponType = slot === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null

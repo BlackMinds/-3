@@ -130,7 +130,7 @@ const PRIMARY_BASE: Record<string, number> = {
   DEF: 20,
   HP: 200,
   SPD: 15,
-  CRIT_RATE: 3,
+  CRIT_RATE: 1,
   SPIRIT: 8,
 };
 
@@ -242,6 +242,10 @@ export const STAT_NAMES: Record<string, string> = {
   DEF: '防御',
   HP: '气血',
   SPD: '身法',
+  ATK_PCT: '攻击',
+  DEF_PCT: '防御',
+  HP_PCT: '气血',
+  SPD_PCT: '身法',
   CRIT_RATE: '会心率',
   CRIT_DMG: '会心伤害',
   SPIRIT: '神识',
@@ -264,6 +268,8 @@ export const PERCENT_STATS = new Set([
   'ARMOR_PEN', 'ACCURACY',
   'METAL_DMG', 'WOOD_DMG', 'WATER_DMG', 'FIRE_DMG', 'EARTH_DMG',
   'SPIRIT_DENSITY', 'LUCK',
+  'DODGE', 'LIFESTEAL',
+  'ATK_PCT', 'DEF_PCT', 'HP_PCT', 'SPD_PCT',
 ]);
 
 // 品质颜色

@@ -2,49 +2,17 @@
 // 复用 battle/fight.post.ts 的逻辑，但加入秘境特有的"品质权重上移 + Boss 保底"机制
 
 import { generateEquipName } from '../engine/equipNameData'
+import { rollSubStats } from './equipment'
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-// ========== 副属性 ==========
-const SUB_STAT_POOL: Array<{ stat: string; min: number; max: number }> = [
-  { stat: 'ATK', min: 5, max: 15 },
-  { stat: 'DEF', min: 3, max: 10 },
-  { stat: 'HP', min: 30, max: 100 },
-  { stat: 'SPD', min: 2, max: 8 },
-  { stat: 'CRIT_RATE', min: 1, max: 3 },
-  { stat: 'CRIT_DMG', min: 3, max: 8 },
-  { stat: 'LIFESTEAL', min: 1, max: 3 },
-  { stat: 'DODGE', min: 1, max: 3 },
-  { stat: 'ARMOR_PEN', min: 1, max: 3 },
-  { stat: 'ACCURACY', min: 1, max: 3 },
-  { stat: 'METAL_DMG', min: 3, max: 8 },
-  { stat: 'WOOD_DMG', min: 3, max: 8 },
-  { stat: 'WATER_DMG', min: 3, max: 8 },
-  { stat: 'FIRE_DMG', min: 3, max: 8 },
-  { stat: 'EARTH_DMG', min: 3, max: 8 },
-  { stat: 'SPIRIT', min: 2, max: 8 },
-  { stat: 'SPIRIT_DENSITY', min: 1, max: 3 },
-  { stat: 'LUCK', min: 1, max: 3 },
-]
-
+// 副属性走统一池（server/utils/equipment.ts）
 function generateSubStats(rarityIdx: number, tier: number): { stat: string; value: number }[] {
   const counts = [0, 1, 2, 3, 4, 4] // 白/绿/蓝/紫/金/红
   const n = counts[rarityIdx] || 0
-  const subs: { stat: string; value: number }[] = []
-  const used = new Set<string>()
-  for (let i = 0; i < n; i++) {
-    const available = SUB_STAT_POOL.filter(s => !used.has(s.stat))
-    if (available.length === 0) break
-    const pick = available[rand(0, available.length - 1)]
-    used.add(pick.stat)
-    const qualityMul = 1 + rarityIdx * 0.15
-    const tierMul = 1 + (tier - 1) * 0.1
-    const value = Math.floor(rand(pick.min, pick.max) * qualityMul * tierMul)
-    subs.push({ stat: pick.stat, value: Math.max(1, value) })
-  }
-  return subs
+  return rollSubStats(rarityIdx, tier, n)
 }
 
 // ========== 装备生成（秘境品质权重） ==========
@@ -89,7 +57,7 @@ export function generateSecretRealmEquip(tier: number, difficulty: 1 | 2 | 3, is
     treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT',
   }
   const primaryBases: Record<string, number> = {
-    ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 3, SPIRIT: 8,
+    ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 1, SPIRIT: 8,
   }
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]

@@ -7,6 +7,7 @@ import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/util
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
+import { rollSubStats } from '~/server/utils/equipment'
 
 // 战斗锁: 防止同一角色并发刷战斗
 const battleLock = new Map<number, number>()
@@ -174,39 +175,14 @@ const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; boss: Map
   ], boss: { name: '永恒之主', power: 800000000, element: null, exp: 200000000, stone_min: 50000000, stone_max: 100000000, role: 'boss', drop_table: 'boss_t10' } },
 }
 
-// ===== 副属性自动生成 =====
-const DROP_SUB_POOL = [
-  { stat: 'ATK', min: 5, max: 30 },
-  { stat: 'DEF', min: 3, max: 20 },
-  { stat: 'HP', min: 20, max: 150 },
-  { stat: 'SPD', min: 2, max: 15 },
-  { stat: 'CRIT_RATE', min: 1, max: 5 },
-  { stat: 'CRIT_DMG', min: 5, max: 20 },
-  { stat: 'LIFESTEAL', min: 1, max: 5 },
-  { stat: 'DODGE', min: 1, max: 4 },
-  { stat: 'ARMOR_PEN', min: 3, max: 15 },
-  { stat: 'ACCURACY', min: 2, max: 10 },
-]
-
-function generateSubStats(rarityIdx: number, tier: number): any[] {
-  const subCountRange: [number, number][] = [[0,0],[0,1],[1,2],[2,3],[3,4],[4,5]]
-  const [minSubs, maxSubs] = subCountRange[rarityIdx] || [0, 0]
+// ===== 副属性自动生成（统一走 server/utils/equipment.ts 的共享池）=====
+// 品质 → 保底最大副属性数量，加一点随机让数量有下限变化
+const SUB_COUNT_RANGE: [number, number][] = [[0,0],[0,1],[1,2],[2,3],[3,4],[4,4]]
+function generateSubStats(rarityIdx: number, tier: number): { stat: string; value: number }[] {
+  const [minSubs, maxSubs] = SUB_COUNT_RANGE[rarityIdx] || [0, 0]
   const count = rand(minSubs, maxSubs)
   if (count === 0) return []
-
-  const subs: any[] = []
-  const used = new Set<string>()
-  for (let i = 0; i < count; i++) {
-    const available = DROP_SUB_POOL.filter(s => !used.has(s.stat))
-    if (available.length === 0) break
-    const pick = available[rand(0, available.length - 1)]
-    used.add(pick.stat)
-    const qualityMul = 1 + rarityIdx * 0.15
-    const tierMul = 1 + (tier - 1) * 0.1
-    const value = Math.floor(rand(pick.min, pick.max) * qualityMul * tierMul)
-    subs.push({ stat: pick.stat, value: Math.max(1, value) })
-  }
-  return subs
+  return rollSubStats(rarityIdx, tier, count)
 }
 
 // ===== 装备掉落 =====
@@ -228,7 +204,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
   const slotIdx = rand(0, slots.length - 1)
   const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
-  const primaryBases: Record<string, number> = { ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 3, SPIRIT: 8 }
+  const primaryBases: Record<string, number> = { ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 1, SPIRIT: 8 }
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]
   const pv = Math.floor((primaryBases[ps] || 30) * tier * statMuls[idx])
@@ -351,6 +327,8 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
   const elementDmg = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
+  // 装备副属性百分比（与武器类型百分比合并一次乘法）
+  let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -394,6 +372,10 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
       else if (sub.stat === 'SPIRIT') spirit += sub.value
       else if (sub.stat === 'SPIRIT_DENSITY') spiritDensity += sub.value
       else if (sub.stat === 'LUCK') luck += sub.value
+      else if (sub.stat === 'ATK_PCT') equipAtkPct += sub.value
+      else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
+      else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
+      else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
     }
 
     // v1.2 附灵聚合（仅 weapon/armor/pendant 槽位有效）
@@ -468,9 +450,13 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
     }
   }
 
-  // 应用武器类型百分比加成
-  if (weaponAtkPct > 0) atk = Math.floor(atk * (1 + weaponAtkPct / 100))
-  if (weaponSpdPct > 0) spd = Math.floor(spd * (1 + weaponSpdPct / 100))
+  // 应用武器类型 + 装备副属性百分比加成（合并一次乘法，避免多重复利）
+  const totalAtkPct = weaponAtkPct + equipAtkPct
+  const totalSpdPct = weaponSpdPct + equipSpdPct
+  if (totalAtkPct > 0) atk = Math.floor(atk * (1 + totalAtkPct / 100))
+  if (equipDefPct > 0) def = Math.floor(def * (1 + equipDefPct / 100))
+  if (equipHpPct > 0) maxHp = Math.floor(maxHp * (1 + equipHpPct / 100))
+  if (totalSpdPct > 0) spd = Math.floor(spd * (1 + totalSpdPct / 100))
   if (weaponSpiritPct > 0) spirit = Math.floor(spirit * (1 + weaponSpiritPct / 100))
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
@@ -569,10 +555,21 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
   ;(char as any).__resistCtrlAwaken = 0
   ;(char as any).__resistAllAwaken = 0
 
+  // 玩家属性硬上限（对称怪物的 cap，避免堆属性爆表）
+  // 怪物 cap: crit_rate≤50% / crit_dmg≤300% / dodge≤30% / lifesteal≤15% / armorPen≤30 / accuracy≤25
+  // 玩家上限取略高值，允许 build 更极端，但不至于完全数值溢出
+  const cappedCritRate  = Math.min(0.80, critRate)
+  const cappedCritDmg   = Math.min(4.0,  critDmg)
+  const cappedDodge     = Math.min(0.40, dodge)
+  const cappedLifesteal = Math.min(0.30, lifesteal)
+  const cappedArmorPen  = Math.min(80,   armorPen)
+  const cappedAccuracy  = Math.min(60,   accuracy)
+
   return {
     stats: {
       name: char.name, maxHp, hp: maxHp, atk, def, spd,
-      crit_rate: critRate, crit_dmg: critDmg, dodge, lifesteal,
+      crit_rate: cappedCritRate, crit_dmg: cappedCritDmg,
+      dodge: cappedDodge, lifesteal: cappedLifesteal,
       element: char.spiritual_root,
       resists: {
         metal: Number(char.resist_metal || 0) + awakenAllResist,
@@ -583,7 +580,7 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
         ctrl: Number(char.resist_ctrl || 0) + awakenCtrlResist,
       },
       spiritualRoot: char.spiritual_root,
-      armorPen, accuracy, elementDmg,
+      armorPen: cappedArmorPen, accuracy: cappedAccuracy, elementDmg,
       spirit,
       awaken,
     },

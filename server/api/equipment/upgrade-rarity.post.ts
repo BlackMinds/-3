@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getCharId, consumeSpecialItem, SUB_STAT_POOL } from '~/server/utils/equipment'
+import { getCharId, consumeSpecialItem, SUB_STAT_POOL, rollSubStatValue } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       const newSub = available[rand(0, available.length - 1)]
       subStats.push({
         stat: newSub.stat,
-        value: Math.floor(rand(newSub.min, newSub.max) * tier * 0.5 * (1 + rarityIdx * 0.15)),
+        value: rollSubStatValue(newSub.stat, newSub.min, newSub.max, rarityIdx, tier),
       })
     }
 

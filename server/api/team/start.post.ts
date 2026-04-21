@@ -66,6 +66,7 @@ async function buildPlayerBattleStats(char: any): Promise<{
   const elementDmg = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
+  let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -108,11 +109,19 @@ async function buildPlayerBattleStats(char: any): Promise<{
       else if (sub.stat === 'SPIRIT') spirit += sub.value
       else if (sub.stat === 'SPIRIT_DENSITY') spiritDensity += sub.value
       else if (sub.stat === 'LUCK') luck += sub.value
+      else if (sub.stat === 'ATK_PCT') equipAtkPct += sub.value
+      else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
+      else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
+      else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
     }
   }
 
-  if (weaponAtkPct > 0) atk = Math.floor(atk * (1 + weaponAtkPct / 100))
-  if (weaponSpdPct > 0) spd = Math.floor(spd * (1 + weaponSpdPct / 100))
+  const totalAtkPct = weaponAtkPct + equipAtkPct
+  const totalSpdPct = weaponSpdPct + equipSpdPct
+  if (totalAtkPct > 0) atk = Math.floor(atk * (1 + totalAtkPct / 100))
+  if (equipDefPct > 0) def = Math.floor(def * (1 + equipDefPct / 100))
+  if (equipHpPct > 0) maxHp = Math.floor(maxHp * (1 + equipHpPct / 100))
+  if (totalSpdPct > 0) spd = Math.floor(spd * (1 + totalSpdPct / 100))
   if (weaponSpiritPct > 0) spirit = Math.floor(spirit * (1 + weaponSpiritPct / 100))
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
@@ -176,9 +185,13 @@ async function buildPlayerBattleStats(char: any): Promise<{
     }
   }
 
+  // 玩家属性硬上限（与 battle/fight.post.ts 保持一致）
   const stats: BattlerStats = {
     name: char.name, maxHp, hp: maxHp, atk, def, spd,
-    crit_rate: critRate, crit_dmg: critDmg, dodge, lifesteal,
+    crit_rate: Math.min(0.80, critRate),
+    crit_dmg: Math.min(4.0, critDmg),
+    dodge: Math.min(0.40, dodge),
+    lifesteal: Math.min(0.30, lifesteal),
     element: char.spiritual_root,
     resists: {
       metal: Number(char.resist_metal || 0), wood: Number(char.resist_wood || 0),
@@ -186,7 +199,9 @@ async function buildPlayerBattleStats(char: any): Promise<{
       earth: Number(char.resist_earth || 0), ctrl: Number(char.resist_ctrl || 0),
     },
     spiritualRoot: char.spiritual_root,
-    armorPen, accuracy, elementDmg, spirit,
+    armorPen: Math.min(80, armorPen),
+    accuracy: Math.min(60, accuracy),
+    elementDmg, spirit,
   }
   const equippedSkills = buildEquippedSkillInfo(skillRows)
   return { stats, equippedSkills, expBonusPercent: expBonusPercent + spiritDensity, luckPercent: luck }
