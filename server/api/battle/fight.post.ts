@@ -690,78 +690,97 @@ export default defineEventHandler(async (event) => {
       if (herbDrop) allDrops.push({ type: 'herb', data: herbDrop })
     }
 
-    // 存入数据库
-    if (result.won && totalExp > 0) {
-      // 累加 cultivation_exp 并自动扣除突破
-      const newExpTotal = Number(char.cultivation_exp || 0) + totalExp
-      const br = applyCultivationExp(newExpTotal, char.realm_tier || 1, char.realm_stage || 1)
-      if (br.breakthroughs > 0) {
-        result.logs.push({ turn: 0, text: `突破 ${br.breakthroughs} 次境界！`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-      }
-      await pool.query(
-        `UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, spirit_stone = spirit_stone + $4, level_exp = level_exp + $5, current_map = $6, last_online = NOW() WHERE id = $7`,
-        [br.cultivation_exp, br.realm_tier, br.realm_stage, totalStone, levelExp, map_id, char.id]
-      )
+    // 存入数据库（主结算事务化：UPDATE 主属性 + 掉落 INSERT + 自动出售统一原子化）
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
 
-      // 检查升级（统一使用 realm.ts 的工具，与前端公式一致）
-      const lvResult = applyLevelExp(Number(char.level_exp || 0) + levelExp, char.level || 1)
-      if (lvResult.levelUps > 0) {
-        result.logs.push({ turn: 0, text: `等级提升!你已升至【Lv.${lvResult.level}】`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-        await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
-      }
+      if (result.won && totalExp > 0) {
+        // 事务内 FOR UPDATE 取最新基线，避免覆盖并发写入（闭关/使用丹药/洞府领取）
+        const { rows: fresh } = await client.query(
+          'SELECT cultivation_exp, realm_tier, realm_stage, level_exp, level FROM characters WHERE id = $1 FOR UPDATE',
+          [char.id]
+        )
+        const baseline = fresh[0] || char
 
-      // 自动出售判定
-      const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
-      const autoSellIdx = auto_sell ? RARITY_ORDER.indexOf(auto_sell) : -1
-      const autoSellTierLimit = Number(auto_sell_tier) || 0
-      const sellPrices: Record<string, number> = { white: 10, green: 50, blue: 200, purple: 1000, gold: 5000, red: 20000 }
-      let autoSellIncome = 0
+        // 累加 cultivation_exp 并自动扣除突破
+        const newExpTotal = Number(baseline.cultivation_exp || 0) + totalExp
+        const br = applyCultivationExp(newExpTotal, baseline.realm_tier || 1, baseline.realm_stage || 1)
+        if (br.breakthroughs > 0) {
+          result.logs.push({ turn: 0, text: `突破 ${br.breakthroughs} 次境界！`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+        }
+        await client.query(
+          `UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, spirit_stone = spirit_stone + $4, level_exp = level_exp + $5, current_map = $6, last_online = NOW() WHERE id = $7`,
+          [br.cultivation_exp, br.realm_tier, br.realm_stage, totalStone, levelExp, map_id, char.id]
+        )
 
-      // 存掉落
-      for (const drop of allDrops) {
-        if (drop.type === 'equipment') {
-          const d = drop.data
-          const itemIdx = RARITY_ORDER.indexOf(d.rarity)
-          const itemTier = d.tier || 1
-          if (autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
-            const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
-            autoSellIncome += price
-            result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-            continue
+        // 检查升级（统一使用 realm.ts 的工具，与前端公式一致）
+        const lvResult = applyLevelExp(Number(baseline.level_exp || 0) + levelExp, baseline.level || 1)
+        if (lvResult.levelUps > 0) {
+          result.logs.push({ turn: 0, text: `等级提升!你已升至【Lv.${lvResult.level}】`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+          await client.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
+        }
+
+        // 自动出售判定
+        const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
+        const autoSellIdx = auto_sell ? RARITY_ORDER.indexOf(auto_sell) : -1
+        const autoSellTierLimit = Number(auto_sell_tier) || 0
+        const sellPrices: Record<string, number> = { white: 10, green: 50, blue: 200, purple: 1000, gold: 5000, red: 20000 }
+        let autoSellIncome = 0
+
+        // 存掉落
+        for (const drop of allDrops) {
+          if (drop.type === 'equipment') {
+            const d = drop.data
+            const itemIdx = RARITY_ORDER.indexOf(d.rarity)
+            const itemTier = d.tier || 1
+            if (autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
+              const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
+              autoSellIncome += price
+              result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+              continue
+            }
+            await client.query(
+              `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
+              [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
+            )
+            result.logs.push({ turn: 0, text: `掉落了【${d.name}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
           }
-          await pool.query(
-            `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
-            [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
-          )
-          result.logs.push({ turn: 0, text: `掉落了【${d.name}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+          if (drop.type === 'skill') {
+            await client.query(
+              `INSERT INTO character_skill_inventory (character_id, skill_id, count)
+               VALUES ($1, $2, 1)
+               ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
+              [char.id, drop.data]
+            )
+            result.logs.push({ turn: 0, text: `掉落了功法!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+          }
+          if (drop.type === 'herb') {
+            const h = drop.data
+            await client.query(
+              `INSERT INTO character_materials (character_id, material_id, quality, count)
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
+              [char.id, h.herb_id, h.quality, h.count, h.count]
+            )
+          }
         }
-        if (drop.type === 'skill') {
-          await pool.query(
-            `INSERT INTO character_skill_inventory (character_id, skill_id, count)
-             VALUES ($1, $2, 1)
-             ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
-            [char.id, drop.data]
-          )
-          result.logs.push({ turn: 0, text: `掉落了功法!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+
+        // 自动出售收入入库
+        if (autoSellIncome > 0) {
+          await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [autoSellIncome, char.id])
         }
-        if (drop.type === 'herb') {
-          const h = drop.data
-          await pool.query(
-            `INSERT INTO character_materials (character_id, material_id, quality, count)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
-            [char.id, h.herb_id, h.quality, h.count, h.count]
-          )
-        }
+      } else if (!result.won) {
+        await client.query('UPDATE characters SET spirit_stone = GREATEST(0, spirit_stone - FLOOR(spirit_stone * 0.05)), last_online = NOW() WHERE id = $1', [char.id])
       }
 
-      // 自动出售收入入库
-      if (autoSellIncome > 0) {
-        await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [autoSellIncome, char.id])
-      }
-    } else if (!result.won) {
-      await pool.query('UPDATE characters SET spirit_stone = GREATEST(0, spirit_stone - FLOOR(spirit_stone * 0.05)), last_online = NOW() WHERE id = $1', [char.id])
+      await client.query('COMMIT')
+    } catch (settleErr) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw settleErr
+    } finally {
+      client.release()
     }
 
     // 宗门任务进度

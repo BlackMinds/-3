@@ -115,7 +115,9 @@ export default defineEventHandler(async (event) => {
     for (let i = 0; i < node.guard_limit; i++) defenders.push(simpleInputToPvp(makeNpcDefender(node.tier, i)))
   } else {
     const dSnaps = await Promise.all(guards.map((g: any) => buildCharacterSnapshot(g.character_id)))
-    defenders = dSnaps.filter((s: any) => !!s).map((s: CharacterSnapshot) => toInput(s, node.occupying_sect_id))
+    defenders = dSnaps
+      .filter((s): s is CharacterSnapshot => s !== null)
+      .map((s) => toInput(s, node.occupying_sect_id))
   }
   const attackersInput: PvpFighterInput[] = aValid.map((s: CharacterSnapshot) => toInput(s, membership.sect_id))
 
@@ -129,7 +131,16 @@ export default defineEventHandler(async (event) => {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    await client.query('UPDATE characters SET spirit_stone = spirit_stone - 500 WHERE id = $1', [char.id])
+    // 条件扣灵石：WHERE spirit_stone >= 500 防止并发下扣为负
+    // （L106 的事务外预检仅为早期拦截，真正权威判断在事务内）
+    const { rowCount: paid } = await client.query(
+      'UPDATE characters SET spirit_stone = spirit_stone - 500 WHERE id = $1 AND spirit_stone >= 500',
+      [char.id]
+    )
+    if (!paid) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '灵石不足 500，无法进场' }
+    }
     await client.query(
       `INSERT INTO spirit_vein_raid (node_id, attacker_sect_id, defender_sect_id, attackers, defenders, winner_side, battle_log)
        VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7::jsonb)`,

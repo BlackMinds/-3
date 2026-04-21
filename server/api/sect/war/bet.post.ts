@@ -33,35 +33,48 @@ export default defineEventHandler(async (event) => {
     return { code: 400, message: '不可押注自家宗门' }
   }
 
-  // 灵石余额
-  const { rows: charRows } = await pool.query('SELECT spirit_stone FROM characters WHERE id = $1', [char.id])
-  if (Number(charRows[0].spirit_stone) < amount) return { code: 400, message: '灵石不足' }
-
-  // 已有押注：叠加金额（上限 50k 总计）
-  const { rows: existRows } = await pool.query(
-    `SELECT id, bet_amount, bet_side FROM sect_war_bet
-      WHERE match_id = $1 AND character_id = $2 AND status = 'pending'`,
-    [matchId, char.id]
-  )
   const odds = betSide === 'a' ? Number(match.odds_a) : Number(match.odds_b)
+
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    await client.query('UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2', [amount, char.id])
+
+    // 锁已有押注行，避免并发重复 INSERT / 方向校验失效
+    const { rows: existRows } = await client.query(
+      `SELECT id, bet_amount, bet_side FROM sect_war_bet
+        WHERE match_id = $1 AND character_id = $2 AND status = 'pending'
+        FOR UPDATE`,
+      [matchId, char.id]
+    )
+
+    let newTotal = amount
     if (existRows.length > 0) {
       const exist = existRows[0]
       if (exist.bet_side !== betSide) {
         await client.query('ROLLBACK')
         return { code: 400, message: '同场比赛不可押注不同方向（请先等原押注结算）' }
       }
-      const newTotal = Number(exist.bet_amount) + amount
+      newTotal = Number(exist.bet_amount) + amount
       if (newTotal > 50000) {
         await client.query('ROLLBACK')
         return { code: 400, message: '累计押注超上限 50,000 灵石' }
       }
+    }
+
+    // 条件扣灵石：WHERE spirit_stone >= $1 防止扣负
+    const { rowCount: deducted } = await client.query(
+      'UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2 AND spirit_stone >= $1',
+      [amount, char.id]
+    )
+    if (!deducted) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '灵石不足' }
+    }
+
+    if (existRows.length > 0) {
       await client.query(
         `UPDATE sect_war_bet SET bet_amount = $1 WHERE id = $2`,
-        [newTotal, exist.id]
+        [newTotal, existRows[0].id]
       )
     } else {
       await client.query(
@@ -70,10 +83,12 @@ export default defineEventHandler(async (event) => {
         [matchId, char.id, betSide, amount, odds]
       )
     }
+
     await client.query('COMMIT')
   } catch (e) {
-    await client.query('ROLLBACK')
-    throw e
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('宗门战押注失败:', e)
+    return { code: 500, message: '服务器错误' }
   } finally {
     client.release()
   }

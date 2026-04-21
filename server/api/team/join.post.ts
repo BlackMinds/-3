@@ -52,16 +52,20 @@ export default defineEventHandler(async (event) => {
         return { code: 400, message: check.message }
       }
 
-      await client.query(
+      // 用 INSERT 的 rowCount 守护：仅在真正插入了新行时才 +1
+      // 否则（并发下 ON CONFLICT 跳过）会导致 current_members 虚高永远无法归零
+      const { rowCount: inserted } = await client.query(
         `INSERT INTO team_members (room_id, character_id, is_leader, is_ready)
          VALUES ($1, $2, FALSE, FALSE)
          ON CONFLICT (room_id, character_id) DO NOTHING`,
         [roomId, char.id]
       )
-      await client.query(
-        `UPDATE team_rooms SET current_members = current_members + 1 WHERE id = $1`,
-        [roomId]
-      )
+      if (inserted) {
+        await client.query(
+          `UPDATE team_rooms SET current_members = current_members + 1 WHERE id = $1`,
+          [roomId]
+        )
+      }
       await client.query('COMMIT')
 
       const detail = await getRoomDetail(roomId)

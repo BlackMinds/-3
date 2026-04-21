@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getCharId, consumeSpecialItem } from '~/server/utils/equipment'
+import { getCharId } from '~/server/utils/equipment'
 import {
   rollAwakenEffect,
   canSlotAwaken,
@@ -14,87 +14,97 @@ import {
  *   - equip_id: 装备 id
  *   - item_id: 'awaken_stone' | 'awaken_reroll'
  *
- * 校验：
- *   - 装备存在且属于当前角色
- *   - 装备槽位支持附灵（weapon/armor/pendant）
- *   - 装备品质支持附灵（blue+）
- *   - awaken_stone: awaken_effect 必须为 NULL
- *   - awaken_reroll: awaken_effect 必须非 NULL
- *   - 背包中对应道具存量 ≥ 1
- *
- * 事务：
- *   1. 消耗道具 ×1
- *   2. rollAwakenEffect（洗练时 exclude 当前 id）
- *   3. UPDATE character_equipment SET awaken_effect = ...
+ * 顺序：
+ *   1. rollAwakenEffect（纯内存，失败立即返回，不消耗道具）
+ *   2. 事务：条件扣道具 → UPDATE awaken_effect → COMMIT
  */
 export default defineEventHandler(async (event) => {
+  const body = await readBody(event)
+  const equipId = Number(body?.equip_id)
+  const itemId = String(body?.item_id || '')
+
+  if (!equipId) return { code: 400, message: '装备 id 无效' }
+  if (itemId !== 'awaken_stone' && itemId !== 'awaken_reroll') {
+    return { code: 400, message: '道具 id 无效' }
+  }
+
+  const char = await getCharId(event.context.userId)
+  if (!char) return { code: 400, message: '角色不存在' }
+  const charId = char.id
+
+  const pool = getPool()
+  const { rows: eqRows } = await pool.query(
+    `SELECT id, base_slot, slot, rarity, awaken_effect
+     FROM character_equipment
+     WHERE id = $1 AND character_id = $2`,
+    [equipId, charId]
+  )
+  if (eqRows.length === 0) return { code: 400, message: '装备不存在' }
+  const eq = eqRows[0]
+
+  const slot = eq.base_slot || eq.slot
+  if (!canSlotAwaken(slot)) {
+    return { code: 400, message: '该槽位装备不支持附灵（仅兵器/法袍/灵佩）' }
+  }
+  if (!canRarityAwaken(eq.rarity)) {
+    return { code: 400, message: '白/绿品装备无法附灵' }
+  }
+
+  const currentEffect: AwakenEffect | null = eq.awaken_effect || null
+  if (itemId === 'awaken_stone') {
+    if (currentEffect) return { code: 400, message: '该装备已有附灵，请使用灵枢玉洗练' }
+  } else {
+    if (!currentEffect) return { code: 400, message: '该装备尚无附灵，请使用附灵石附加' }
+  }
+
+  // 步骤 1：先生成新附灵（纯内存，失败立即返回，零副作用）
+  const excludeId = itemId === 'awaken_reroll' ? currentEffect?.id : undefined
+  const newEffect = rollAwakenEffect(slot, eq.rarity, excludeId)
+  if (!newEffect) {
+    return { code: 500, message: '附灵生成失败，请联系管理员' }
+  }
+
+  // 步骤 2：事务内原子地 消耗道具 + 落库附灵
+  const client = await pool.connect()
   try {
-    const body = await readBody(event)
-    const equipId = Number(body?.equip_id)
-    const itemId = String(body?.item_id || '')
+    await client.query('BEGIN')
 
-    if (!equipId) return { code: 400, message: '装备 id 无效' }
-    if (itemId !== 'awaken_stone' && itemId !== 'awaken_reroll') {
-      return { code: 400, message: '道具 id 无效' }
-    }
-
-    const char = await getCharId(event.context.userId)
-    if (!char) return { code: 400, message: '角色不存在' }
-    const charId = char.id
-
-    const pool = getPool()
-    const { rows: eqRows } = await pool.query(
-      `SELECT id, base_slot, slot, rarity, awaken_effect
-       FROM character_equipment
-       WHERE id = $1 AND character_id = $2`,
-      [equipId, charId]
+    // 条件扣道具：FOR UPDATE 锁行 + count > 0 校验
+    const { rows: pillRows } = await client.query(
+      `SELECT id FROM character_pills
+       WHERE character_id = $1 AND pill_id = $2 AND count > 0
+       LIMIT 1 FOR UPDATE`,
+      [charId, itemId]
     )
-    if (eqRows.length === 0) return { code: 400, message: '装备不存在' }
-    const eq = eqRows[0]
-
-    // 校验槽位：优先 base_slot（兼容未装备态），其次 slot
-    const slot = eq.base_slot || eq.slot
-    if (!canSlotAwaken(slot)) {
-      return { code: 400, message: '该槽位装备不支持附灵（仅兵器/法袍/灵佩）' }
-    }
-
-    // 校验品质
-    if (!canRarityAwaken(eq.rarity)) {
-      return { code: 400, message: '白/绿品装备无法附灵' }
-    }
-
-    // 校验附灵状态
-    const currentEffect: AwakenEffect | null = eq.awaken_effect || null
-    if (itemId === 'awaken_stone') {
-      if (currentEffect) {
-        return { code: 400, message: '该装备已有附灵，请使用灵枢玉洗练' }
-      }
-    } else {
-      if (!currentEffect) {
-        return { code: 400, message: '该装备尚无附灵，请使用附灵石附加' }
-      }
-    }
-
-    // 消耗道具
-    const consumed = await consumeSpecialItem(charId, itemId)
-    if (!consumed) {
+    if (pillRows.length === 0) {
+      await client.query('ROLLBACK')
       const itemName = itemId === 'awaken_stone' ? '附灵石' : '灵枢玉'
       return { code: 400, message: `缺少${itemName}` }
     }
+    const { rowCount: consumed } = await client.query(
+      'UPDATE character_pills SET count = count - 1 WHERE id = $1 AND count > 0',
+      [pillRows[0].id]
+    )
+    if (!consumed) {
+      await client.query('ROLLBACK')
+      const itemName = itemId === 'awaken_stone' ? '附灵石' : '灵枢玉'
+      return { code: 400, message: `缺少${itemName}` }
+    }
+    await client.query('DELETE FROM character_pills WHERE id = $1 AND count <= 0', [pillRows[0].id])
 
-    // 随机新附灵
-    const excludeId = itemId === 'awaken_reroll' ? currentEffect?.id : undefined
-    const newEffect = rollAwakenEffect(slot, eq.rarity, excludeId)
-    if (!newEffect) {
-      // 理论不会走到，保险起见回退道具
-      return { code: 500, message: '附灵生成失败，请联系管理员' }
+    // 装备仍属于该角色 + 附灵状态未被并发改动（avoid 双写覆盖）
+    const { rowCount: updated } = await client.query(
+      `UPDATE character_equipment SET awaken_effect = $1
+       WHERE id = $2 AND character_id = $3
+         AND ${itemId === 'awaken_stone' ? 'awaken_effect IS NULL' : 'awaken_effect IS NOT NULL'}`,
+      [JSON.stringify(newEffect), equipId, charId]
+    )
+    if (!updated) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '装备状态已变化，请刷新后重试' }
     }
 
-    // 落库
-    await pool.query(
-      'UPDATE character_equipment SET awaken_effect = $1 WHERE id = $2',
-      [JSON.stringify(newEffect), equipId]
-    )
+    await client.query('COMMIT')
 
     return {
       code: 200,
@@ -106,7 +116,10 @@ export default defineEventHandler(async (event) => {
       },
     }
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('附灵接口出错:', error)
     return { code: 500, message: '服务器错误' }
+  } finally {
+    client.release()
   }
 })

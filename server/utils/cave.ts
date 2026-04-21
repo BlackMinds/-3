@@ -32,11 +32,11 @@ export const HERBS: Record<string, { id: string; element: string | null; unlockP
 
 export const QUALITIES: Record<string, { id: string; multiplier: number; growMinutes: number; baseYield: number; unlockPlotLevel: number }> = {
   white:  { id: 'white',  multiplier: 1.00, growMinutes: 30,  baseYield: 3, unlockPlotLevel: 1  },
-  green:  { id: 'green',  multiplier: 1.20, growMinutes: 60,  baseYield: 3, unlockPlotLevel: 1  },
-  blue:   { id: 'blue',   multiplier: 1.50, growMinutes: 120, baseYield: 4, unlockPlotLevel: 4  },
-  purple: { id: 'purple', multiplier: 2.00, growMinutes: 240, baseYield: 4, unlockPlotLevel: 7  },
-  gold:   { id: 'gold',   multiplier: 3.00, growMinutes: 480, baseYield: 5, unlockPlotLevel: 10 },
-  red:    { id: 'red',    multiplier: 5.00, growMinutes: 960, baseYield: 5, unlockPlotLevel: 13 },
+  green:  { id: 'green',  multiplier: 1.10, growMinutes: 60,  baseYield: 3, unlockPlotLevel: 1  },
+  blue:   { id: 'blue',   multiplier: 1.25, growMinutes: 120, baseYield: 4, unlockPlotLevel: 4  },
+  purple: { id: 'purple', multiplier: 1.50, growMinutes: 240, baseYield: 4, unlockPlotLevel: 7  },
+  gold:   { id: 'gold',   multiplier: 2.00, growMinutes: 480, baseYield: 5, unlockPlotLevel: 10 },
+  red:    { id: 'red',    multiplier: 3.00, growMinutes: 960, baseYield: 5, unlockPlotLevel: 13 },
 }
 
 export function getPlotConfig(herbFieldLevel: number): { plotCount: number; maxQualityIndex: number } {

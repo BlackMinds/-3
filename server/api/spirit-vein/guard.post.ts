@@ -45,27 +45,53 @@ export default defineEventHandler(async (event) => {
   // 偷袭刚赢下节点后存在 10 分钟真空期（给其他宗门再抢的窗口），
   // 但本宗门人员可以直接驻守（这是战利品）
 
-  // 该玩家是否已在其他节点守？
-  const { rows: exist } = await pool.query(
-    `SELECT node_id FROM spirit_vein_guard WHERE character_id = $1 AND expires_at > NOW()`,
-    [char.id]
-  )
-  if (exist.length > 0) {
-    return { code: 400, message: '你已在其他节点驻守，先离岗再重新选择' }
-  }
-
-  // 人数上限
-  if (node.current_guard_count >= node.guard_limit) {
-    return { code: 400, message: '该节点守卫已满员' }
-  }
-
   const expires = new Date(Date.now() + 24 * 3600 * 1000)
-  await pool.query(
-    `INSERT INTO spirit_vein_guard (node_id, character_id, sect_id, expires_at)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (node_id, character_id) DO UPDATE SET expires_at = EXCLUDED.expires_at`,
-    [nodeId, char.id, membership.sect_id, expires]
-  )
-  await refreshGuardCount(nodeId)
-  return { code: 200, message: '已驻守', data: { expiresAt: expires.toISOString() } }
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+
+    // 锁 occupation 行，事务内读最新守卫数，防并发驻守超员
+    const { rows: occRows } = await client.query(
+      `SELECT sect_id, current_guard_count FROM spirit_vein_occupation
+       WHERE node_id = $1 FOR UPDATE`,
+      [nodeId]
+    )
+    if (occRows.length === 0 || occRows[0].sect_id !== membership.sect_id) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '节点非本宗门占领，请先发起偷袭攻占' }
+    }
+    if (Number(occRows[0].current_guard_count) >= node.guard_limit) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '该节点守卫已满员' }
+    }
+
+    // 事务内复查：该玩家是否已在其他节点守
+    const { rows: exist } = await client.query(
+      `SELECT node_id FROM spirit_vein_guard WHERE character_id = $1 AND expires_at > NOW() FOR UPDATE`,
+      [char.id]
+    )
+    if (exist.length > 0 && !exist.some((r: any) => r.node_id === nodeId)) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '你已在其他节点驻守，先离岗再重新选择' }
+    }
+
+    await client.query(
+      `INSERT INTO spirit_vein_guard (node_id, character_id, sect_id, expires_at)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (node_id, character_id) DO UPDATE SET expires_at = EXCLUDED.expires_at`,
+      [nodeId, char.id, membership.sect_id, expires]
+    )
+    // 在同一事务内刷新计数（refreshGuardCount 接受可选 client）
+    await refreshGuardCount(nodeId, client)
+
+    await client.query('COMMIT')
+    return { code: 200, message: '已驻守', data: { expiresAt: expires.toISOString() } }
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('驻守失败:', error)
+    return { code: 500, message: '服务器错误' }
+  } finally {
+    client.release()
+  }
 })

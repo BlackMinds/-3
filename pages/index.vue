@@ -1588,7 +1588,7 @@
 
           <div class="help-section">
             <div class="help-title">品质对炼丹的影响</div>
-            <p class="help-text">炼丹时使用的灵草品质越高,丹药效果越强。品质系数: 凡品 1.0x / 灵品 1.2x / 玄品 1.5x / 地品 2.0x / 天品 3.0x / 仙品 5.0x。多种灵草的系数取加权平均。</p>
+            <p class="help-text">炼丹时使用的灵草品质越高,丹药效果越强。品质系数: 凡品 1.0x / 灵品 1.1x / 玄品 1.25x / 地品 1.5x / 天品 2.0x / 仙品 3.0x。多种灵草的系数取加权平均。</p>
           </div>
 
           <div class="help-section">
@@ -2273,7 +2273,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">炼丹系统</div>
-            <p class="help-text">打怪掉灵草或灵田种植 → 收获时随机品质 → 用灵草+灵石炼丹。灵草品质影响丹药品质系数(1.0x~5.0x),品质越高效果越强。</p>
+            <p class="help-text">打怪掉灵草或灵田种植 → 收获时随机品质 → 用灵草+灵石炼丹。灵草品质影响丹药品质系数(1.0x~3.0x),品质越高效果越强。</p>
             <p class="help-text" style="margin-top: 4px; color: #c45c4a;">炼制失败灵石和灵草全部损失!</p>
             <table class="help-table"><tbody>
               <tr><td>战斗丹药</td><td>使用后持续 1-8 小时(按品质系数,实时倒计时)</td></tr>
@@ -4719,11 +4719,15 @@ function formatPillEffect(recipe: PillRecipe): string {
   const parts: string[] = [];
   if (recipe.buffEffect) {
     const e = recipe.buffEffect;
-    if (e.atkPercent)  parts.push(`攻击+${(e.atkPercent  * factor).toFixed(1)}%`);
-    if (e.defPercent)  parts.push(`防御+${(e.defPercent  * factor).toFixed(1)}%`);
-    if (e.hpPercent)   parts.push(`气血+${(e.hpPercent   * factor).toFixed(1)}%`);
-    if (e.critRate)    parts.push(`会心率+${(e.critRate  * factor).toFixed(1)}%`);
-    if (e.spdPercent)  parts.push(`身法+${(e.spdPercent  * factor).toFixed(1)}%`);
+    if (e.atkFlat)      parts.push(`攻击+${Math.floor(e.atkFlat  * factor)}`);
+    if (e.defFlat)      parts.push(`防御+${Math.floor(e.defFlat  * factor)}`);
+    if (e.hpFlat)       parts.push(`气血+${Math.floor(e.hpFlat   * factor)}`);
+    if (e.spdFlat)      parts.push(`身法+${Math.floor(e.spdFlat  * factor)}`);
+    if (e.critRateFlat) parts.push(`会心率+${(e.critRateFlat * factor).toFixed(1)}%`);
+    if (e.atkPercent)   parts.push(`攻击+${(e.atkPercent  * factor).toFixed(1)}%`);
+    if (e.defPercent)   parts.push(`防御+${(e.defPercent  * factor).toFixed(1)}%`);
+    if (e.hpPercent)    parts.push(`气血+${(e.hpPercent   * factor).toFixed(1)}%`);
+    if (e.spdPercent)   parts.push(`身法+${(e.spdPercent  * factor).toFixed(1)}%`);
     const hours = Math.min(8, Math.max(1, Math.round(factor * 1.6)));
     return parts.join(' / ') + `,持续${hours}小时`;
   }

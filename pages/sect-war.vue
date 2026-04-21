@@ -306,13 +306,19 @@ function setBetSide(s: 'a' | 'b') {
 }
 
 async function loadAll() {
+  // 每个接口独立容错，避免单点异常拖垮整页（此前 season/match/mvp-rank 无 catch，
+  // 一个抛异常会让 Promise.all reject，所有字段保持初始 null）
+  const logErr = (tag: string) => (err: any) => {
+    console.error(`[sect-war] ${tag} 失败:`, err)
+    return { code: 0, data: null }
+  }
   const [s, r, m, rk, my, char] = await Promise.all([
-    api('/sect/war/season'),
-    api('/sect/war/roster').catch(() => ({ data: null })),
-    api('/sect/war/match'),
-    api('/sect/war/mvp-rank'),
-    api('/sect/info').catch(() => ({ data: null })),
-    api('/character/info').catch(() => ({ data: null })),
+    api('/sect/war/season').catch(logErr('season')),
+    api('/sect/war/roster').catch(logErr('roster')),
+    api('/sect/war/match').catch(logErr('match')),
+    api('/sect/war/mvp-rank').catch(logErr('mvp-rank')),
+    api('/sect/info').catch(logErr('sect/info')),
+    api('/character/info').catch(logErr('character/info')),
   ])
   if (s.code === 200) season.value = s.data
   roster.value = r.data || null

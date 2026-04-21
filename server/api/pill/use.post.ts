@@ -2,69 +2,83 @@ import { getPool } from '~/server/database/db'
 import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
+  const pool = getPool()
+  const userId = event.context.userId
+  const { pill_id, quality_factor, pill_type, exp_gain } = await readBody(event)
+
+  const { rows: charRows } = await pool.query(
+    'SELECT id FROM characters WHERE user_id = $1',
+    [userId]
+  )
+  if (charRows.length === 0) return { code: 400, message: '角色不存在' }
+  const charId = charRows[0].id
+
+  const qf = Number(quality_factor) || 1.0
+  // DB 存 DECIMAL(3,1) 精度, 查询时容忍 ±0.05 误差
+  const qfMin = qf - 0.05, qfMax = qf + 0.05
+
+  const client = await pool.connect()
   try {
-    const pool = getPool()
-    const userId = event.context.userId
-    const { pill_id, quality_factor, pill_type, exp_gain, buff_duration } = await readBody(event)
+    await client.query('BEGIN')
 
-    const { rows: charRows } = await pool.query(
-      'SELECT * FROM characters WHERE user_id = $1',
-      [userId]
+    // 锁丹药行 + count > 0 校验，防并发重复使用扣成负数
+    const { rows: pillRows } = await client.query(
+      `SELECT id, quality_factor FROM character_pills
+       WHERE character_id = $1 AND pill_id = $2 AND quality_factor BETWEEN $3 AND $4 AND count > 0
+       ORDER BY quality_factor DESC LIMIT 1 FOR UPDATE`,
+      [charId, pill_id, qfMin, qfMax]
     )
-    if (charRows.length === 0) return { code: 400, message: '角色不存在' }
-
-    const char = charRows[0]
-    const qf = Number(quality_factor) || 1.0
-    // DB 存 DECIMAL(3,1) 精度, 查询时容忍 ±0.05 误差
-    const qfMin = qf - 0.05, qfMax = qf + 0.05
-
-    // 检查是否有该品质的丹药
-    const { rows: pillRows } = await pool.query(
-      'SELECT * FROM character_pills WHERE character_id = $1 AND pill_id = $2 AND quality_factor BETWEEN $3 AND $4 AND count > 0 ORDER BY quality_factor DESC LIMIT 1',
-      [char.id, pill_id, qfMin, qfMax]
-    )
-
     if (pillRows.length === 0) {
+      await client.query('ROLLBACK')
       return { code: 400, message: '丹药不足' }
     }
 
     const actualQf = Number(pillRows[0].quality_factor)
 
-    // 扣丹药(用 DB 里的真实 qf 精度)
-    await pool.query(
-      'UPDATE character_pills SET count = count - 1 WHERE id = $1',
+    // 条件扣丹药：WHERE count >= 1 双重保险
+    const { rowCount: consumed } = await client.query(
+      'UPDATE character_pills SET count = count - 1 WHERE id = $1 AND count >= 1',
       [pillRows[0].id]
     )
+    if (!consumed) {
+      await client.query('ROLLBACK')
+      return { code: 400, message: '丹药不足' }
+    }
+    await client.query('DELETE FROM character_pills WHERE id = $1 AND count <= 0', [pillRows[0].id])
 
-    // 突破丹药: 加修为(按品质系数)
+    // 突破丹药: 加修为（按品质系数）
     if (pill_type === 'breakthrough' && exp_gain) {
       const finalExp = Math.floor(exp_gain * actualQf)
-      await pool.query(
+      await client.query(
         'UPDATE characters SET cultivation_exp = cultivation_exp + $1 WHERE id = $2',
-        [finalExp, char.id]
+        [finalExp, charId]
       )
     }
 
-    // 战斗丹药: 按品质系数决定持续时间(小时)
+    // 战斗丹药: 按品质系数决定持续时间（小时）
     if (pill_type === 'battle') {
-      // 品质→小时: 1.0→1h, 1.2→2h, 1.5→2h, 2.0→3h, 3.0→5h, 5.0→8h
       const hours = Math.min(8, Math.max(1, Math.round(actualQf * 1.6)))
       const expireTime = new Date(Date.now() + hours * 3600 * 1000)
-      await pool.query(
+      await client.query(
         'DELETE FROM character_buffs WHERE character_id = $1 AND pill_id = $2',
-        [char.id, pill_id]
+        [charId, pill_id]
       )
-      await pool.query(
+      await client.query(
         'INSERT INTO character_buffs (character_id, pill_id, remaining_fights, quality_factor, expire_time) VALUES ($1, $2, 0, $3, $4)',
-        [char.id, pill_id, actualQf, expireTime]
+        [charId, pill_id, actualQf, expireTime]
       )
     }
 
-    checkAchievements(char.id, 'pill_use', 1).catch(() => {})
+    await client.query('COMMIT')
+
+    checkAchievements(charId, 'pill_use', 1).catch(() => {})
 
     return { code: 200, message: '使用成功', data: { quality_factor: actualQf } }
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('使用丹药失败:', error)
     return { code: 500, message: '服务器错误' }
+  } finally {
+    client.release()
   }
 })

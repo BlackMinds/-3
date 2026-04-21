@@ -208,10 +208,18 @@ async function buildPlayerBattleStats(char: any): Promise<{
 }
 
 export default defineEventHandler(async (event) => {
+  let lockedRoomId: number | null = null
   try {
     const pool = getPool()
     const char = await getCharacterByUserId(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
+
+    // 僵死房间清理：fighting 超过 5 分钟视为崩溃残留，回退到 waiting
+    // 战斗本应在秒级完成，超过 5 分钟必然是异常
+    await pool.query(
+      `UPDATE team_rooms SET status = 'waiting', started_at = NULL
+       WHERE status = 'fighting' AND started_at < NOW() - INTERVAL '5 minutes'`
+    )
 
     // 查询所在房间
     const { rows: mRows } = await pool.query(
@@ -254,8 +262,13 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 锁定房间，进入战斗
-    await pool.query(`UPDATE team_rooms SET status = 'fighting', started_at = NOW() WHERE id = $1`, [roomId])
+    // 锁定房间，进入战斗（条件 UPDATE：仅 waiting 状态可被锁定，防并发重复发起）
+    const { rowCount: locked } = await pool.query(
+      `UPDATE team_rooms SET status = 'fighting', started_at = NOW() WHERE id = $1 AND status = 'waiting'`,
+      [roomId]
+    )
+    if (!locked) return { code: 400, message: '房间已被锁定或已结束，请刷新后重试' }
+    lockedRoomId = roomId
 
     // 构建每个玩家的战斗属性
     const playerInputs: TeamPlayerInput[] = []
@@ -546,6 +559,14 @@ export default defineEventHandler(async (event) => {
     }
   } catch (e: any) {
     console.error('秘境战斗失败:', e)
+    // 兜底回滚房间状态：避免 fighting 永久卡死
+    // （内层 catch 已处理事务内场景，这里覆盖事务外的异常路径）
+    if (lockedRoomId) {
+      await getPool().query(
+        `UPDATE team_rooms SET status = 'waiting', started_at = NULL WHERE id = $1 AND status = 'fighting'`,
+        [lockedRoomId]
+      ).catch(() => {})
+    }
     return { code: 500, message: '服务器错误：' + (e.message || e) }
   }
 })

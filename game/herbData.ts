@@ -33,11 +33,11 @@ export const HERBS: HerbDef[] = [
 // 种植时间全面下调: 缩短等待周期，配合 12h 离线上限
 export const HERB_QUALITIES: HerbQualityDef[] = [
   { id: 'white',  name: '凡品', color: '#CCCCCC', multiplier: 1.00, growMinutes: 20,  baseYield: 3, unlockPlotLevel: 1  },
-  { id: 'green',  name: '灵品', color: '#00CC00', multiplier: 1.20, growMinutes: 45,  baseYield: 3, unlockPlotLevel: 1  },
-  { id: 'blue',   name: '玄品', color: '#0066FF', multiplier: 1.50, growMinutes: 90,  baseYield: 4, unlockPlotLevel: 4  },
-  { id: 'purple', name: '地品', color: '#9933FF', multiplier: 2.00, growMinutes: 180, baseYield: 4, unlockPlotLevel: 7  },
-  { id: 'gold',   name: '天品', color: '#FFAA00', multiplier: 3.00, growMinutes: 360, baseYield: 5, unlockPlotLevel: 10 },
-  { id: 'red',    name: '仙品', color: '#FF3333', multiplier: 5.00, growMinutes: 720, baseYield: 5, unlockPlotLevel: 13 },
+  { id: 'green',  name: '灵品', color: '#00CC00', multiplier: 1.10, growMinutes: 45,  baseYield: 3, unlockPlotLevel: 1  },
+  { id: 'blue',   name: '玄品', color: '#0066FF', multiplier: 1.25, growMinutes: 90,  baseYield: 4, unlockPlotLevel: 4  },
+  { id: 'purple', name: '地品', color: '#9933FF', multiplier: 1.50, growMinutes: 180, baseYield: 4, unlockPlotLevel: 7  },
+  { id: 'gold',   name: '天品', color: '#FFAA00', multiplier: 2.00, growMinutes: 360, baseYield: 5, unlockPlotLevel: 10 },
+  { id: 'red',    name: '仙品', color: '#FF3333', multiplier: 3.00, growMinutes: 720, baseYield: 5, unlockPlotLevel: 13 },
 ];
 
 // 灵田等级配置
