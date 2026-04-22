@@ -1,0 +1,170 @@
+/**
+ * 万界仙途 — v3.0 单一数值源
+ *
+ * 本文件是项目所有核心数值的**唯一真实源**。
+ * 所有战斗、装备、功法、丹药、附灵、怪物等数值必须从这里 import,
+ * 严禁在业务代码里散落裸数字。
+ *
+ * 修改数值请优先修本文件 → 让所有系统同步更新。
+ *
+ * 设计意图与决策见 design/balance-intent-v3.md
+ * 审计基线见 design/balance-audit-v3.md
+ */
+
+// =====================================================================
+// 一、玩家属性上限 (Caps)
+// =====================================================================
+// 怪物 cap (battleEngine.ts 内): crit_rate≤50% / crit_dmg≤300% /
+// dodge≤30% / lifesteal≤15% / armorPen≤30 / accuracy≤25
+// 玩家 cap 设为怪物 cap × 1.5~2.0,保留极限 build 空间
+export const PLAYER_CAPS = {
+  critRate: 0.75,   // 75%  (怪物 50%, 1.5x)
+  critDmg: 3.5,     // 350% (怪物 300%, 1.17x)
+  dodge: 0.45,      // 45%  (怪物 30%, 1.5x) — v3.0 从 40% 上调
+  lifesteal: 0.25,  // 25%  (怪物 15%, 1.67x)
+  armorPen: 60,     // 60   (怪物 30, 2.0x)
+  accuracy: 50,     // 50   (怪物 25, 2.0x)
+} as const
+
+// =====================================================================
+// 二、装备主属性
+// =====================================================================
+// 基础值 × mapTier × rarityMul × (1 + enhanceLv × 0.10)
+// 注: CRIT_RATE base 1 → 0.8 (v3.0, 缓解 T10 红+10 单件触顶)
+export const EQUIP_PRIMARY_BASE: Record<string, number> = {
+  ATK: 30,
+  DEF: 20,
+  HP: 200,
+  SPD: 15,
+  CRIT_RATE: 0.8,  // v3.0: 从 1 降到 0.8, T10红+10 从 50% → 40%
+  SPIRIT: 8,
+}
+
+// 品质对主属性的乘子 (白/绿/蓝/紫/金/红)
+export const RARITY_STAT_MUL = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5] as const
+
+// 强化曲线: 每级 +10%, +10 满强化 = +100%
+export const ENHANCE_MUL_PER_LEVEL = 0.10
+
+export function getEquipEnhanceMul(level: number): number {
+  return 1 + level * ENHANCE_MUL_PER_LEVEL
+}
+
+// 升品倍率 (紫→金, 金→红)
+export const UPGRADE_RARITY = {
+  purple: { oldMul: 1.18, newMul: 1.25 },
+  gold:   { oldMul: 1.25, newMul: 1.35 },
+} as const
+
+// 品质 → 副属性数量范围
+export const RARITY_SUB_COUNT_RANGE: [number, number][] = [
+  [0, 0], // white
+  [0, 1], // green
+  [1, 2], // blue
+  [2, 3], // purple
+  [3, 4], // gold
+  [4, 4], // red
+]
+
+// =====================================================================
+// 三、武器类型加成
+// =====================================================================
+// 绑定 weapon 槽装备: 提供额外 buff, 强化武器差异化
+export const WEAPON_BONUS: Record<string, {
+  ATK_pct?: number
+  SPD_pct?: number
+  SPIRIT_pct?: number
+  CRIT_RATE_flat?: number
+  CRIT_DMG_flat?: number
+  LIFESTEAL_flat?: number
+}> = {
+  sword: { ATK_pct: 5,  CRIT_RATE_flat: 3 },
+  blade: { ATK_pct: 10, CRIT_DMG_flat: 15 },
+  spear: { ATK_pct: 3,  SPD_pct: 12, LIFESTEAL_flat: 3 },
+  fan:   { ATK_pct: 3,  SPIRIT_pct: 25 },
+}
+
+// =====================================================================
+// 四、境界加成 (v3.0 crit/dodge/critDmg 压缩)
+// =====================================================================
+// 原数值 → 新数值: 基于"境界占毕业战力 28%"的预算重算
+// T8 最高境界:
+//   crit_rate 0.15 → 0.10 (−33%)
+//   crit_dmg  0.80 → 0.60 (−25%)
+//   dodge     0.06 → 0.04 (−33%)
+// 其他 tier 按比例同步下调
+export interface RealmBonus {
+  hp: number; atk: number; def: number; spd: number
+  hp_pct: number; atk_pct: number; def_pct: number
+  crit_rate: number; crit_dmg: number; dodge: number
+}
+
+export const REALM_BONUSES: Record<number, RealmBonus> = {
+  1: { hp: 0,     atk: 0,    def: 0,    spd: 0,   hp_pct: 0,   atk_pct: 0,   def_pct: 0,   crit_rate: 0,    crit_dmg: 0,    dodge: 0    },
+  2: { hp: 70,    atk: 5,    def: 3,    spd: 3,   hp_pct: 3,   atk_pct: 3,   def_pct: 3,   crit_rate: 0.007,crit_dmg: 0.04, dodge: 0    },
+  3: { hp: 200,   atk: 17,   def: 10,   spd: 8,   hp_pct: 8,   atk_pct: 8,   def_pct: 7,   crit_rate: 0.013,crit_dmg: 0.08, dodge: 0.007},
+  4: { hp: 500,   atk: 50,   def: 27,   spd: 20,  hp_pct: 14,  atk_pct: 14,  def_pct: 13,  crit_rate: 0.027,crit_dmg: 0.15, dodge: 0.013},
+  5: { hp: 1300,  atk: 130,  def: 75,   spd: 50,  hp_pct: 21,  atk_pct: 21,  def_pct: 18,  crit_rate: 0.04, crit_dmg: 0.22, dodge: 0.02 },
+  6: { hp: 3300,  atk: 330,  def: 180,  spd: 120, hp_pct: 32,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.053,crit_dmg: 0.34, dodge: 0.027},
+  7: { hp: 8300,  atk: 830,  def: 470,  spd: 270, hp_pct: 46,  atk_pct: 46,  def_pct: 39,  crit_rate: 0.067,crit_dmg: 0.45, dodge: 0.033},
+  8: { hp: 20000, atk: 2000, def: 1170, spd: 670, hp_pct: 70,  atk_pct: 70,  def_pct: 56,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.04 },
+}
+
+export function getRealmStageMultiplier(stage: number): number {
+  return 1 + (stage - 1) * 0.10
+}
+
+export function getRealmBonusAtLevel(tier: number, stage: number): RealmBonus {
+  const base = REALM_BONUSES[tier] || REALM_BONUSES[1]
+  const mul = getRealmStageMultiplier(stage)
+  return {
+    hp: Math.floor(base.hp * mul),
+    atk: Math.floor(base.atk * mul),
+    def: Math.floor(base.def * mul),
+    spd: Math.floor(base.spd * mul),
+    hp_pct: base.hp_pct * mul,
+    atk_pct: base.atk_pct * mul,
+    def_pct: base.def_pct * mul,
+    crit_rate: base.crit_rate * mul,
+    crit_dmg: base.crit_dmg * mul,
+    dodge: base.dodge * mul,
+  }
+}
+
+// =====================================================================
+// 五、等级加成 (每升 1 级的 flat 加成)
+// =====================================================================
+export function getLevelStatGain(lv: number): { hp: number; atk: number; def: number; spd: number } {
+  if (lv <= 50)  return { hp: 5,  atk: 2,  def: 1, spd: 1 }
+  if (lv <= 100) return { hp: 10, atk: 4,  def: 2, spd: 2 }
+  if (lv <= 150) return { hp: 20, atk: 8,  def: 4, spd: 3 }
+  return                 { hp: 40, atk: 15, def: 8, spd: 5 }
+}
+
+// =====================================================================
+// 六、丹药百分比类上限 (v3.0 保持)
+// =====================================================================
+export const PILL_PCT_CAP = 0.40
+
+// =====================================================================
+// 七、功法被动百分比类上限 (v3.0 保持)
+// =====================================================================
+export const PASSIVE_PCT_CAP = 40 // atkPercent/defPercent/hpPercent/spdPercent 各独立 cap
+
+// =====================================================================
+// 八、战斗公式常量
+// =====================================================================
+export const BATTLE_FORMULA = {
+  atkDefRatioDefWeight: 0.5,   // atkDefRatio = atk / (atk + def * 0.5)
+  elementCounterMul: 1.3,      // 克: ×1.3
+  elementResistedMul: 0.7,     // 被克: ×0.7
+  elementNeutralMul: 1.0,      // 无关: ×1.0
+  maxResistRate: 0.7,          // 五行抗性 cap 70%
+} as const
+
+// DOT 伤害公式
+export const DOT_FORMULA = {
+  poisonPerTurnHpRatio: 0.03,  // 每回合扣 3% maxHp
+  burnPerTurnAtkRatio: 0.15,   // 每回合扣 15% atk
+  bleedPerTurnAtkRatio: 0.10,  // 每回合扣 10% atk
+} as const
