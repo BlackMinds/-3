@@ -77,18 +77,18 @@ export function buildMonster(m: MonsterBuild): MonsterStats {
   }
 }
 
-// 各 tier 典型 Boss power (从 fight.post.ts 的 ALL_MAPS 抽取)
+// 各 tier 典型 Boss power (v3.1: 从 ALL_MAPS 抽取的平均值)
 export const TIER_BOSS_POWER: Record<number, number> = {
-  1: 300,
-  2: 4000,
-  3: 18000,
-  4: 70000,
-  5: 380000,
-  6: 1550000,
-  7: 7500000,
-  8: 40000000,
-  9: 180000000,
-  10: 650000000,
+  1: 450,     // 狼王 300 / 沼泽蛟 600
+  2: 2800,    // T2 三 Boss 均值
+  3: 5500,    // T3 三 Boss 均值
+  4: 17000,   // T4 三 Boss 均值
+  5: 39000,   // T5 三 Boss 均值
+  6: 93000,   // T6 两 Boss 均值
+  7: 150000,  // T7 两 Boss 均值
+  8: 400000,  // T8 两 Boss 均值
+  9: 700000,  // T9 三 Boss 均值
+  10: 975000, // T10 两 Boss 均值
 }
 
 export function getTierBoss(tier: number, element: string | null = null): MonsterBuild {
