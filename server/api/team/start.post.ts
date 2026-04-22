@@ -10,6 +10,7 @@ import { getCharacterByUserId, ensureDailyReset, getRoomDetail } from '~/server/
 import { generateSecretRealmDrops, distributeEquipments, distributeAwakenItems } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
+import { WEAPON_BONUS } from '~/shared/balance'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -55,12 +56,7 @@ async function buildPlayerBattleStats(char: any): Promise<{
   maxHp += realmBonus.hp; atk += realmBonus.atk; def += realmBonus.def; spd += realmBonus.spd
   critRate += realmBonus.crit_rate; critDmg += realmBonus.crit_dmg; dodge += realmBonus.dodge
 
-  const WEAPON_BONUS: Record<string, Record<string, number>> = {
-    sword: { ATK_pct: 5, CRIT_RATE_flat: 3 },
-    blade: { ATK_pct: 10, CRIT_DMG_flat: 15 },
-    spear: { ATK_pct: 3, SPD_pct: 12, LIFESTEAL_flat: 3 },
-    fan: { ATK_pct: 3, SPIRIT_pct: 25 },
-  }
+  // 武器类型加成已从 shared/balance.ts 导入
 
   let armorPen = 0, accuracy = 0, spirit = Number(char.spirit || 10), spiritDensity = 0, luck = 0
   const elementDmg = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }

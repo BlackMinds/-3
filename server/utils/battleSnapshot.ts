@@ -14,6 +14,7 @@ import { getPool } from '~/server/database/db'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo } from '~/server/engine/battleEngine'
+import { WEAPON_BONUS } from '~/shared/balance'
 
 export interface SnapshotOptions {
   forbidPills?: boolean       // 禁用战斗中丹药 (宗门战单挑用)
@@ -26,13 +27,6 @@ export interface CharacterSnapshot {
   stats: BattlerStats
   equippedSkills: EquippedSkillInfo
   powerScore: number  // 战力综合值，用于匹配与赔率计算
-}
-
-const WEAPON_BONUS: Record<string, Record<string, number>> = {
-  sword: { ATK_pct: 5, CRIT_RATE_flat: 3 },
-  blade: { ATK_pct: 10, CRIT_DMG_flat: 15 },
-  spear: { ATK_pct: 3, SPD_pct: 12, LIFESTEAL_flat: 3 },
-  fan:   { ATK_pct: 3, SPIRIT_pct: 25 },
 }
 
 export async function buildCharacterSnapshot(

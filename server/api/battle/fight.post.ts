@@ -8,7 +8,7 @@ import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats } from '~/server/utils/equipment'
-import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, WEAPON_BONUS } from '~/shared/balance'
 
 // 战斗锁: 防止同一角色并发刷战斗
 const battleLock = new Map<number, number>()
@@ -314,13 +314,7 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
   critDmg += realmBonus.crit_dmg
   dodge += realmBonus.dodge
 
-  // 武器类型加成定义
-  const WEAPON_BONUS: Record<string, Record<string, number>> = {
-    sword: { ATK_pct: 5, CRIT_RATE_flat: 3 },
-    blade: { ATK_pct: 10, CRIT_DMG_flat: 15 },
-    spear: { ATK_pct: 3, SPD_pct: 12, LIFESTEAL_flat: 3 },
-    fan:   { ATK_pct: 3, SPIRIT_pct: 25 },
-  }
+  // 武器类型加成已从 shared/balance.ts 导入
 
   // 装备加成
   let armorPen = 0, accuracy = 0, spirit = 0, spiritDensity = 0, luck = 0
