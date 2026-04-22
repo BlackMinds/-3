@@ -5285,7 +5285,16 @@ const buffTipY = ref(0);
 function onBuffHover(e: MouseEvent, buff: any) {
   hoverBuff.value = buff;
   const rect = (e.target as HTMLElement).getBoundingClientRect();
-  buffTipX.value = window.innerWidth <= 768 ? 12 : rect.left;
+  if (window.innerWidth <= 768) {
+    buffTipX.value = 12;
+  } else {
+    const tipW = 200;
+    let x = rect.left;
+    if (x + tipW > window.innerWidth - 8) {
+      x = Math.max(8, window.innerWidth - tipW - 8);
+    }
+    buffTipX.value = x;
+  }
   buffTipY.value = rect.top - 10;
 }
 
@@ -5358,7 +5367,13 @@ function onBagHover(e: MouseEvent, eq: any) {
   if (window.innerWidth <= 768) {
     tooltipX.value = 12;
   } else {
-    tooltipX.value = rect.left;
+    // 桌面端：防止超出右边界（浮窗 min-width 340，预留余量用 360）
+    const tipW = 360;
+    let x = rect.left;
+    if (x + tipW > window.innerWidth - 8) {
+      x = Math.max(8, window.innerWidth - tipW - 8);
+    }
+    tooltipX.value = x;
   }
   tooltipY.value = rect.top - 10;
 }
