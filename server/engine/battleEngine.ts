@@ -346,7 +346,9 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
     boss:     { hp: 0.35, atk: 0.30, def: 0.25, spd: 0.10 },
   };
   const r = ratios[template.role] || ratios.balanced;
-  const maxHp = Math.floor(power * r.hp * 10);
+  const HP_SCALE = 0.95;
+  const ATK_SCALE = 0.90;
+  const maxHp = Math.floor(power * r.hp * 10 * HP_SCALE);
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
   const role = template.role;
 
@@ -383,7 +385,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
 
   return {
     name: template.name, maxHp, hp: maxHp,
-    atk: Math.floor(power * r.atk), def: Math.floor(power * r.def * 0.6),
+    atk: Math.floor(power * r.atk * ATK_SCALE), def: Math.floor(power * r.def * 0.6),
     spd: Math.floor(power * r.spd * 0.5),
     crit_rate: Math.min(0.50, critRate), crit_dmg: Math.min(3.0, critDmg),
     dodge: Math.min(0.30, dodge), lifesteal: Math.min(0.15, lifesteal),

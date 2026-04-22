@@ -84,7 +84,7 @@
               :key="map.id"
               :value="map.id"
             >
-              {{ map.name }} (T{{ map.tier }}) - 推荐等级 {{ map.recommended_power }}
+              {{ map.name }}
             </option>
           </select>
           <div class="map-info" v-if="gameStore.currentMap">
@@ -1694,7 +1694,7 @@
 
           <!-- 按地图列出 -->
           <div class="drop-section" v-for="map in gameStore.unlockedMaps" :key="map.id">
-            <div class="map-name">{{ map.name }} (T{{ map.tier }})</div>
+            <div class="map-name">{{ map.name }}</div>
             <div class="drop-detail">
               <div class="drop-monsters">
                 <span v-for="m in map.monsters" :key="m.id" class="drop-monster-tag" :style="{ color: m.element ? elemColor(m.element) : '#ccc' }">
