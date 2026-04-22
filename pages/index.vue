@@ -3764,6 +3764,9 @@ async function checkOfflineRewards() {
       offlineClaimed.value = false;
       offlineClaimResult.value = null;
       showOfflineModal.value = true;
+    } else {
+      // 后端无离线状态，保证前端也同步
+      isOffline.value = false;
     }
   } catch (e) {
     // 忽略
@@ -3794,9 +3797,15 @@ async function endOffline() {
       offlineClaimed.value = false;
       offlineClaimResult.value = null;
       showOfflineModal.value = true;
+    } else {
+      // 后端已无离线状态（如多设备已领取），前端同步退出离线态，避免按钮卡死
+      isOffline.value = false;
+      offlineData.value = null;
+      showToast('未在离线挂机中，已同步状态', 'info');
     }
   } catch (e) {
     console.error('查询离线状态失败', e);
+    showToast('查询离线状态失败', 'error');
   }
 }
 

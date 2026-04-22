@@ -12,7 +12,8 @@ export default defineEventHandler(async (event) => {
     const startTime = new Date(char.offline_start).getTime()
     const now = Date.now()
     const offlineMin = Math.min((now - startTime) / 60000, 720)
-    const mapId = char.current_map || 'qingfeng_valley'
+    // 与 offline-claim 保持一致：优先用快照的 offline_map
+    const mapId = char.offline_map || char.current_map || 'qingfeng_valley'
     const mapData = OFFLINE_MAP_DATA[mapId]
     if (!mapData) return { code: 200, data: null }
 

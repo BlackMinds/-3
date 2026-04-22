@@ -7,7 +7,12 @@ export default defineEventHandler(async (event) => {
     if (rows.length === 0) return { code: 400, message: '角色不存在' }
     const char = rows[0]
     if (char.offline_start) return { code: 400, message: '已在离线挂机中' }
-    await pool.query('UPDATE characters SET offline_start = NOW() WHERE id = $1', [char.id])
+    // 快照开始时的地图，防止离线期间切到高阶图白嫖结算（WHERE offline_start IS NULL 保证并发幂等）
+    const result = await pool.query(
+      'UPDATE characters SET offline_start = NOW(), offline_map = $1 WHERE id = $2 AND offline_start IS NULL',
+      [char.current_map || 'qingfeng_valley', char.id]
+    )
+    if (result.rowCount === 0) return { code: 400, message: '已在离线挂机中' }
     return { code: 200, message: '开始离线挂机', data: { startTime: new Date().toISOString() } }
   } catch (error) {
     console.error('开始离线失败:', error)

@@ -19,7 +19,9 @@ export default defineEventHandler(async (event) => {
     const now = Date.now()
     const offlineMin = Math.min((now - startTime) / 60000, 720)
 
-    const mapId = char.current_map || 'qingfeng_valley'
+    // 优先用开始离线时快照的 offline_map（防止离线期间切图刷高阶图收益）
+    // 旧数据无 offline_map 时 fallback 到 current_map
+    const mapId = char.offline_map || char.current_map || 'qingfeng_valley'
     const mapData = OFFLINE_MAP_DATA[mapId]
     if (!mapData) return { code: 400, message: '地图数据错误' }
 
@@ -45,6 +47,7 @@ export default defineEventHandler(async (event) => {
         spirit_stone = spirit_stone + $4,
         level_exp = level_exp + $5,
         offline_start = NULL,
+        offline_map = NULL,
         last_online = NOW()
       WHERE id = $6`,
       [br.cultivation_exp, br.realm_tier, br.realm_stage, stoneGained, levelExpGained, char.id]
