@@ -330,51 +330,22 @@ export const STARTER_SKILLS: SkillData[] = [
 ];
 
 // ========== 境界属性加成 ==========
-// 每个境界提供: 固定值加成 + 百分比加成
-export interface RealmBonus {
-  hp: number;       // 固定气血
-  atk: number;      // 固定攻击
-  def: number;      // 固定防御
-  spd: number;      // 固定身法
-  hp_pct: number;   // 气血百分比
-  atk_pct: number;  // 攻击百分比
-  def_pct: number;  // 防御百分比
-  crit_rate: number; // 暴击率(绝对值)
-  crit_dmg: number;  // 暴击伤害(绝对值)
-  dodge: number;     // 闪避(绝对值)
-}
+// v3.0: 从 shared/balance.ts 读取单一数值源
+// crit_rate/crit_dmg/dodge 已按预算压缩(T8 crit 0.15→0.10 等)
+export { REALM_BONUSES, getRealmStageMultiplier, type RealmBonus } from '~/shared/balance';
+import { getRealmBonusAtLevel as _getRealmBonusAtLevel, type RealmBonus as _RealmBonus } from '~/shared/balance';
 
-// 按 realm_tier 索引, 每个大境界突破后的累计加成 (v2.0 方案 A: 固定值 ÷3, 百分比 ×0.7)
-export const REALM_BONUSES: Record<number, RealmBonus> = {
-  1: { hp: 0,     atk: 0,    def: 0,    spd: 0,   hp_pct: 0,   atk_pct: 0,   def_pct: 0,   crit_rate: 0,    crit_dmg: 0,   dodge: 0 },
-  2: { hp: 70,    atk: 5,    def: 3,    spd: 3,   hp_pct: 3,   atk_pct: 3,   def_pct: 3,   crit_rate: 0.01, crit_dmg: 0.05, dodge: 0 },
-  3: { hp: 200,   atk: 17,   def: 10,   spd: 8,   hp_pct: 8,   atk_pct: 8,   def_pct: 7,   crit_rate: 0.02, crit_dmg: 0.10, dodge: 0.01 },
-  4: { hp: 500,   atk: 50,   def: 27,   spd: 20,  hp_pct: 14,  atk_pct: 14,  def_pct: 13,  crit_rate: 0.04, crit_dmg: 0.20, dodge: 0.02 },
-  5: { hp: 1300,  atk: 130,  def: 75,   spd: 50,  hp_pct: 21,  atk_pct: 21,  def_pct: 18,  crit_rate: 0.06, crit_dmg: 0.30, dodge: 0.03 },
-  6: { hp: 3300,  atk: 330,  def: 180,  spd: 120, hp_pct: 32,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.08, crit_dmg: 0.45, dodge: 0.04 },
-  7: { hp: 8300,  atk: 830,  def: 470,  spd: 270, hp_pct: 46,  atk_pct: 46,  def_pct: 39,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.05 },
-  8: { hp: 20000, atk: 2000, def: 1170, spd: 670, hp_pct: 70,  atk_pct: 70,  def_pct: 56,  crit_rate: 0.15, crit_dmg: 0.80, dodge: 0.06 },
-};
-
-// 小境界(stage)额外倍率: 每阶在大境界基础上叠加 stage * 10% 的百分比加成
-export function getRealmStageMultiplier(stage: number): number {
-  return 1 + (stage - 1) * 0.10;
-}
-
-export function getRealmBonusAtLevel(tier: number, stage: number): RealmBonus {
-  const base = REALM_BONUSES[tier] || REALM_BONUSES[1];
-  const mul = getRealmStageMultiplier(stage);
+// 前端展示版本 (保留小数精度修正,避免 UI 显示 0.19999 这种)
+export function getRealmBonusAtLevel(tier: number, stage: number): _RealmBonus {
+  const base = _getRealmBonusAtLevel(tier, stage);
   return {
-    hp: Math.floor(base.hp * mul),
-    atk: Math.floor(base.atk * mul),
-    def: Math.floor(base.def * mul),
-    spd: Math.floor(base.spd * mul),
-    hp_pct: Math.round(base.hp_pct * mul * 10) / 10,
-    atk_pct: Math.round(base.atk_pct * mul * 10) / 10,
-    def_pct: Math.round(base.def_pct * mul * 10) / 10,
-    crit_rate: Math.round(base.crit_rate * mul * 1000) / 1000,
-    crit_dmg: Math.round(base.crit_dmg * mul * 100) / 100,
-    dodge: Math.round(base.dodge * mul * 1000) / 1000,
+    hp: base.hp, atk: base.atk, def: base.def, spd: base.spd,
+    hp_pct: Math.round(base.hp_pct * 10) / 10,
+    atk_pct: Math.round(base.atk_pct * 10) / 10,
+    def_pct: Math.round(base.def_pct * 10) / 10,
+    crit_rate: Math.round(base.crit_rate * 1000) / 1000,
+    crit_dmg: Math.round(base.crit_dmg * 100) / 100,
+    dodge: Math.round(base.dodge * 1000) / 1000,
   };
 }
 
