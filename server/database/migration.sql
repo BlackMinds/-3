@@ -94,6 +94,9 @@ CREATE INDEX IF NOT EXISTS idx_realm_rank ON characters (realm_tier DESC, realm_
 CREATE INDEX IF NOT EXISTS idx_level_rank ON characters (level DESC, level_exp DESC);
 CREATE INDEX IF NOT EXISTS idx_stone_rank ON characters (spirit_stone DESC);
 
+-- 战斗并发守卫：存"上场战斗预期结束时间"，跨请求/跨刷新持久化
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS battle_end_at TIMESTAMP DEFAULT NULL;
+
 -- ========================================
 -- 角色功法表
 -- ========================================

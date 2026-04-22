@@ -617,7 +617,20 @@ export default defineEventHandler(async (event) => {
     if (entry.cooldownUntil && now < entry.cooldownUntil) {
       return { code: 429, message: '战斗冷却中' }
     }
-    // 3) 进入战斗，标记 in-progress
+    // 3) DB 持久化守卫：条件 UPDATE — 仅在 battle_end_at 为空或已过期时才抢占
+    //    保守预置 15s 窗口，战斗处理完后再更新为精确值（按 logs.length 秒）
+    //    跨进程、跨刷新、跨多实例都能生效
+    const { rowCount: guardTaken } = await pool.query(
+      `UPDATE characters
+       SET battle_end_at = NOW() + INTERVAL '15 seconds'
+       WHERE id = $1
+         AND (battle_end_at IS NULL OR battle_end_at <= NOW())`,
+      [char.id]
+    )
+    if (!guardTaken) {
+      return { code: 409, message: '上场战斗未结束，请稍候' }
+    }
+    // 4) 进入战斗，标记 in-progress
     battleLock.set(char.id, { inProgressSince: now })
     lockedCharId = char.id
 
@@ -818,6 +831,13 @@ export default defineEventHandler(async (event) => {
       const currentLevel = lvRows?.[0]?.level || 1
       checkAchievements(char.id, 'char_level', currentLevel).catch(() => {})
     }
+
+    // DB 守卫更新为精确时长（与前端日志播放 1s/条联动，+1s 兜底首条立即 emit 的偏差）
+    const logsLen = Array.isArray(result.logs) ? result.logs.length : 0
+    await pool.query(
+      `UPDATE characters SET battle_end_at = NOW() + ($1 || ' seconds')::INTERVAL WHERE id = $2`,
+      [String(Math.max(1, logsLen + 1)), char.id]
+    )
 
     // 返回最新角色数据
     const { rows: updatedChar } = await pool.query('SELECT * FROM characters WHERE id = $1', [char.id])
