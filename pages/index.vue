@@ -104,13 +104,8 @@
           >
             开始历练
           </button>
-          <button
-            v-if="!gameStore.isBattling && !isOffline"
-            class="ctrl-btn offline-btn"
-            @click="startOffline"
-          >
-            开始离线
-          </button>
+          <!-- 离线挂机功能维护中：存在战力绕过漏洞，入口临时下线。
+               保留"结束离线"按钮让已开始挂机的玩家仍可正常结算。 -->
           <button
             v-if="!gameStore.isBattling && isOffline"
             class="ctrl-btn offline-end-btn"
@@ -2176,9 +2171,8 @@
             <p class="help-text">消耗 <b>100 × 境界Tier</b> 灵石/小时,获得 <b>80 × Tier × 小时 × (1 + 阶段 × 0.1)</b> 修为。可选 1~8 小时。境界越高闭关效率越高。</p>
           </div>
           <div class="help-section">
-            <div class="help-title">离线挂机</div>
-            <p class="help-text">在当前地图开启离线挂机,下线期间自动获得修为/灵石/等级经验/装备/功法/灵草。</p>
-            <p class="help-text" style="margin-top: 4px;">最长离线 12 小时,效率 55%。按每分钟 12 战 × 3 怪计算产出,约等于在线 10 小时产出。</p>
+            <div class="help-title">离线挂机（维护中）</div>
+            <p class="help-text" style="color: var(--fade-ink);">功能存在数值异常，暂时下线维护。已开始离线的玩家可正常结束并领取收益。</p>
           </div>
           <div class="help-section">
             <div class="help-title">宗门系统</div>
