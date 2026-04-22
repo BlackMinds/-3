@@ -28,6 +28,10 @@ export const useGameStore = defineStore('game', () => {
   const waveMonsterHps = ref<number[]>([])
   const waveMonsterMaxHps = ref<number[]>([])
   const inFight = ref(false)
+  // 只在 fetch 真正返回前为 true；独立于 inFight（UI 语义），专防并发 fetch
+  const fetchInFlight = ref(false)
+  // 最近一次 stopBattle 的时间戳，用于"反复切开始/离开刷怪"节流
+  const lastStopAt = ref(0)
 
   // 死亡冷却
   const deathCooldown = ref(0)
@@ -153,12 +157,20 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function startBattle() {
-    if (isBattling.value || inFight.value || !character.value || !currentMap.value) return
+    if (isBattling.value || fetchInFlight.value || !character.value || !currentMap.value) return
     isBattling.value = true
     isPaused.value = false
     sessionDrops.value = {}
     addLog(0, `在【${currentMap.value.name}】开始历练…`, 'system')
-    scheduleFight()
+    // 反复「开始/离开」节流：若距上次 stop 不到 1.5s（对齐 server BATTLE_COOLDOWN_MS），延迟首次 fight，防止通过快速切换把刷怪频率拉到冷却极限
+    const elapsed = Date.now() - lastStopAt.value
+    const MANUAL_RESTART_COOLDOWN = 1500
+    if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
+    if (elapsed < MANUAL_RESTART_COOLDOWN) {
+      battleTimer.value = window.setTimeout(() => scheduleFight(), MANUAL_RESTART_COOLDOWN - elapsed)
+    } else {
+      scheduleFight()
+    }
     startAutoSave()
   }
 
@@ -166,12 +178,14 @@ export const useGameStore = defineStore('game', () => {
     isBattling.value = false
     isPaused.value = false
     battleSession.value++
+    lastStopAt.value = Date.now()
     if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
     if (logTimer.value) { clearInterval(logTimer.value); logTimer.value = null }
     if (deathTimer.value) { clearInterval(deathTimer.value); deathTimer.value = null }
     logQueue.value = []
     pendingResult.value = null
     inFight.value = false
+    // fetchInFlight 不清：让飞行中的请求自然返回时释放，期间 startBattle 被挡住避免并发
     currentMonsterInfo.value = null
     deathCooldown.value = 0
     stopAutoSave()
@@ -194,6 +208,7 @@ export const useGameStore = defineStore('game', () => {
   async function executeFight() {
     if (!character.value || !currentMap.value) return
     inFight.value = true
+    fetchInFlight.value = true
     const mySession = battleSession.value
 
     try {
@@ -209,9 +224,13 @@ export const useGameStore = defineStore('game', () => {
         method: 'POST',
         body: { map_id: currentMapId.value, auto_sell: autoSell, auto_sell_tier: autoSellTier },
       })
+      fetchInFlight.value = false
 
       // 期间 stopBattle/changeMap 过，这次响应已过期，整包丢弃（后端奖励入库不影响，下次 loadGameData 会同步角色总状态）
-      if (mySession !== battleSession.value) return
+      if (mySession !== battleSession.value) {
+        inFight.value = false
+        return
+      }
 
       if (res.code !== 200) {
         // 429 冷却等错误不立刻重试，否则快速切「开始/离开」会引发每秒上百次的请求风暴
@@ -244,9 +263,10 @@ export const useGameStore = defineStore('game', () => {
       logQueue.value = data.logs || []
       drainLogQueue()
     } catch {
+      fetchInFlight.value = false
+      inFight.value = false
       if (mySession !== battleSession.value) return
       addLog(0, '战斗请求失败', 'system')
-      inFight.value = false
       battleTimer.value = window.setTimeout(() => scheduleFight(), 2000)
     }
   }
