@@ -1,5 +1,5 @@
 // 秘境组队系统静态数据
-// MVP 阶段：仅实现 SR-1 / SR-2 / SR-3，普通难度
+// 已实现 SR-1 ~ SR-6，每个 3 档难度（普通/困难/噩梦）
 
 import type { MonsterTemplate } from './battleEngine'
 
@@ -109,6 +109,45 @@ const SR3_ELITE = [
   monster('冰魄师', 5700, 'water', 'balanced', 1),
 ]
 const SR3_BOSS = boss('幽冥水帝', 12750, 'water', 1)
+
+// ==================== SR-4 天雷域（化神，T7） ====================
+// 对应 Lv.100 化神阶玩家，战力约 SR-3 × 2x
+const SR4_MONSTERS = [
+  monster('雷鳞蛇', 5400, 'metal', 'speed', 1),
+  monster('金甲傀儡', 6600, 'metal', 'tank', 1),
+  monster('雷电巨兽', 6000, 'metal', 'dps', 1),
+]
+const SR4_ELITE = [
+  monster('雷霆使者', 10500, 'metal', 'dps', 1),
+  monster('金元帅', 11400, 'metal', 'balanced', 1),
+]
+const SR4_BOSS = boss('雷霆帝君', 25500, 'metal', 1)
+
+// ==================== SR-5 混沌界（渡劫，T9） ====================
+// 对应 Lv.150 渡劫阶玩家，战力约 SR-4 × 2.2x
+const SR5_MONSTERS = [
+  monster('混沌幼体', 11800, null, 'balanced', 1),
+  monster('虚空游魂', 14400, null, 'speed', 1),
+  monster('界域碎片', 13200, null, 'dps', 1),
+]
+const SR5_ELITE = [
+  monster('虚空法师', 23100, null, 'dps', 1),
+  monster('混沌使徒', 25100, null, 'tank', 1),
+]
+const SR5_BOSS = boss('混沌魔神', 56000, null, 1)
+
+// ==================== SR-6 太虚秘境（大乘，T10） ====================
+// 对应 Lv.185 大乘阶玩家，战力约 SR-5 × 2.2x；元素 = null 表示五行轮转
+const SR6_MONSTERS = [
+  monster('五行混乱体', 25900, null, 'balanced', 1),
+  monster('轮转守卫', 31700, null, 'tank', 1),
+  monster('太虚幻影', 29000, null, 'dps', 1),
+]
+const SR6_ELITE = [
+  monster('五行法王', 50800, null, 'dps', 1),
+  monster('飞升守卫', 55200, null, 'balanced', 1),
+]
+const SR6_BOSS = boss('太虚道尊', 123200, null, 1)
 
 // ==================== 秘境定义 ====================
 export const SECRET_REALMS: Record<string, SecretRealmDef> = {
@@ -267,6 +306,165 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
           { monsterPool: [SR3_BOSS, SR3_BOSS], monsterCount: 2, isBoss: true },
           { monsterPool: SR3_ELITE, monsterCount: 4 },
           { monsterPool: [SR3_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-4': {
+    id: 'SR-4',
+    name: '天雷域',
+    reqRealmTier: 5, // 化神
+    reqLevel: 100,
+    element: 'metal',
+    description: '天雷禁地，劫雷不断。金属性之力在此聚合。',
+    dropTier: 7,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 600,
+        waves: [
+          { monsterPool: SR4_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR4_ELITE, monsterCount: 2 },
+          { monsterPool: [SR4_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 1500,
+        waves: [
+          { monsterPool: SR4_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR4_ELITE, monsterCount: 3 },
+          { monsterPool: [SR4_BOSS, ...SR4_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR4_ELITE, monsterCount: 3 },
+          { monsterPool: [SR4_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 3000,
+        waves: [
+          { monsterPool: SR4_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR4_ELITE, monsterCount: 3 },
+          { monsterPool: [SR4_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR4_ELITE, monsterCount: 4 },
+          { monsterPool: [SR4_BOSS, SR4_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR4_ELITE, monsterCount: 4 },
+          { monsterPool: [SR4_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-5': {
+    id: 'SR-5',
+    name: '混沌界',
+    reqRealmTier: 6, // 渡劫
+    reqLevel: 150,
+    element: null,
+    description: '混沌之力，万法皆空。虚空裂隙中窥见天道。',
+    dropTier: 9,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 1000,
+        waves: [
+          { monsterPool: SR5_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR5_ELITE, monsterCount: 2 },
+          { monsterPool: [SR5_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 2500,
+        waves: [
+          { monsterPool: SR5_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR5_ELITE, monsterCount: 3 },
+          { monsterPool: [SR5_BOSS, ...SR5_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR5_ELITE, monsterCount: 3 },
+          { monsterPool: [SR5_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 5000,
+        waves: [
+          { monsterPool: SR5_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR5_ELITE, monsterCount: 3 },
+          { monsterPool: [SR5_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR5_ELITE, monsterCount: 4 },
+          { monsterPool: [SR5_BOSS, SR5_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR5_ELITE, monsterCount: 4 },
+          { monsterPool: [SR5_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-6': {
+    id: 'SR-6',
+    name: '太虚秘境',
+    reqRealmTier: 7, // 大乘
+    reqLevel: 185,
+    element: null, // 全五行轮转
+    description: '飞升试炼，五行轮转。太虚之境，唯道者通。',
+    dropTier: 10,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 1800,
+        waves: [
+          { monsterPool: SR6_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR6_ELITE, monsterCount: 2 },
+          { monsterPool: [SR6_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 4500,
+        waves: [
+          { monsterPool: SR6_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR6_ELITE, monsterCount: 3 },
+          { monsterPool: [SR6_BOSS, ...SR6_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR6_ELITE, monsterCount: 3 },
+          { monsterPool: [SR6_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 9000,
+        waves: [
+          { monsterPool: SR6_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR6_ELITE, monsterCount: 3 },
+          { monsterPool: [SR6_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR6_ELITE, monsterCount: 4 },
+          { monsterPool: [SR6_BOSS, SR6_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR6_ELITE, monsterCount: 4 },
+          { monsterPool: [SR6_BOSS], monsterCount: 1, isBoss: true },
         ],
       },
     },
