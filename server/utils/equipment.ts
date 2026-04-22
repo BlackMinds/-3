@@ -42,12 +42,12 @@ export const SUB_STAT_POOL = [
   { stat: 'WATER_DMG',      min: 1,  max: 5,   weight: 10 },
   { stat: 'FIRE_DMG',       min: 1,  max: 5,   weight: 10 },
   { stat: 'EARTH_DMG',      min: 1,  max: 5,   weight: 10 },
-  // 好词条（低概率，神器核心）
-  { stat: 'CRIT_RATE',      min: 1,  max: 3,   weight: 5  },
-  { stat: 'CRIT_DMG',       min: 2,  max: 10,  weight: 5  },
-  { stat: 'LIFESTEAL',      min: 1,  max: 2,   weight: 5  },
-  { stat: 'DODGE',          min: 1,  max: 2,   weight: 5  },
-  { stat: 'ARMOR_PEN',      min: 1,  max: 5,   weight: 5  },
+  // 好词条（v3.0 weight 5→10,神器概率 0.002% → ~0.7%）
+  { stat: 'CRIT_RATE',      min: 1,  max: 3,   weight: 10 },
+  { stat: 'CRIT_DMG',       min: 2,  max: 10,  weight: 10 },
+  { stat: 'LIFESTEAL',      min: 1,  max: 2,   weight: 10 },
+  { stat: 'DODGE',          min: 1,  max: 2,   weight: 10 },
+  { stat: 'ARMOR_PEN',      min: 1,  max: 5,   weight: 10 },
 ]
 
 // 固定值类副属性（会按 tier 缩放）
