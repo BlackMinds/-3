@@ -35,6 +35,9 @@ export const useGameStore = defineStore('game', () => {
   // stopBattle 不清除本值，用于守卫"上场战斗未播完就又开打"（和实际日志长度联动，短战斗短守卫、长战斗长守卫）
   const expectedBattleEndAt = ref(0)
   const LOG_INTERVAL_MS = 1000
+  // 上次 startBattle 调用时刻，兜底守卫：即便 fight 请求还没发出就被 stopBattle，也至少拦 START_GUARD_MS
+  const lastStartAt = ref(0)
+  const START_GUARD_MS = 2000
 
   // 死亡冷却
   const deathCooldown = ref(0)
@@ -169,10 +172,18 @@ export const useGameStore = defineStore('game', () => {
       addLog(0, '上场战斗未结束，请稍候', 'system')
       return
     }
-    if (Date.now() < expectedBattleEndAt.value) {
+    const now = Date.now()
+    if (now < expectedBattleEndAt.value) {
       addLog(0, '上场战斗未结束，请稍候', 'system')
       return
     }
+    // 兜底：即便上次 fight 请求未真正发出（被 setTimeout 延迟后又被 stop 清掉），
+    // 也至少拦 START_GUARD_MS，避免"开始→立刻离开→立刻开始"完全无守卫
+    if (lastStartAt.value > 0 && now - lastStartAt.value < START_GUARD_MS) {
+      addLog(0, '上场战斗未结束，请稍候', 'system')
+      return
+    }
+    lastStartAt.value = now
     isBattling.value = true
     sessionDrops.value = {}
     addLog(0, `在【${currentMap.value.name}】开始历练…`, 'system')
@@ -230,6 +241,11 @@ export const useGameStore = defineStore('game', () => {
         method: 'POST',
         body: { map_id: currentMapId.value, auto_sell: autoSell, auto_sell_tier: autoSellTier },
       })
+      // 后端已计算一场战斗 → 不论 session 是否过期，守卫都按本次 logs 时长设置，
+      // 防止"开始→离开→立即开始"在请求返回后 expectedBattleEndAt 未被写入就绕过守卫
+      if (res?.code === 200 && Array.isArray(res.data?.logs)) {
+        expectedBattleEndAt.value = Date.now() + res.data.logs.length * LOG_INTERVAL_MS
+      }
       fetchInFlight.value = false
 
       // 期间 stopBattle/changeMap 过，这次响应已过期，整包丢弃（后端奖励入库不影响，下次 loadGameData 会同步角色总状态）
