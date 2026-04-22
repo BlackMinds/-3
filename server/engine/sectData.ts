@@ -41,13 +41,14 @@ export interface SectBossConfig {
   rewardBase: number;     // 基础灵石奖励倍率
 }
 
-// v2.0 装备驱动型改版: Boss power/HP 按玩家新战力同步缩放
+// v3.1: 配合 ALL_MAPS 怪物 power 大幅下调,宗门 Boss 同步缩放(power ×0.5~0.02, totalHp 同比)
+// 宗门 Boss 是多人合力打, HP 保持比个人 Boss 高 5-10x
 export const SECT_BOSSES: SectBossConfig[] = [
-  { key: 'tiger',  name: '妖兽·裂天虎',     requiredSectLevel: 1, startCost: 20000,    power: 2000,      totalHp: 66000,        element: 'metal', maxTurns: 30, rewardBase: 1 },
-  { key: 'blood',  name: '魔修·血煞尊者',   requiredSectLevel: 3, startCost: 80000,    power: 10000,     totalHp: 300000,       element: 'fire',  maxTurns: 30, rewardBase: 3 },
-  { key: 'dragon', name: '古妖·九幽蛟龙',   requiredSectLevel: 5, startCost: 400000,   power: 40000,     totalHp: 1500000,      element: 'water', maxTurns: 40, rewardBase: 5 },
-  { key: 'demon',  name: '天魔·灭世魔君',   requiredSectLevel: 7, startCost: 2000000,  power: 200000,    totalHp: 6000000,      element: null,    maxTurns: 40, rewardBase: 7 },
-  { key: 'chaos',  name: '远古·混沌兽',     requiredSectLevel: 9, startCost: 8000000,  power: 1000000,   totalHp: 30000000,     element: null,    maxTurns: 50, rewardBase: 9 },
+  { key: 'tiger',  name: '妖兽·裂天虎',     requiredSectLevel: 1, startCost: 20000,    power: 1000,      totalHp: 66000,        element: 'metal', maxTurns: 30, rewardBase: 1 },
+  { key: 'blood',  name: '魔修·血煞尊者',   requiredSectLevel: 3, startCost: 80000,    power: 3000,      totalHp: 150000,       element: 'fire',  maxTurns: 30, rewardBase: 3 },
+  { key: 'dragon', name: '古妖·九幽蛟龙',   requiredSectLevel: 5, startCost: 400000,   power: 6000,      totalHp: 450000,       element: 'water', maxTurns: 40, rewardBase: 5 },
+  { key: 'demon',  name: '天魔·灭世魔君',   requiredSectLevel: 7, startCost: 2000000,  power: 10000,     totalHp: 600000,       element: null,    maxTurns: 40, rewardBase: 7 },
+  { key: 'chaos',  name: '远古·混沌兽',     requiredSectLevel: 9, startCost: 8000000,  power: 20000,     totalHp: 1500000,      element: null,    maxTurns: 50, rewardBase: 9 },
 ];
 
 export function getSectBoss(key: string): SectBossConfig | undefined {

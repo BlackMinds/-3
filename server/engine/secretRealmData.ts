@@ -85,30 +85,30 @@ const SR1_ELITE = [
 const SR1_BOSS = boss('千年藤王', 2200, 'wood', 1)
 
 // ==================== SR-2 烈焰窟（金丹，T4） ====================
-// 普通难度统一用 t1 技能池 + 去除 tank role（防止回血拖时间）
+// v3.1: power × 0.4 (对应主图 T4 × 0.25,秘境稍高作为组队挑战加成)
 const SR2_MONSTERS = [
-  monster('炎鼠', 6000, 'fire', 'speed', 1),
-  monster('熔岩怪', 8000, 'fire', 'balanced', 1),
-  monster('赤鳞蜥', 7000, 'fire', 'balanced', 1),
+  monster('炎鼠', 2400, 'fire', 'speed', 1),
+  monster('熔岩怪', 3200, 'fire', 'balanced', 1),
+  monster('赤鳞蜥', 2800, 'fire', 'balanced', 1),
 ]
 const SR2_ELITE = [
-  monster('焚烬士', 12000, 'fire', 'dps', 1),
-  monster('火灵守卫', 13000, 'fire', 'balanced', 1),
+  monster('焚烬士', 4800, 'fire', 'dps', 1),
+  monster('火灵守卫', 5200, 'fire', 'balanced', 1),
 ]
-const SR2_BOSS = boss('赤焰魔君', 30000, 'fire', 1)
+const SR2_BOSS = boss('赤焰魔君', 12000, 'fire', 1)
 
 // ==================== SR-3 幽冥渊（元婴，T5） ====================
-// 统一用 t1 技能池（禁用"连续撕咬"等 T2+ 多段技能，避免数值失控）
+// v3.1: power × 0.15 (对应主图 T5 × 0.10,秘境稍高)
 const SR3_MONSTERS = [
-  monster('水鬼', 18000, 'water', 'balanced', 1),
-  monster('深海巨蛟', 22000, 'water', 'balanced', 1),
-  monster('幽灵鱼', 20000, 'water', 'dps', 1),
+  monster('水鬼', 2700, 'water', 'balanced', 1),
+  monster('深海巨蛟', 3300, 'water', 'balanced', 1),
+  monster('幽灵鱼', 3000, 'water', 'dps', 1),
 ]
 const SR3_ELITE = [
-  monster('冥卫', 35000, 'water', 'dps', 1),
-  monster('冰魄师', 38000, 'water', 'balanced', 1),
+  monster('冥卫', 5250, 'water', 'dps', 1),
+  monster('冰魄师', 5700, 'water', 'balanced', 1),
 ]
-const SR3_BOSS = boss('幽冥水帝', 85000, 'water', 1)
+const SR3_BOSS = boss('幽冥水帝', 12750, 'water', 1)
 
 // ==================== 秘境定义 ====================
 export const SECRET_REALMS: Record<string, SecretRealmDef> = {
