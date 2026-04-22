@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
       const statMuls = [1.0, 1.05, 1.10, 1.18, 1.25, 1.35]
       const tier = Math.min(10, Math.max(1, rewardBase + 2))
       const ps = primaryStats[slots[slotIdx]]
-      const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[rarityIdx] * 1.2)
+      const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[rarityIdx] * 1.2))
 
       // 宗门专属: 自带2-4条随机副属性
       const subStatPool = [

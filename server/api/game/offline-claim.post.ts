@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
       for (let j = 0; j < w.length; j++) { r -= w[j]; if (r <= 0) { idx = j; break } }
       const slotIdx = Math.floor(Math.random() * slots.length)
       const ps = primaryStats[slots[slotIdx]]
-      const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * mapData.tier * RARITY_STAT_MUL[idx])
+      const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * mapData.tier * RARITY_STAT_MUL[idx]))
       const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[idx] || [0, 0]
       const subCount = rand(minSubs, maxSubs)
       const subStats = subCount > 0 ? rollSubStats(idx, mapData.tier, subCount) : []

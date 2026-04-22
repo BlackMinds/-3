@@ -13,7 +13,6 @@ export const useGameStore = defineStore('game', () => {
   const isBattling = ref(false)
   const currentMapId = ref('qingfeng_valley')
   const battleTimer = ref<number | null>(null)
-  const isPaused = ref(false)
   const killCount = ref(0)
   const sessionExp = ref(0)
   const sessionStone = ref(0)
@@ -32,6 +31,10 @@ export const useGameStore = defineStore('game', () => {
   const fetchInFlight = ref(false)
   // 最近一次 stopBattle 的时间戳，用于"反复切开始/离开刷怪"节流
   const lastStopAt = ref(0)
+  // 上一场战斗日志预期播完的时间戳。logQueue 每 1s shift 一条 → 结束时间 = 发起时 + logs.length * 1000
+  // stopBattle 不清除本值，用于守卫"上场战斗未播完就又开打"（和实际日志长度联动，短战斗短守卫、长战斗长守卫）
+  const expectedBattleEndAt = ref(0)
+  const LOG_INTERVAL_MS = 1000
 
   // 死亡冷却
   const deathCooldown = ref(0)
@@ -166,8 +169,11 @@ export const useGameStore = defineStore('game', () => {
       addLog(0, '上场战斗未结束，请稍候', 'system')
       return
     }
+    if (Date.now() < expectedBattleEndAt.value) {
+      addLog(0, '上场战斗未结束，请稍候', 'system')
+      return
+    }
     isBattling.value = true
-    isPaused.value = false
     sessionDrops.value = {}
     addLog(0, `在【${currentMap.value.name}】开始历练…`, 'system')
     // 反复「开始/离开」节流：若距上次 stop 不到 1.5s（对齐 server BATTLE_COOLDOWN_MS），延迟首次 fight，防止通过快速切换把刷怪频率拉到冷却极限
@@ -184,7 +190,6 @@ export const useGameStore = defineStore('game', () => {
 
   function stopBattle() {
     isBattling.value = false
-    isPaused.value = false
     battleSession.value++
     lastStopAt.value = Date.now()
     if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
@@ -200,15 +205,8 @@ export const useGameStore = defineStore('game', () => {
     flushSave()
   }
 
-  function togglePause() {
-    isPaused.value = !isPaused.value
-    if (!isPaused.value && isBattling.value) {
-      scheduleFight()
-    }
-  }
-
   function scheduleFight() {
-    if (!isBattling.value || isPaused.value || deathCooldown.value > 0) return
+    if (!isBattling.value || deathCooldown.value > 0) return
     if (logQueue.value.length > 0) return
     executeFight()
   }
@@ -276,6 +274,7 @@ export const useGameStore = defineStore('game', () => {
       }
 
       logQueue.value = data.logs || []
+      expectedBattleEndAt.value = Date.now() + logQueue.value.length * LOG_INTERVAL_MS
       drainLogQueue()
     } catch {
       fetchInFlight.value = false
@@ -310,7 +309,6 @@ export const useGameStore = defineStore('game', () => {
           onBattleLogsFinished()
           return
         }
-        if (isPaused.value) return
         emitLog(logQueue.value.shift()!)
         if (logQueue.value.length === 0) {
           if (logTimer.value) clearInterval(logTimer.value)
@@ -431,12 +429,12 @@ export const useGameStore = defineStore('game', () => {
   }
 
   return {
-    character, loaded, battleLogs, isBattling, currentMapId, isPaused,
+    character, loaded, battleLogs, isBattling, currentMapId,
     killCount, sessionExp, sessionStone, sessionDrops, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
     currentMonsterInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
-    loadGameData, changeMap, startBattle, stopBattle, togglePause, clearLogs, addLog, flushSave, tryBreakthrough,
+    loadGameData, changeMap, startBattle, stopBattle, clearLogs, addLog, flushSave, tryBreakthrough,
   }
 })

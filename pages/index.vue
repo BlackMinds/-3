@@ -121,9 +121,6 @@
             秘境组队
           </button>
           <template v-else>
-            <button class="ctrl-btn pause-btn" @click="gameStore.togglePause()">
-              {{ gameStore.isPaused ? '继续' : '暂停' }}
-            </button>
             <button class="ctrl-btn stop-btn" @click="gameStore.stopBattle()">
               离开
             </button>
@@ -6331,16 +6328,6 @@ onUnmounted(() => {
   text-align: center;
   padding: 10px;
   font-size: 15px;
-}
-
-.pause-btn {
-  background: rgba(201, 168, 92, 0.08);
-  border-color: rgba(201, 168, 92, 0.20);
-  color: var(--gold-ink);
-}
-
-.pause-btn:hover {
-  background: rgba(201, 168, 92, 0.15);
 }
 
 .stop-btn {

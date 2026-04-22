@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
         const slot = slots[slotIdx]
         const ps = primaryStats[slot]
         const tier = rand(5, 7)
-        const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * 1.25)
+        const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * 1.25))
         const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
         const equipName = generateEquipName('gold', slot, weaponType, tier, ps, null, '强化竞赛')
         const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[4] || [0, 0]

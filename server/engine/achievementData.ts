@@ -266,7 +266,7 @@ export function generateEquipBox(boxType: 'normal' | 'fine' | 'legend', charLeve
   const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 };
 
   const ps = primaryStats[slots[slotIdx]];
-  const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[idx]);
+  const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[idx]));
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null;
   const subStats = generateSubStats(idx, tier);
 

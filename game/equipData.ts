@@ -186,7 +186,7 @@ export function generateEquipment(mapTier: number, isBoss: boolean): Equipment {
 
   // 主属性
   const base = PRIMARY_BASE[slotDef.primaryStat] || 30;
-  const primaryValue = Math.floor(base * mapTier * rarity.statMul);
+  const primaryValue = Math.max(1, Math.floor(base * mapTier * rarity.statMul));
 
   // 副属性
   const subStats: { stat: string; value: number }[] = [];

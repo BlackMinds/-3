@@ -211,7 +211,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]
-  const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[idx])
+  const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[idx]))
   const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
   const subStats = generateSubStats(idx, tier)
