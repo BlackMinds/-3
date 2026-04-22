@@ -249,13 +249,16 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: `还有 ${notReady.length} 人未准备` }
     }
 
-    // 校验每日次数
+    // 每人是否有次数（决定是否发奖励 / 扣次数 / 记首通）—— "带人"模式允许无次数队员参战但不拿奖励
+    const hasQuotaMap = new Map<number, boolean>()
     for (const m of allMembers) {
       const ensured = await ensureDailyReset(m.id, m)
       const max = getDailyCountByRealm(ensured.realm_tier || 1)
-      if ((ensured.sr_daily_count || 0) >= max) {
-        return { code: 400, message: `${m.name} 今日次数已用完` }
-      }
+      hasQuotaMap.set(m.id, (ensured.sr_daily_count || 0) < max)
+    }
+    // 至少需要一个有次数的人才能开战（否则全队带人没意义，多半是误操作）
+    if (![...hasQuotaMap.values()].some(v => v)) {
+      return { code: 400, message: '队伍中没有任何人今日还有秘境次数' }
     }
 
     // 锁定房间，进入战斗（条件 UPDATE：仅 waiting 状态可被锁定，防并发重复发起）
@@ -344,8 +347,10 @@ export default defineEventHandler(async (event) => {
         )
       }
 
-      // 装备分配（波次和 Boss 装备合并一次分配，保证每人至少 1 件保底）
-      const contribList = result.contributions.map(c => ({ characterId: c.characterId, contribution: c.contribution }))
+      // 装备分配（仅分给有次数的队员；无次数的"带队"玩家不在分配名单）
+      const contribList = result.contributions
+        .filter(c => hasQuotaMap.get(c.characterId))
+        .map(c => ({ characterId: c.characterId, contribution: c.contribution }))
       const allEquips = [...drops.equipments, ...drops.bossEquipments]
       const playerEquips = distributeEquipments(allEquips, contribList)
 
@@ -381,11 +386,40 @@ export default defineEventHandler(async (event) => {
       // 按贡献计算每个人的实际奖励 + 保存装备/灵草/功法
       const rewards: any[] = []
       for (const c of result.contributions) {
+        const hasQuota = hasQuotaMap.get(c.characterId) ?? false
+        const member = charMap.get(c.characterId)
+
+        // 无次数的"带队"玩家：只写战斗贡献用于战报，不发任何奖励、不扣次数、不记首通、不触发成就
+        if (!hasQuota) {
+          await client.query(
+            `INSERT INTO secret_realm_contributions (battle_id, character_id, damage_dealt, healing_done, damage_taken, contribution)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [battleId, c.characterId, c.damageDealt, c.healingDone, c.damageTaken, c.contribution]
+          )
+          rewards.push({
+            character_id: c.characterId,
+            name: c.name,
+            spirit_stone: 0,
+            exp_gained: 0,
+            realm_points: 0,
+            contribution: c.contribution,
+            damage_dealt: c.damageDealt,
+            healing_done: c.healingDone,
+            damage_taken: c.damageTaken,
+            equipments: [],
+            herbs: [],
+            skill_pages: [],
+            awaken_items: { awaken_stone: 0, awaken_reroll: 0 },
+            level_up: null,
+            no_quota: true,
+          })
+          continue
+        }
+
         const stoneRatio = 0.4 + 0.6 * c.contribution
         const myStone = Math.floor(totalBaseStone * stoneRatio * rewardMul * ratingMul)
         const myExp = Math.floor(totalBaseExp * rewardMul * ratingMul * (1 + expTeamBonus))
         const myPoints = Math.floor(basePoints * stoneRatio)
-        const member = charMap.get(c.characterId)
 
         // --- 保存装备到 character_equipment ---
         const equipIds: number[] = []
@@ -507,23 +541,26 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      // 首通记录
+      // 首通记录（仅给有次数的队员记；带人玩家不计入）
       if (result.won) {
-        await client.query(
-          `INSERT INTO secret_realm_clears (character_id, secret_realm_id, difficulty, best_rating, clear_count)
-           SELECT tm.character_id, $1, $2, $3, 1 FROM team_members tm WHERE tm.room_id = $4
-           ON CONFLICT (character_id, secret_realm_id, difficulty) DO UPDATE SET
-             clear_count = secret_realm_clears.clear_count + 1,
-             best_rating = CASE
-               WHEN secret_realm_clears.best_rating IS NULL THEN EXCLUDED.best_rating
-               WHEN EXCLUDED.best_rating = 'S' THEN 'S'
-               WHEN secret_realm_clears.best_rating = 'S' THEN 'S'
-               WHEN EXCLUDED.best_rating = 'A' THEN 'A'
-               WHEN secret_realm_clears.best_rating = 'A' THEN 'A'
-               ELSE EXCLUDED.best_rating
-             END`,
-          [realmId, difficulty, result.rating, roomId]
-        )
+        for (const m of allMembers) {
+          if (!hasQuotaMap.get(m.id)) continue
+          await client.query(
+            `INSERT INTO secret_realm_clears (character_id, secret_realm_id, difficulty, best_rating, clear_count)
+             VALUES ($1, $2, $3, $4, 1)
+             ON CONFLICT (character_id, secret_realm_id, difficulty) DO UPDATE SET
+               clear_count = secret_realm_clears.clear_count + 1,
+               best_rating = CASE
+                 WHEN secret_realm_clears.best_rating IS NULL THEN EXCLUDED.best_rating
+                 WHEN EXCLUDED.best_rating = 'S' THEN 'S'
+                 WHEN secret_realm_clears.best_rating = 'S' THEN 'S'
+                 WHEN EXCLUDED.best_rating = 'A' THEN 'A'
+                 WHEN secret_realm_clears.best_rating = 'A' THEN 'A'
+                 ELSE EXCLUDED.best_rating
+               END`,
+            [m.id, realmId, difficulty, result.rating]
+          )
+        }
       }
 
       // 关闭房间

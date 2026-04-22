@@ -17,6 +17,7 @@ import {
   getBreakthroughRate,
   getBreakthroughFailPenalty,
 } from '~/server/utils/realm'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -153,6 +154,12 @@ export default defineEventHandler(async (event) => {
       throw err
     } finally {
       client.release()
+    }
+
+    // 触发成就：境界 tier 提升（筑基/金丹/元婴/化神/渡劫/大乘/飞升）+ 练气阶段
+    checkAchievements(char.id, 'realm_tier', newTier).catch(() => {})
+    if (newTier === 1) {
+      checkAchievements(char.id, 'qi_stage', newStage).catch(() => {})
     }
 
     // 返回最新角色

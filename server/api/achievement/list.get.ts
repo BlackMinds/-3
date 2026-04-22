@@ -1,6 +1,6 @@
 import { getPool } from '~/server/database/db'
 import { ACHIEVEMENTS, ACHIEVEMENTS_MAP, TITLES } from '~/server/engine/achievementData'
-import { initAchievementsIfNeeded } from '~/server/utils/achievement'
+import { initAchievementsIfNeeded, backfillThresholdAchievements } from '~/server/utils/achievement'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -13,8 +13,10 @@ export default defineEventHandler(async (event) => {
     if (charRows.length === 0) return { code: 400, message: '角色不存在' }
     const charId = charRows[0].id
 
-    // 首次访问时补录历史进度
+    // 首次访问时补录历史进度（含 counter 类，只做一次）
     await initAchievementsIfNeeded(charId)
+    // 每次访问都跑 threshold 补录，兜底主动触发点遗漏（反复 upsert 无害）
+    await backfillThresholdAchievements(charId)
 
     // 查询所有成就进度
     const { rows: progressRows } = await pool.query(

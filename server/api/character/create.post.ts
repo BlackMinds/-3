@@ -1,4 +1,5 @@
 import { getPool } from '~/server/database/db'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 const ROOT_BONUS: Record<string, {
   max_hp: number; hp: number; atk: number; def: number; spd: number;
@@ -59,10 +60,15 @@ export default defineEventHandler(async (event) => {
     [userId, name, spiritual_root, bonus.max_hp, bonus.hp, bonus.atk, bonus.def, bonus.spd, bonus.crit_rate, bonus.crit_dmg]
   )
 
+  const charId = insertResult[0].id
   const { rows: newChar } = await pool.query(
     'SELECT * FROM characters WHERE id = $1',
-    [insertResult[0].id]
+    [charId]
   )
+
+  // 触发 "踏入仙途" 成就
+  checkAchievements(charId, 'char_created', 1).catch(() => {})
+  checkAchievements(charId, 'first_login', 1).catch(() => {})
 
   return { code: 200, message: '角色创建成功', data: newChar[0] }
 })

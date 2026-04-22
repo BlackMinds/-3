@@ -28,15 +28,25 @@ export async function ensureDailyReset(charId: number, char: any): Promise<any> 
   return char
 }
 
-/** 校验玩家是否可进入某秘境 */
-export function validateRealmEntry(char: any, realmId: string): { ok: boolean; message?: string } {
+/**
+ * 校验玩家是否可进入某秘境
+ * @param opts.skipDailyCount 为 true 时不校验每日次数（供"带人"模式使用 — 队员无次数可进，
+ *                            但战斗结算时会被标记 no_quota 不发奖励、不扣次数）
+ */
+export function validateRealmEntry(
+  char: any,
+  realmId: string,
+  opts: { skipDailyCount?: boolean } = {},
+): { ok: boolean; message?: string } {
   const realm = getSecretRealm(realmId)
   if (!realm) return { ok: false, message: '秘境不存在' }
   if ((char.realm_tier || 1) < realm.reqRealmTier) return { ok: false, message: `需要境界：${realmNames[realm.reqRealmTier]}` }
   if ((char.level || 1) < realm.reqLevel) return { ok: false, message: `需要等级：Lv.${realm.reqLevel}` }
   if (char.offline_start) return { ok: false, message: '离线挂机中，无法进入' }
-  const max = getDailyCountByRealm(char.realm_tier || 1)
-  if ((char.sr_daily_count || 0) >= max) return { ok: false, message: '今日次数已用完' }
+  if (!opts.skipDailyCount) {
+    const max = getDailyCountByRealm(char.realm_tier || 1)
+    if ((char.sr_daily_count || 0) >= max) return { ok: false, message: '今日次数已用完' }
+  }
   return { ok: true }
 }
 

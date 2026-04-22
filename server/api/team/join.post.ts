@@ -45,8 +45,8 @@ export default defineEventHandler(async (event) => {
         return { code: 400, message: '房间已满' }
       }
 
-      // 校验玩家可否进入
-      const check = validateRealmEntry(char, room.secret_realm_id)
+      // 校验玩家可否进入（队员模式：允许无次数加入带人，结算时不发奖励、不扣次数）
+      const check = validateRealmEntry(char, room.secret_realm_id, { skipDailyCount: true })
       if (!check.ok) {
         await client.query('ROLLBACK')
         return { code: 400, message: check.message }
