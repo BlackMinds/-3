@@ -2081,6 +2081,15 @@
         </div>
         <div class="modal-body">
           <div class="help-section">
+            <div class="help-title">交流反馈 · QQ 群</div>
+            <p class="help-text">
+              官方讨论群号:
+              <b class="qq-group-number" @click="copyQqGroup">1098123817</b>
+              <span class="qq-group-hint">(点击复制)</span>
+            </p>
+            <p class="help-text" style="margin-top: 4px;">欢迎加群讨论玩法、反馈 bug、提功能建议、交流 build 心得。</p>
+          </div>
+          <div class="help-section">
             <div class="help-title">基本操作</div>
             <p class="help-text">选择地图 → 开始历练 → 自动战斗打怪 → 获得修为/灵石/等级经验/装备/功法/灵草。每波随机 1-5 只怪物同时出现,低概率遇到 Boss。战斗完全在服务器计算,无法作弊。</p>
           </div>
@@ -2335,15 +2344,6 @@
             <div class="help-title">秘境组队 (新)</div>
             <p class="help-text">2-4 人协作副本,公开大厅制,点【秘境】进入组队页面。</p>
             <p class="help-text" style="margin-top: 4px;">6 大秘境 × 3 难度(普通/困难/噩梦),独占高品质装备/首通奖励/高倍经验。同宗门成员组队额外 +10% 全属性加成。</p>
-          </div>
-          <div class="help-section">
-            <div class="help-title">交流反馈 · QQ 群</div>
-            <p class="help-text">
-              官方讨论群号:
-              <b class="qq-group-number" @click="copyQqGroup">1098123817</b>
-              <span class="qq-group-hint">(点击复制)</span>
-            </p>
-            <p class="help-text" style="margin-top: 4px;">欢迎加群讨论玩法、反馈 bug、提功能建议、交流 build 心得。</p>
           </div>
         </div>
       </div>
