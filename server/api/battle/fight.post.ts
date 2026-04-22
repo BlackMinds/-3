@@ -8,7 +8,7 @@ import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats } from '~/server/utils/equipment'
-import { EQUIP_PRIMARY_BASE, WEAPON_BONUS } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
 
 // 战斗锁: 防止同一角色并发刷战斗
 const battleLock = new Map<number, number>()
@@ -549,15 +549,13 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
   ;(char as any).__resistCtrlAwaken = 0
   ;(char as any).__resistAllAwaken = 0
 
-  // 玩家属性硬上限（对称怪物的 cap，避免堆属性爆表）
-  // 怪物 cap: crit_rate≤50% / crit_dmg≤300% / dodge≤30% / lifesteal≤15% / armorPen≤30 / accuracy≤25
-  // 玩家上限取略高值，允许 build 更极端，但不至于完全数值溢出
-  const cappedCritRate  = Math.min(0.80, critRate)
-  const cappedCritDmg   = Math.min(4.0,  critDmg)
-  const cappedDodge     = Math.min(0.40, dodge)
-  const cappedLifesteal = Math.min(0.30, lifesteal)
-  const cappedArmorPen  = Math.min(80,   armorPen)
-  const cappedAccuracy  = Math.min(60,   accuracy)
+  // 玩家属性硬上限 (v3.0 从 shared/balance.ts 读取)
+  const cappedCritRate  = Math.min(PLAYER_CAPS.critRate,  critRate)
+  const cappedCritDmg   = Math.min(PLAYER_CAPS.critDmg,   critDmg)
+  const cappedDodge     = Math.min(PLAYER_CAPS.dodge,     dodge)
+  const cappedLifesteal = Math.min(PLAYER_CAPS.lifesteal, lifesteal)
+  const cappedArmorPen  = Math.min(PLAYER_CAPS.armorPen,  armorPen)
+  const cappedAccuracy  = Math.min(PLAYER_CAPS.accuracy,  accuracy)
 
   return {
     stats: {

@@ -10,7 +10,7 @@ import { getCharacterByUserId, ensureDailyReset, getRoomDetail } from '~/server/
 import { generateSecretRealmDrops, distributeEquipments, distributeAwakenItems } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
-import { WEAPON_BONUS } from '~/shared/balance'
+import { WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -181,13 +181,13 @@ async function buildPlayerBattleStats(char: any): Promise<{
     }
   }
 
-  // 玩家属性硬上限（与 battle/fight.post.ts 保持一致）
+  // 玩家属性硬上限 (v3.0 从 shared/balance.ts 读取, 与 battle/fight.post.ts 保持一致)
   const stats: BattlerStats = {
     name: char.name, maxHp, hp: maxHp, atk, def, spd,
-    crit_rate: Math.min(0.80, critRate),
-    crit_dmg: Math.min(4.0, critDmg),
-    dodge: Math.min(0.40, dodge),
-    lifesteal: Math.min(0.30, lifesteal),
+    crit_rate: Math.min(PLAYER_CAPS.critRate, critRate),
+    crit_dmg: Math.min(PLAYER_CAPS.critDmg, critDmg),
+    dodge: Math.min(PLAYER_CAPS.dodge, dodge),
+    lifesteal: Math.min(PLAYER_CAPS.lifesteal, lifesteal),
     element: char.spiritual_root,
     resists: {
       metal: Number(char.resist_metal || 0), wood: Number(char.resist_wood || 0),
@@ -195,8 +195,8 @@ async function buildPlayerBattleStats(char: any): Promise<{
       earth: Number(char.resist_earth || 0), ctrl: Number(char.resist_ctrl || 0),
     },
     spiritualRoot: char.spiritual_root,
-    armorPen: Math.min(80, armorPen),
-    accuracy: Math.min(60, accuracy),
+    armorPen: Math.min(PLAYER_CAPS.armorPen, armorPen),
+    accuracy: Math.min(PLAYER_CAPS.accuracy, accuracy),
     elementDmg, spirit,
   }
   const equippedSkills = buildEquippedSkillInfo(skillRows)
