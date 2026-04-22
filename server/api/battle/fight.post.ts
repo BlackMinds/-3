@@ -695,12 +695,10 @@ export default defineEventHandler(async (event) => {
         )
         const baseline = fresh[0] || char
 
-        // 累加 cultivation_exp 并自动扣除突破
+        // v3.2: 累加 cultivation_exp (不再自动突破,由玩家手动点击"突破"按钮)
+        // applyCultivationExp 现在只做飞升末阶软封顶,不会改 tier/stage
         const newExpTotal = Number(baseline.cultivation_exp || 0) + totalExp
         const br = applyCultivationExp(newExpTotal, baseline.realm_tier || 1, baseline.realm_stage || 1)
-        if (br.breakthroughs > 0) {
-          result.logs.push({ turn: 0, text: `突破 ${br.breakthroughs} 次境界！`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-        }
         await client.query(
           `UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, spirit_stone = spirit_stone + $4, level_exp = level_exp + $5, current_map = $6, last_online = NOW() WHERE id = $7`,
           [br.cultivation_exp, br.realm_tier, br.realm_stage, totalStone, levelExp, map_id, char.id]

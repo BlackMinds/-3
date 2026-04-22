@@ -18,8 +18,9 @@ export function getExpRequired(tier: number, stage: number): number {
 }
 
 /**
- * 累加后自动扣除并升级境界，保证 cultivation_exp 永远表示"当前境界剩余"。
- * 不会突破到顶（飞升 tier=8 的最后阶段会停住，多余经验保留）。
+ * 累加修为,不自动突破(v3.2 改为手动突破)。
+ * 修为可以累积超过当前境界所需,等待玩家点击"突破"按钮手动升级。
+ * 飞升末阶(tier=8 stage=5)的修为软封顶,避免无限累加显示难看。
  */
 // 等级所需经验（与前端 stores/game.ts levelExpRequired 保持一致）
 export function getLevelExpRequired(lv: number): number {
@@ -55,27 +56,65 @@ export function applyCultivationExp(
   realmTier: number,
   realmStage: number,
 ): { cultivation_exp: number; realm_tier: number; realm_stage: number; breakthroughs: number } {
-  let tier = Math.max(1, realmTier || 1)
-  let stage = Math.max(1, realmStage || 1)
+  const tier = Math.max(1, realmTier || 1)
+  const stage = Math.max(1, realmStage || 1)
   let exp = Math.max(0, cultivationExp)
-  let breakthroughs = 0
 
-  while (true) {
-    const t = REALM_TIERS.find(r => r.tier === tier)
-    if (!t) break
-    const req = getExpRequired(tier, stage)
-    if (exp < req) break
-    // 已到顶：飞升末阶，不再扣除
-    if (tier === 8 && stage >= t.stages) break
-
-    exp -= req
-    breakthroughs++
-    if (stage >= t.stages) {
-      if (tier < 8) { tier++; stage = 1 } else break
-    } else {
-      stage++
+  // 飞升末阶软封顶: 修为不再超过当前阶段所需 (避免无限累加)
+  if (tier === 8) {
+    const t = REALM_TIERS.find(r => r.tier === 8)
+    if (t && stage >= t.stages) {
+      const req = getExpRequired(8, t.stages)
+      exp = Math.min(exp, req)
     }
   }
 
-  return { cultivation_exp: exp, realm_tier: tier, realm_stage: stage, breakthroughs }
+  return { cultivation_exp: exp, realm_tier: tier, realm_stage: stage, breakthroughs: 0 }
+}
+
+/**
+ * 手动突破成功率(v3.2 新增)
+ * 规则:
+ * - 跨大境界(stage 满需要升 tier)才有概率,跨小境界(仅升 stage)100% 成功
+ * - 境界越高成功率越低,练气 100% / 大乘 55%
+ * - 失败扣当前修为一定比例(见 getBreakthroughFailPenalty)
+ */
+export function getBreakthroughRate(fromTier: number, fromStage: number): number {
+  const t = REALM_TIERS.find(r => r.tier === fromTier)
+  if (!t) return 0
+  // 飞升顶不能再突
+  if (fromTier === 8 && fromStage >= t.stages) return 0
+  // 跨小境界 100%
+  if (fromStage < t.stages) return 1.0
+  // 跨大境界按 tier 递减
+  const rates: Record<number, number> = {
+    1: 1.00,  // 练气 → 筑基
+    2: 0.95,  // 筑基 → 金丹
+    3: 0.90,  // 金丹 → 元婴
+    4: 0.85,  // 元婴 → 化神
+    5: 0.75,  // 化神 → 渡劫
+    6: 0.65,  // 渡劫 → 大乘
+    7: 0.55,  // 大乘 → 飞升
+  }
+  return rates[fromTier] ?? 0
+}
+
+/**
+ * 突破失败修为损失比例(v3.2 新增)
+ * 返回 [0, 1) 的比例,失败时扣除当前 cultivation_exp × 比例
+ * 境界越高惩罚越重(10% → 80%),前期友好,后期高风险
+ * 仅在跨大境界失败时适用(小境界 100% 成功不会失败)
+ */
+export function getBreakthroughFailPenalty(fromTier: number): number {
+  const penalties: Record<number, number> = {
+    1: 0.10,  // 练气(100% 成功,不会触发)
+    2: 0.15,  // 筑基
+    3: 0.20,  // 金丹
+    4: 0.30,  // 元婴
+    5: 0.40,  // 化神
+    6: 0.50,  // 渡劫
+    7: 0.65,  // 大乘
+    8: 0.80,  // 飞升(已顶,不会触发)
+  }
+  return penalties[fromTier] ?? 0
 }

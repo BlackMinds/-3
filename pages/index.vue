@@ -1994,8 +1994,22 @@
           </div>
 
           <div v-if="gameStore.expPercent >= 100" class="realm-ready">
-            <p style="color: var(--jade); text-align: center; margin: 16px 0;">修为充足,可以尝试突破!</p>
-            <button class="realm-do-btn" @click="doRealmBreakthrough">开始突破</button>
+            <p style="color: var(--jade); text-align: center; margin: 16px 0 8px;">修为充足,可以尝试突破!</p>
+            <div class="realm-rate-info">
+              <div class="realm-rate-row">
+                <span class="realm-rate-label">突破成功率</span>
+                <span class="realm-rate-val success">{{ Math.round(breakthroughRate * 100) }}%</span>
+              </div>
+              <div class="realm-rate-row" v-if="breakthroughFailPenalty > 0">
+                <span class="realm-rate-label">失败走火入魔</span>
+                <span class="realm-rate-val danger">损失 {{ Math.round(breakthroughFailPenalty * 100) }}% 修为</span>
+              </div>
+              <div class="realm-rate-hint" v-if="breakthroughRate >= 1">小境界提升 · 必定成功</div>
+              <div class="realm-rate-hint" v-else>跨入新境界 · 失败有惩罚</div>
+            </div>
+            <button class="realm-do-btn" :disabled="breakthroughPending" @click="doRealmBreakthrough">
+              {{ breakthroughPending ? '突破中…' : '开始突破' }}
+            </button>
           </div>
           <div v-else class="realm-not-ready">
             <p style="color: var(--cinnabar); text-align: center; margin: 16px 0;">修为不足,继续修炼</p>
@@ -2978,6 +2992,29 @@ const currentRealmBonus = computed(() => {
   return getRealmBonusAtLevel(tier, stage);
 });
 
+// v3.2 突破成功率/失败惩罚 (需与 server/utils/realm.ts 保持一致)
+const REALM_STAGES_COUNT: Record<number, number> = { 1: 9, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 5 };
+const BREAKTHROUGH_RATES: Record<number, number> = { 1: 1.0, 2: 0.95, 3: 0.90, 4: 0.85, 5: 0.75, 6: 0.65, 7: 0.55 };
+const BREAKTHROUGH_PENALTIES: Record<number, number> = { 1: 0.10, 2: 0.15, 3: 0.20, 4: 0.30, 5: 0.40, 6: 0.50, 7: 0.65, 8: 0.80 };
+
+const breakthroughRate = computed(() => {
+  const tier = gameStore.character?.realm_tier || 1;
+  const stage = gameStore.character?.realm_stage || 1;
+  const maxStage = REALM_STAGES_COUNT[tier] || 3;
+  if (tier === 8 && stage >= maxStage) return 0; // 飞升顶
+  if (stage < maxStage) return 1.0; // 小境界必成
+  return BREAKTHROUGH_RATES[tier] ?? 0;
+});
+
+const breakthroughFailPenalty = computed(() => {
+  const tier = gameStore.character?.realm_tier || 1;
+  const stage = gameStore.character?.realm_stage || 1;
+  const maxStage = REALM_STAGES_COUNT[tier] || 3;
+  // 小境界不会失败,不显示惩罚
+  if (stage < maxStage) return 0;
+  return BREAKTHROUGH_PENALTIES[tier] ?? 0;
+});
+
 const realmBonusStats = computed(() => {
   const rb = currentRealmBonus.value;
   const stats = [
@@ -2992,18 +3029,24 @@ const realmBonusStats = computed(() => {
   return stats;
 });
 
-function doRealmBreakthrough() {
-  if (!gameStore.character) return;
-  // 手动触发 store 中的 checkBreakthrough
-  const oldTier = gameStore.character.realm_tier;
-  const oldStage = gameStore.character.realm_stage;
-  gameStore.forceBreakthrough();
-  const newTier = gameStore.character.realm_tier;
-  const newStage = gameStore.character.realm_stage;
-  if (newTier !== oldTier || newStage !== oldStage) {
-    realmChallengeResult.value = `突破成功! ${gameStore.realmName}`;
-  } else {
-    realmChallengeResult.value = '修为不足,无法突破';
+const breakthroughPending = ref(false);
+async function doRealmBreakthrough() {
+  if (!gameStore.character || breakthroughPending.value) return;
+  breakthroughPending.value = true;
+  try {
+    const res = await gameStore.tryBreakthrough();
+    if (!res) {
+      realmChallengeResult.value = '网络错误,请重试';
+      return;
+    }
+    if (res.success) {
+      realmChallengeResult.value = `✨ 突破成功! 当前境界: ${gameStore.realmName}`;
+    } else {
+      const penaltyPct = res.penalty ? Math.round(res.penalty * 100) : 0;
+      realmChallengeResult.value = `💥 突破失败! 成功率 ${Math.round(res.rate * 100)}%, 走火入魔损失 ${penaltyPct}% 修为 (-${formatNum(res.lost || 0)})`;
+    }
+  } finally {
+    breakthroughPending.value = false;
   }
 }
 const avatarInput = ref<HTMLInputElement | null>(null);
@@ -7329,9 +7372,57 @@ onUnmounted(() => {
   transition: all 0.3s;
 }
 
-.realm-do-btn:hover {
+.realm-do-btn:hover:not(:disabled) {
   background: rgba(232, 204, 138, 0.15);
   box-shadow: 0 0 20px rgba(232, 204, 138, 0.3);
+}
+
+.realm-do-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* v3.2 突破成功率/惩罚展示 */
+.realm-rate-info {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: rgba(184, 154, 90, 0.06);
+  border: 1px solid rgba(184, 154, 90, 0.2);
+  border-radius: 4px;
+}
+
+.realm-rate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.realm-rate-label {
+  color: var(--ink-light);
+}
+
+.realm-rate-val {
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+}
+
+.realm-rate-val.success {
+  color: #6baa7d;
+}
+
+.realm-rate-val.danger {
+  color: #c45c4a;
+}
+
+.realm-rate-hint {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(184, 154, 90, 0.15);
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-align: center;
 }
 
 .realm-result {

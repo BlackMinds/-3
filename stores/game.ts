@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { CharacterData, BattleLogEntry, MapData, MonsterBattleInfo } from '~/game/types'
-import { MAPS, REALM_TIERS, getRealmName, getExpRequired, getUnlockedMaps } from '~/game/data'
+import { MAPS, getRealmName, getExpRequired, getUnlockedMaps } from '~/game/data'
 
 export const useGameStore = defineStore('game', () => {
   // ===== 角色数据 =====
@@ -313,46 +313,40 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  function forceBreakthrough() {
-    checkBreakthrough()
-  }
-
-  function checkBreakthrough() {
-    if (!character.value) return
-    if (!character.value.realm_tier) character.value.realm_tier = 1
-    if (!character.value.realm_stage) character.value.realm_stage = 1
-
-    let breakthroughs = 0
-    while (true) {
-      const t = REALM_TIERS.find(r => r.tier === character.value!.realm_tier)
-      if (!t) break
-      const req = getExpRequired(character.value.realm_tier, character.value.realm_stage)
-      if (character.value.cultivation_exp < req) break
-      // 飞升末阶不再突破
-      if (character.value.realm_tier === 8 && character.value.realm_stage >= t.stages) break
-
-      character.value.cultivation_exp -= req
-      breakthroughs++
-      if (character.value.realm_stage >= t.stages) {
-        if (character.value.realm_tier < 8) {
-          character.value.realm_tier++
-          character.value.realm_stage = 1
-        } else break
-      } else {
-        character.value.realm_stage++
+  /**
+   * 手动突破(v3.2): 调用后端 /api/game/breakthrough
+   * 返回 { success, rate, lost?, character } 或 null(请求失败)
+   */
+  async function tryBreakthrough(): Promise<{
+    success: boolean
+    rate: number
+    lost?: number
+    penalty?: number
+    message: string
+    character?: any
+  } | null> {
+    try {
+      const res: any = await fetchApi('/game/breakthrough', { method: 'POST' })
+      if (res?.code !== 200) {
+        addLog(0, res?.message || '突破请求失败', 'system')
+        return null
       }
-    }
-
-    if (breakthroughs > 0) {
-      addLog(0, `突破 ${breakthroughs} 次！当前境界：【${realmName.value}】`, 'system')
-      fetchApi('/game/update-character', {
-        method: 'POST',
-        body: {
-          realm_tier: character.value.realm_tier,
-          realm_stage: character.value.realm_stage,
-          cultivation_exp: character.value.cultivation_exp,
-        },
-      }).catch((err: any) => console.error('保存境界失败', err))
+      const d = res.data
+      // 更新本地 character
+      if (d.character && character.value) {
+        Object.assign(character.value, d.character)
+      }
+      // 战斗日志
+      if (d.success) {
+        addLog(0, `【${realmName.value}】${d.crossBigRealm ? '跨入新境界!' : '小境界提升!'}`, 'system')
+      } else {
+        addLog(0, `突破失败! ${d.message || ''}`, 'system')
+      }
+      return d
+    } catch (err) {
+      console.error('突破请求失败', err)
+      addLog(0, '网络错误,突破失败', 'system')
+      return null
     }
   }
 
@@ -399,6 +393,6 @@ export const useGameStore = defineStore('game', () => {
     currentMonsterInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
-    loadGameData, changeMap, startBattle, stopBattle, togglePause, clearLogs, addLog, flushSave, forceBreakthrough,
+    loadGameData, changeMap, startBattle, stopBattle, togglePause, clearLogs, addLog, flushSave, tryBreakthrough,
   }
 })
