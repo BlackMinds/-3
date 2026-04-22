@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
 
     // 生成掉落装备(简化: 只生成数量, 不生成具体属性太多了)
     const equipCount = Math.floor(totalKills * 0.08 * efficiency)
-    const skillCount = Math.floor(totalKills * 0.05 * efficiency)
+    const skillCount = Math.floor(totalKills * 0.02 * efficiency)
     const herbCount = Math.floor(totalKills * 0.10 * efficiency)
 
     // 装备掉落: 按tier生成

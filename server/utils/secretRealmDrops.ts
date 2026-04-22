@@ -103,7 +103,7 @@ export function generateSecretRealmHerb(tier: number, element: string | null, is
 
 // ========== 功法残页 ==========
 export function generateSecretRealmSkillPage(tier: number, isBoss: boolean, ownedCounts: Record<string, number> = {}): string | null {
-  const rate = isBoss ? 0.7 : 0.12
+  const rate = isBoss ? 0.40 : 0.06
   if (Math.random() >= rate) return null
   const pools: Record<number, string[]> = {
     1: ['wind_blade', 'vine_whip', 'ice_palm', 'flame_sword', 'quake_fist', 'body_refine', 'flame_body', 'water_flow', 'root_grip', 'metal_skin'],
