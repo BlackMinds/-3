@@ -3,6 +3,17 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: true },
 
+  app: {
+    head: {
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'format-detection', content: 'telephone=no' },
+      ],
+    },
+  },
+
   modules: ['@pinia/nuxt'],
 
   css: ['~/assets/style.css'],

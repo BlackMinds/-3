@@ -819,4 +819,44 @@ onUnmounted(() => {
 .c-reward b { color: #a3c972; }
 
 .result-actions { margin-top: 20px; }
+
+@media (max-width: 768px) {
+  .sr-modal { width: calc(100vw - 12px); max-height: calc(100vh - 12px); }
+  .sr-header { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+  .sr-title { font-size: 16px; letter-spacing: 1px; flex: 1 1 100%; }
+  .sr-header-info { font-size: 11px; gap: 10px; margin-right: 0; flex-wrap: wrap; }
+  .sr-close { font-size: 20px; position: absolute; top: 6px; right: 6px; }
+  .sr-banner { padding: 6px 12px; font-size: 12px; }
+  .sr-tabs { padding: 8px 10px; gap: 4px; flex-wrap: wrap; }
+  .sr-tabs button { font-size: 12px; padding: 4px 10px; }
+  .sr-tabs button.create-btn { margin-left: 0; }
+  .sr-panel { padding: 10px; }
+  .sr-toolbar { gap: 6px; }
+  .sr-toolbar select, .sr-toolbar button, .sr-toolbar label { font-size: 12px; }
+
+  .sr-room-card { padding: 10px; flex-wrap: wrap; gap: 8px; }
+  .room-info { flex: 1 1 100%; }
+  .room-title { font-size: 13px; }
+  .room-meta { font-size: 11px; }
+  .room-actions { width: 100%; justify-content: flex-end; }
+
+  .sr-realms-grid { grid-template-columns: 1fr; gap: 8px; }
+  .realm-card { padding: 10px; }
+  .realm-title { font-size: 14px; }
+  .realm-desc { font-size: 11px; }
+
+  .member-grid { grid-template-columns: 1fr; gap: 8px; }
+  .member-slot { min-height: 90px; }
+  .member-name { font-size: 13px; }
+  .member-sub { font-size: 11px; }
+  .room-actions-bar { flex-wrap: wrap; gap: 6px; }
+  .btn-ready, .btn-start, .btn-primary, .btn-cancel { font-size: 12px; padding: 6px 14px; }
+  .btn-start { min-width: 120px; }
+
+  .battle-log-box { font-size: 12px; min-height: 200px; max-height: 300px; }
+  .rating-big { font-size: 48px; }
+  .rating-sub { font-size: 13px; }
+  .result-rating { padding: 20px; }
+  .realm-choice, .diff-choice { font-size: 12px; padding: 6px 12px; }
+}
 </style>

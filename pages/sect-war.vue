@@ -568,4 +568,53 @@ onMounted(loadAll)
 .log.system { color: #88ff88; font-weight: bold; margin: 4px 0; padding: 4px 8px; background: rgba(136, 255, 136, 0.08); border-radius: 3px; }
 .log.dodge { color: #66ccff; font-style: italic; }
 .log.buff { color: #c77ddb; }
+
+@media (max-width: 768px) {
+  .topbar { padding: 8px 10px; gap: 6px; }
+  .topbar h2 { font-size: 14px; }
+  .topbar .btn, .topbar .mail-btn { font-size: 12px; padding: 4px 8px; }
+
+  .season-box { padding: 12px; margin: 10px; }
+  .season-row { gap: 8px; }
+  .season-row .label { font-size: 16px; }
+  .stage { font-size: 12px; padding: 2px 8px; }
+  .stage-tip, .season-sub { font-size: 12px; }
+
+  .section { margin: 8px 10px; padding: 10px; }
+  .section-header h3 { font-size: 14px; }
+
+  .roster { gap: 8px; }
+  .roster-group { flex: 1 1 100%; min-width: 0; }
+  .roster-card { min-width: 0; flex: 1 1 calc(50% - 6px); padding: 6px 8px; }
+  .rc-name { font-size: 13px; }
+  .rc-meta { font-size: 11px; }
+  .total-power { font-size: 13px; }
+
+  .match-card { padding: 10px; }
+  .match-row { gap: 6px; }
+  .match-row .side-name { font-size: 13px; }
+  .match-row .side-odds { font-size: 11px; }
+  .score { font-size: 16px; }
+  .score-block { padding: 0 4px; }
+  .match-meta { font-size: 11px; flex-wrap: wrap; gap: 6px; }
+
+  .rank-row { gap: 6px; font-size: 12px; padding: 6px 0; flex-wrap: wrap; }
+  .rank-idx { width: 28px; font-size: 13px; }
+  .rank-title, .rank-sect, .rank-cnt { font-size: 11px; }
+
+  .btn { font-size: 12px; padding: 5px 10px; }
+  .btn.sm { font-size: 11px; padding: 3px 8px; }
+
+  .modal { min-width: 0; width: calc(100vw - 16px); padding: 14px 12px; }
+  .modal.wide { min-width: 0; }
+  .slot-row { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .bet-compare { grid-template-columns: 1fr; gap: 6px; }
+  .bet-vs { font-size: 13px; }
+  .bs-name { font-size: 14px; }
+  .bs-odds { font-size: 15px; }
+
+  .battle h4 { font-size: 13px; }
+  .battle h4 .battle-meta { margin-left: 0; flex: 1 1 100%; }
+  .log-list { font-size: 12px; max-height: 260px; padding: 6px; }
+}
 </style>

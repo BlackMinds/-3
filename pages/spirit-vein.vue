@@ -670,4 +670,54 @@ onUnmounted(() => { if (tickTimer) clearInterval(tickTimer) })
 .log.dodge { color: #66ccff; font-style: italic; }
 .log.buff { color: #c77ddb; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; padding-top: 12px; border-top: 1px solid #333; }
+
+@media (max-width: 768px) {
+  .topbar { padding: 8px 10px; gap: 6px; }
+  .topbar h2 { font-size: 14px; }
+  .topbar .btn, .topbar .mail-btn { font-size: 12px; padding: 4px 8px; }
+
+  .cd-bar { padding: 8px 10px; font-size: 12px; gap: 6px; }
+  .cd-item { padding: 4px 8px; gap: 6px; }
+  .cd-item .expire { font-size: 11px; }
+
+  .nodes {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+  .node-card { padding: 12px; }
+  .node-header h3 { font-size: 14px; }
+  .node-tier { font-size: 11px; }
+  .node-body { font-size: 12px; }
+  .owner { font-size: 13px; }
+
+  .section { margin: 10px; padding: 10px; }
+  .section-header h3 { font-size: 14px; }
+
+  .jackpot { padding: 12px; }
+  .jp-amount { font-size: 22px; }
+  .jp-label, .jp-suffix { font-size: 13px; }
+  .jp-sub { font-size: 11px; }
+
+  .rank-row { gap: 8px; font-size: 12px; }
+  .rank-idx { width: 28px; font-size: 13px; }
+
+  .btn { font-size: 12px; padding: 5px 10px; }
+  .btn.sm { font-size: 11px; padding: 3px 8px; }
+
+  .modal { min-width: 0; width: calc(100vw - 16px); padding: 14px 12px; }
+  .modal.wide { min-width: 0; }
+  .detail-summary { font-size: 12px; gap: 8px; padding: 8px 10px; }
+  .guards-detail {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 6px;
+  }
+  .raid-layout { grid-template-columns: 1fr; gap: 6px; }
+  .raid-vs { display: none; }
+  .raid-side { padding: 10px; }
+  .picker-list { max-height: 200px; }
+  .picker-item { font-size: 12px; }
+
+  .log-list { font-size: 12px; max-height: 300px; padding: 6px; }
+}
 </style>

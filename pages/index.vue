@@ -3990,11 +3990,16 @@ const hoverCurrentLevel = computed(() => {
 function onSkillBagHover(e: MouseEvent, skillId: string) {
   hoverSkillId.value = skillId;
   const rect = (e.target as HTMLElement).getBoundingClientRect();
-  skillTipX.value = rect.right + 10;
-  skillTipY.value = rect.top;
-  // 防止超出右边界
-  if (skillTipX.value + 220 > window.innerWidth) {
-    skillTipX.value = rect.left - 230;
+  if (window.innerWidth <= 768) {
+    skillTipX.value = 12;
+    skillTipY.value = rect.top;
+  } else {
+    skillTipX.value = rect.right + 10;
+    skillTipY.value = rect.top;
+    // 防止超出右边界
+    if (skillTipX.value + 220 > window.innerWidth) {
+      skillTipX.value = rect.left - 230;
+    }
   }
 }
 
@@ -5280,7 +5285,7 @@ const buffTipY = ref(0);
 function onBuffHover(e: MouseEvent, buff: any) {
   hoverBuff.value = buff;
   const rect = (e.target as HTMLElement).getBoundingClientRect();
-  buffTipX.value = rect.left;
+  buffTipX.value = window.innerWidth <= 768 ? 12 : rect.left;
   buffTipY.value = rect.top - 10;
 }
 
@@ -5349,7 +5354,12 @@ function onBagHover(e: MouseEvent, eq: any) {
   if (clickedEquip.value) return;
   hoverEquip.value = eq;
   const rect = (e.target as HTMLElement).getBoundingClientRect();
-  tooltipX.value = rect.left;
+  // 移动端：贴左显示（浮窗自身 max-width: calc(100vw - 24px)）
+  if (window.innerWidth <= 768) {
+    tooltipX.value = 12;
+  } else {
+    tooltipX.value = rect.left;
+  }
   tooltipY.value = rect.top - 10;
 }
 
@@ -5357,10 +5367,15 @@ function onBagClick(e: MouseEvent, eq: any) {
   hoverEquip.value = null;
   clickedEquip.value = eq;
   const rect = (e.target as HTMLElement).getBoundingClientRect();
-  clickedEquipX.value = rect.right;
-  clickedEquipY.value = rect.top;
-  if (clickedEquipX.value + 250 > window.innerWidth) {
-    clickedEquipX.value = rect.left - 250;
+  if (window.innerWidth <= 768) {
+    clickedEquipX.value = 12;
+    clickedEquipY.value = rect.top;
+  } else {
+    clickedEquipX.value = rect.right;
+    clickedEquipY.value = rect.top;
+    if (clickedEquipX.value + 250 > window.innerWidth) {
+      clickedEquipX.value = rect.left - 250;
+    }
   }
 }
 
@@ -10840,4 +10855,448 @@ onUnmounted(() => {
 .sect-manage-section { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(100,100,80,0.3); }
 
 .sect-footer { margin-top: 16px; text-align: center; }
+
+/* ============================================================ */
+/* ==================== 移动端适配 (<=768px) ==================== */
+/* ============================================================ */
+@media (max-width: 768px) {
+  /* ---------- 整页视口适配（规避 iOS 地址栏遮挡 100vh） ---------- */
+  .game-page {
+    height: 100dvh;
+  }
+
+  /* ---------- 顶栏 ---------- */
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .bar-left {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .logo-text {
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+  .bar-divider { display: none; }
+  .realm-badge {
+    font-size: 12px;
+    padding: 1px 6px;
+    letter-spacing: 1px;
+  }
+  .bar-right {
+    gap: 6px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .bar-right::-webkit-scrollbar { display: none; }
+  .currency-group {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .currency { font-size: 13px; }
+  .cur-icon { width: 12px; height: 12px; }
+  .drop-table-btn, .logout-btn {
+    font-size: 12px;
+    padding: 3px 8px;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ---------- 角色信息条 ---------- */
+  .info-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .info-left {
+    justify-content: flex-start;
+  }
+  .root-mini {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+  }
+  .char-name { font-size: 15px; letter-spacing: 1px; }
+  .combat-power { font-size: 12px; }
+  .dual-bars { gap: 3px; }
+  .bar-row { gap: 6px; }
+  .bar-label {
+    min-width: 52px;
+    font-size: 11px;
+  }
+  .exp-bar-wrap { height: 12px; }
+  .exp-text { font-size: 11px; letter-spacing: 0; }
+  .realm-challenge-btn {
+    font-size: 11px;
+    padding: 1px 8px;
+  }
+
+  /* ---------- 主内容区 ---------- */
+  .tab-panel { padding: 8px; }
+
+  /* ---------- 多列 Grid 统一降列 ---------- */
+  .char-two-col,
+  .alchemy-workbench,
+  .sect-quick-entry,
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  /* ---------- 底部导航 ---------- */
+  .bottom-nav {
+    padding: 4px 0 max(6px, env(safe-area-inset-bottom));
+  }
+  .nav-item {
+    padding: 3px 4px;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+  }
+  .nav-icon { font-size: 15px; }
+  .nav-label {
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  /* ---------- Modal 弹窗 ---------- */
+  .modal-content {
+    max-width: calc(100vw - 16px) !important;
+    width: calc(100vw - 16px);
+    margin: 8px auto;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    padding: 14px 12px !important;
+  }
+
+  /* ---------- 战斗标签页 ---------- */
+  .map-select {
+    font-size: 14px;
+    padding: 6px 10px;
+    letter-spacing: 0.5px;
+  }
+  .map-info {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .map-desc { font-size: 12px; }
+  .map-elem { font-size: 11px; padding: 0 4px; }
+
+  .battle-controls {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .ctrl-btn {
+    font-size: 13px;
+    padding: 6px 12px;
+    letter-spacing: 1px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .battle-stats {
+    font-size: 12px;
+    gap: 8px;
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .battle-hud {
+    padding: 6px 8px;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .hud-name { font-size: 14px; letter-spacing: 1px; margin-bottom: 2px; }
+  .hud-hp-text { font-size: 11px; }
+  .hud-vs { font-size: 12px; padding: 0 2px; }
+
+  .wave-monsters-grid { gap: 4px; }
+  .wave-cell-name { font-size: 10px; }
+
+  .monster-tooltip {
+    width: auto;
+    max-width: calc(100vw - 24px);
+    right: 0;
+    padding: 10px 12px;
+  }
+  .tip-stats span { font-size: 12px; }
+  .tip-skill { font-size: 12px; }
+  .tip-resist-list { font-size: 11px; }
+  .tip-advantage { font-size: 12px; }
+
+  .death-text { font-size: 15px; }
+  .battle-log {
+    min-height: 200px;
+    max-height: calc(100vh - 400px);
+    padding: 8px 10px;
+  }
+
+  /* ---------- 角色面板 ---------- */
+  .panel-title { font-size: 14px; letter-spacing: 2px; margin-bottom: 10px; }
+  .sub-title { font-size: 14px; margin-top: 12px; }
+  .char-info-card { padding: 12px; }
+  .char-header { gap: 10px; padding-bottom: 10px; margin-bottom: 12px; }
+  .avatar-img { width: 52px; height: 52px; }
+  .root-display { width: 44px; height: 44px; }
+  .root-ch { font-size: 18px; }
+  .ch-name { font-size: 15px; letter-spacing: 2px; }
+  .ch-realm { font-size: 14px; }
+  .ch-power { font-size: 12px; }
+  .s-label, .s-value { font-size: 13px; letter-spacing: 1px; }
+  .stat-row { padding: 5px 8px; }
+
+  /* 修炼 */
+  .cultivate-card { padding: 14px 12px; }
+  .cult-orb { width: 60px; height: 60px; margin-bottom: 10px; }
+  .cult-char { font-size: 20px; }
+  .cult-desc { font-size: 14px; }
+  .cult-realm { font-size: 13px; margin-bottom: 12px; }
+  .cult-exp-bar { height: 14px; margin-bottom: 14px; }
+  .cult-exp-text { font-size: 11px; }
+  .cult-msg { font-size: 13px; }
+  .cult-options { gap: 8px; }
+  .cult-btn { padding: 9px 6px; }
+  .cult-hours { font-size: 13px; letter-spacing: 2px; }
+  .cult-cost { font-size: 12px; }
+
+  /* 境界挑战 */
+  .realm-current { font-size: 14px; }
+  .realm-exp-info { font-size: 12px; }
+  .realm-bonus-item { font-size: 11px; }
+  .realm-bonus-label { min-width: 44px; }
+  .realm-do-btn { padding: 10px; font-size: 15px; letter-spacing: 3px; }
+  .realm-result { font-size: 13px; }
+
+  /* 装备 */
+  .equip-slot { padding: 8px; min-height: 52px; }
+  .equip-slot-name { font-size: 13px; }
+  .equip-slot-label { font-size: 11px; }
+  .equip-slot-stat { font-size: 11px; }
+  .enhance-equip-name { font-size: 14px; }
+  .enhance-equip-stat { font-size: 12px; }
+  .enhance-preview-row { font-size: 12px; }
+
+  /* 装备对比/动作浮窗：手机屏幕太窄，改为单列 + 全宽 */
+  .equip-compare-tooltip,
+  .fixed-tooltip,
+  .skill-fixed-tooltip {
+    min-width: 0 !important;
+    max-width: calc(100vw - 24px) !important;
+    width: calc(100vw - 24px);
+  }
+  .compare-columns { flex-direction: column; gap: 6px; }
+  .compare-col + .compare-col {
+    border-left: none;
+    border-top: 1px solid rgba(184, 154, 90, 0.2);
+    padding-top: 6px;
+  }
+  .equip-action-panel {
+    min-width: 0;
+    max-width: calc(100vw - 24px);
+    width: calc(100vw - 24px);
+  }
+
+  /* 背包 */
+  .bag-grid {
+    grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+    gap: 4px;
+  }
+  .bag-cell { padding: 6px 3px; }
+  .bag-cell-name { font-size: 11px; }
+  .bag-cell-rarity, .bag-cell-level { font-size: 9px; }
+  .filter-btn { font-size: 11px; padding: 3px 6px; }
+  .bag-actions { flex-wrap: wrap; gap: 6px; }
+
+  .equip-placeholder { padding: 16px; }
+  .placeholder-text { font-size: 14px; }
+  .placeholder-hint { font-size: 12px; }
+
+  /* ---------- 洞府 ---------- */
+  .cave-panel { padding: 10px; }
+  .cave-grid { grid-template-columns: 1fr; gap: 8px; }
+  .cave-building { padding: 10px; }
+  .cave-icon { width: 38px; height: 38px; font-size: 18px; }
+  .cave-name { font-size: 14px; }
+  .cave-desc { font-size: 11px; }
+  .cave-collect-all-btn { font-size: 12px; padding: 3px 10px; }
+
+  /* ---------- 灵田 ---------- */
+  .herb-field-section { padding: 12px; margin-top: 12px; }
+  .herb-field-header { gap: 8px; margin-bottom: 10px; }
+  .herb-icon-big { width: 40px; height: 40px; font-size: 20px; }
+  .herb-field-name { font-size: 15px; }
+  .herb-field-level { font-size: 11px; }
+  .herb-field-desc { font-size: 11px; }
+  .herb-field-actions { flex-wrap: wrap; gap: 6px; }
+  .herb-action-btn { font-size: 12px; padding: 4px 10px; }
+  .herb-plots-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .plot-card { padding: 10px; min-height: 110px; }
+  .plot-herb-name { font-size: 13px; }
+  .plant-herb-list { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .plant-quality-list { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .plant-herb-card, .plant-quality-card { padding: 8px; }
+  .plant-herb-name, .plant-quality-name { font-size: 13px; }
+
+  /* ---------- 帮助弹窗表格（防溢出） ---------- */
+  .help-table { font-size: 11px; }
+  .help-table th, .help-table td { padding: 4px 5px; }
+
+  /* ---------- 炼丹 ---------- */
+  .cultivate-panel { padding: 10px; }
+  .alchemy-stove { min-height: 260px; }
+  .stove-img { width: 170px; height: 170px; }
+  .alchemy-panel { padding: 12px; }
+  .alchemy-tabs { gap: 5px; padding-bottom: 8px; margin-bottom: 10px; }
+  .alchemy-tab-btn { font-size: 12px; padding: 6px 8px; letter-spacing: 2px; }
+  .alchemy-herb-row { grid-template-columns: 1fr; gap: 6px; }
+  .alchemy-herb-name { font-size: 12px; }
+  .alchemy-select { font-size: 12px; padding: 6px 8px; }
+  .alchemy-select-lg { font-size: 13px; padding: 8px 10px; }
+  .craft-btn-text { font-size: 15px; letter-spacing: 4px; }
+  .craft-btn-sub { font-size: 10px; letter-spacing: 2px; }
+  .alchemy-craft-btn { padding: 10px; }
+  .pill-room-section { padding: 10px; }
+  .pill-room-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  /* 炼丹 v1 列表 */
+  .pill-grid { grid-template-columns: 1fr; gap: 8px; }
+  .pill-card { padding: 10px; }
+  .pill-name { font-size: 14px; }
+  .pill-count { font-size: 11px; }
+  .pill-desc, .pill-rate { font-size: 11px; }
+  .pill-craft-btn, .pill-use-btn { font-size: 12px; padding: 3px 10px; letter-spacing: 2px; }
+
+  /* 火候炼丹弹窗 */
+  .fire-modal { padding: 16px 14px; }
+  .fire-title { font-size: 15px; letter-spacing: 2px; }
+  .fire-rune { width: 36px; height: 36px; font-size: 18px; }
+  .fire-furnace { height: 110px; margin-bottom: 14px; }
+  .furnace-body { width: 90px; height: 90px; }
+  .furnace-rune { font-size: 26px; }
+  .fire-meter { height: 30px; }
+  .fire-legend { font-size: 10px; gap: 8px; }
+  .fire-actions { flex-direction: column; align-items: stretch; gap: 8px; }
+  .fire-confirm-btn {
+    font-size: 14px;
+    padding: 9px 16px;
+    letter-spacing: 4px;
+  }
+  .fire-result-title { font-size: 16px; letter-spacing: 3px; }
+
+  /* ---------- 功法 ---------- */
+  .skills-panel { padding: 10px; }
+  .skills-layout { gap: 12px; }
+  .skill-group-title { font-size: 12px; }
+  .skill-cell { padding: 6px 8px; gap: 8px; min-height: 48px; }
+  .cell-icon { width: 32px; height: 32px; font-size: 14px; }
+  .cell-name { font-size: 13px; }
+  .cell-desc { font-size: 10px; }
+  .skill-bag-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 6px;
+    max-height: 400px;
+  }
+  .skill-bag-cell { padding: 6px 8px; }
+  .skill-slots-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .skill-slot, .skill-slot-card { padding: 10px; min-height: 60px; }
+
+  /* ---------- 掉落表 / 排行榜 / 成就 Modal 内部 ---------- */
+  .modal-header { padding: 12px; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-close { font-size: 24px; }
+  .modal-body { padding: 12px; max-height: 65vh; }
+
+  .ranking-tabs { padding: 0 8px; overflow-x: auto; flex-wrap: nowrap; }
+  .ranking-tab { font-size: 12px; padding: 8px 6px; flex: 0 0 auto; white-space: nowrap; min-width: 64px; }
+  .ranking-body { padding: 10px 8px 12px; }
+  .ranking-row { gap: 5px; padding: 6px 6px; font-size: 12px; }
+  .rank-num { width: 24px; }
+  .rank-medal { font-size: 14px; }
+  .rank-root { width: 14px; font-size: 11px; }
+  .rank-realm { width: 54px; font-size: 11px; }
+  .rank-detail { width: 50px; font-size: 11px; }
+  .rank-sect, .rank-sect-leader { width: 48px; font-size: 10px; }
+  .my-rank-num { font-size: 13px; }
+  .my-rank-label { font-size: 12px; }
+
+  /* ---------- 宗门 ---------- */
+  .sect-panel { padding: 6px; }
+  .sect-title-row { gap: 6px; flex-wrap: wrap; }
+  .sect-main-name { font-size: 16px; }
+  .sect-level-badge-lg { font-size: 12px; padding: 1px 8px; }
+  .sect-stats { font-size: 11px; gap: 8px; }
+  .sect-my-info { font-size: 11px; gap: 8px; flex-wrap: wrap; }
+  .sect-entry-btn { padding: 8px 10px; gap: 8px; }
+  .entry-icon { font-size: 22px; }
+  .entry-text { font-size: 13px; }
+  .entry-text b { font-size: 14px; }
+  .entry-text small { font-size: 11px; }
+  .sect-items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 6px;
+  }
+  .sect-item-card { padding: 6px 8px; }
+  .sect-input { font-size: 12px; padding: 5px 8px; }
+  .sect-btn { font-size: 11px; padding: 5px 12px; }
+
+  /* 风云阁/邮件等内部 flex 项目允许换行 */
+  .cave-header, .pill-header-row, .pill-header, .skills-bag-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* ---------- 设置弹窗 ---------- */
+  .settings-section { margin-bottom: 14px; }
+  .settings-title { font-size: 13px; }
+  .settings-desc, .settings-hint { font-size: 11px; }
+  .theme-presets { gap: 6px; }
+  .theme-btn { width: 48px; height: 32px; }
+  .auto-sell-group { gap: 10px; flex-wrap: wrap; }
+  .auto-sell-col { flex: 1 1 140px; }
+
+  /* ---------- 成就弹窗 ---------- */
+  .ach-title-bar { padding: 6px 10px; gap: 6px; }
+  .ach-title-select { font-size: 11px; }
+  .ach-row {
+    gap: 8px;
+    padding: 8px 10px;
+    flex-wrap: wrap;
+  }
+  .ach-info { flex: 1 1 100%; }
+  .ach-reward-col {
+    flex: 1 1 100%;
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .ach-reward-items { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .ach-progress-bar { max-width: none; }
+  .ach-claim-btn { font-size: 11px; padding: 3px 10px; }
+
+  /* ---------- 掉落表弹窗 ---------- */
+  .drop-section { margin-bottom: 14px; padding-bottom: 12px; }
+  .map-name { font-size: 14px; }
+  .drop-detail p { font-size: 12px; }
+  .drop-rate-info p { font-size: 12px; }
+
+  /* ---------- 统计 ---------- */
+  .stats-label, .stats-val { font-size: 13px; }
+  .stats-drop-name, .stats-drop-count { font-size: 12px; }
+  .stats-btn { font-size: 12px; }
+}
 </style>

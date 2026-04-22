@@ -365,4 +365,23 @@ watch(() => props.modelValue, (v) => { if (v) load() })
 .att-icon { font-size: 16px; width: 22px; text-align: center; }
 .att-label { flex: 1; color: #eee; }
 .att-claimed { color: #3a7; font-size: 12px; }
+
+@media (max-width: 768px) {
+  .mail-drawer { width: 100%; }
+  .mail-header { padding: 10px 12px 8px; }
+  .mail-header h3 { font-size: 15px; }
+  .close-btn { font-size: 22px; }
+  .mail-tabs { padding: 0 10px 8px; gap: 3px; flex-wrap: nowrap; }
+  .mail-tabs .tab { font-size: 12px; padding: 4px 8px; }
+  .mail-toolbar { padding: 8px 12px; font-size: 12px; gap: 6px; flex-wrap: wrap; }
+  .mail-toolbar .btn { font-size: 12px; padding: 4px 8px; }
+  .mail-row { padding: 10px 12px; gap: 8px; }
+  .mail-icon-wrap { width: 30px; height: 30px; }
+  .mail-icon { font-size: 15px; }
+  .mail-title { font-size: 14px; }
+  .mail-preview { font-size: 12px; }
+  .mail-time { font-size: 11px; }
+  .mail-detail { padding: 10px 12px 12px 48px; font-size: 13px; }
+  .att-row { font-size: 12px; }
+}
 </style>

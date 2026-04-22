@@ -191,4 +191,14 @@ async function handleClaim() {
   0%, 100% { box-shadow: 0 0 48px rgba(240,176,96,0.55), 0 16px 48px rgba(0,0,0,0.6); }
   50% { box-shadow: 0 0 72px rgba(240,176,96,0.8), 0 16px 48px rgba(0,0,0,0.6); }
 }
+
+@media (max-width: 768px) {
+  .event-header { padding: 14px 14px 10px; }
+  .event-title { font-size: 18px; letter-spacing: 1px; }
+  .event-badge { font-size: 11px; padding: 1px 10px; margin-bottom: 6px; }
+  .event-body { padding: 14px; }
+  .event-narration { font-size: 13px; padding: 10px 12px; line-height: 1.7; }
+  .reward-item { font-size: 12px; padding: 6px 10px; }
+  .event-claim-btn { font-size: 14px; letter-spacing: 3px; margin: 6px 14px 14px; padding: 10px; }
+}
 </style>

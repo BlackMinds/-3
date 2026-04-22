@@ -257,5 +257,29 @@ function enterGame() { navigateTo('/') }
 .check-pop-leave-active { transition: all 0.2s ease; }
 .check-pop-enter-from, .check-pop-leave-to { opacity: 0; transform: scale(0); }
 @media (max-width: 860px) { .root-grid { max-width: 360px; } .root-card { width: calc(50% - 8px); } }
-@media (max-width: 480px) { .root-card { width: 100%; } .main-title { font-size: 22px; } }
+@media (max-width: 768px) {
+  .create-page { padding: 24px 12px 40px; min-height: 100dvh; }
+  .step-indicator { margin-bottom: 24px; }
+  .step-line { width: 40px; }
+  .main-title { font-size: 22px; letter-spacing: 4px; }
+  .main-sub { font-size: 12px; letter-spacing: 2px; margin-bottom: 24px; }
+  .root-card { padding: 18px 10px 14px; }
+  .root-orb { width: 58px; height: 58px; }
+  .orb-char { font-size: 18px; }
+  .root-name { font-size: 14px; letter-spacing: 2px; }
+  .root-desc { font-size: 11px; letter-spacing: 0.5px; }
+  .tag { font-size: 10px; }
+  .detail-inner { padding: 14px 16px; }
+  .detail-lore { font-size: 11px; line-height: 1.7; }
+  .name-input-area { width: min(320px, calc(100vw - 32px)); }
+  .name-input { font-size: 16px; letter-spacing: 4px; }
+  .step2-btns { flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .back-btn, .next-btn { padding: 10px 24px; font-size: 13px; letter-spacing: 3px; }
+  .next-btn .btn-text { font-size: 13px; letter-spacing: 4px; }
+  .chosen-root-display { margin-bottom: 24px; }
+  .success-title { font-size: 20px; letter-spacing: 4px; }
+  .success-name { font-size: 17px; letter-spacing: 6px; }
+  .success-info { font-size: 12px; margin-bottom: 24px; }
+}
+@media (max-width: 480px) { .root-card { width: 100%; } .main-title { font-size: 20px; } }
 </style>

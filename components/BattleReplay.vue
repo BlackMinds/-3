@@ -540,4 +540,34 @@ function eventIcon(type: string, text: string): string {
 }
 .end-banner .win-a { color: #a77bd6; }
 .end-banner .win-b { color: #d69e3c; }
+
+@media (max-width: 768px) {
+  .replay-modal { width: 100vw; height: 100vh; border-radius: 0; border: none; }
+  .replay-header { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+  .replay-header h3 { font-size: 14px; gap: 6px; }
+  .winner-chip { font-size: 12px; padding: 1px 8px; }
+  .header-controls { gap: 8px; }
+  .toggle-label { font-size: 12px; }
+  .close-btn { font-size: 22px; }
+  .teams { grid-template-columns: 1fr; gap: 6px; padding: 8px 10px; }
+  .team { padding: 8px; }
+  .team-a, .team-b { border-left: 3px solid #a77bd6; border-right: none; }
+  .team-b { border-left-color: #d69e3c; }
+  .team h4 { font-size: 13px; }
+  .vs-mark { display: none; }
+  .fighter-card { padding: 6px; gap: 6px; }
+  .fc-avatar { width: 26px; height: 26px; font-size: 13px; }
+  .fc-name { font-size: 12px; }
+  .fc-meta { font-size: 11px; }
+  .hp-text { font-size: 10px; }
+  .replay-controls { padding: 8px 10px; }
+  .progress-row { gap: 6px; font-size: 12px; flex-wrap: wrap; }
+  .log-label { min-width: 0; font-size: 11px; }
+  .btn-row { flex-wrap: wrap; gap: 4px; }
+  .btn { font-size: 12px; padding: 3px 8px; }
+  .log-timeline { padding: 8px 10px; }
+  .event { font-size: 12px; padding: 3px 6px; }
+  .turn-header { font-size: 12px; }
+  .end-banner { font-size: 13px; padding: 10px; }
+}
 </style>

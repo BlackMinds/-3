@@ -248,4 +248,20 @@ function relTime(iso: string): string {
   border-color: var(--gold-ink);
   color: var(--gold-ink);
 }
+
+@media (max-width: 768px) {
+  .wb-drawer { width: 100vw; }
+  .wb-header { padding: 12px 14px 10px; }
+  .wb-title { font-size: 17px; letter-spacing: 2px; }
+  .wb-subtitle { font-size: 11px; }
+  .wb-close { font-size: 22px; top: 8px; right: 10px; }
+  .wb-tabs { padding: 8px 10px; }
+  .wb-tabs button { font-size: 12px; padding: 4px 8px; min-width: 46px; }
+  .wb-list { padding: 10px 12px; }
+  .wb-item { padding: 10px 12px; margin-bottom: 8px; }
+  .wb-text { font-size: 13px; }
+  .wb-time { font-size: 10px; }
+  .wb-footer { padding: 8px 12px; }
+  .wb-refresh-btn { font-size: 12px; padding: 5px 16px; }
+}
 </style>

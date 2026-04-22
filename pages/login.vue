@@ -240,8 +240,18 @@ async function handleSubmit() {
 .fade-slide-leave-active { transition: all 0.3s ease; }
 .fade-slide-enter-from { opacity: 0; transform: translateY(-10px); }
 .fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
+@media (max-width: 768px) {
+  .login-page { min-height: 100dvh; }
+  .login-card { width: calc(100vw - 32px); max-width: 400px; padding: 32px 24px 28px; }
+  .title { font-size: 30px; letter-spacing: 8px; }
+  .subtitle { font-size: 12px; letter-spacing: 3px; margin-bottom: 22px; }
+  .tab { padding: 8px 20px; letter-spacing: 4px; }
+  .btn-text { letter-spacing: 6px; font-size: 14px; }
+}
 @media (max-width: 480px) {
-  .login-card { width: calc(100vw - 32px); padding: 32px 24px 28px; }
-  .title { font-size: 28px; letter-spacing: 8px; }
+  .login-card { padding: 28px 20px 24px; }
+  .title { font-size: 26px; letter-spacing: 6px; }
+  .ornament-svg { width: 140px; }
+  .footer-verse { font-size: 11px; letter-spacing: 4px; margin-top: 24px; }
 }
 </style>
