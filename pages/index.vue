@@ -2336,6 +2336,15 @@
             <p class="help-text">2-4 人协作副本,公开大厅制,点【秘境】进入组队页面。</p>
             <p class="help-text" style="margin-top: 4px;">6 大秘境 × 3 难度(普通/困难/噩梦),独占高品质装备/首通奖励/高倍经验。同宗门成员组队额外 +10% 全属性加成。</p>
           </div>
+          <div class="help-section">
+            <div class="help-title">交流反馈 · QQ 群</div>
+            <p class="help-text">
+              官方讨论群号:
+              <b class="qq-group-number" @click="copyQqGroup">1098123817</b>
+              <span class="qq-group-hint">(点击复制)</span>
+            </p>
+            <p class="help-text" style="margin-top: 4px;">欢迎加群讨论玩法、反馈 bug、提功能建议、交流 build 心得。</p>
+          </div>
         </div>
       </div>
     </div>
@@ -2622,6 +2631,28 @@ const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showHelpDoc = ref(false);
 const showSettings = ref(false);
+
+async function copyQqGroup() {
+  const qq = '1098123817';
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(qq);
+    } else {
+      // 降级方案: textarea + execCommand
+      const ta = document.createElement('textarea');
+      ta.value = qq;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    showToast('QQ 群号已复制', 'success');
+  } catch {
+    showToast('复制失败,请手动复制: ' + qq, 'error');
+  }
+}
 
 // ===== 排行榜 =====
 const showRanking = ref(false);
@@ -7861,6 +7892,32 @@ onUnmounted(() => {
   color: var(--ink-light);
   line-height: 1.6;
   margin: 0;
+}
+
+.qq-group-number {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 0 4px;
+  background: rgba(184, 154, 90, 0.12);
+  border: 1px solid rgba(184, 154, 90, 0.35);
+  border-radius: 4px;
+  color: var(--gold-ink);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+  user-select: all;
+  transition: all 0.2s;
+}
+
+.qq-group-number:hover {
+  background: rgba(184, 154, 90, 0.22);
+  color: #d4b973;
+}
+
+.qq-group-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-left: 4px;
 }
 
 .help-table {
