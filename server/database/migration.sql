@@ -509,6 +509,9 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP DEFAULT
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS event_last_won_at TIMESTAMP DEFAULT NULL;
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS event_pending_id INT DEFAULT NULL;
 
+-- v3.3 突破丹改为 "+20% 下次突破成功率"：嗑丹后置位，突破时消耗
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS breakthrough_boost_pending BOOLEAN DEFAULT FALSE;
+
 CREATE INDEX IF NOT EXISTS idx_char_active ON characters (last_active_at);
 
 -- 事件日志（个人流水）

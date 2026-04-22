@@ -45,8 +45,10 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '修为不足,继续修炼' }
     }
 
-    // 判定成功率
-    const rate = getBreakthroughRate(tier, stage)
+    // 判定成功率 (突破丹 pending → +20%, 上限 100%)
+    const baseRate = getBreakthroughRate(tier, stage)
+    const usedBoost = !!char.breakthrough_boost_pending
+    const rate = usedBoost ? Math.min(1, baseRate + 0.2) : baseRate
     const isCrossBigRealm = stage >= t.stages  // 跨大境界
     const rolled = Math.random()
     const success = rolled < rate
@@ -78,7 +80,7 @@ export default defineEventHandler(async (event) => {
         const realLost = Math.floor(curExp * penalty)
         const realNewExp = curExp - realLost
         await client.query(
-          'UPDATE characters SET cultivation_exp = $1 WHERE id = $2',
+          'UPDATE characters SET cultivation_exp = $1, breakthrough_boost_pending = FALSE WHERE id = $2',
           [realNewExp, char.id]
         )
         await client.query('COMMIT')
@@ -95,10 +97,12 @@ export default defineEventHandler(async (event) => {
         data: {
           success: false,
           rate,
+          baseRate,
+          usedBoost,
           rolled,
           penalty,
           lost,
-          message: `突破失败! 成功率 ${Math.round(rate * 100)}%, 走火入魔损失 ${Math.round(penalty * 100)}% 修为`,
+          message: `突破失败! 成功率 ${Math.round(rate * 100)}%${usedBoost ? ' (含突破丹 +20%)' : ''}, 走火入魔损失 ${Math.round(penalty * 100)}% 修为`,
           character: updated[0],
         },
       }
@@ -140,7 +144,7 @@ export default defineEventHandler(async (event) => {
       }
 
       await client.query(
-        'UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3 WHERE id = $4',
+        'UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, breakthrough_boost_pending = FALSE WHERE id = $4',
         [newExp, newTier, newStage, char.id]
       )
       await client.query('COMMIT')
@@ -158,6 +162,8 @@ export default defineEventHandler(async (event) => {
       data: {
         success: true,
         rate,
+        baseRate,
+        usedBoost,
         rolled,
         crossBigRealm: isCrossBigRealm,
         newTier,

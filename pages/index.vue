@@ -1999,15 +1999,18 @@
             <div class="realm-rate-info">
               <div class="realm-rate-row">
                 <span class="realm-rate-label">突破成功率</span>
-                <span class="realm-rate-val success">{{ Math.round(breakthroughRate * 100) }}%</span>
+                <span class="realm-rate-val success">
+                  {{ Math.round(breakthroughEffectiveRate * 100) }}%
+                  <span v-if="hasBreakthroughBoost" class="realm-boost-tag">含突破丹 +20%</span>
+                </span>
               </div>
               <div class="realm-rate-row" v-if="breakthroughFailPenalty > 0">
                 <span class="realm-rate-label">失败走火入魔</span>
                 <span class="realm-rate-val danger">损失 {{ Math.round(breakthroughFailPenalty * 100) }}% 修为</span>
               </div>
-              <div class="realm-rate-hint" v-if="isBreakthroughCrossBigRealm && breakthroughRate >= 1">跨入新境界 · 必定成功</div>
+              <div class="realm-rate-hint" v-if="isBreakthroughCrossBigRealm && breakthroughEffectiveRate >= 1">跨入新境界 · 必定成功</div>
               <div class="realm-rate-hint" v-else-if="isBreakthroughCrossBigRealm">跨入新境界 · 失败有惩罚</div>
-              <div class="realm-rate-hint" v-else-if="breakthroughRate >= 1">小境界提升 · 必定成功</div>
+              <div class="realm-rate-hint" v-else-if="breakthroughEffectiveRate >= 1">小境界提升 · 必定成功</div>
               <div class="realm-rate-hint" v-else>小境界提升 · 失败损失修为</div>
             </div>
             <button class="realm-do-btn" :disabled="breakthroughPending" @click="doRealmBreakthrough">
@@ -2341,7 +2344,7 @@
             <table class="help-table"><tbody>
               <tr><td>洗髓丹</td><td>重置灵根属性(保留境界/等级/装备)</td></tr>
               <tr><td>道果结晶</td><td>永久提升单项基础属性,叠加无上限</td></tr>
-              <tr><td>突破丹</td><td>直接获得大量修为,助力境界突破</td></tr>
+              <tr><td>突破丹</td><td>下次突破成功率 +20%（上限 100%,不论成败消耗一次）</td></tr>
               <tr><td>万能残页</td><td>合成任意功法残页(配合 ON CONFLICT 堆叠机制)</td></tr>
             </tbody></table>
           </div>
@@ -3067,10 +3070,19 @@ const breakthroughRate = computed(() => {
   return getBreakthroughRateAt(tier, stage, maxStage);
 });
 
+const hasBreakthroughBoost = computed(() => {
+  return !!(gameStore.character as any)?.breakthrough_boost_pending;
+});
+
+const breakthroughEffectiveRate = computed(() => {
+  const base = breakthroughRate.value;
+  return hasBreakthroughBoost.value ? Math.min(1, base + 0.2) : base;
+});
+
 const breakthroughFailPenalty = computed(() => {
   const tier = gameStore.character?.realm_tier || 1;
-  // 成功率 100% 时不显示惩罚
-  if (breakthroughRate.value >= 1) return 0;
+  // 最终成功率 100% 时不显示惩罚
+  if (breakthroughEffectiveRate.value >= 1) return 0;
   return BREAKTHROUGH_PENALTIES[tier] ?? 0;
 });
 
@@ -7564,6 +7576,17 @@ onUnmounted(() => {
 
 .realm-rate-val.danger {
   color: #c45c4a;
+}
+
+.realm-boost-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-weight: normal;
+  font-size: 11px;
+  color: #d8b4ff;
+  border: 1px solid #6a3d8a;
+  border-radius: 3px;
 }
 
 .realm-rate-hint {
