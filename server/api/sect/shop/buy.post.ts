@@ -3,7 +3,8 @@ import { getCharByUserId, getMembership, weekStartStr } from '~/server/utils/sec
 import { rand } from '~/server/utils/random'
 import { SHOP_ITEMS } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
+import { rollSubStats } from '~/server/utils/equipment'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -177,16 +178,18 @@ export default defineEventHandler(async (event) => {
         const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
         const slotIdx = rand(0, slots.length - 1)
         const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
-        const statMuls = [1.0, 1.05, 1.10, 1.18, 1.25, 1.35]
         const tier = rand(6, 9)
         const ps = primaryStats[slots[slotIdx]]
-        const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[rarityIdx])
+        const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * RARITY_STAT_MUL[rarityIdx])
         const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
         const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
         const equipName = generateEquipName(rarity, slots[slotIdx], weaponType, tier, ps, null, '宝箱')
+        const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[rarityIdx] || [0, 0]
+        const subCount = rand(minSubs, maxSubs)
+        const subStats = subCount > 0 ? rollSubStats(rarityIdx, tier, subCount) : []
         await client.query(
           'INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, base_slot, weapon_type, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)',
-          [char.id, equipName, rarity, ps, pv, '[]', tier, slots[slotIdx], weaponType, tierReqLevels[tier] || 1]
+          [char.id, equipName, rarity, ps, pv, JSON.stringify(subStats), tier, slots[slotIdx], weaponType, tierReqLevels[tier] || 1]
         )
         resultMsg = `获得【${equipName}】`
         break

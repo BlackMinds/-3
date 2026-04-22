@@ -14,9 +14,9 @@
       需要等级: Lv.{{ equip.req_level || 1 }}
     </div>
     <div class="tooltip-main">
-      {{ statName(equip.primary_stat) }} +{{ enhancedPrimary }}
+      {{ statName(equip.primary_stat) }} +{{ formatValue(equip.primary_stat, enhancedPrimary) }}
       <span v-if="equip.enhance_level > 0" style="color: var(--jade); font-size: 12px;">
-        (强化+{{ enhanceBonus }})
+        (强化+{{ formatValue(equip.primary_stat, enhanceBonus) }})
       </span>
     </div>
     <div v-for="(sub, i) in subs" :key="i" class="tooltip-sub">

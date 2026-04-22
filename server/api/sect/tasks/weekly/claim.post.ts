@@ -3,7 +3,8 @@ import { getCharByUserId, weekStartStr } from '~/server/utils/sect'
 import { rand } from '~/server/utils/random'
 import { WEEKLY_TASK_TYPES } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
+import { rollSubStats } from '~/server/utils/equipment'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -75,9 +76,12 @@ export default defineEventHandler(async (event) => {
         const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * 1.25)
         const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
         const equipName = generateEquipName('gold', slot, weaponType, tier, ps, null, '强化竞赛')
+        const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[4] || [0, 0]
+        const subCount = rand(minSubs, maxSubs)
+        const subStats = subCount > 0 ? rollSubStats(4, tier, subCount) : []
         await pool.query(
           'INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, base_slot, weapon_type, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)',
-          [char.id, equipName, 'gold', ps, pv, '[]', tier, slot, weaponType, tierReqLevels[tier] || 1]
+          [char.id, equipName, 'gold', ps, pv, JSON.stringify(subStats), tier, slot, weaponType, tierReqLevels[tier] || 1]
         )
       }
       extraMsg = `，金色装备x${def.allReward.value}`

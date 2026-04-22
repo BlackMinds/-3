@@ -1619,9 +1619,9 @@
               <span v-if="getEquippedItem(currentPickSlot).weapon_type" class="picker-sub">类型: {{ getWeaponTypeDef(getEquippedItem(currentPickSlot).weapon_type)?.name }}</span>
               <span class="picker-sub">阶位: T{{ getEquippedItem(currentPickSlot).tier || 1 }} · {{ getRarityName(getEquippedItem(currentPickSlot).rarity) }}</span>
               <span class="picker-desc">
-                {{ getStatName(getEquippedItem(currentPickSlot).primary_stat) }} +{{ getEnhancedPrimaryValue(getEquippedItem(currentPickSlot).primary_value, getEquippedItem(currentPickSlot).enhance_level || 0) }}
+                {{ getStatName(getEquippedItem(currentPickSlot).primary_stat) }} +{{ formatStatValue(getEquippedItem(currentPickSlot).primary_stat, getEnhancedPrimaryValue(getEquippedItem(currentPickSlot).primary_value, getEquippedItem(currentPickSlot).enhance_level || 0)) }}
                 <span v-if="getEquippedItem(currentPickSlot).enhance_level > 0" style="color: var(--jade); font-size: 12px;">
-                  (强化+{{ getEnhanceBonus(getEquippedItem(currentPickSlot).primary_value, getEquippedItem(currentPickSlot).enhance_level) }})
+                  (强化+{{ formatStatValue(getEquippedItem(currentPickSlot).primary_stat, getEnhanceBonus(getEquippedItem(currentPickSlot).primary_value, getEquippedItem(currentPickSlot).enhance_level)) }})
                 </span>
               </span>
               <span v-for="(sub, i) in parseSubs(getEquippedItem(currentPickSlot).sub_stats)" :key="i" class="picker-sub">
@@ -1653,9 +1653,9 @@
                 需要等级: Lv.{{ eq.req_level || 1 }}
               </span>
               <span class="picker-desc">
-                {{ getStatName(eq.primary_stat) }} +{{ getEnhancedPrimaryValue(eq.primary_value, eq.enhance_level || 0) }}
+                {{ getStatName(eq.primary_stat) }} +{{ formatStatValue(eq.primary_stat, getEnhancedPrimaryValue(eq.primary_value, eq.enhance_level || 0)) }}
                 <span v-if="eq.enhance_level > 0" style="color: var(--jade); font-size: 12px;">
-                  (强化+{{ getEnhanceBonus(eq.primary_value, eq.enhance_level) }})
+                  (强化+{{ formatStatValue(eq.primary_stat, getEnhanceBonus(eq.primary_value, eq.enhance_level)) }})
                 </span>
               </span>
               <span v-for="(sub, i) in parseSubs(eq.sub_stats)" :key="i" class="picker-sub">
@@ -1864,7 +1864,7 @@
             </div>
             <div class="enhance-equip-stat">
               {{ getStatName(enhanceTarget.primary_stat) }}
-              +{{ getEnhancedPrimaryValue(enhanceTarget.primary_value, enhanceTarget.enhance_level || 0) }}
+              +{{ formatStatValue(enhanceTarget.primary_stat, getEnhancedPrimaryValue(enhanceTarget.primary_value, enhanceTarget.enhance_level || 0)) }}
             </div>
           </div>
 
@@ -1874,11 +1874,11 @@
             <div class="enhance-preview-row">
               <span class="enhance-label">主属性</span>
               <span>
-                {{ getEnhancedPrimaryValue(enhanceTarget.primary_value, enhanceTarget.enhance_level || 0) }}
+                {{ formatStatValue(enhanceTarget.primary_stat, getEnhancedPrimaryValue(enhanceTarget.primary_value, enhanceTarget.enhance_level || 0)) }}
                 →
-                <span style="color: var(--jade);">{{ getEnhancedPrimaryValue(enhanceTarget.primary_value, (enhanceTarget.enhance_level || 0) + 1) }}</span>
+                <span style="color: var(--jade);">{{ formatStatValue(enhanceTarget.primary_stat, getEnhancedPrimaryValue(enhanceTarget.primary_value, (enhanceTarget.enhance_level || 0) + 1)) }}</span>
                 <span style="color: var(--jade); font-size: 12px;">
-                  (+{{ getEnhancedPrimaryValue(enhanceTarget.primary_value, (enhanceTarget.enhance_level || 0) + 1) - getEnhancedPrimaryValue(enhanceTarget.primary_value, enhanceTarget.enhance_level || 0) }})
+                  (+{{ formatStatValue(enhanceTarget.primary_stat, getEnhancedPrimaryValue(enhanceTarget.primary_value, (enhanceTarget.enhance_level || 0) + 1) - getEnhancedPrimaryValue(enhanceTarget.primary_value, enhanceTarget.enhance_level || 0)) }})
                 </span>
               </span>
             </div>

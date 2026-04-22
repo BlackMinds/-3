@@ -2,7 +2,9 @@ import { getPool } from '~/server/database/db'
 import { OFFLINE_MAP_DATA } from '~/server/utils/offlineMapData'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
-import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
+import { rollSubStats } from '~/server/utils/equipment'
+import { rand } from '~/server/utils/random'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -77,7 +79,6 @@ export default defineEventHandler(async (event) => {
       7: [0,0,10,35,45,10], 8: [0,0,5,25,55,15], 9: [0,0,0,20,60,20], 10: [0,0,0,10,60,30],
     }
     const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
-    const statMuls = [1.0, 1.05, 1.10, 1.18, 1.25, 1.35]
     const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
 
     // 批量插入装备(最多25个)
@@ -89,11 +90,14 @@ export default defineEventHandler(async (event) => {
       for (let j = 0; j < w.length; j++) { r -= w[j]; if (r <= 0) { idx = j; break } }
       const slotIdx = Math.floor(Math.random() * slots.length)
       const ps = primaryStats[slots[slotIdx]]
-      const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * mapData.tier * statMuls[idx])
+      const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * mapData.tier * RARITY_STAT_MUL[idx])
+      const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[idx] || [0, 0]
+      const subCount = rand(minSubs, maxSubs)
+      const subStats = subCount > 0 ? rollSubStats(idx, mapData.tier, subCount) : []
       await pool.query(
         `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, weapon_type, base_slot, req_level, enhance_level)
-         VALUES ($1, $2, $3, $4, $5, '[]', $6, $7, $8, $9, 0)`,
-        [char.id, `${rarityNames[idx]}·${slotNames[slotIdx]}`, rarities[idx], ps, pv, mapData.tier,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)`,
+        [char.id, `${rarityNames[idx]}·${slotNames[slotIdx]}`, rarities[idx], ps, pv, JSON.stringify(subStats), mapData.tier,
          slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null,
          slots[slotIdx], tierReqLevels[mapData.tier] || 1]
       )
