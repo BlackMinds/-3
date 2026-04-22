@@ -214,9 +214,10 @@ export const useGameStore = defineStore('game', () => {
       if (mySession !== battleSession.value) return
 
       if (res.code !== 200) {
-        addLog(0, res.message || '战斗请求失败', 'system')
+        // 429 冷却等错误不立刻重试，否则快速切「开始/离开」会引发每秒上百次的请求风暴
+        if (res.code !== 429) addLog(0, res.message || '战斗请求失败', 'system')
         inFight.value = false
-        scheduleFight()
+        battleTimer.value = window.setTimeout(() => scheduleFight(), 1500)
         return
       }
 
