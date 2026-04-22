@@ -228,6 +228,24 @@
                 · 灵石 <b>+{{ formatNum(r.spirit_stone) }}</b>
                 · 修为 <b>+{{ formatNum(r.exp_gained) }}</b>
                 · 积分 <b>+{{ r.realm_points }}</b>
+                <span v-if="r.level_up" class="level-up">· 升至 Lv.{{ r.level_up }}</span>
+              </div>
+              <div v-if="hasDrops(r)" class="c-drops">
+                <span v-for="(eq, ei) in r.equipments" :key="'e'+ei" class="drop-tag" :style="{ color: getRarityColor(eq.rarity), borderColor: getRarityColor(eq.rarity) }">
+                  {{ eq.name }}
+                </span>
+                <span v-for="(h, hi) in r.herbs" :key="'h'+hi" class="drop-tag" :style="{ color: herbQualityColor(h.quality), borderColor: herbQualityColor(h.quality) }">
+                  {{ herbName(h.herb_id) }} ×{{ h.count }}
+                </span>
+                <span v-for="(sp, si) in r.skill_pages" :key="'s'+si" class="drop-tag drop-skill">
+                  {{ skillName(sp) }}
+                </span>
+                <span v-if="r.awaken_items && r.awaken_items.awaken_stone > 0" class="drop-tag drop-awaken">
+                  附灵石 ×{{ r.awaken_items.awaken_stone }}
+                </span>
+                <span v-if="r.awaken_items && r.awaken_items.awaken_reroll > 0" class="drop-tag drop-awaken">
+                  灵枢玉 ×{{ r.awaken_items.awaken_reroll }}
+                </span>
               </div>
             </div>
           </div>
@@ -244,6 +262,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { useTeamStore } from '~/stores/team'
+import { HERBS, HERB_QUALITIES } from '~/game/herbData'
+import { ALL_SKILLS } from '~/game/skillData'
+import { getRarityColor } from '~/game/equipData'
 
 const props = defineProps<{
   open: boolean
@@ -290,6 +311,21 @@ function elemName(e?: string | null): string {
 }
 function realmTierName(t: number): string {
   return ['', '练气', '筑基', '金丹', '元婴', '化神', '渡劫', '大乘', '飞升'][t] || '—'
+}
+function herbName(id: string): string {
+  return HERBS.find(h => h.id === id)?.name || id
+}
+function herbQualityColor(q: string): string {
+  return HERB_QUALITIES.find(x => x.id === q)?.color || '#CCCCCC'
+}
+function skillName(id: string): string {
+  return ALL_SKILLS.find(s => s.id === id)?.name || id
+}
+function hasDrops(r: any): boolean {
+  return (r.equipments?.length || 0) > 0
+    || (r.herbs?.length || 0) > 0
+    || (r.skill_pages?.length || 0) > 0
+    || (r.awaken_items && (r.awaken_items.awaken_stone > 0 || r.awaken_items.awaken_reroll > 0))
 }
 const STAGE_NAMES = ['初期', '中期', '后期']
 function realmShort(tier: number, stage: number): string {
@@ -561,11 +597,26 @@ const allReady = computed(() => {
   return teamStore.currentRoom.members.every(m => m.is_leader || m.is_ready)
 })
 
+async function restoreMyRoom(): Promise<boolean> {
+  try {
+    const api = useApi()
+    const res: any = await api('/team/my-room')
+    if (res.code === 200 && res.data.room && res.data.room.status === 'waiting') {
+      teamStore.setRoom(res.data.room)
+      return true
+    }
+  } catch (e) {
+    console.error('restoreMyRoom error:', e)
+  }
+  return false
+}
+
 // ============ 打开/关闭监听 ============
-watch(() => props.open, (v) => {
+watch(() => props.open, async (v) => {
   if (v) {
     fetchRealms()
-    if (teamStore.currentRoom && teamStore.currentRoom.status === 'waiting') {
+    const restored = !teamStore.currentRoom ? await restoreMyRoom() : false
+    if ((teamStore.currentRoom && teamStore.currentRoom.status === 'waiting') || restored) {
       teamStore.currentPanel = 'room'
       startRoomPolling()
     } else {
@@ -817,6 +868,14 @@ onUnmounted(() => {
 .c-stats { font-size: 12px; color: #9ea3ad; margin-bottom: 4px; }
 .c-reward { font-size: 13px; color: #d8d9de; }
 .c-reward b { color: #a3c972; }
+.c-reward .level-up { color: #56ccf2; margin-left: 2px; }
+.c-drops { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+.drop-tag {
+  padding: 2px 8px; border: 1px solid #555; border-radius: 3px;
+  font-size: 11px; line-height: 1.5;
+}
+.drop-tag.drop-skill { color: #e8c58f; border-color: #8a6a2c; }
+.drop-tag.drop-awaken { color: #d8b4ff; border-color: #6a3d8a; }
 
 .result-actions { margin-top: 20px; }
 

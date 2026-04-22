@@ -168,3 +168,55 @@ export const DOT_FORMULA = {
   burnPerTurnAtkRatio: 0.15,   // 每回合扣 15% atk
   bleedPerTurnAtkRatio: 0.10,  // 每回合扣 10% atk
 } as const
+
+// =====================================================================
+// 九、境界突破成功率与失败惩罚 (v3.3)
+// =====================================================================
+// 设计意图:
+// - 跨大境界成本高、风险大,需要玩家主动囤丹药/权衡时机
+// - 金丹起(tier >= 3)小境界也开始有风险,中后期不再"顺畅升级"
+// - 练气/筑基全阶段 100% 保留新手爽感
+// - 突破丹 (+20%) 在 T3 起每次突破都有明显价值
+
+// 跨大境界成功率 (stage 满阶时 tier+1)
+export const BREAKTHROUGH_BIG_RATES: Record<number, number> = {
+  1: 1.00,  // 练气 → 筑基
+  2: 0.85,  // 筑基 → 金丹
+  3: 0.75,  // 金丹 → 元婴
+  4: 0.65,  // 元婴 → 化神
+  5: 0.55,  // 化神 → 渡劫
+  6: 0.45,  // 渡劫 → 大乘
+  7: 0.35,  // 大乘 → 飞升
+}
+
+// 跨小境界成功率 (stage++,不改 tier)
+// 前两个境界 100%,金丹起有失败概率,飞升最难
+export const BREAKTHROUGH_STAGE_RATES: Record<number, number> = {
+  1: 1.00,  // 练气
+  2: 1.00,  // 筑基
+  3: 0.95,  // 金丹
+  4: 0.90,  // 元婴
+  5: 0.85,  // 化神
+  6: 0.80,  // 渡劫
+  7: 0.75,  // 大乘
+  8: 0.70,  // 飞升 (小境界5阶)
+}
+
+// 突破失败扣除当前修为比例 (大小境界共用)
+export const BREAKTHROUGH_PENALTIES: Record<number, number> = {
+  1: 0.10,  // 练气 (100% 不触发)
+  2: 0.15,  // 筑基 (小 100%,仅大境界触发)
+  3: 0.20,  // 金丹
+  4: 0.30,  // 元婴
+  5: 0.40,  // 化神
+  6: 0.50,  // 渡劫
+  7: 0.65,  // 大乘
+  8: 0.80,  // 飞升
+}
+
+/** 给定 tier/stage/maxStage, 返回对应突破成功率 (0~1) */
+export function getBreakthroughRateAt(tier: number, stage: number, maxStage: number): number {
+  if (tier === 8 && stage >= maxStage) return 0 // 飞升末阶不可再突
+  if (stage < maxStage) return BREAKTHROUGH_STAGE_RATES[tier] ?? 1.0
+  return BREAKTHROUGH_BIG_RATES[tier] ?? 0
+}

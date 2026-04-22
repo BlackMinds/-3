@@ -25,9 +25,11 @@ export default defineEventHandler(async (event) => {
     if (Array.isArray(equipped)) {
       const counts: Record<string, number> = { active: 0, divine: 0, passive: 0 }
       const slotSeen: Record<string, boolean> = {}
+      const skillSeen: Record<string, boolean> = {}
       for (const item of equipped) {
         const type = String(item.skill_type)
         const slotIdx = Number(item.slot_index)
+        const skillId = String(item.skill_id)
         // 校验 slot_index 在上限内
         const max = limits[type as keyof typeof limits]
         if (max === undefined || slotIdx < 0 || slotIdx >= max) {
@@ -39,6 +41,11 @@ export default defineEventHandler(async (event) => {
           return { code: 400, message: '不能在同一槽位装备多个功法' }
         }
         slotSeen[key] = true
+        // 校验同一功法不能跨槽位重复装备
+        if (skillSeen[skillId]) {
+          return { code: 400, message: '同一功法不能重复装备' }
+        }
+        skillSeen[skillId] = true
         counts[type] = (counts[type] || 0) + 1
       }
     }

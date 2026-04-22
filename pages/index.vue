@@ -345,6 +345,10 @@
               <button :class="['filter-btn', { active: bagFilter === 'treasure' }]" @click="bagFilter = 'treasure'">法宝</button>
               <button :class="['filter-btn', { active: bagFilter === 'ring' }]" @click="bagFilter = 'ring'">灵戒</button>
               <button :class="['filter-btn', { active: bagFilter === 'pendant' }]" @click="bagFilter = 'pendant'">灵佩</button>
+              <select v-model="tierFilter" class="sell-select">
+                <option value="all">全部 T 级</option>
+                <option v-for="t in 10" :key="t" :value="t">T{{ t }}</option>
+              </select>
             </div>
             <div class="bag-actions">
               <select v-model="sellRarity" class="sell-select">
@@ -355,6 +359,7 @@
                 <option value="gold">仙器及以下</option>
               </select>
               <button class="batch-sell-btn" @click="batchSell">一键出售</button>
+              <button class="batch-sell-btn" @click="loadEquipList" title="刷新背包">刷新</button>
             </div>
           </div>
           <div class="equip-bag">
@@ -768,6 +773,7 @@
                   <span class="bag-cell-type">{{ getSkillType(item.skill_id) }}</span>
                   <span class="bag-cell-count">×{{ item.count }}</span>
                 </div>
+                <button class="skill-sell-btn" @click.stop="sellSkill(item)">出售</button>
               </div>
             </div>
           </div>
@@ -2000,7 +2006,8 @@
                 <span class="realm-rate-val danger">损失 {{ Math.round(breakthroughFailPenalty * 100) }}% 修为</span>
               </div>
               <div class="realm-rate-hint" v-if="breakthroughRate >= 1">小境界提升 · 必定成功</div>
-              <div class="realm-rate-hint" v-else>跨入新境界 · 失败有惩罚</div>
+              <div class="realm-rate-hint" v-else-if="isBreakthroughCrossBigRealm">跨入新境界 · 失败有惩罚</div>
+              <div class="realm-rate-hint" v-else>小境界提升 · 失败损失修为</div>
             </div>
             <button class="realm-do-btn" :disabled="breakthroughPending" @click="doRealmBreakthrough">
               {{ breakthroughPending ? '突破中…' : '开始突破' }}
@@ -2601,6 +2608,7 @@
 definePageMeta({ middleware: 'auth' })
 
 import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, getSkillSlotLimits, type RealmBonus } from '~/game/data';
+import { BREAKTHROUGH_PENALTIES, getBreakthroughRateAt } from '~/shared/balance';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '~/game/skillData';
 import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_NAMES, SHOP_CATEGORY_COLORS, formatFund } from '~/game/sectData';
 import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
@@ -2986,27 +2994,28 @@ const currentRealmBonus = computed(() => {
   return getRealmBonusAtLevel(tier, stage);
 });
 
-// v3.2 突破成功率/失败惩罚 (需与 server/utils/realm.ts 保持一致)
+// 突破成功率/失败惩罚 (v3.3, 数值从 shared/balance.ts 共享)
 const REALM_STAGES_COUNT: Record<number, number> = { 1: 9, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 5 };
-const BREAKTHROUGH_RATES: Record<number, number> = { 1: 1.0, 2: 0.95, 3: 0.90, 4: 0.85, 5: 0.75, 6: 0.65, 7: 0.55 };
-const BREAKTHROUGH_PENALTIES: Record<number, number> = { 1: 0.10, 2: 0.15, 3: 0.20, 4: 0.30, 5: 0.40, 6: 0.50, 7: 0.65, 8: 0.80 };
 
 const breakthroughRate = computed(() => {
   const tier = gameStore.character?.realm_tier || 1;
   const stage = gameStore.character?.realm_stage || 1;
   const maxStage = REALM_STAGES_COUNT[tier] || 3;
-  if (tier === 8 && stage >= maxStage) return 0; // 飞升顶
-  if (stage < maxStage) return 1.0; // 小境界必成
-  return BREAKTHROUGH_RATES[tier] ?? 0;
+  return getBreakthroughRateAt(tier, stage, maxStage);
 });
 
 const breakthroughFailPenalty = computed(() => {
   const tier = gameStore.character?.realm_tier || 1;
+  // 成功率 100% 时不显示惩罚
+  if (breakthroughRate.value >= 1) return 0;
+  return BREAKTHROUGH_PENALTIES[tier] ?? 0;
+});
+
+const isBreakthroughCrossBigRealm = computed(() => {
+  const tier = gameStore.character?.realm_tier || 1;
   const stage = gameStore.character?.realm_stage || 1;
   const maxStage = REALM_STAGES_COUNT[tier] || 3;
-  // 小境界不会失败,不显示惩罚
-  if (stage < maxStage) return 0;
-  return BREAKTHROUGH_PENALTIES[tier] ?? 0;
+  return stage >= maxStage;
 });
 
 const realmBonusStats = computed(() => {
@@ -4035,11 +4044,23 @@ function openSkillPicker(type: 'active' | 'divine' | 'passive', index: number) {
 const filteredSkillsForPicker = computed(() => {
   const ownedIds = skillInventory.value.map((i: any) => i.skill_id);
   const type = pickerSlotType.value;
+  const curIdx = pickerSlotIndex.value;
   let pool: Skill[] = [];
-  if (type === 'active') pool = ACTIVE_SKILLS;
-  else if (type === 'divine') pool = DIVINE_SKILLS;
-  else if (type === 'passive') pool = PASSIVE_SKILLS;
-  return pool.filter(s => ownedIds.includes(s.id));
+  const equippedElsewhere = new Set<string>();
+  if (type === 'active') {
+    pool = ACTIVE_SKILLS;
+  } else if (type === 'divine') {
+    pool = DIVINE_SKILLS;
+    equippedDivines.value.forEach((s, idx) => {
+      if (s && idx !== curIdx) equippedElsewhere.add(s.id);
+    });
+  } else if (type === 'passive') {
+    pool = PASSIVE_SKILLS;
+    equippedPassives.value.forEach((s, idx) => {
+      if (s && idx !== curIdx) equippedElsewhere.add(s.id);
+    });
+  }
+  return pool.filter(s => ownedIds.includes(s.id) && !equippedElsewhere.has(s.id));
 });
 
 function equipSkill(skill: Skill) {
@@ -4064,6 +4085,29 @@ function unequipSkill() {
   }
   showSkillPicker.value = false;
   syncEquippedSkills();
+}
+
+async function sellSkill(item: any) {
+  if (!item || !item.skill_id) return;
+  try {
+    const res: any = await $fetch('/api/skill/sell', {
+      method: 'POST',
+      body: { skill_id: item.skill_id, count: 1 },
+      headers: getAuthHeaders(),
+    });
+    if (res.code !== 200) {
+      showToast(res.message || '出售失败', 'error');
+      return;
+    }
+    if (gameStore.character && res.data?.newSpiritStone != null) {
+      gameStore.character.spirit_stone = res.data.newSpiritStone;
+    }
+    await loadSkillInventory();
+    showToast(res.message, 'success');
+  } catch (err) {
+    console.error('出售功法失败', err);
+    showToast('出售失败', 'error');
+  }
 }
 
 // 已装备功法的等级数据 (从后端加载)
@@ -5475,6 +5519,7 @@ function parseSubs(subs: any): { stat: string; value: number }[] {
 
 const bagFilter = ref('all');
 const sellRarity = ref('white');
+const tierFilter = ref<'all' | number>('all');
 
 const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red'];
 
@@ -5489,31 +5534,37 @@ const filteredBagList = computed(() => {
       });
     }
   }
+  if (tierFilter.value !== 'all') {
+    list = list.filter(e => (e.tier || 1) === tierFilter.value);
+  }
   return list;
 });
 
 async function batchSell() {
-  const maxIdx = RARITY_ORDER.indexOf(sellRarity.value);
-  const toSell = bagEquipList.value.filter(e => RARITY_ORDER.indexOf(e.rarity) <= maxIdx);
-  if (toSell.length === 0) return;
-
-  let totalPrice = 0;
-  let lastNewSpiritStone: any = null;
-  for (const eq of toSell) {
-    try {
-      const res: any = await $fetch('/api/equipment/sell', { method: 'POST', body: { equip_id: eq.id }, headers: getAuthHeaders() });
-      if (res.code === 200 && res.data) {
-        totalPrice += res.data.price;
-        lastNewSpiritStone = res.data.newSpiritStone;
-        equipList.value = equipList.value.filter(e => e.id !== eq.id);
-      }
-    } catch {}
-  }
-  if (gameStore.character && lastNewSpiritStone != null) {
-    gameStore.character.spirit_stone = lastNewSpiritStone;
-  }
-  if (totalPrice > 0) {
-    showToast(`共出售 ${toSell.length} 件，获得 ${totalPrice} 灵石`, 'success');
+  try {
+    const res: any = await $fetch('/api/equipment/sell-batch', {
+      method: 'POST',
+      body: { rarity: sellRarity.value },
+      headers: getAuthHeaders(),
+    });
+    if (res.code !== 200 || !res.data) {
+      showToast(res.message || '出售失败', 'error');
+      return;
+    }
+    const { price, count, soldIds, newSpiritStone } = res.data;
+    if (count === 0) {
+      showToast('没有可出售的装备', 'info');
+      return;
+    }
+    const soldSet = new Set<number>(soldIds || []);
+    equipList.value = equipList.value.filter(e => !soldSet.has(e.id));
+    if (gameStore.character && newSpiritStone != null) {
+      gameStore.character.spirit_stone = newSpiritStone;
+    }
+    showToast(`共出售 ${count} 件，获得 ${price} 灵石`, 'success');
+  } catch (err) {
+    console.error('批量出售失败', err);
+    showToast('批量出售失败', 'error');
   }
 }
 
@@ -9704,6 +9755,24 @@ onUnmounted(() => {
 
 .bag-cell-count {
   color: var(--gold-ink);
+}
+
+.skill-sell-btn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 3px 0;
+  background: transparent;
+  border: 1px solid var(--cinnabar);
+  color: var(--cinnabar);
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.skill-sell-btn:hover {
+  background: rgba(232, 138, 120, 0.1);
 }
 
 /* 旧版兼容样式(保留以防其他地方还在用) */
