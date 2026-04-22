@@ -3,6 +3,7 @@ import { getCharByUserId, weekStartStr } from '~/server/utils/sect'
 import { rand } from '~/server/utils/random'
 import { getSectBoss } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
+import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -70,11 +71,10 @@ export default defineEventHandler(async (event) => {
       const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
       const slotIdx = rand(0, slots.length - 1)
       const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
-      const primaryBases: Record<string, number> = { ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 1, SPIRIT: 8 }
       const statMuls = [1.0, 1.05, 1.10, 1.18, 1.25, 1.35]
       const tier = Math.min(10, Math.max(1, rewardBase + 2))
       const ps = primaryStats[slots[slotIdx]]
-      const pv = Math.floor((primaryBases[ps] || 30) * tier * statMuls[rarityIdx] * 1.2)
+      const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[rarityIdx] * 1.2)
 
       // 宗门专属: 自带2-4条随机副属性
       const subStatPool = [

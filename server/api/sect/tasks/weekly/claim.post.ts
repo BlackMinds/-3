@@ -3,6 +3,7 @@ import { getCharByUserId, weekStartStr } from '~/server/utils/sect'
 import { rand } from '~/server/utils/random'
 import { WEEKLY_TASK_TYPES } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
+import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -65,14 +66,13 @@ export default defineEventHandler(async (event) => {
     } else if (def.allReward.type === 'gold_equip') {
       const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
       const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
-      const primaryBases: Record<string, number> = { ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 1, SPIRIT: 8 }
       const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
       for (let i = 0; i < def.allReward.value; i++) {
         const slotIdx = rand(0, slots.length - 1)
         const slot = slots[slotIdx]
         const ps = primaryStats[slot]
         const tier = rand(5, 7)
-        const pv = Math.floor((primaryBases[ps] || 30) * tier * 1.25)
+        const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * 1.25)
         const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
         const equipName = generateEquipName('gold', slot, weaponType, tier, ps, null, '强化竞赛')
         await pool.query(

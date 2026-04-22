@@ -1,4 +1,5 @@
 // 装备静态数据
+import { EQUIP_PRIMARY_BASE } from '~/shared/balance';
 
 export type WeaponType = 'sword' | 'blade' | 'spear' | 'fan';
 
@@ -124,15 +125,8 @@ const SUB_STAT_POOL = [
   { stat: 'LUCK', name: '福缘', range: [2, 6] },
 ];
 
-// 主属性基础值（按槽位）
-const PRIMARY_BASE: Record<string, number> = {
-  ATK: 30,
-  DEF: 20,
-  HP: 200,
-  SPD: 15,
-  CRIT_RATE: 1,
-  SPIRIT: 8,
-};
+// 主属性基础值(从 shared/balance.ts 读取,避免数值散落)
+const PRIMARY_BASE = EQUIP_PRIMARY_BASE;
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;

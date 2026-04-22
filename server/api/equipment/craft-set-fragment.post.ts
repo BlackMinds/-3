@@ -2,6 +2,7 @@ import { getPool } from '~/server/database/db'
 import { getCharId, rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
+import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -27,10 +28,9 @@ export default defineEventHandler(async (event) => {
     const slotIdx = rand(0, slots.length - 1)
     const slot = slots[slotIdx]
     const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
-    const primaryBases: Record<string, number> = { ATK: 30, DEF: 20, HP: 200, SPD: 15, CRIT_RATE: 1, SPIRIT: 8 }
     const ps = primaryStats[slot]
     const tier = rand(6, 8)
-    const pv = Math.floor((primaryBases[ps] || 30) * tier * 1.25)
+    const pv = Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * 1.25)
 
     // 4条副属性（金品 rarityIdx=4）
     const subs = rollSubStats(4, tier, 4)
