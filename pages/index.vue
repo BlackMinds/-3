@@ -2178,7 +2178,7 @@
           <div class="help-section">
             <div class="help-title">离线挂机</div>
             <p class="help-text">在当前地图开启离线挂机,下线期间自动获得修为/灵石/等级经验/装备/功法/灵草。</p>
-            <p class="help-text" style="margin-top: 4px;">最长离线 12 小时,效率 85%。按每分钟 12 战 × 3 怪计算产出。</p>
+            <p class="help-text" style="margin-top: 4px;">最长离线 12 小时,效率 55%。按每分钟 12 战 × 3 怪计算产出,约等于在线 10 小时产出。</p>
           </div>
           <div class="help-section">
             <div class="help-title">宗门系统</div>

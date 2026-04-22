@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
     const monstersPerBattle = 3
     const totalBattles = Math.floor(offlineMin * battlesPerMin)
     const totalKills = totalBattles * monstersPerBattle
-    const efficiency = 0.85 // 与 offline-claim.post.ts 保持一致
+    const efficiency = 0.55 // 与 offline-claim.post.ts 保持一致
 
     return {
       code: 200,
