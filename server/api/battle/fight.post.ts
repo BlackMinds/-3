@@ -11,8 +11,12 @@ import { rollSubStats } from '~/server/utils/equipment'
 import { EQUIP_PRIMARY_BASE, WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
 
 // 战斗锁: 防止同一角色并发刷战斗
-const battleLock = new Map<number, number>()
+// - inProgressSince: 战斗进行中的开始时间戳，用于拦截"上场未结束又发起"的并发请求
+// - cooldownUntil: 战斗结束后的冷却截止时间戳，用于频率限制
+// 正常战斗应在 MAX_BATTLE_DURATION_MS 内返回；超过则视为僵尸锁，被新请求覆盖
+const battleLock = new Map<number, { inProgressSince?: number; cooldownUntil?: number }>()
 const BATTLE_COOLDOWN_MS = 1500
+const MAX_BATTLE_DURATION_MS = 10000
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -583,6 +587,7 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
 
 // ===== 主战斗 API =====
 export default defineEventHandler(async (event) => {
+  let lockedCharId: number | null = null
   try {
     const pool = getPool()
     const { map_id, auto_sell, auto_sell_tier } = await readBody(event)
@@ -601,13 +606,20 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '离线挂机中，请先结束离线' }
     }
 
-    // 战斗频率限制
-    const lastBattle = battleLock.get(char.id) || 0
+    // 战斗并发 & 频率限制
+    const entry = battleLock.get(char.id) || {}
     const now = Date.now()
-    if (now - lastBattle < BATTLE_COOLDOWN_MS) {
+    // 1) 上场战斗仍在进行（未超过 10s 超时视为僵尸锁）
+    if (entry.inProgressSince && now - entry.inProgressSince < MAX_BATTLE_DURATION_MS) {
+      return { code: 409, message: '上场战斗未结束，请稍候' }
+    }
+    // 2) 冷却窗口内
+    if (entry.cooldownUntil && now < entry.cooldownUntil) {
       return { code: 429, message: '战斗冷却中' }
     }
-    battleLock.set(char.id, now)
+    // 3) 进入战斗，标记 in-progress
+    battleLock.set(char.id, { inProgressSince: now })
+    lockedCharId = char.id
 
     // 读取装备、技能、buff、洞府
     const { rows: equipRows } = await pool.query('SELECT * FROM character_equipment WHERE character_id = $1', [char.id])
@@ -855,5 +867,10 @@ export default defineEventHandler(async (event) => {
   } catch (error: any) {
     console.error('战斗失败:', error)
     return { code: 500, message: '服务器错误' }
+  } finally {
+    // 不论成功或异常，都把 in-progress 锁释放为冷却状态，防止僵尸锁
+    if (lockedCharId != null) {
+      battleLock.set(lockedCharId, { cooldownUntil: Date.now() + BATTLE_COOLDOWN_MS })
+    }
   }
 })

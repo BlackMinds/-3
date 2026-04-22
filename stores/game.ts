@@ -157,7 +157,15 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function startBattle() {
-    if (isBattling.value || fetchInFlight.value || !character.value || !currentMap.value) return
+    if (!character.value || !currentMap.value) return
+    if (isBattling.value) {
+      addLog(0, '已在战斗中', 'system')
+      return
+    }
+    if (fetchInFlight.value) {
+      addLog(0, '上场战斗未结束，请稍候', 'system')
+      return
+    }
     isBattling.value = true
     isPaused.value = false
     sessionDrops.value = {}
@@ -233,8 +241,15 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (res.code !== 200) {
-        // 429 冷却等错误不立刻重试，否则快速切「开始/离开」会引发每秒上百次的请求风暴
-        if (res.code !== 429) addLog(0, res.message || '战斗请求失败', 'system')
+        // 429 冷却 / 409 上场未结束 需让用户感知；其他错误按原样打日志
+        // 重试延迟 1.5s 与 BATTLE_COOLDOWN_MS 对齐，避免快速切换拉爆请求
+        if (res.code === 409) {
+          addLog(0, res.message || '上场战斗未结束，请稍候', 'system')
+        } else if (res.code === 429) {
+          addLog(0, res.message || '战斗冷却中', 'system')
+        } else {
+          addLog(0, res.message || '战斗请求失败', 'system')
+        }
         inFight.value = false
         battleTimer.value = window.setTimeout(() => scheduleFight(), 1500)
         return
