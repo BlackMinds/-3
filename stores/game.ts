@@ -37,6 +37,8 @@ export const useGameStore = defineStore('game', () => {
   const logQueue = ref<BattleLogEntry[]>([])
   const logTimer = ref<number | null>(null)
   const pendingResult = ref<{ won: boolean; expGained: number; spiritStoneGained: number; drops: any[] } | null>(null)
+  // 每次 stopBattle/changeMap 递增，executeFight 用来丢弃过期响应，避免并发请求污染状态
+  const battleSession = ref(0)
 
   const saveTimer = ref<number | null>(null)
   const sessionDrops = ref<Record<string, number>>({})
@@ -151,7 +153,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function startBattle() {
-    if (isBattling.value || !character.value || !currentMap.value) return
+    if (isBattling.value || inFight.value || !character.value || !currentMap.value) return
     isBattling.value = true
     isPaused.value = false
     sessionDrops.value = {}
@@ -163,6 +165,7 @@ export const useGameStore = defineStore('game', () => {
   function stopBattle() {
     isBattling.value = false
     isPaused.value = false
+    battleSession.value++
     if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
     if (logTimer.value) { clearInterval(logTimer.value); logTimer.value = null }
     if (deathTimer.value) { clearInterval(deathTimer.value); deathTimer.value = null }
@@ -191,6 +194,7 @@ export const useGameStore = defineStore('game', () => {
   async function executeFight() {
     if (!character.value || !currentMap.value) return
     inFight.value = true
+    const mySession = battleSession.value
 
     try {
       let autoSell = 'none'
@@ -205,6 +209,9 @@ export const useGameStore = defineStore('game', () => {
         method: 'POST',
         body: { map_id: currentMapId.value, auto_sell: autoSell, auto_sell_tier: autoSellTier },
       })
+
+      // 期间 stopBattle/changeMap 过，这次响应已过期，整包丢弃（后端奖励入库不影响，下次 loadGameData 会同步角色总状态）
+      if (mySession !== battleSession.value) return
 
       if (res.code !== 200) {
         addLog(0, res.message || '战斗请求失败', 'system')
@@ -236,6 +243,7 @@ export const useGameStore = defineStore('game', () => {
       logQueue.value = data.logs || []
       drainLogQueue()
     } catch {
+      if (mySession !== battleSession.value) return
       addLog(0, '战斗请求失败', 'system')
       inFight.value = false
       battleTimer.value = window.setTimeout(() => scheduleFight(), 2000)
