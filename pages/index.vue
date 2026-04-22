@@ -2005,8 +2005,9 @@
                 <span class="realm-rate-label">失败走火入魔</span>
                 <span class="realm-rate-val danger">损失 {{ Math.round(breakthroughFailPenalty * 100) }}% 修为</span>
               </div>
-              <div class="realm-rate-hint" v-if="breakthroughRate >= 1">小境界提升 · 必定成功</div>
+              <div class="realm-rate-hint" v-if="isBreakthroughCrossBigRealm && breakthroughRate >= 1">跨入新境界 · 必定成功</div>
               <div class="realm-rate-hint" v-else-if="isBreakthroughCrossBigRealm">跨入新境界 · 失败有惩罚</div>
+              <div class="realm-rate-hint" v-else-if="breakthroughRate >= 1">小境界提升 · 必定成功</div>
               <div class="realm-rate-hint" v-else>小境界提升 · 失败损失修为</div>
             </div>
             <button class="realm-do-btn" :disabled="breakthroughPending" @click="doRealmBreakthrough">
@@ -2575,6 +2576,35 @@
                 (autoSellTier > 0 ? ' 且 T' + autoSellTier + '及以下阶位' : '（不限阶位）') + ' 的装备' }}
             </p>
           </div>
+
+          <!-- 字体 -->
+          <div class="settings-section">
+            <div class="settings-title">字体</div>
+            <div class="auto-sell-options">
+              <label v-for="opt in fontFamilyOptions" :key="opt.value" class="auto-sell-label">
+                <input type="radio" :value="opt.value" v-model="uiFontFamily" @change="applyFontFamily" />
+                <span :style="{ fontFamily: opt.value }">{{ opt.label }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 战斗日志字体大小 -->
+          <div class="settings-section">
+            <div class="settings-title">历练战斗文本字体大小</div>
+            <div class="font-size-row">
+              <input
+                type="range"
+                min="12"
+                max="28"
+                step="1"
+                v-model.number="battleLogFontSize"
+                @input="applyBattleLogFontSize"
+                class="font-size-slider"
+              />
+              <span class="font-size-value">{{ battleLogFontSize }}px</span>
+            </div>
+            <div class="log-line" style="margin-top: 6px;">预览：你对青风狼造成 1234 伤害</div>
+          </div>
         </div>
       </div>
     </div>
@@ -2904,6 +2934,29 @@ const autoSellTierOptions = [
 ];
 const autoSellTier = ref(0);
 
+// ===== 设置: 字体 & 战斗日志字体大小 =====
+const DEFAULT_FONT_FAMILY = "'Noto Serif SC', 'STSong', 'SimSun', serif";
+const fontFamilyOptions = [
+  { value: DEFAULT_FONT_FAMILY, label: '默认（宋体衬线）' },
+  { value: "'ZCOOL XiaoWei', serif", label: '小薇体' },
+  { value: "'KaiTi', 'STKaiti', 'Kaiti SC', serif", label: '楷体' },
+  { value: "'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif", label: '雅黑' },
+  { value: "'SimHei', 'Heiti SC', sans-serif", label: '黑体' },
+  { value: "system-ui, -apple-system, sans-serif", label: '系统默认' },
+];
+const uiFontFamily = ref<string>(DEFAULT_FONT_FAMILY);
+const battleLogFontSize = ref<number>(18);
+
+function applyFontFamily() {
+  document.documentElement.style.setProperty('--ui-font-family', uiFontFamily.value);
+  saveSettings();
+}
+
+function applyBattleLogFontSize() {
+  document.documentElement.style.setProperty('--battle-log-font-size', `${battleLogFontSize.value}px`);
+  saveSettings();
+}
+
 function shouldAutoSell(rarity: string): boolean {
   if (autoSellThreshold.value === 'none') return false;
   const order = ['white', 'green', 'blue', 'purple', 'gold', 'red'];
@@ -2920,6 +2973,8 @@ function saveSettings() {
     customText: customTextColor.value,
     autoSell: autoSellThreshold.value,
     autoSellTier: autoSellTier.value,
+    uiFontFamily: uiFontFamily.value,
+    battleLogFontSize: battleLogFontSize.value,
   };
   localStorage.setItem('xiantu_settings', JSON.stringify(settings));
 }
@@ -2931,6 +2986,14 @@ function loadSettings() {
     const settings = JSON.parse(raw);
     autoSellThreshold.value = settings.autoSell || 'none';
     autoSellTier.value = settings.autoSellTier || 0;
+    if (settings.uiFontFamily) {
+      uiFontFamily.value = settings.uiFontFamily;
+      document.documentElement.style.setProperty('--ui-font-family', uiFontFamily.value);
+    }
+    if (typeof settings.battleLogFontSize === 'number') {
+      battleLogFontSize.value = settings.battleLogFontSize;
+      document.documentElement.style.setProperty('--battle-log-font-size', `${battleLogFontSize.value}px`);
+    }
     if (settings.theme === 'custom') {
       currentTheme.value = 'custom';
       customBgColor.value = settings.customBg || '#1a1a1a';
@@ -6197,6 +6260,9 @@ onUnmounted(() => {
 .settings-title { font-size: 15px; color: var(--gold-ink); margin-bottom: 8px; font-weight: bold; }
 .settings-desc { font-size: 12px; color: var(--faded-ink); margin-bottom: 8px; }
 .settings-hint { font-size: 12px; color: var(--jade); margin-top: 6px; }
+.font-size-row { display: flex; align-items: center; gap: 12px; }
+.font-size-slider { flex: 1; accent-color: var(--gold-ink); }
+.font-size-value { font-size: 13px; color: var(--gold-ink); min-width: 48px; text-align: right; }
 .theme-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .theme-btn {
   width: 60px; height: 40px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.1);
@@ -6571,7 +6637,7 @@ onUnmounted(() => {
 
 .log-line {
   padding: 2px 0;
-  font-size: 18px;
+  font-size: var(--battle-log-font-size, 18px);
   line-height: 1.6;
   letter-spacing: 0.5px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.02);

@@ -39,10 +39,12 @@ html {
   --gold-light: #f0dcaa;
   --cloud-white: rgba(255, 255, 255, 0.06);
   --mist: rgba(60, 55, 45, 0.5);
+  --ui-font-family: 'Noto Serif SC', 'STSong', 'SimSun', serif;
+  --battle-log-font-size: 18px;
 }
 
 body {
-  font-family: 'Noto Serif SC', 'STSong', 'SimSun', serif;
+  font-family: var(--ui-font-family, 'Noto Serif SC', 'STSong', 'SimSun', serif);
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
