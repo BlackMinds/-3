@@ -222,6 +222,16 @@ export const useGameStore = defineStore('game', () => {
     executeFight()
   }
 
+  // 标签页切回前台时调用：若战斗循环被后台节流/冻结卡死（全空闲但仍 isBattling），强制拉回一次
+  function resumeBattleIfStalled() {
+    if (!isBattling.value) return
+    if (battleTimer.value || logTimer.value || deathTimer.value) return
+    if (fetchInFlight.value || inFight.value) return
+    if (logQueue.value.length > 0) return
+    if (deathCooldown.value > 0) return
+    scheduleFight()
+  }
+
   async function executeFight() {
     if (!character.value || !currentMap.value) return
     inFight.value = true
@@ -451,6 +461,6 @@ export const useGameStore = defineStore('game', () => {
     currentMonsterInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
-    loadGameData, changeMap, startBattle, stopBattle, clearLogs, addLog, flushSave, tryBreakthrough,
+    loadGameData, changeMap, startBattle, stopBattle, resumeBattleIfStalled, clearLogs, addLog, flushSave, tryBreakthrough,
   }
 })

@@ -3982,10 +3982,70 @@ onMounted(async () => {
   caveTickTimer.value = window.setInterval(() => {
     caveTick.value++;
   }, 1000);
+
+  // 标签页切回前台自愈：后台时浏览器会节流甚至冻结 timer，回来时战斗循环可能卡在空闲，强制拉起一次
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  // 战斗状态驱动 keep-alive：开始战斗时启动静音 audio 防浏览器冻结后台 tab；停止时释放
+  // flush: 'sync' 保证在用户点击"开始"的同步 gesture 栈内创建 AudioContext，避免被自动播放策略拦截
+  stopBattleWatch = watch(() => gameStore.isBattling, (battling) => {
+    if (battling) startKeepAlive();
+    else stopKeepAlive();
+  }, { flush: 'sync' });
 });
+
+function onVisibilityChange() {
+  if (!document.hidden) gameStore.resumeBattleIfStalled();
+}
+
+// ===== 后台保活：静音 AudioContext =====
+// Chrome/Edge 对"播放音频的页面"不做 Tab Freezing，也不对 setTimeout 做 intensive throttling。
+// 用 gain=0 的 OscillatorNode 占住一个 audio track 即可保活，无声音、不触发"正在播放"图标。
+// 策略：AudioContext 只创建一次（保住用户 gesture 授权），战斗起停仅做 resume/suspend。
+let keepAliveCtx: AudioContext | null = null;
+let keepAliveOsc: OscillatorNode | null = null;
+let stopBattleWatch: (() => void) | null = null;
+
+function ensureAudioCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (keepAliveCtx) return keepAliveCtx;
+  try {
+    const AC = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return null;
+    const ctx = new AC();
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    const osc = ctx.createOscillator();
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    keepAliveCtx = ctx;
+    keepAliveOsc = osc;
+    return ctx;
+  } catch {
+    return null;
+  }
+}
+
+function startKeepAlive() {
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+}
+
+function stopKeepAlive() {
+  if (keepAliveCtx && keepAliveCtx.state === 'running') {
+    keepAliveCtx.suspend().catch(() => {});
+  }
+}
 
 onUnmounted(() => {
   eventStore.stopPolling();
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  if (stopBattleWatch) { stopBattleWatch(); stopBattleWatch = null; }
+  try { if (keepAliveOsc) keepAliveOsc.stop(); } catch {}
+  try { if (keepAliveCtx) keepAliveCtx.close(); } catch {}
+  keepAliveOsc = null;
+  keepAliveCtx = null;
 });
 
 async function loadSkillInventory() {
