@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId } from '~/server/utils/sect'
 import { DAILY_TASK_TYPES } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -35,6 +36,10 @@ export default defineEventHandler(async (event) => {
         await pool.query('UPDATE characters SET cultivation_exp = cultivation_exp + $1 WHERE id = $2', [def.extraReward.value, char.id])
       }
     }
+
+    // 成就：任务狂人 + 贡献良多
+    checkAchievements(char.id, 'sect_daily_task', 1).catch(() => {})
+    checkAchievements(char.id, 'sect_contribution', task.reward_contribution).catch(() => {})
 
     return { code: 200, message: `领取成功，+${task.reward_contribution}贡献` }
   } catch (error) {

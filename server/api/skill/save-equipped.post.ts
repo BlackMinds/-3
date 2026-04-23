@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { getSkillSlotLimits } from '~/game/data'
+import { SKILL_MAP } from '~/server/engine/skillData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -89,6 +90,19 @@ export default defineEventHandler(async (event) => {
     }
 
     checkAchievements(charId, 'skill_equip', 1).catch(() => {})
+
+    // 神通广大：当前装备的 divine 类神通里，金/红稀有度的数量
+    if (Array.isArray(equipped)) {
+      let highDivineCount = 0
+      for (const item of equipped) {
+        if (item.skill_type !== 'divine') continue
+        const r = SKILL_MAP[String(item.skill_id)]?.rarity
+        if (r === 'gold' || r === 'red') highDivineCount++
+      }
+      if (highDivineCount > 0) {
+        checkAchievements(charId, 'divine_high_rarity', highDivineCount).catch(() => {})
+      }
+    }
 
     return { code: 200, message: '装备保存成功' }
   } catch (error) {

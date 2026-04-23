@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS character_skill_inventory (
 -- 增量迁移：功法等级字段（脱离已装备表，卸下不丢等级）
 ALTER TABLE character_skill_inventory ADD COLUMN IF NOT EXISTS level INT DEFAULT 1;
 
--- 一次性回填：把当前已装备表里的 level 同步到 inventory（取 MAX 以防同名多槽）
+-- 一次性回填：把 character_skills 里可能更高的 level 先抬到 inventory（防降级）
 UPDATE character_skill_inventory csi
 SET level = sub.max_lv
 FROM (
@@ -164,6 +164,15 @@ FROM (
 WHERE csi.character_id = sub.character_id
   AND csi.skill_id = sub.skill_id
   AND csi.level < sub.max_lv;
+
+-- 根治脏数据：以 inventory 为唯一真相，把所有 character_skills 镜像行的 level 同步过去
+-- （修复历史上出现的"同 skill_id 多行等级不一致"问题 —— 升级接口命中错行导致显示 Lv.1 却提示已满级）
+UPDATE character_skills cs
+SET level = csi.level
+FROM character_skill_inventory csi
+WHERE cs.character_id = csi.character_id
+  AND cs.skill_id = csi.skill_id
+  AND cs.level <> csi.level;
 
 -- ========================================
 -- 丹药背包
@@ -790,3 +799,22 @@ CREATE INDEX IF NOT EXISTS idx_sv_cd_char_type ON spirit_vein_cooldown (characte
 CREATE INDEX IF NOT EXISTS idx_sv_surge_node_time ON spirit_vein_surge_log (node_id, surge_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sv_raid_node ON spirit_vein_raid (node_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sv_occ_sect ON spirit_vein_occupation (sect_id);
+
+-- ========================================
+-- 成就追踪字段（欧皇降临 / 非酋附体）
+-- 装备维度：本件装备强化路径是否"不干净"——失败过或用过强化保护符 / 大师符都置 TRUE
+-- 角色维度：连续强化失败次数，成功归零
+-- ========================================
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS enhance_ever_failed BOOLEAN DEFAULT FALSE;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS enhance_fail_streak INT DEFAULT 0;
+
+-- 炼丹连续成功计数（绝不浪费成就）：成功 +1，失败归零，达到 10 触发一次
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS pill_craft_streak INT DEFAULT 0;
+
+-- 地图访问记录（踏遍青山 / 万界行者 成就）
+CREATE TABLE IF NOT EXISTS character_map_visits (
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  map_id VARCHAR(50) NOT NULL,
+  first_visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (character_id, map_id)
+);

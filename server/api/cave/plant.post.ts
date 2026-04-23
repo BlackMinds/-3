@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
 import { getChar, HERBS, getHerbFieldLevel, getPlotConfig } from '~/server/utils/cave'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -48,6 +49,16 @@ export default defineEventHandler(async (event) => {
         'INSERT INTO character_cave_plots (character_id, plot_index, herb_id, herb_quality, plant_time, mature_time, yield_count) VALUES ($1, $2, $3, NULL, NOW(), $4, 0)',
         [charId, plot_index, herb_id, matureTime]
       )
+    }
+
+    // 灵田满仓：所有已解锁地块同时种满（包括刚刚种下这棵）
+    const { rows: plantedRows } = await pool.query(
+      'SELECT COUNT(*) AS cnt FROM character_cave_plots WHERE character_id = $1 AND herb_id IS NOT NULL',
+      [charId]
+    )
+    const plantedCount = Number(plantedRows[0]?.cnt || 0)
+    if (plantedCount >= plotCount) {
+      checkAchievements(charId, 'plots_all_planted', 1).catch(() => {})
     }
 
     return { code: 200, message: '种植成功', data: { mature_time: matureTime } }

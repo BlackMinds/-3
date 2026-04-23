@@ -548,12 +548,21 @@ export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
 
 // ========== 波次战斗(1 vs N只怪) ==========
 
+export interface WaveBattleStats {
+  playerCritCount: number;        // 玩家本场暴击次数
+  playerHitsTaken: number;        // 玩家本场被命中次数（造成 >0 伤害）
+  elementAdvantageHit: boolean;   // 玩家对怪物打出过 1.3x 五行相克
+  lifestealFullRecovery: boolean; // 通过吸血从非满血回到满血
+  bossKilledByTurn3: boolean;     // 3 回合内击杀任一 Boss
+}
+
 export interface WaveBattleResult {
   won: boolean;
   logs: BattleLogEntry[];
   totalExp: number;
   totalStone: number;
   monstersKilled: { template: MonsterTemplate }[];
+  stats: WaveBattleStats;
 }
 
 export function runWaveBattle(
@@ -566,6 +575,13 @@ export function runWaveBattle(
   const logs: BattleLogEntry[] = [];
   let totalExp = 0, totalStone = 0;
   const monstersKilled: { template: MonsterTemplate }[] = [];
+  const battleStats: WaveBattleStats = {
+    playerCritCount: 0,
+    playerHitsTaken: 0,
+    elementAdvantageHit: false,
+    lifestealFullRecovery: false,
+    bossKilledByTurn3: false,
+  };
 
   const monsters = monsterList.map(m => {
     const stats: any = { ...m.stats };
@@ -869,6 +885,7 @@ export function runWaveBattle(
         // v1.2 附灵：受伤减免 + 暴击额外减免 + 不屈（低血 DEF 叠加→近似减伤）
         dmg = applyAwakenIncomingReduction(dmg, isCrit);
         player.hp -= dmg;
+        if (dmg > 0) battleStats.playerHitsTaken++;
         return dmg;
       };
       // 后置反伤/触发（在伤害日志之后展示）
@@ -945,7 +962,7 @@ export function runWaveBattle(
           logs.push({ turn, text: `[第${turn}回合] 【不灭金身】发动!`, type: 'buff', ...snap() });
         } else {
           logs.push({ turn, text: '你在持续伤害中陨落了…3回合后原地复活', type: 'death', playerHp: 0, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
-          return { won: false, logs, totalExp, totalStone, monstersKilled };
+          return { won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats };
         }
       }
     }
@@ -963,6 +980,7 @@ export function runWaveBattle(
         totalExp += exp;
         totalStone += stone;
         monstersKilled.push({ template: m.template });
+        if (m.template.role === 'boss' && turn <= 3) battleStats.bossKilledByTurn3 = true;
         logs.push({ turn, text: `${m.stats.name}因持续伤害死亡，获得 ${exp} 修为、${stone} 灵石`, type: 'kill', ...snap() });
       }
     }
@@ -989,7 +1007,7 @@ export function runWaveBattle(
           logs.push({ turn, text: `[第${turn}回合] 【不灭金身】发动!`, type: 'buff', ...snap() });
         } else {
           logs.push({ turn, text: '你的气血耗尽，陨落了…3回合后原地复活', type: 'death', playerHp: 0, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
-          return { won: false, logs, totalExp, totalStone, monstersKilled };
+          return { won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats };
         }
       }
       continue;
@@ -1013,7 +1031,7 @@ export function runWaveBattle(
           logs.push({ turn, text: `[第${turn}回合] 【不灭金身】发动!`, type: 'buff', ...snap() });
         } else {
           logs.push({ turn, text: '你的气血耗尽，陨落了…3回合后原地复活', type: 'death', playerHp: 0, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
-          return { won: false, logs, totalExp, totalStone, monstersKilled };
+          return { won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats };
         }
       }
     }
@@ -1097,8 +1115,12 @@ export function runWaveBattle(
           const heal = Math.floor(dmg * player.lifesteal);
           const actualHeal = Math.min(heal, player.maxHp - player.hp);
           if (actualHeal > 0) {
+            const before = player.hp;
             player.hp += actualHeal;
             turnLifestealTotal += actualHeal;
+            if (before < player.maxHp && player.hp >= player.maxHp) {
+              battleStats.lifestealFullRecovery = true;
+            }
           }
         }
         return dmg;
@@ -1114,6 +1136,10 @@ export function runWaveBattle(
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(curTarget, dmgResult.damage);
             const critText = dmgResult.isCrit ? '暴击!' : '';
+            if (dmgResult.isCrit) battleStats.playerCritCount++;
+            if (getElementMultiplier(usedSkill.element || player.element, curTarget.stats.element) > 1.0) {
+              battleStats.elementAdvantageHit = true;
+            }
             logs.push({ turn, text: `  第${hitsDone + 1}段 ${critText}对${curTarget.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
             if (usedSkill.debuff) tryApplyDebuff(curTarget, curTarget.stats.name, usedSkill.debuff as any, player.atk, turn);
             // v1.2 附灵：命中触发 DOT
@@ -1129,6 +1155,10 @@ export function runWaveBattle(
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(t, dmgResult.damage);
             const critText = dmgResult.isCrit ? '暴击!' : '';
+            if (dmgResult.isCrit) battleStats.playerCritCount++;
+            if (getElementMultiplier(usedSkill.element || player.element, t.stats.element) > 1.0) {
+              battleStats.elementAdvantageHit = true;
+            }
             if (!skillLabel) {
               logs.push({ turn, text: `[第${turn}回合] ${prefix}${critText}【${usedSkill.name}】对${t.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
             } else {
@@ -1170,6 +1200,7 @@ export function runWaveBattle(
           totalExp += exp;
           totalStone += stone;
           monstersKilled.push({ template: m.template });
+          if (m.template.role === 'boss' && turn <= 3) battleStats.bossKilledByTurn3 = true;
           logs.push({ turn, text: `你击杀了${m.stats.name}，获得 ${exp} 修为、${stone} 灵石`, type: 'kill', ...snap() });
           // 战意沸腾: 击杀叠攻
           if (atkPerKillPercent > 0 && killStacks < maxKillStacks) {
@@ -1198,7 +1229,7 @@ export function runWaveBattle(
         logs.push({ turn, text: `[第${turn}回合] 【不灭金身】发动!`, type: 'buff', ...snap() });
       } else {
         logs.push({ turn, text: '你的气血耗尽，陨落了…3回合后原地复活', type: 'death', playerHp: 0, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
-        return { won: false, logs, totalExp, totalStone, monstersKilled };
+        return { won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats };
       }
     }
 
@@ -1209,5 +1240,5 @@ export function runWaveBattle(
   if (!allDead) {
     logs.push({ turn: maxTurns, text: '战斗超时，你选择撤退', type: 'system', ...snap() });
   }
-  return { won: allDead, logs, totalExp, totalStone, monstersKilled };
+  return { won: allDead, logs, totalExp, totalStone, monstersKilled, stats: battleStats };
 }

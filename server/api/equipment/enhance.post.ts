@@ -95,9 +95,20 @@ export default defineEventHandler(async (event) => {
       // 失败退一级 (不会低于 +6)，使用保护符则不退级
       const fallLevel = usedProtect ? currentLevel : Math.max(6, currentLevel - 1)
       await pool.query(
-        'UPDATE character_equipment SET enhance_level = $1 WHERE id = $2',
+        'UPDATE character_equipment SET enhance_level = $1, enhance_ever_failed = TRUE WHERE id = $2',
         [fallLevel, equip_id]
       )
+
+      // 非酋附体：连续失败累计，达到 10 次触发成就；注意：RETURNING 拿到递增后的值
+      const { rows: streakRows } = await pool.query(
+        'UPDATE characters SET enhance_fail_streak = enhance_fail_streak + 1 WHERE id = $1 RETURNING enhance_fail_streak',
+        [charId]
+      )
+      const newStreak = Number(streakRows[0]?.enhance_fail_streak || 0)
+      if (newStreak >= 10) {
+        checkAchievements(charId, 'enhance_unlucky', 1).catch(() => {})
+      }
+
       return {
         code: 200,
         data: {
@@ -111,11 +122,25 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 强化成功: 等级+1
+    // 强化成功: 等级+1；大师符保过也视为"不干净"，欧皇成就不给
     await pool.query(
-      'UPDATE character_equipment SET enhance_level = $1 WHERE id = $2',
-      [nextLevel, equip_id]
+      'UPDATE character_equipment SET enhance_level = $1, enhance_ever_failed = CASE WHEN $2::boolean THEN TRUE ELSE enhance_ever_failed END WHERE id = $3',
+      [nextLevel, usedMaster, equip_id]
     )
+
+    // 连续失败中断归零
+    await pool.query('UPDATE characters SET enhance_fail_streak = 0 WHERE id = $1', [charId])
+
+    // 欧皇降临：强化到 +8 成功且本件装备全程未失败/未用符
+    if (nextLevel === 8) {
+      const { rows: cleanRows } = await pool.query(
+        'SELECT enhance_ever_failed FROM character_equipment WHERE id = $1',
+        [equip_id]
+      )
+      if (cleanRows[0] && cleanRows[0].enhance_ever_failed === false) {
+        checkAchievements(charId, 'enhance_lucky', 1).catch(() => {})
+      }
+    }
 
     // 副属性突破 (+5 和 +10 时)
     let breakthroughStat: string | null = null

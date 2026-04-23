@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId, updateWeeklyTask } from '~/server/utils/sect'
 import { getDailyDonateLimit } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -60,6 +61,9 @@ export default defineEventHandler(async (event) => {
 
     // 周常任务：事务提交后再更新（本身独立事务，不影响主流程）
     await updateWeeklyTask(membership.sect_id, 'weekly_donate', actualAmount)
+
+    // 成就：贡献良多 / 宗门栋梁
+    checkAchievements(char.id, 'sect_contribution', contribution).catch(() => {})
 
     return { code: 200, message: `捐献${actualAmount}灵石，获得${contribution}贡献`, data: { donated: actualAmount, contribution } }
   } catch (error) {

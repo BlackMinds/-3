@@ -137,8 +137,22 @@ export default defineEventHandler(async (event) => {
     await updateSectWeeklyTaskByCharId(charId, 'weekly_pill', 1)
     if (success) {
       checkAchievements(charId, 'craft_success', 1).catch(() => {})
+      // 极品丹师：qualityFactor >= 2.0 视为金色品质系数（对应 QUALITY_MUL.gold）
+      if (qualityFactor >= 2.0) {
+        checkAchievements(charId, 'craft_gold_quality', 1).catch(() => {})
+      }
+      // 绝不浪费：连续成功累加，达到 10 触发一次
+      const { rows: streakRows } = await pool.query(
+        'UPDATE characters SET pill_craft_streak = pill_craft_streak + 1 WHERE id = $1 RETURNING pill_craft_streak',
+        [charId]
+      )
+      const streak = Number(streakRows[0]?.pill_craft_streak || 0)
+      if (streak >= 10) {
+        checkAchievements(charId, 'craft_streak', 1).catch(() => {})
+      }
     } else {
       checkAchievements(charId, 'craft_fail', 1).catch(() => {})
+      await pool.query('UPDATE characters SET pill_craft_streak = 0 WHERE id = $1', [charId])
     }
 
     return {

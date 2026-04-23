@@ -126,7 +126,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // ===== 传说·隐藏 (5) =====
   { id: 'hid_01', name: '天选之人', desc: '首次登录游戏', category: 'hidden', type: 'counter', target: 1, event: 'first_login', reward: { spirit_stone: 1000 }, title: '天选之人' },
   { id: 'hid_02', name: '一夜暴富', desc: '单次离线获得超过50万灵石', category: 'hidden', type: 'counter', target: 1, event: 'offline_rich', reward: { spirit_stone: 30000, equip_box: 'fine', equip_box_count: 1 } },
-  { id: 'hid_03', name: '欧皇降临', desc: '+0直接强化到+6无失败', category: 'hidden', type: 'counter', target: 1, event: 'enhance_lucky', reward: { spirit_stone: 50000, equip_box: 'legend', equip_box_count: 1 }, title: '欧皇' },
+  { id: 'hid_03', name: '欧皇降临', desc: '+0直接强化到+8无失败', category: 'hidden', type: 'counter', target: 1, event: 'enhance_lucky', reward: { spirit_stone: 50000, equip_box: 'legend', equip_box_count: 1 }, title: '欧皇' },
   { id: 'hid_04', name: '非酋附体', desc: '连续强化失败10次', category: 'hidden', type: 'counter', target: 1, event: 'enhance_unlucky', reward: { spirit_stone: 10000, skill_box: 'fine', skill_box_count: 1 }, title: '非酋' },
   { id: 'hid_05', name: '万界至尊', desc: '完成所有非隐藏成就', category: 'hidden', type: 'threshold', target: 81, event: 'total_completed', reward: { spirit_stone: 1000000, equip_box: 'legend', equip_box_count: 5, skill_box: 'legend', skill_box_count: 3 }, title: '万界至尊' },
 

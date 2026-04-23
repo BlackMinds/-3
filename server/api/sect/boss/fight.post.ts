@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId, getMembership } from '~/server/utils/sect'
 import { getSectBoss, getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -108,6 +109,9 @@ export default defineEventHandler(async (event) => {
         [totalDamage, boss_id, char.id]
       )
     }
+
+    // 成就：讨伐先锋
+    checkAchievements(char.id, 'sect_boss_attack', 1).catch(() => {})
 
     // 生成战斗日志
     const logs = [

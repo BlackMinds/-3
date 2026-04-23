@@ -52,6 +52,26 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // 成就：地图访问（踏遍青山 / 万界行者）
+    if (body.current_map) {
+      const { rows: charRows } = await pool.query('SELECT id FROM characters WHERE user_id = $1', [event.context.userId])
+      if (charRows.length > 0) {
+        const charId = charRows[0].id
+        await pool.query(
+          'INSERT INTO character_map_visits (character_id, map_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [charId, String(body.current_map)]
+        )
+        const { rows: cntRows } = await pool.query(
+          'SELECT COUNT(*) AS cnt FROM character_map_visits WHERE character_id = $1',
+          [charId]
+        )
+        const mapCount = Number(cntRows[0]?.cnt || 0)
+        if (mapCount > 0) {
+          checkAchievements(charId, 'map_unlocked', mapCount).catch(() => {})
+        }
+      }
+    }
+
     return { code: 200, message: '角色状态已更新' }
   } catch (error) {
     console.error('更新角色失败:', error)

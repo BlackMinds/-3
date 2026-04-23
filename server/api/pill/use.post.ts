@@ -73,6 +73,16 @@ export default defineEventHandler(async (event) => {
 
     checkAchievements(charId, 'pill_use', 1).catch(() => {})
 
+    // 药不能停：同时未过期 buff 种类数
+    const { rows: buffRows } = await pool.query(
+      'SELECT COUNT(DISTINCT pill_id) AS cnt FROM character_buffs WHERE character_id = $1 AND expire_time > NOW()',
+      [charId]
+    )
+    const buffCount = Number(buffRows[0]?.cnt || 0)
+    if (buffCount > 0) {
+      checkAchievements(charId, 'buff_count', buffCount).catch(() => {})
+    }
+
     return { code: 200, message: '使用成功', data: { quality_factor: actualQf } }
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})

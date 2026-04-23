@@ -1,4 +1,5 @@
 import { getPool } from '~/server/database/db'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -31,6 +32,8 @@ export default defineEventHandler(async (event) => {
        ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
       [charId, skill_id]
     )
+
+    checkAchievements(charId, 'universal_page_use', 1).catch(() => {})
 
     return { code: 200, message: `获得【${skill_id}】残页 x1` }
   } catch (error) {

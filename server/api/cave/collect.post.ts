@@ -2,6 +2,7 @@ import { getPool } from '~/server/database/db'
 import { getChar, BUILDINGS, calcOutput } from '~/server/utils/cave'
 import { updateSectDailyTask } from '~/server/utils/sect'
 import { applyCultivationExp } from '~/server/utils/realm'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -59,6 +60,11 @@ export default defineEventHandler(async (event) => {
 
     // 事务外执行旁路任务
     await updateSectDailyTask(charId, 'cave', 1)
+
+    // 日进斗金：聚宝盆累计领取灵石
+    if (building_id === 'treasure_pot' && config.output.type === 'spirit_stone') {
+      checkAchievements(charId, 'pot_collect_total', amount).catch(() => {})
+    }
 
     const { rows: updated } = await pool.query('SELECT * FROM characters WHERE id = $1', [charId])
     return { code: 200, data: { amount, type: config.output.type, character: updated[0] } }

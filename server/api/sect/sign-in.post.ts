@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId, getMembership, todayStr } from '~/server/utils/sect'
 import { getSignInContribution } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -23,6 +24,10 @@ export default defineEventHandler(async (event) => {
       'UPDATE sect_members SET contribution = contribution + $1, weekly_contribution = weekly_contribution + $2, last_sign_date = $3 WHERE sect_id = $4 AND character_id = $5',
       [contribution, contribution, today, membership.sect_id, char.id]
     )
+
+    // 成就：签到达人 + 贡献良多（贡献累计）
+    checkAchievements(char.id, 'sect_sign', 1).catch(() => {})
+    checkAchievements(char.id, 'sect_contribution', contribution).catch(() => {})
 
     return { code: 200, message: `签到成功，获得${contribution}贡献`, data: { contribution } }
   } catch (error) {
