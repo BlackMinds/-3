@@ -270,6 +270,7 @@ CREATE TABLE IF NOT EXISTS sects (
 
 CREATE INDEX IF NOT EXISTS idx_sect_rank ON sects (level DESC, fund DESC, member_count DESC);
 
+DROP TRIGGER IF EXISTS set_sects_updated_at ON sects;
 CREATE TRIGGER set_sects_updated_at
   BEFORE UPDATE ON sects
   FOR EACH ROW EXECUTE FUNCTION update_timestamp();
@@ -720,6 +721,7 @@ INSERT INTO spirit_vein_occupation (node_id, next_surge_at) VALUES
   (6, date_trunc('hour', NOW()) + INTERVAL '2 hours')
 ON CONFLICT (node_id) DO NOTHING;
 
+DROP TRIGGER IF EXISTS set_sv_occupation_updated_at ON spirit_vein_occupation;
 CREATE TRIGGER set_sv_occupation_updated_at
   BEFORE UPDATE ON spirit_vein_occupation
   FOR EACH ROW EXECUTE FUNCTION update_timestamp();
