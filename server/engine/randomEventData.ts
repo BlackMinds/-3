@@ -257,14 +257,8 @@ export const RARITY_DISTRIBUTION: Record<EventRarity, number> = {
 export const SILENT_HOURS_START_CN = 0
 export const SILENT_HOURS_END_CN = 8
 
-// 玩家活跃判定：最后请求在 10 分钟内
-export const ONLINE_THRESHOLD_MS = 10 * 60 * 1000
-
 // 中奖后冷却
 export const WINNER_COOLDOWN_MS = 6 * 60 * 60 * 1000
-
-// 新手保护期（注册满 2 小时后才能参与抽奖）
-export const NEWBIE_PROTECTION_MS = 2 * 60 * 60 * 1000
 
 // 灵石下限保护：扣除后不低于基础保底（按 tier 缩放）
 export function getStoneFloor(tier: number): number {
