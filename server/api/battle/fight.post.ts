@@ -801,7 +801,14 @@ export default defineEventHandler(async (event) => {
           await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [autoSellIncome, char.id])
         }
       } else if (!result.won) {
-        await client.query('UPDATE characters SET spirit_stone = GREATEST(0, spirit_stone - FLOOR(spirit_stone * 0.05)), last_online = NOW() WHERE id = $1', [char.id])
+        await client.query(
+          `UPDATE characters SET
+             cultivation_exp = GREATEST(0, cultivation_exp - FLOOR(cultivation_exp * 0.01)),
+             level_exp = GREATEST(0, level_exp - FLOOR(level_exp * 0.01)),
+             last_online = NOW()
+           WHERE id = $1`,
+          [char.id]
+        )
       }
 
       await client.query('COMMIT')

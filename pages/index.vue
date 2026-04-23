@@ -2334,7 +2334,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">死亡惩罚</div>
-            <p class="help-text">战败损失 5% 灵石,3 秒后原地复活继续战斗。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
+            <p class="help-text">战败损失 1% 境界修为 + 1% 等级经验,3 秒后原地复活继续战斗。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">角色成长道具</div>

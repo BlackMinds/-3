@@ -45,8 +45,9 @@
     "max_turns_per_fight": 50,
     "timeout_rule": "超过50回合未分胜负视为平局，自动切换下一只怪",
     "death_penalty": {
-      "description": "死亡后损失少量灵石，3回合后原地复活",
-      "spirit_stone_loss_percent": 5,
+      "description": "死亡后损失少量境界经验和等级经验，3回合后原地复活",
+      "cultivation_exp_loss_percent": 1,
+      "level_exp_loss_percent": 1,
       "revive_cooldown_turns": 3
     }
   },
