@@ -7,7 +7,7 @@ import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/
 import { getSecretRealm, getDailyCountByRealm } from '~/server/engine/secretRealmData'
 import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/engine/teamBattleEngine'
 import { getCharacterByUserId, ensureDailyReset, getRoomDetail } from '~/server/utils/team'
-import { generateSecretRealmDrops, distributeEquipments, distributeAwakenItems } from '~/server/utils/secretRealmDrops'
+import { generateSecretRealmDrops, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
@@ -327,7 +327,7 @@ export default defineEventHandler(async (event) => {
       const battleId = bRows[0].id
 
       // ========== 生成装备/灵草/功法掉落（战斗胜利才给） ==========
-      let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], skillPages: [] as string[], awakenStones: 0, rerollStones: 0 }
+      let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], skillPages: [] as string[], awakenStones: 0, rerollStones: 0, enhanceStones: 0 }
       if (result.won) {
         // 聚合全队的功法背包（用于权重递减掉落）
         const allOwnedSkills: Record<string, number> = {}
@@ -382,6 +382,8 @@ export default defineEventHandler(async (event) => {
 
       // 附灵道具分配：附灵石按人头均分，灵枢玉按贡献加权
       const playerAwakenItems = distributeAwakenItems(drops.awakenStones, drops.rerollStones, contribList)
+      // 强化石分配：按人头均分（对应 realm.dropTier，仅 T4+ 秘境会有产出）
+      const playerEnhanceStones = distributeEnhanceStones(drops.enhanceStones, contribList)
 
       // 按贡献计算每个人的实际奖励 + 保存装备/灵草/功法
       const rewards: any[] = []
@@ -469,6 +471,18 @@ export default defineEventHandler(async (event) => {
           }
         }
 
+        // 强化石入库（对应 realm.dropTier）
+        const stoneShare = playerEnhanceStones.get(c.characterId) || 0
+        if (stoneShare > 0 && realm.dropTier >= 4) {
+          const stoneId = `enhance_stone_t${realm.dropTier}`
+          await client.query(
+            `INSERT INTO character_pills (character_id, pill_id, quality_factor, count)
+             VALUES ($1, $2, 1.0, $3)
+             ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + $3`,
+            [c.characterId, stoneId, stoneShare]
+          )
+        }
+
         await client.query(
           `INSERT INTO secret_realm_contributions (battle_id, character_id, damage_dealt, healing_done, damage_taken, contribution)
            VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -484,7 +498,7 @@ export default defineEventHandler(async (event) => {
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [battleId, c.characterId, myStone, myExp, newLevelExp, myPoints,
             JSON.stringify(equipIds),
-            JSON.stringify({ herbs: herbList, skill_pages: pageList })]
+            JSON.stringify({ herbs: herbList, skill_pages: pageList, enhance_stones: stoneShare > 0 ? { tier: realm.dropTier, count: stoneShare } : null })]
         )
 
         // 累加 cultivation_exp 并自动扣除突破
@@ -522,6 +536,7 @@ export default defineEventHandler(async (event) => {
           herbs: herbList,
           skill_pages: pageList,
           awaken_items: awakenItemShare,
+          enhance_stones: stoneShare > 0 ? { tier: realm.dropTier, count: stoneShare } : null,
           level_up: newLevel > (member?.level || 1) ? newLevel : null,
         })
 

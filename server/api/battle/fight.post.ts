@@ -254,6 +254,18 @@ function generateSkillDrop(tier: number, isBoss: boolean, luckMul: number = 1, o
   return pool[pool.length - 1]
 }
 
+// ===== 强化石掉落（仅 T4+ 地图触发，对应 tier 专用，低概率） =====
+function generateEnhanceStoneDrop(tier: number, isBoss: boolean, luckMul: number = 1): string | null {
+  if (tier < 4) return null
+  const base: Record<number, number> = {
+    4: 0.020, 5: 0.018, 6: 0.015, 7: 0.012, 8: 0.010, 9: 0.008, 10: 0.006,
+  }
+  let rate = (base[tier] ?? 0) * luckMul
+  if (isBoss) rate *= 4
+  if (Math.random() >= rate) return null
+  return `enhance_stone_t${tier}`
+}
+
 // ===== 灵草掉落 =====
 function generateHerbDrop(tier: number, monsterElement: string | null, isBoss: boolean, luckMul: number = 1): any | null {
   const rate = (isBoss ? 0.80 : 0.30) * luckMul
@@ -745,6 +757,8 @@ export default defineEventHandler(async (event) => {
       }
       const herbDrop = generateHerbDrop(tier, t.element, ib, luckMul)
       if (herbDrop) allDrops.push({ type: 'herb', data: herbDrop })
+      const stoneDrop = generateEnhanceStoneDrop(tier, ib, luckMul)
+      if (stoneDrop) allDrops.push({ type: 'stone', data: { stone_id: stoneDrop, tier } })
     }
 
     // 存入数据库（主结算事务化：UPDATE 主属性 + 掉落 INSERT + 自动出售统一原子化）
@@ -819,6 +833,16 @@ export default defineEventHandler(async (event) => {
                ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
               [char.id, h.herb_id, h.quality, h.count, h.count]
             )
+          }
+          if (drop.type === 'stone') {
+            const s = drop.data
+            await client.query(
+              `INSERT INTO character_pills (character_id, pill_id, count, quality_factor)
+               VALUES ($1, $2, 1, 1.0)
+               ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
+              [char.id, s.stone_id]
+            )
+            result.logs.push({ turn: 0, text: `掉落了【强化石·T${s.tier}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
           }
         }
 

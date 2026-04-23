@@ -128,11 +128,17 @@
   ],
 
   "enhance": {
-    "description": "消耗灵石强化装备等级",
+    "description": "消耗灵石强化装备等级；T4+ 装备额外消耗对应 tier 的强化石 1 个（成败都扣）",
     "max_level": 20,
     "stat_per_level_percent": 5,
     "cost_formula": "base_cost * level^1.5",
-    "sub_stat_upgrade_at": [5, 10, 15, 20]
+    "sub_stat_upgrade_at": [5, 10, 15, 20],
+    "stone_requirement": {
+      "tier_threshold": 4,
+      "stone_ids": "enhance_stone_t4 ~ enhance_stone_t10",
+      "per_enhance_count": 1,
+      "sources": "地图怪低概率掉落（T4+ 地图）/ 秘境组队本低概率掉落"
+    }
   },
 
   "equipment_source": {

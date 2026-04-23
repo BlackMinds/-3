@@ -247,6 +247,9 @@
                 <span v-if="r.awaken_items && r.awaken_items.awaken_reroll > 0" class="drop-tag drop-awaken">
                   灵枢玉 ×{{ r.awaken_items.awaken_reroll }}
                 </span>
+                <span v-if="r.enhance_stones && r.enhance_stones.count > 0" class="drop-tag drop-stone">
+                  强化石·T{{ r.enhance_stones.tier }} ×{{ r.enhance_stones.count }}
+                </span>
               </div>
             </div>
           </div>
@@ -448,6 +451,7 @@ function hasDrops(r: any): boolean {
     || (r.herbs?.length || 0) > 0
     || (r.skill_pages?.length || 0) > 0
     || (r.awaken_items && (r.awaken_items.awaken_stone > 0 || r.awaken_items.awaken_reroll > 0))
+    || (r.enhance_stones && r.enhance_stones.count > 0)
 }
 const STAGE_NAMES = ['初期', '中期', '后期']
 function realmShort(tier: number, stage: number): string {
@@ -1075,6 +1079,7 @@ onUnmounted(() => {
 }
 .drop-tag.drop-skill { color: #e8c58f; border-color: #8a6a2c; }
 .drop-tag.drop-awaken { color: #d8b4ff; border-color: #6a3d8a; }
+.drop-tag.drop-stone { color: #ffb570; border-color: #7a4820; }
 
 .result-actions { margin-top: 20px; }
 

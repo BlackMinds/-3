@@ -17,6 +17,14 @@ export const ITEM_INFO: Record<string, ItemInfo> = {
   // —— 强化类 ——
   enhance_protect:    { name: '强化保护符', description: '强化失败时不退级（强化时自动消耗）',   category: 'enhance' },
   enhance_guarantee:  { name: '强化大师符', description: '+7 以下强化必成功（强化时自动消耗）',  category: 'enhance' },
+  // —— 强化石（T4+ 装备强化必备，对应 tier 专用；地图/秘境低概率掉落） ——
+  enhance_stone_t4:   { name: '强化石·T4',  description: '强化 T4 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t5:   { name: '强化石·T5',  description: '强化 T5 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t6:   { name: '强化石·T6',  description: '强化 T6 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t7:   { name: '强化石·T7',  description: '强化 T7 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t8:   { name: '强化石·T8',  description: '强化 T8 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t9:   { name: '强化石·T9',  description: '强化 T9 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t10:  { name: '强化石·T10', description: '强化 T10 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
   // —— 装备类 ——
   reroll_sub_stat:    { name: '装备鉴定符', description: '重新随机一件装备的所有副属性',         category: 'equip', needsTarget: 'equip' },
   equip_upgrade:      { name: '太古精魂',   description: '装备升品 紫→金 / 金→红',                 category: 'equip', needsTarget: 'equip' },

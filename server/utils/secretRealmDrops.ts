@@ -150,6 +150,19 @@ function rollRerollStoneBossBonus(difficulty: 1 | 2 | 3): number {
   return Math.random() < 0.30 ? 1 : 0
 }
 
+// 强化石（T4+ 秘境）：整场基础 roll + Boss 保底追加
+// 概率略高于普通本，但考虑队伍均分所以人均到手接近
+function rollEnhanceStoneBase(difficulty: 1 | 2 | 3, dropTier: number): number {
+  if (dropTier < 4) return 0
+  const rate = difficulty === 1 ? 0.20 : difficulty === 2 ? 0.35 : 0.55
+  return Math.random() < rate ? 1 : 0
+}
+function rollEnhanceStoneBossBonus(difficulty: 1 | 2 | 3, dropTier: number): number {
+  if (dropTier < 4) return 0
+  const rate = difficulty === 1 ? 0.40 : difficulty === 2 ? 0.60 : 0.80
+  return Math.random() < rate ? 1 : 0
+}
+
 // ========== 掉落批量生成（按秘境设计） ==========
 export interface SecretRealmDropResult {
   equipments: any[]          // 全部装备列表（未分配）
@@ -158,6 +171,7 @@ export interface SecretRealmDropResult {
   skillPages: string[]       // 功法残页 ID 列表
   awakenStones: number       // 附灵石总数
   rerollStones: number       // 灵枢玉总数
+  enhanceStones: number      // 强化石总数（全部对应 dropTier）
 }
 
 /**
@@ -181,10 +195,12 @@ export function generateSecretRealmDrops(
   const skillPages: string[] = []
   let awakenStones = 0
   let rerollStones = 0
+  let enhanceStones = 0
 
   // 整场一次附灵道具 roll
   awakenStones += rollAwakenStoneBase(difficulty)
   rerollStones += rollRerollStoneBase(difficulty)
+  enhanceStones += rollEnhanceStoneBase(difficulty, dropTier)
 
   // 每只怪物有概率掉落常规装备（数量按秘境设计，每场 2-6 件）
   // 粗略：普通 40% / 困难 55% / 噩梦 70%
@@ -204,6 +220,7 @@ export function generateSecretRealmDrops(
       // Boss 波附灵道具保底
       awakenStones += rollAwakenStoneBossBonus(difficulty)
       rerollStones += rollRerollStoneBossBonus(difficulty)
+      enhanceStones += rollEnhanceStoneBossBonus(difficulty, dropTier)
     }
     // 灵草
     const herb = generateSecretRealmHerb(dropTier, m.element, m.isBoss)
@@ -225,7 +242,29 @@ export function generateSecretRealmDrops(
     }
   }
 
-  return { equipments, bossEquipments, herbs, skillPages, awakenStones, rerollStones }
+  return { equipments, bossEquipments, herbs, skillPages, awakenStones, rerollStones, enhanceStones }
+}
+
+/**
+ * 强化石分配：按人头均分，余数随机给一位队员
+ * 返回每个队员分到的强化石数量
+ */
+export function distributeEnhanceStones(
+  stones: number,
+  contributions: { characterId: number; contribution: number }[],
+): Map<number, number> {
+  const result = new Map<number, number>()
+  for (const c of contributions) result.set(c.characterId, 0)
+  if (stones <= 0 || contributions.length === 0) return result
+  const per = Math.floor(stones / contributions.length)
+  const remainder = stones % contributions.length
+  for (const c of contributions) result.set(c.characterId, per)
+  const shuffled = [...contributions].sort(() => Math.random() - 0.5)
+  for (let i = 0; i < remainder; i++) {
+    const id = shuffled[i].characterId
+    result.set(id, (result.get(id) || 0) + 1)
+  }
+  return result
 }
 
 /**

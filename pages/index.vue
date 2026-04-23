@@ -1893,6 +1893,13 @@
               <span class="enhance-label">消耗灵石</span>
               <span>{{ formatNum(getEnhanceCost(enhanceTarget.rarity, enhanceTarget.enhance_level || 0)) }}</span>
             </div>
+            <div class="enhance-preview-row" v-if="(enhanceTarget.tier || 1) >= 4">
+              <span class="enhance-label">消耗强化石</span>
+              <span :style="{ color: getPillCount(`enhance_stone_t${enhanceTarget.tier}`) >= 1 ? 'var(--jade)' : 'var(--cinnabar)' }">
+                强化石·T{{ enhanceTarget.tier }} × 1
+                <span style="font-size: 12px;">(库存 {{ getPillCount(`enhance_stone_t${enhanceTarget.tier}`) }})</span>
+              </span>
+            </div>
             <div class="enhance-preview-row">
               <span class="enhance-label">成功率</span>
               <span :style="{ color: getEnhanceSuccessRate((enhanceTarget.enhance_level || 0) + 1) < 1 ? 'var(--cinnabar)' : 'var(--jade)' }">
@@ -1906,7 +1913,9 @@
             <button
               class="enhance-do-btn"
               @click="doEnhance"
-              :disabled="enhancing || (gameStore.character?.spirit_stone || 0) < getEnhanceCost(enhanceTarget.rarity, enhanceTarget.enhance_level || 0)"
+              :disabled="enhancing
+                || (gameStore.character?.spirit_stone || 0) < getEnhanceCost(enhanceTarget.rarity, enhanceTarget.enhance_level || 0)
+                || ((enhanceTarget.tier || 1) >= 4 && getPillCount(`enhance_stone_t${enhanceTarget.tier}`) < 1)"
             >
               {{ enhancing ? '强化中...' : '强化' }}
             </button>
@@ -2266,6 +2275,7 @@
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;">+7 起失败退 1 级(最低不低于 +6)。+5 和 +10 时触发副属性突破(随机一条 +30%,最少+1)。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">宗门商店可购买【强化保护符】失败不退级,【强化大师符】+7 必成。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--cinnabar);"><b>T4+ 装备</b>每次强化额外消耗 1 个对应 tier 的【强化石·TX】(成败都扣)。强化石由 T4+ 地图怪、秘境组队本低概率掉落,对应 tier 专用不可跨级使用。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备进阶</div>
@@ -5255,6 +5265,12 @@ async function loadPills() {
   } catch {}
 }
 
+function getPillCount(pillId: string): number {
+  return pillInventory.value
+    .filter((i: any) => i.pill_id === pillId)
+    .reduce((sum: number, i: any) => sum + Number(i.count || 0), 0);
+}
+
 // ==================== 宗门道具 ====================
 const COMMON_SKILL_IDS = ['fire_rain', 'frost_nova', 'earth_shield', 'quake_wave', 'vine_prison', 'golden_bell'];
 
@@ -5843,6 +5859,10 @@ async function doEnhance() {
       }
       // 不管成功失败都同步等级
       enhanceTarget.value.enhance_level = res.data.newLevel;
+      // T4+ 装备扣了强化石 / 可能扣了保护符或大师符 → 刷新背包
+      if ((enhanceTarget.value.tier || 1) >= 4 || res.data.usedProtect || res.data.usedMaster) {
+        await loadPills();
+      }
       if (res.data.success && res.data.breakthrough) {
         await loadEquipList();
         enhanceTarget.value = equipList.value.find((e: any) => e.id === enhanceTarget.value.id) || enhanceTarget.value;

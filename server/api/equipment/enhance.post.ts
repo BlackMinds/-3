@@ -44,6 +44,24 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: `灵石不足,需要 ${cost}` }
     }
 
+    // T4+ 装备需消耗对应 tier 的强化石（成败都扣，先扣石再扣灵石）
+    const eqTier = Number(eq.tier) || 1
+    const stoneId = eqTier >= 4 ? `enhance_stone_t${eqTier}` : null
+    if (stoneId) {
+      const { rowCount: stoneDeducted } = await pool.query(
+        `UPDATE character_pills SET count = count - 1
+         WHERE character_id = $1 AND pill_id = $2 AND quality_factor = 1.0 AND count > 0`,
+        [charId, stoneId]
+      )
+      if (!stoneDeducted) {
+        return { code: 400, message: `缺少【强化石·T${eqTier}】，地图/秘境低概率掉落` }
+      }
+      await pool.query(
+        `DELETE FROM character_pills WHERE character_id = $1 AND pill_id = $2 AND quality_factor = 1.0 AND count <= 0`,
+        [charId, stoneId]
+      )
+    }
+
     // 扣灵石
     await pool.query(
       'UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2',
