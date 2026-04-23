@@ -4348,7 +4348,7 @@ function getScaledSkillDesc(skill: any, level: number): string {
     if (e.DODGE_flat) parts.push(`闪避+${(e.DODGE_flat * m * 100).toFixed(0)}%`);
     if (e.LIFESTEAL_flat) parts.push(`吸血+${(e.LIFESTEAL_flat * m * 100).toFixed(0)}%`);
     if (e.damage_reduction_flat) parts.push(`减伤${(e.damage_reduction_flat * m * 100).toFixed(0)}%`);
-    if (e.reflect_damage_percent) parts.push(`反弹${(e.reflect_damage_percent * m).toFixed(0)}%伤害`);
+    if (e.reflect_damage_percent) parts.push(`反弹${(e.reflect_damage_percent * m * 100).toFixed(0)}%伤害`);
     if (e.regen_per_turn_percent) parts.push(`每回合回${(e.regen_per_turn_percent * m * 100).toFixed(0)}%血`);
     if (e.RESIST_METAL) parts.push(`金抗+${(e.RESIST_METAL * m * 100).toFixed(0)}%`);
     if (e.RESIST_WOOD) parts.push(`木抗+${(e.RESIST_WOOD * m * 100).toFixed(0)}%`);
