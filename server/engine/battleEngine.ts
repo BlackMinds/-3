@@ -99,6 +99,10 @@ export interface EquippedSkillInfo {
     regenPerTurn: number; damageReductionFlat: number; reflectPercent: number;
     poisonOnHitTaken?: number; burnOnHitTaken?: number; reflectOnCrit?: number;
     reviveOnce?: boolean; skillCdReduction?: number;
+    // v3 紫色被动
+    dotAmpPct?: number;            // dot_amplifier_percent: 你造成 DOT 伤害放大%
+    critAfterDodge?: boolean;      // crit_after_dodge: 闪避后下次攻击必暴击
+    healAmpPct?: number;           // heal_amplifier_percent: 你受到的治疗放大%
   };
 }
 
@@ -446,12 +450,21 @@ export function calculateDamage(
 
   let damage = attacker.atk * skillMultiplier * elementMulti * resistFactor * atkDefRatio * elementDmgBonus * awakenDmgMul;
 
-  const isCrit = Math.random() < attacker.crit_rate;
-  if (isCrit) damage *= attacker.crit_dmg;
+  // v3 飘渺神行：上一次闪避后的攻击强制暴击（命中不被闪避才消费）
+  let isCrit = Math.random() < attacker.crit_rate;
+  if ((attacker as any).forceCritNext) {
+    isCrit = true;
+  }
 
   if (!ignoreDodge) {
     const effectiveDodge = Math.max(0, defender.dodge - (attacker.accuracy || 0) / 100);
     if (Math.random() < effectiveDodge) return { damage: 0, isCrit: false };
+  }
+
+  if (isCrit) damage *= attacker.crit_dmg;
+  // 命中后才消费 forceCritNext 标记（避免被闪避也丢标记）
+  if ((attacker as any).forceCritNext) {
+    (attacker as any).forceCritNext = false;
   }
 
   damage = Math.max(1, Math.floor(damage));
@@ -470,6 +483,7 @@ export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
     regenPerTurn: 0, damageReductionFlat: 0, reflectPercent: 0,
     poisonOnHitTaken: 0, burnOnHitTaken: 0, reflectOnCrit: 0,
     reviveOnce: false, skillCdReduction: 0,
+    dotAmpPct: 0, critAfterDodge: false, healAmpPct: 0,
   };
 
   for (const row of skillRows) {
@@ -533,6 +547,10 @@ export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
         (pe as any).atkPerKillPercent = (e.atk_per_kill_percent || 0) * lvMul;
         (pe as any).maxStacks = e.max_stacks || 8;
       }
+      // v3 紫色被动机制
+      pe.dotAmpPct = (pe.dotAmpPct || 0) + (e.dot_amplifier_percent || 0) * lvMul;
+      pe.healAmpPct = (pe.healAmpPct || 0) + (e.heal_amplifier_percent || 0) * lvMul;
+      if (e.crit_after_dodge) pe.critAfterDodge = true;
     }
   }
 
@@ -619,6 +637,10 @@ export function runWaveBattle(
     player.resists.fire += p.resistFire || 0;
     player.resists.earth += p.resistEarth || 0;
     player.resists.ctrl += p.resistCtrl || 0;
+    // v3 紫色被动：DOT 增伤 / 闪避必暴标记 / 治疗增幅
+    (player as any).dotAmpPct = p.dotAmpPct || 0;
+    (player as any).critAfterDodge = !!p.critAfterDodge;
+    (player as any).healAmpPct = p.healAmpPct || 0;
   }
 
   // v1.2 附灵运行时状态注入 + 与功法被动同位钩子 Max-Merge
@@ -698,7 +720,12 @@ export function runWaveBattle(
     }
     // DOT/其他 debuff
     const targetMaxHp = target.stats?.maxHp || target.maxHp || 0;
-    const dmg = calcDotDamage(debuff.type, targetMaxHp, attackerAtk);
+    let dmg = calcDotDamage(debuff.type, targetMaxHp, attackerAtk);
+    // v3 万毒归一：玩家施加 DOT 时按 dotAmpPct 放大（target 不是 player 即视为玩家施加）
+    const isDotType = debuff.type === 'poison' || debuff.type === 'burn' || debuff.type === 'bleed';
+    if (isDotType && target !== player && (player as any).dotAmpPct) {
+      dmg = Math.max(1, Math.floor(dmg * (1 + (player as any).dotAmpPct / 100)));
+    }
     const exists = target.debuffs.find(d => d.type === debuff.type);
     if (exists) { exists.remaining = duration; exists.value = debuff.value; exists.damagePerTurn = dmg; }
     else target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: debuff.value });
@@ -920,6 +947,9 @@ export function runWaveBattle(
             const critText = mResult.isCrit ? '暴击!' : '';
             logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dmg} 点伤害`, type: mResult.isCrit ? 'crit' : 'normal', ...snap() });
             triggerRetaliate(dmg, mResult.isCrit, m);
+          } else if ((player as any).critAfterDodge) {
+            // v3 飘渺神行：多段攻击中闪避也触发标记
+            (player as any).forceCritNext = true;
           }
           if (player.hp <= 0) break;
         }
@@ -927,6 +957,10 @@ export function runWaveBattle(
         const mResult = calculateDamage(m.stats, player, skillMul, skillElem);
         if (mResult.damage === 0) {
           logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}的攻击被你闪避了`, type: 'normal', ...snap() });
+          // v3 飘渺神行：闪避后下次攻击必暴击
+          if ((player as any).critAfterDodge) {
+            (player as any).forceCritNext = true;
+          }
         } else {
           const dmg = applyPlayerHit(mResult.damage, mResult.isCrit);
           const isSkillAttack = mSkill !== null;
@@ -985,9 +1019,10 @@ export function runWaveBattle(
       }
     }
 
-    // 被动回血
+    // 被动回血（v3 春风化雨：healAmpPct 增幅）
     if (equippedSkills?.passiveEffects?.regenPerTurn && equippedSkills.passiveEffects.regenPerTurn > 0) {
-      const heal = Math.floor(player.maxHp * equippedSkills.passiveEffects.regenPerTurn);
+      const healAmp = 1 + ((player as any).healAmpPct || 0) / 100;
+      const heal = Math.floor(player.maxHp * equippedSkills.passiveEffects.regenPerTurn * healAmp);
       if (heal > 0 && player.hp < player.maxHp) {
         const actualHeal = Math.min(heal, player.maxHp - player.hp);
         player.hp += actualHeal;
@@ -1069,7 +1104,9 @@ export function runWaveBattle(
     if (mul === 0) {
       const prefix = isDivine ? '神通发动！' : '';
       if (usedSkill.healAtkRatio) {
-        const heal = Math.floor(player.atk * usedSkill.healAtkRatio);
+        // v3 春风化雨：healAmpPct 增幅神通治疗
+        const healAmp = 1 + ((player as any).healAmpPct || 0) / 100;
+        const heal = Math.floor(player.atk * usedSkill.healAtkRatio * healAmp);
         player.hp = Math.min(player.maxHp, player.hp + heal);
         logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】回复 ${heal} 点气血`, type: 'buff', ...snap() });
       }

@@ -46,6 +46,10 @@ export interface PassiveEffect {
   atk_per_kill_percent?: number;         // 每击杀+%攻击
   max_stacks?: number;                    // 最大叠层
   battle_frenzy_stacks?: number;         // 战意沸腾当前叠层(由 store 维护)
+  // v3 紫色被动新机制
+  dot_amplifier_percent?: number;        // 你造成的 DOT(灼烧/中毒/流血)伤害放大%
+  crit_after_dodge?: boolean;            // 闪避后下次攻击必暴击
+  heal_amplifier_percent?: number;       // 你受到的治疗(神通治疗/被动 regen)放大%
 }
 
 export interface Skill {
@@ -125,6 +129,9 @@ export const PASSIVE_SKILLS: Skill[] = [
   { id: 'earth_fortitude', name: '不动如山', type: 'passive', rarity: 'purple', element: 'earth', multiplier: 0, description: '防御+15%,气血+12%,控制抗性+20%', effect: { DEF_percent: 15, HP_percent: 12, RESIST_CTRL: 0.20 } },
   { id: 'poison_body', name: '百毒不侵', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '木抗+30%,控制抗性+10%,吸血+4%', effect: { RESIST_WOOD: 0.30, RESIST_CTRL: 0.10, LIFESTEAL_flat: 0.04 } },
   { id: 'fire_mastery', name: '焚天之体', type: 'passive', rarity: 'purple', element: 'fire', multiplier: 0, description: '攻击+15%,火抗+20%', effect: { ATK_percent: 15, RESIST_FIRE: 0.20 } },
+  { id: 'dot_amplifier', name: '万毒归一', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你造成的灼烧/中毒/流血伤害+30%,攻击+8%,暴击率+3%', effect: { dot_amplifier_percent: 30, ATK_percent: 8, CRIT_RATE_flat: 0.03 } },
+  { id: 'phantom_step', name: '飘渺神行', type: 'passive', rarity: 'purple', element: 'water', multiplier: 0, description: '闪避+8%,闪避后下次攻击必暴击,速度+8%', effect: { DODGE_flat: 0.08, crit_after_dodge: true, SPD_percent: 8 } },
+  { id: 'healing_spring', name: '春风化雨', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你受到的治疗+30%,每回合回血+2%,水/木抗+10%', effect: { heal_amplifier_percent: 30, regen_per_turn_percent: 0.02, RESIST_WATER: 0.10, RESIST_WOOD: 0.10 } },
   // 天品
   { id: 'water_mastery', name: '渊海之心', type: 'passive', rarity: 'gold', element: 'water', multiplier: 0, description: '每回合回3%血,水抗+20%,防御+15%', effect: { regen_per_turn_percent: 0.03, RESIST_WATER: 0.20, DEF_percent: 15 } },
   { id: 'battle_frenzy', name: '战意沸腾', type: 'passive', rarity: 'gold', element: null, multiplier: 0, description: '每击杀+2%攻击,最多8层(换怪保留)', effect: { atk_per_kill_percent: 2, max_stacks: 8 } },

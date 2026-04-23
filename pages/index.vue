@@ -2315,12 +2315,18 @@
             <table class="help-table"><tbody>
               <tr><td>T1-T2</td><td>灵品: 风刃术/缠藤术/寒冰掌/烈焰剑诀/裂地拳 + 基础被动</td></tr>
               <tr><td>T3-T4</td><td>玄品: 天火术/霜冻新星/厚土盾/地裂波/万藤缚/金钟罩 + 中级被动</td></tr>
-              <tr><td>T5-T6</td><td>地品: 剑雨纷飞/双焰斩/连环掌/灵泉术/嗜血诀 + 高级被动</td></tr>
+              <tr><td>T5-T6</td><td>地品: 剑雨纷飞/双焰斩/连环掌/灵泉术/嗜血诀 + 高级被动(破绽感知/不动如山/百毒不侵/焚天之体/万毒归一/飘渺神行/春风化雨)</td></tr>
               <tr><td>T7+</td><td>天品+仙品: 万剑归宗/天罚雷劫/时光凝滞/道心通明/不灭金身等</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">技能类型: 群攻(全体)/多目标(2-3只)/多段(溢出到下一只)/治疗/增益/控制。</p>
             <p class="help-text" style="margin-top: 6px; color: #c45c4a;">⚠ 被动百分比加成上限: 多个被动功法叠加的 ATK%/HP%/DEF%/SPD% 各自最高 +40%（超出部分截断）。建议搭配不同方向的被动(如攻+防+血各一个),而非单项堆到满。</p>
             <p class="help-text" style="margin-top: 4px;">不受上限影响: 五行抗性/控制抗性/暴击率/暴击伤害/闪避/吸血/免死/反弹/每回合回血/破甲/命中/CD 缩减等特殊效果仍可叠加。</p>
+            <p class="help-text" style="margin-top: 6px;"><b>紫色被动 build 配合（T5-T6 掉落）：</b></p>
+            <table class="help-table"><tbody>
+              <tr><td>万毒归一</td><td>DOT 流核心：你造成的灼烧/中毒/流血伤害+30%。配合剑雨纷飞(流血)/双焰斩(灼烧)/连环掌(中毒)/九天玄火阵</td></tr>
+              <tr><td>飘渺神行</td><td>闪避反击流：闪避+8%、速度+8%，闪避后下次攻击必暴击。搭配速度装备/吸血神通形成"闪→暴→吸血"循环</td></tr>
+              <tr><td>春风化雨</td><td>持久回血流：你受到的所有治疗(神通/被动 regen)+30%，自身每回合回血+2%，水/木抗+10%。搭配灵泉术/生生不息/天地归元</td></tr>
+            </tbody></table>
           </div>
           <div class="help-section">
             <div class="help-title">炼丹系统</div>

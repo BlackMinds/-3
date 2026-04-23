@@ -350,8 +350,8 @@
       },
       {
         "id": "crit_master", "name": "破绽感知", "rarity": "purple", "element": "metal",
-        "effect": { "CRIT_RATE_flat": 0.12, "CRIT_DMG_flat": 0.3 },
-        "description": "暴击率+12%，暴击伤害+30%",
+        "effect": { "CRIT_RATE_flat": 0.08, "CRIT_DMG_flat": 0.22 },
+        "description": "暴击率+8%，暴击伤害+22%",
         "root_synergy": "金灵根：暴击时附加流血2回合"
       },
       {
@@ -371,6 +371,24 @@
         "effect": { "fire_damage_percent": 20, "burn_damage_bonus": 0.30, "RESIST_FIRE": 0.20 },
         "description": "火系伤害+20%，灼烧伤害+30%，火抗+20%",
         "root_synergy": "火灵根：灼烧持续+2回合"
+      },
+      {
+        "id": "dot_amplifier", "name": "万毒归一", "rarity": "purple", "element": "wood",
+        "effect": { "dot_amplifier_percent": 30, "ATK_percent": 8, "CRIT_RATE_flat": 0.03 },
+        "description": "你造成的灼烧/中毒/流血伤害+30%，攻击+8%，暴击率+3%",
+        "root_synergy": "木灵根：DOT 类 debuff 持续+1回合"
+      },
+      {
+        "id": "phantom_step", "name": "飘渺神行", "rarity": "purple", "element": "water",
+        "effect": { "DODGE_flat": 0.08, "crit_after_dodge": true, "SPD_percent": 8 },
+        "description": "闪避+8%，闪避后下次攻击必暴击，速度+8%",
+        "root_synergy": "水灵根：闪避后下次攻击伤害额外+15%"
+      },
+      {
+        "id": "healing_spring", "name": "春风化雨", "rarity": "purple", "element": "wood",
+        "effect": { "heal_amplifier_percent": 30, "regen_per_turn_percent": 0.02, "RESIST_WATER": 0.10, "RESIST_WOOD": 0.10 },
+        "description": "你受到的治疗+30%，每回合回血+2%，水/木抗+10%",
+        "root_synergy": "木灵根：治疗效果额外+10%"
       },
       {
         "id": "water_mastery", "name": "渊海之心", "rarity": "gold", "element": "water",
