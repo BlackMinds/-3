@@ -698,7 +698,7 @@
                         <span class="cell-name" :style="{ color: skillRarityColor(equippedDivines[i - 1]!.rarity) }">{{ equippedDivines[i - 1]!.name }}</span>
                         <span class="cell-level">Lv.{{ getSkillLevel('divine', i - 1, equippedDivines[i - 1]!.id) }}</span>
                       </div>
-                      <div class="cell-desc">CD {{ equippedDivines[i - 1]!.cdTurns }}回合 · {{ getScaledSkillDesc(equippedDivines[i - 1]!, getSkillLevel('divine', i - 1, equippedDivines[i - 1]!.id)).split(',').slice(0, 2).join(',') }}</div>
+                      <div class="cell-desc" :title="`CD ${equippedDivines[i - 1]!.cdTurns}回合 · ${getScaledSkillDesc(equippedDivines[i - 1]!, getSkillLevel('divine', i - 1, equippedDivines[i - 1]!.id))}`">CD {{ equippedDivines[i - 1]!.cdTurns }}回合 · {{ getScaledSkillDesc(equippedDivines[i - 1]!, getSkillLevel('divine', i - 1, equippedDivines[i - 1]!.id)) }}</div>
                     </div>
                     <button
                       v-if="getSkillLevel('divine', i - 1, equippedDivines[i - 1]!.id) < 5"
