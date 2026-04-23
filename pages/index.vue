@@ -1556,7 +1556,18 @@
 
           <div class="help-section">
             <div class="help-title">种植时间</div>
-            <p class="help-text">按灵草品质递增: 凡品 20 分 / 灵品 45 分 / 玄品 90 分 / 地品 180 分 / 天品 360 分 / 仙品 720 分。灵田等级不再影响种植时间。</p>
+            <p class="help-text">基础 12 小时成熟,灵田每升 3 级 -1.5 小时,满级最短 6 小时。</p>
+            <table class="help-table">
+              <thead><tr><th>灵田等级</th><th>成熟时间</th></tr></thead>
+              <tbody>
+                <tr><td>Lv.1 ~ 2</td><td>12 小时</td></tr>
+                <tr><td>Lv.3 ~ 5</td><td>10.5 小时</td></tr>
+                <tr><td>Lv.6 ~ 8</td><td>9 小时</td></tr>
+                <tr><td>Lv.9 ~ 11</td><td>7.5 小时</td></tr>
+                <tr><td>Lv.12 ~ 15</td><td>6 小时</td></tr>
+              </tbody>
+            </table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">所有灵草种类共用同一成熟时间,收获时再随机决定品质。</p>
           </div>
 
           <div class="help-section">

@@ -35,8 +35,9 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '地块已占用' }
     }
 
-    // 生长时间使用基础值(凡品),按灵田等级递减(每3级减5分钟)
-    const baseGrowMinutes = Math.max(15, 30 - Math.floor(herbFieldLevel / 3) * 5)
+    // 生长时间：基础 12h，灵田每 3 级 -1.5h，满级（Lv.12+）锁定 6h
+    // Lv.0-2: 12h / Lv.3-5: 10.5h / Lv.6-8: 9h / Lv.9-11: 7.5h / Lv.12-15: 6h
+    const baseGrowMinutes = Math.max(360, 720 - Math.floor(herbFieldLevel / 3) * 90)
     const matureTime = new Date(Date.now() + baseGrowMinutes * 60 * 1000)
 
     if (exist.length > 0) {
