@@ -9,6 +9,9 @@
  * 用法：
  *   npm run migrate                     # 用 .env 或已注入的环境变量
  *   DATABASE_URL=postgresql://... npm run migrate
+ *
+ * 选项：
+ *   --soft-fail    失败时打印警告并 exit 0，不阻断调用方（给 build 钩子用）
  */
 import pg from 'pg'
 import fs from 'node:fs'
@@ -17,6 +20,7 @@ import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const SOFT_FAIL = process.argv.includes('--soft-fail')
 
 function loadDatabaseUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL
@@ -30,6 +34,10 @@ function loadDatabaseUrl() {
 
 const dbUrl = loadDatabaseUrl()
 if (!dbUrl) {
+  if (SOFT_FAIL) {
+    console.warn('[migrate] ⚠️  DATABASE_URL 未设置，--soft-fail 已启用，跳过迁移（schema 可能与代码不一致）')
+    process.exit(0)
+  }
   console.error('[migrate] ❌ DATABASE_URL 未设置（.env 和环境变量都没找到）')
   process.exit(1)
 }
@@ -47,20 +55,31 @@ try { host = new URL(dbUrl.replace(/^postgres(ql)?:/, 'http:')).host } catch {}
 console.log(`[migrate] 目标：${host}`)
 console.log(`[migrate] 脚本：${path.relative(process.cwd(), sqlPath)} (${sql.length} 字节)`)
 
-const client = new pg.Client({ connectionString: dbUrl })
-await client.connect()
+function bail(stage, err) {
+  console.error(`[migrate] ❌ ${stage}失败: ${err.message}`)
+  if (err.detail) console.error(`  详情: ${err.detail}`)
+  if (err.hint) console.error(`  提示: ${err.hint}`)
+  if (err.position) console.error(`  位置(字符): ${err.position}`)
+  if (SOFT_FAIL) {
+    console.warn('[migrate] ⚠️  --soft-fail 已启用，忽略失败继续，但 schema 可能与代码不一致，请尽快手动跑一次 migrate')
+    process.exit(0)
+  }
+  process.exit(1)
+}
+
+const client = new pg.Client({ connectionString: dbUrl, connectionTimeoutMillis: 10000 })
+try {
+  await client.connect()
+} catch (e) {
+  bail('连接', e)
+}
 
 const started = Date.now()
 try {
   await client.query(sql)
   console.log(`[migrate] ✅ 完成 (${Date.now() - started}ms)`)
+  await client.end()
 } catch (e) {
-  console.error(`[migrate] ❌ 失败: ${e.message}`)
-  if (e.detail) console.error(`  详情: ${e.detail}`)
-  if (e.hint) console.error(`  提示: ${e.hint}`)
-  if (e.position) console.error(`  位置(字符): ${e.position}`)
   await client.end().catch(() => {})
-  process.exit(1)
+  bail('执行', e)
 }
-
-await client.end()
