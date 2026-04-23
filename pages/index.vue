@@ -2371,6 +2371,11 @@
             <p class="help-text">2-4 人协作副本,公开大厅制,点【秘境】进入组队页面。</p>
             <p class="help-text" style="margin-top: 4px;">6 大秘境 × 3 难度(普通/困难/噩梦),独占高品质装备/首通奖励/高倍经验。同宗门成员组队额外 +10% 全属性加成。</p>
           </div>
+          <div class="help-section">
+            <div class="help-title">赞助系统</div>
+            <p class="help-text">赞助增加洞府双倍产出 三倍产出 一键种植</p>
+            <p class="help-text" style="margin-top: 4px;">联系群主</p>
+          </div>
         </div>
       </div>
     </div>
