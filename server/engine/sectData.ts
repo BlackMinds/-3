@@ -228,7 +228,7 @@ export const ROLE_CONTRIBUTION_REQ: Record<string, number> = {
 // ===== 创建条件 =====
 export const SECT_CREATE_COST = 100000;
 export const SECT_CREATE_MIN_REALM_TIER = 3;  // 金丹
-export const SECT_CREATE_MIN_LEVEL = 50;
+export const SECT_CREATE_MIN_LEVEL = 40;
 export const SECT_JOIN_MIN_LEVEL = 15; // 10 → 15: 让玩家先完整体验装备/功法系统再接入宗门
 export const SECT_QUIT_COOLDOWN_HOURS = 24;
 

@@ -2184,7 +2184,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">宗门系统</div>
-            <p class="help-text">达到 <b>Lv.15</b> 后可加入或创建宗门。宗门提供修为/攻防加成、Boss 战、商店、宗门功法。</p>
+            <p class="help-text">达到 <b>Lv.15</b> 可加入宗门；<b>Lv.40 + 金丹期</b> 可自行创建宗门(10 万灵石)。宗门提供修为/攻防加成、Boss 战、商店、宗门功法。</p>
             <p class="help-text" style="margin-top: 4px;">每日签到获得 <b>100 + 宗门Lv×20 + 境界Tier×30</b> 贡献。捐献灵石按 0.3 换算为贡献(有每日上限)。完成日常/周常任务亦可获取贡献。</p>
             <p class="help-text" style="margin-top: 4px;">宗门商店可购买强化保护符(2000 贡献,周限 3)、强化大师符(6000 贡献,Lv.5 解锁)等强力道具。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">宗门 Tab 顶部三个快捷入口: ⚔️ 宗门战 · 🌀 灵脉潮汐 · 📬 邮箱。</p>
