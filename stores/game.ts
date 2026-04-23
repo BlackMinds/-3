@@ -140,7 +140,9 @@ export const useGameStore = defineStore('game', () => {
       const res: any = await fetchApi('/game/data')
       if (res.code === 200 && res.data) {
         character.value = res.data
-        if (res.data.current_map) {
+        // 只在首次加载时从 DB 同步当前地图；后续调用不覆盖前端选择，
+        // 避免 loadGameData（被多处动作触发）把玩家从刚切换的地图拉回 DB 里的旧值
+        if (!loaded.value && res.data.current_map) {
           currentMapId.value = res.data.current_map
         }
         loaded.value = true
@@ -156,6 +158,12 @@ export const useGameStore = defineStore('game', () => {
     currentMapId.value = mapId
     battleFrenzyStacks.value = 0
     addLog(0, `你前往了【${currentMap.value?.name}】`, 'system')
+    // 立即持久化新地图到 DB，避免非战斗中切图时 DB 保留旧值，
+    // 进而被后续 loadGameData（如果被绕开 loaded 保护）拉回
+    fetchApi('/game/update-character', {
+      method: 'POST',
+      body: { current_map: mapId },
+    }).catch(() => {})
     if (isBattling.value) {
       stopBattle()
       startBattle()
