@@ -870,6 +870,12 @@
             <div class="herb-field-actions">
               <button class="herb-help-btn" @click="showHerbHelp = true" title="灵田说明">?</button>
               <button class="herb-action-btn jade" @click="harvestAllPlots">一键收获</button>
+              <button
+                v-if="gameStore.character?.sponsor_oneclick_plant"
+                class="herb-action-btn"
+                @click="openPlantDialog(-1)"
+                title="赞助特权：一键种满所有空地块"
+              >一键种植</button>
               <template v-if="getBuildingLevel('herb_field') < 15">
                 <button
                   class="herb-action-btn"
@@ -927,7 +933,7 @@
       <div v-if="showPlantDialog" class="modal-overlay" @click="showPlantDialog = false">
         <div class="modal-content" @click.stop style="max-width: 480px;">
           <div class="modal-header">
-            <h3>选择种植 - 地块 {{ plantPlotIndex + 1 }}</h3>
+            <h3>{{ plantPlotIndex < 0 ? '一键种植 - 所有空地块' : `选择种植 - 地块 ${plantPlotIndex + 1}` }}</h3>
             <button class="modal-close" @click="showPlantDialog = false">×</button>
           </div>
           <div class="modal-body">
@@ -4543,8 +4549,18 @@ function getLockReason(building: BuildingDef): string {
   return `需要 ${preBuilding?.name} 达到 ${building.prerequisite.level} 级`;
 }
 
+function getSponsorMul(): number {
+  const c = gameStore.character;
+  if (!c) return 1;
+  const mul = Number(c.cave_output_mul || 1);
+  if (mul <= 1) return 1;
+  const expire = c.sponsor_expire_at;
+  if (expire && new Date(expire).getTime() < Date.now()) return 1;
+  return mul;
+}
+
 function getOutputPerHour(building: BuildingDef, level: number): number {
-  return caveOutputPerHour(building, level);
+  return caveOutputPerHour(building, level, getSponsorMul());
 }
 
 function getBattleBonus(building: BuildingDef, level: number): number {
@@ -4565,7 +4581,7 @@ function getPendingAmount(building: BuildingDef): number {
   const row = getBuildingRow(building.id);
   if (!row || row.level === 0) return 0;
   const lastTime = new Date(row.last_collect_time).getTime();
-  return caveCalcAccumulated(building, row.level, lastTime);
+  return caveCalcAccumulated(building, row.level, lastTime, 24, getSponsorMul());
 }
 
 function outputTypeName(type: string): string {
@@ -4682,6 +4698,20 @@ function openPlantDialog(plotIndex: number) {
 async function confirmPlant() {
   if (!plantHerbId.value) return;
   try {
+    if (plantPlotIndex.value < 0) {
+      const res: any = await $fetch('/api/cave/plant-all', { method: 'POST', body: {
+        herb_id: plantHerbId.value,
+      }, headers: getAuthHeaders() });
+      if (res.code === 200) {
+        showPlantDialog.value = false;
+        const n = res.data?.planted || 0;
+        showToast(n > 0 ? `一键种植 ${n} 块` : '没有空地块', n > 0 ? 'success' : 'info');
+        await loadPlots();
+      } else {
+        showToast(res.message || '一键种植失败', 'error');
+      }
+      return;
+    }
     const res: any = await $fetch('/api/cave/plant', { method: 'POST', body: {
       plot_index: plantPlotIndex.value,
       herb_id: plantHerbId.value,

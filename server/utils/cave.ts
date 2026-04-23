@@ -79,14 +79,27 @@ export function getUpgradeTime(b: BuildingConfig, level: number): number {
   return Math.floor(b.baseTime * Math.pow(1.5, level - 6))
 }
 
-export function calcOutput(b: BuildingConfig, level: number, lastCollectTime: Date): number {
+export function calcOutput(b: BuildingConfig, level: number, lastCollectTime: Date, mul: number = 1): number {
   if (!b.output) return 0
   const now = Date.now()
   const elapsedMs = now - new Date(lastCollectTime).getTime()
   const elapsedHours = Math.min(elapsedMs / 3600000, 24)
   if (elapsedHours <= 0) return 0
   const perHour = Math.floor(b.output.base * Math.pow(b.output.perLevelMul, level - 1))
-  return Math.floor(perHour * elapsedHours)
+  return Math.floor(perHour * elapsedHours * mul)
+}
+
+/**
+ * 赞助产出倍率：读 cave_output_mul；若 sponsor_expire_at 已过期则回退 1.0。
+ * 传入 characters 行（SELECT * 或至少包含这两个字段）。
+ */
+export function getSponsorMul(char: any): number {
+  if (!char) return 1
+  const mul = Number(char.cave_output_mul || 1)
+  if (mul <= 1) return 1
+  const expire = char.sponsor_expire_at
+  if (expire && new Date(expire).getTime() < Date.now()) return 1
+  return mul
 }
 
 export function randomHarvestQuality(herbFieldLevel: number): { quality: string; count: number } {

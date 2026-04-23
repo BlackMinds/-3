@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getChar, BUILDINGS, calcOutput } from '~/server/utils/cave'
+import { getChar, BUILDINGS, calcOutput, getSponsorMul } from '~/server/utils/cave'
 import { applyCultivationExp } from '~/server/utils/realm'
 
 export default defineEventHandler(async (event) => {
@@ -19,11 +19,12 @@ export default defineEventHandler(async (event) => {
     )
 
     let totalExp = 0, totalStone = 0
+    const mul = getSponsorMul(char)
 
     for (const row of rows) {
       const config = BUILDINGS[row.building_id]
       if (!config || !config.output) continue
-      const amount = calcOutput(config, row.level, row.last_collect_time)
+      const amount = calcOutput(config, row.level, row.last_collect_time, mul)
       if (amount <= 0) continue
 
       if (config.output.type === 'exp') totalExp += amount

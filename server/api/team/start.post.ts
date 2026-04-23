@@ -4,9 +4,9 @@ import { getPool } from '~/server/database/db'
 import { buildEquippedSkillInfo, type BattlerStats } from '~/server/engine/battleEngine'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
-import { getSecretRealm, getDailyCountByRealm } from '~/server/engine/secretRealmData'
+import { getSecretRealm } from '~/server/engine/secretRealmData'
 import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/engine/teamBattleEngine'
-import { getCharacterByUserId, ensureDailyReset, getRoomDetail } from '~/server/utils/team'
+import { getCharacterByUserId, ensureDailyReset, getRoomDetail, getSrDailyMax } from '~/server/utils/team'
 import { generateSecretRealmDrops, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
@@ -253,7 +253,7 @@ export default defineEventHandler(async (event) => {
     const hasQuotaMap = new Map<number, boolean>()
     for (const m of allMembers) {
       const ensured = await ensureDailyReset(m.id, m)
-      const max = getDailyCountByRealm(ensured.realm_tier || 1)
+      const max = getSrDailyMax(ensured)
       hasQuotaMap.set(m.id, (ensured.sr_daily_count || 0) < max)
     }
     // 至少需要一个有次数的人才能开战（否则全队带人没意义，多半是误操作）

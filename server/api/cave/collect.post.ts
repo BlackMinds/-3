@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getChar, BUILDINGS, calcOutput } from '~/server/utils/cave'
+import { getChar, BUILDINGS, calcOutput, getSponsorMul } from '~/server/utils/cave'
 import { updateSectDailyTask } from '~/server/utils/sect'
 import { applyCultivationExp } from '~/server/utils/realm'
 import { checkAchievements } from '~/server/engine/achievementData'
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const row = rows[0]
-    const amount = calcOutput(config, row.level, row.last_collect_time)
+    const amount = calcOutput(config, row.level, row.last_collect_time, getSponsorMul(char))
     if (amount <= 0) {
       await client.query('ROLLBACK')
       return { code: 200, data: { amount: 0, type: config.output.type } }

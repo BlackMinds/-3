@@ -126,10 +126,10 @@ export function getUpgradeTime(building: BuildingDef, currentLevel: number): num
   return Math.floor(building.baseTime * Math.pow(1.5, currentLevel - 6));
 }
 
-// 计算每小时产出
-export function getOutputPerHour(building: BuildingDef, level: number): number {
+// 计算每小时产出（mul 为赞助倍率，默认 1.0）
+export function getOutputPerHour(building: BuildingDef, level: number, mul: number = 1): number {
   if (!building.output) return 0;
-  return Math.floor(building.output.base * Math.pow(building.output.perLevelMul, level - 1));
+  return Math.floor(building.output.base * Math.pow(building.output.perLevelMul, level - 1) * mul);
 }
 
 // 计算战斗加成数值(百分比)
@@ -138,14 +138,14 @@ export function getBattleBonus(building: BuildingDef, level: number): number {
   return building.battleBonus.base + building.battleBonus.perLevel * (level - 1);
 }
 
-// 根据上次领取时间计算累积产出
-export function calcAccumulated(building: BuildingDef, level: number, lastCollectTime: number, maxHours: number = 24): number {
+// 根据上次领取时间计算累积产出（mul 为赞助倍率，默认 1.0）
+export function calcAccumulated(building: BuildingDef, level: number, lastCollectTime: number, maxHours: number = 24, mul: number = 1): number {
   if (!building.output) return 0;
   const now = Date.now();
   const elapsedMs = now - lastCollectTime;
   const elapsedHours = Math.min(elapsedMs / 3600000, maxHours);
   if (elapsedHours <= 0) return 0;
-  return Math.floor(getOutputPerHour(building, level) * elapsedHours);
+  return Math.floor(getOutputPerHour(building, level, mul) * elapsedHours);
 }
 
 export function getBuildingById(id: string): BuildingDef | undefined {

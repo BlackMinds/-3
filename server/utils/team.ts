@@ -10,6 +10,18 @@ export async function getCharacterByUserId(userId: number): Promise<any | null> 
   return rows[0] || null
 }
 
+/**
+ * 秘境每日上限 = 境界基础上限 + 未过期的 sr_daily_bonus（赞助加成）
+ */
+export function getSrDailyMax(char: any): number {
+  const base = getDailyCountByRealm(char?.realm_tier || 1)
+  const bonus = Number(char?.sr_daily_bonus || 0)
+  if (bonus <= 0) return base
+  const expire = char?.sr_bonus_expire_at
+  if (expire && new Date(expire).getTime() < Date.now()) return base
+  return base + bonus
+}
+
 /** 重置每日次数（如果跨天） */
 export async function ensureDailyReset(charId: number, char: any): Promise<any> {
   const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
@@ -44,7 +56,7 @@ export function validateRealmEntry(
   if ((char.level || 1) < realm.reqLevel) return { ok: false, message: `需要等级：Lv.${realm.reqLevel}` }
   if (char.offline_start) return { ok: false, message: '离线挂机中，无法进入' }
   if (!opts.skipDailyCount) {
-    const max = getDailyCountByRealm(char.realm_tier || 1)
+    const max = getSrDailyMax(char)
     if ((char.sr_daily_count || 0) >= max) return { ok: false, message: '今日次数已用完' }
   }
   return { ok: true }

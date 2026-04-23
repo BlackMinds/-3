@@ -818,3 +818,20 @@ CREATE TABLE IF NOT EXISTS character_map_visits (
   first_visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (character_id, map_id)
 );
+
+-- ========================================
+-- 赞助特权（联系群主手动开通，SQL 发放）
+-- ========================================
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS sponsor_oneclick_plant BOOLEAN DEFAULT FALSE;
+-- 洞府产出倍率（聚灵阵修为 / 聚宝盆灵石），默认 1.0，发放 2.0 或 3.0
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS cave_output_mul DECIMAL(3,1) DEFAULT 1.0;
+-- 赞助到期时间；为 NULL 表示永久；过期后产出倍率按 1.0 处理
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS sponsor_expire_at TIMESTAMP DEFAULT NULL;
+-- 秘境每日次数加成（叠加到 getDailyCountByRealm 之上），过期时间独立
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_daily_bonus SMALLINT DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_bonus_expire_at TIMESTAMP DEFAULT NULL;
+-- 发放示例：
+--   UPDATE characters SET sponsor_oneclick_plant = TRUE WHERE name = '玩家名';
+--   UPDATE characters SET cave_output_mul = 2.0 WHERE name = '玩家名';  -- 永久双倍
+--   UPDATE characters SET cave_output_mul = 3.0, sponsor_expire_at = NOW() + INTERVAL '30 days' WHERE name = '玩家名';
+--   UPDATE characters SET sr_daily_bonus = 1, sr_bonus_expire_at = NOW() + INTERVAL '30 days' WHERE name = '玩家名';

@@ -32,6 +32,9 @@ export interface CharacterData {
   avatar?: string | null;
   level: number;
   level_exp: number;
+  sponsor_oneclick_plant?: boolean;
+  cave_output_mul?: number;
+  sponsor_expire_at?: string | null;
 }
 
 // ========== 境界 ==========
