@@ -8,9 +8,13 @@ const SELL_PRICES: Record<string, number> = { white: 10, green: 50, blue: 200, p
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
-  const { rarity } = await readBody(event)
+  const { rarity, tier } = await readBody(event)
   const maxIdx = RARITY_ORDER.indexOf(rarity)
   if (maxIdx < 0) return { code: 400, message: '品质参数错误' }
+
+  // tier 过滤：'all' / undefined / 非法值都视为不限；1-10 才过滤
+  const tierNum = Number(tier)
+  const useTierFilter = tier !== undefined && tier !== null && tier !== 'all' && Number.isFinite(tierNum) && tierNum >= 1 && tierNum <= 10
 
   const char = await getCharId(event.context.userId)
   if (!char) return { code: 400, message: '角色不存在' }
@@ -21,12 +25,19 @@ export default defineEventHandler(async (event) => {
   try {
     await client.query('BEGIN')
 
-    const { rows } = await client.query(
-      `SELECT id, rarity, tier, enhance_level FROM character_equipment
-       WHERE character_id = $1 AND slot IS NULL AND rarity = ANY($2)
-       FOR UPDATE`,
-      [charId, allowed]
-    )
+    const { rows } = useTierFilter
+      ? await client.query(
+          `SELECT id, rarity, tier, enhance_level FROM character_equipment
+           WHERE character_id = $1 AND slot IS NULL AND rarity = ANY($2) AND tier = $3
+           FOR UPDATE`,
+          [charId, allowed, tierNum]
+        )
+      : await client.query(
+          `SELECT id, rarity, tier, enhance_level FROM character_equipment
+           WHERE character_id = $1 AND slot IS NULL AND rarity = ANY($2)
+           FOR UPDATE`,
+          [charId, allowed]
+        )
 
     if (rows.length === 0) {
       await client.query('COMMIT')

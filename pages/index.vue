@@ -2382,7 +2382,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">赞助系统</div>
-            <p class="help-text">赞助增加洞府双倍产出 三倍产出 一键种植 秘境次数</p>
+            <p class="help-text">赞助增加洞府双倍产出 三倍产出 一键种植 秘境次数 随机蓝色功法+1</p>
             <p class="help-text" style="margin-top: 4px;">联系群主</p>
           </div>
         </div>
@@ -5706,7 +5706,7 @@ async function batchSell() {
   try {
     const res: any = await $fetch('/api/equipment/sell-batch', {
       method: 'POST',
-      body: { rarity: sellRarity.value },
+      body: { rarity: sellRarity.value, tier: tierFilter.value },
       headers: getAuthHeaders(),
     });
     if (res.code !== 200 || !res.data) {
