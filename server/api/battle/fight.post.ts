@@ -670,11 +670,25 @@ export default defineEventHandler(async (event) => {
       const template: MonsterTemplate = mapData.boss
       monsterList.push({ stats: generateMonsterStats(template), template })
     } else {
-      const waveSize = 1 + Math.floor(Math.random() * 5)
+      const waveSize = 1 + Math.floor(Math.random() * 4)
       for (let i = 0; i < waveSize; i++) {
         const m = mapData.monsters[rand(0, mapData.monsters.length - 1)]
         const template: MonsterTemplate = m
         monsterList.push({ stats: generateMonsterStats(template), template })
+      }
+    }
+
+    if (mapData.tier === 2) {
+      for (const it of monsterList) {
+        it.stats.atk = Math.floor(it.stats.atk * 0.80)
+        it.stats.maxHp = Math.floor(it.stats.maxHp * 0.90)
+        it.stats.hp = it.stats.maxHp
+      }
+    } else if (mapData.tier >= 3) {
+      for (const it of monsterList) {
+        it.stats.atk = Math.floor(it.stats.atk * 0.85)
+        it.stats.maxHp = Math.floor(it.stats.maxHp * 0.95)
+        it.stats.hp = it.stats.maxHp
       }
     }
 
