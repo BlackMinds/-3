@@ -1,6 +1,13 @@
 import { getPool } from '~/server/database/db'
 
+// 头像上传功能暂时关闭（缺 MIME 校验 + base64 塞库的性能隐患，待改造完再开）
+const AVATAR_UPLOAD_DISABLED = true
+
 export default defineEventHandler(async (event) => {
+  if (AVATAR_UPLOAD_DISABLED) {
+    return { code: 400, message: '头像上传功能暂时关闭' }
+  }
+
   const userId = event.context.userId
   const { avatar } = await readBody(event)
 

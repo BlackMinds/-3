@@ -232,15 +232,13 @@
       <div v-show="gameStore.activeTab === 'character'" class="tab-panel char-panel">
         <div class="char-info-card" v-if="gameStore.character">
           <div class="char-header">
-            <div class="avatar-wrap" @click="triggerAvatarUpload" title="点击上传头像">
+            <div class="avatar-wrap" @click="showToast('头像上传功能暂时关闭', 'error')" title="头像上传功能暂时关闭" style="cursor: default;">
               <img v-if="gameStore.character.avatar" :src="gameStore.character.avatar" class="avatar-img" />
               <div v-else class="root-display" :style="{ '--rc': rootColor, '--rg': rootGlow }">
                 <div class="root-ring"></div>
                 <span class="root-ch">{{ rootChar }}</span>
               </div>
-              <div class="avatar-edit-hint">换</div>
             </div>
-            <input ref="avatarInput" type="file" accept="image/*" style="display: none;" @change="onAvatarSelected" />
             <div class="char-meta">
               <h2 class="ch-name">{{ gameStore.character.name }}</h2>
               <p class="ch-realm">{{ gameStore.realmName }} · {{ rootName }}</p>
@@ -2384,7 +2382,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">赞助系统</div>
-            <p class="help-text">赞助增加洞府双倍产出 三倍产出 一键种植</p>
+            <p class="help-text">赞助增加洞府双倍产出 三倍产出 一键种植 秘境次数</p>
             <p class="help-text" style="margin-top: 4px;">联系群主</p>
           </div>
         </div>
