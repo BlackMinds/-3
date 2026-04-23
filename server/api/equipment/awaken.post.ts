@@ -19,6 +19,7 @@ import {
  *   2. 事务：条件扣道具 → UPDATE awaken_effect → COMMIT
  */
 export default defineEventHandler(async (event) => {
+  try {
   const body = await readBody(event)
   const equipId = Number(body?.equip_id)
   const itemId = String(body?.item_id || '')
@@ -50,7 +51,13 @@ export default defineEventHandler(async (event) => {
     return { code: 400, message: '白/绿品装备无法附灵' }
   }
 
-  const currentEffect: AwakenEffect | null = eq.awaken_effect || null
+  // awaken_effect 在 JSONB 列下 pg 通常返回对象；兼容字符串解析防止 pg 驱动差异导致 JSON.parse 错误
+  let currentEffect: AwakenEffect | null = null
+  if (eq.awaken_effect) {
+    currentEffect = typeof eq.awaken_effect === 'string'
+      ? JSON.parse(eq.awaken_effect)
+      : eq.awaken_effect
+  }
   if (itemId === 'awaken_stone') {
     if (currentEffect) return { code: 400, message: '该装备已有附灵，请使用灵枢玉洗练' }
   } else {
@@ -94,7 +101,7 @@ export default defineEventHandler(async (event) => {
 
     // 装备仍属于该角色 + 附灵状态未被并发改动（avoid 双写覆盖）
     const { rowCount: updated } = await client.query(
-      `UPDATE character_equipment SET awaken_effect = $1
+      `UPDATE character_equipment SET awaken_effect = $1::jsonb
        WHERE id = $2 AND character_id = $3
          AND ${itemId === 'awaken_stone' ? 'awaken_effect IS NULL' : 'awaken_effect IS NOT NULL'}`,
       [JSON.stringify(newEffect), equipId, charId]
@@ -115,11 +122,15 @@ export default defineEventHandler(async (event) => {
         new_effect: newEffect,
       },
     }
-  } catch (error) {
+  } catch (error: any) {
     await client.query('ROLLBACK').catch(() => {})
-    console.error('附灵接口出错:', error)
-    return { code: 500, message: '服务器错误' }
+    console.error('附灵事务出错:', error)
+    return { code: 500, message: '附灵失败：' + (error?.message || '服务器错误') }
   } finally {
     client.release()
+  }
+  } catch (error: any) {
+    console.error('附灵接口出错:', error)
+    return { code: 500, message: '附灵失败：' + (error?.message || '服务器错误') }
   }
 })
