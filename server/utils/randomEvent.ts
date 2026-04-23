@@ -357,6 +357,10 @@ async function applySingleEffect(
         `UPDATE character_skills SET level = level + 1 WHERE id = $1`,
         [row.id]
       )
+      await pool.query(
+        `UPDATE character_skill_inventory SET level = $1 WHERE character_id = $2 AND skill_id = $3`,
+        [Number(row.level) + 1, winner.id, row.skill_id]
+      )
       reward.skillUpgraded = { id: row.skill_id, level: Number(row.level) + 1 }
       reward.summary.push(`功法【${row.skill_id}】升至 ${Number(row.level) + 1} 级`)
       return

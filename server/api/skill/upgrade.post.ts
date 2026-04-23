@@ -52,10 +52,14 @@ export default defineEventHandler(async (event) => {
       [needPages, charId, skill_id]
     )
 
-    // 升级
+    // 升级（同步更新 inventory 的等级主权位置，卸下也不丢）
     await pool.query(
       'UPDATE character_skills SET level = level + 1 WHERE id = $1',
       [equipped[0].id]
+    )
+    await pool.query(
+      'UPDATE character_skill_inventory SET level = $1 WHERE character_id = $2 AND skill_id = $3',
+      [currentLevel + 1, charId, skill_id]
     )
 
     checkAchievements(charId, 'skill_max_level', currentLevel + 1).catch(() => {})

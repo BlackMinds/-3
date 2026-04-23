@@ -145,9 +145,25 @@ CREATE TABLE IF NOT EXISTS character_skill_inventory (
   character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
   skill_id VARCHAR(50) NOT NULL,
   count INT DEFAULT 1,
+  level INT DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (character_id, skill_id)
 );
+
+-- 增量迁移：功法等级字段（脱离已装备表，卸下不丢等级）
+ALTER TABLE character_skill_inventory ADD COLUMN IF NOT EXISTS level INT DEFAULT 1;
+
+-- 一次性回填：把当前已装备表里的 level 同步到 inventory（取 MAX 以防同名多槽）
+UPDATE character_skill_inventory csi
+SET level = sub.max_lv
+FROM (
+  SELECT character_id, skill_id, MAX(level) AS max_lv
+  FROM character_skills
+  GROUP BY character_id, skill_id
+) sub
+WHERE csi.character_id = sub.character_id
+  AND csi.skill_id = sub.skill_id
+  AND csi.level < sub.max_lv;
 
 -- ========================================
 -- 丹药背包

@@ -50,24 +50,37 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 读取已有装备的等级,后续保留
-    const { rows: oldEquipped } = await pool.query(
-      'SELECT skill_id, skill_type, slot_index, level FROM character_skills WHERE character_id = $1',
+    // 先把当前已装备表的等级回写到 inventory（兜底：万一有历史数据或别处升级没同步，确保 inventory 是等级主权位置）
+    await pool.query(
+      `UPDATE character_skill_inventory csi
+       SET level = sub.max_lv
+       FROM (
+         SELECT character_id, skill_id, MAX(level) AS max_lv
+         FROM character_skills
+         WHERE character_id = $1
+         GROUP BY character_id, skill_id
+       ) sub
+       WHERE csi.character_id = sub.character_id
+         AND csi.skill_id = sub.skill_id
+         AND csi.level < sub.max_lv`,
       [charId]
     )
-    const oldLevelMap: Record<string, number> = {}
-    for (const row of oldEquipped) {
-      oldLevelMap[`${row.skill_type}_${row.slot_index}_${row.skill_id}`] = row.level
-    }
+
+    // 从 inventory 读取各 skill 的等级
+    const { rows: invRows } = await pool.query(
+      'SELECT skill_id, level FROM character_skill_inventory WHERE character_id = $1',
+      [charId]
+    )
+    const invLevelMap: Record<string, number> = {}
+    for (const row of invRows) invLevelMap[row.skill_id] = Number(row.level) || 1
 
     // 先清空旧装备
     await pool.query('DELETE FROM character_skills WHERE character_id = $1', [charId])
 
-    // 插入新装备(保留同槽位同 skill 的等级)
+    // 插入新装备（等级从 inventory 读取，卸下不会丢失）
     if (Array.isArray(equipped) && equipped.length > 0) {
       for (const item of equipped) {
-        const key = `${item.skill_type}_${item.slot_index}_${item.skill_id}`
-        const level = oldLevelMap[key] || 1
+        const level = invLevelMap[item.skill_id] || 1
         await pool.query(
           'INSERT INTO character_skills (character_id, skill_id, skill_type, slot_index, level) VALUES ($1, $2, $3, $4, $5)',
           [charId, item.skill_id, item.skill_type, item.slot_index, level]
