@@ -50,8 +50,9 @@ export async function backfillThresholdAchievements(charId: number) {
     await checkAchievements(charId, 'skill_equip', 1)
     await checkAchievements(charId, 'skill_slots_filled', skillCount[0].cnt)
   }
+  // 最高等级从 inventory 读（唯一真相源）
   const { rows: skillLvRows } = await pool.query(
-    'SELECT MAX(level) AS max_lv FROM character_skills WHERE character_id = $1', [charId]
+    'SELECT MAX(level) AS max_lv FROM character_skill_inventory WHERE character_id = $1', [charId]
   )
   if (skillLvRows[0]?.max_lv > 0) {
     await checkAchievements(charId, 'skill_max_level', skillLvRows[0].max_lv)
@@ -146,9 +147,9 @@ export async function initAchievementsIfNeeded(charId: number) {
     await checkAchievements(charId, 'skill_slots_filled', skillCount[0].cnt)
   }
 
-  // 功法最高等级
+  // 功法最高等级（从 inventory 读——唯一真相源）
   const { rows: skillLvRows } = await pool.query(
-    'SELECT MAX(level) AS max_lv FROM character_skills WHERE character_id = $1 AND equipped = TRUE', [charId]
+    'SELECT MAX(level) AS max_lv FROM character_skill_inventory WHERE character_id = $1', [charId]
   )
   if (skillLvRows[0]?.max_lv > 0) {
     await checkAchievements(charId, 'skill_max_level', skillLvRows[0].max_lv)

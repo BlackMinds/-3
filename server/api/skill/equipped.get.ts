@@ -14,8 +14,15 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '角色不存在' }
     }
 
+    // level 以 inventory 为唯一真相；character_skills.level 只是镜像
     const { rows: skills } = await pool.query(
-      'SELECT * FROM character_skills WHERE character_id = $1 AND equipped = TRUE',
+      `SELECT cs.id, cs.character_id, cs.skill_id, cs.skill_type, cs.slot_index,
+              cs.equipped, cs.created_at,
+              COALESCE(csi.level, cs.level, 1) AS level
+         FROM character_skills cs
+         LEFT JOIN character_skill_inventory csi
+                ON csi.character_id = cs.character_id AND csi.skill_id = cs.skill_id
+        WHERE cs.character_id = $1 AND cs.equipped = TRUE`,
       [charRows[0].id]
     )
 

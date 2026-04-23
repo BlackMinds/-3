@@ -9,8 +9,6 @@ import {
   EVENT_MAP,
   RARITY_DISTRIBUTION,
   WINNER_COOLDOWN_MS,
-  ONLINE_THRESHOLD_MS,
-  NEWBIE_PROTECTION_MS,
   getStoneFloor,
   type EventRarity,
   type RandomEvent,
@@ -34,19 +32,14 @@ export interface Candidate {
 }
 
 export async function pickCandidates(pool: Pool): Promise<Candidate[]> {
-  const now = Date.now()
-  const onlineSince = new Date(now - ONLINE_THRESHOLD_MS)
-  const cooldownBefore = new Date(now - WINNER_COOLDOWN_MS)
-  const newbieBefore = new Date(now - NEWBIE_PROTECTION_MS)
+  const cooldownBefore = new Date(Date.now() - WINNER_COOLDOWN_MS)
 
   const { rows } = await pool.query(
     `SELECT id, name, sect_id, realm_tier, realm_stage, cultivation_exp, spirit_stone,
             created_at, event_last_won_at
        FROM characters
-      WHERE last_active_at >= $1
-        AND (event_last_won_at IS NULL OR event_last_won_at < $2)
-        AND created_at <= $3`,
-    [onlineSince, cooldownBefore, newbieBefore]
+      WHERE event_last_won_at IS NULL OR event_last_won_at < $1`,
+    [cooldownBefore]
   )
   return rows as Candidate[]
 }
@@ -341,10 +334,14 @@ async function applySingleEffect(
       return
     }
     case 'equipped_skill_exp': {
-      // 随机挑一条已装备功法，level +1（上限 5）
+      // 随机挑一条已装备功法，level +1（上限 5）——level 以 inventory 为唯一真相
       const { rows } = await pool.query(
-        `SELECT id, skill_id, level FROM character_skills
-          WHERE character_id = $1 AND equipped = TRUE AND level < 5
+        `SELECT cs.id, cs.skill_id, COALESCE(csi.level, cs.level, 1) AS level
+           FROM character_skills cs
+           LEFT JOIN character_skill_inventory csi
+                  ON csi.character_id = cs.character_id AND csi.skill_id = cs.skill_id
+          WHERE cs.character_id = $1 AND cs.equipped = TRUE
+            AND COALESCE(csi.level, cs.level, 1) < 5
           ORDER BY RANDOM() LIMIT 1`,
         [winner.id]
       )
@@ -353,16 +350,18 @@ async function applySingleEffect(
         return
       }
       const row = rows[0]
-      await pool.query(
-        `UPDATE character_skills SET level = level + 1 WHERE id = $1`,
-        [row.id]
-      )
+      const newLevel = Number(row.level) + 1
+      // 写 inventory（主权） + 同步所有同 skill_id 的 skills 镜像
       await pool.query(
         `UPDATE character_skill_inventory SET level = $1 WHERE character_id = $2 AND skill_id = $3`,
-        [Number(row.level) + 1, winner.id, row.skill_id]
+        [newLevel, winner.id, row.skill_id]
       )
-      reward.skillUpgraded = { id: row.skill_id, level: Number(row.level) + 1 }
-      reward.summary.push(`功法【${row.skill_id}】升至 ${Number(row.level) + 1} 级`)
+      await pool.query(
+        `UPDATE character_skills SET level = $1 WHERE character_id = $2 AND skill_id = $3`,
+        [newLevel, winner.id, row.skill_id]
+      )
+      reward.skillUpgraded = { id: row.skill_id, level: newLevel }
+      reward.summary.push(`功法【${row.skill_id}】升至 ${newLevel} 级`)
       return
     }
     case 'sect_contrib_add': {

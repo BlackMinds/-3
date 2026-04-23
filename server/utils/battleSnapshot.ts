@@ -48,9 +48,15 @@ export async function buildCharacterSnapshot(
     [characterId]
   )
 
-  // 3. 技能
+  // 3. 技能（level 以 inventory 为唯一真相，character_skills.level 只是镜像）
   const { rows: skillRows } = await pool.query(
-    `SELECT * FROM character_skills WHERE character_id = $1 AND equipped = TRUE`,
+    `SELECT cs.id, cs.character_id, cs.skill_id, cs.skill_type, cs.slot_index,
+            cs.equipped, cs.created_at,
+            COALESCE(csi.level, cs.level, 1) AS level
+       FROM character_skills cs
+       LEFT JOIN character_skill_inventory csi
+              ON csi.character_id = cs.character_id AND csi.skill_id = cs.skill_id
+      WHERE cs.character_id = $1 AND cs.equipped = TRUE`,
     [characterId]
   )
   const equippedSkills = buildEquippedSkillInfo(skillRows)
