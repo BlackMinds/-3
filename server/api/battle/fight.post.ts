@@ -192,8 +192,14 @@ function generateSubStats(rarityIdx: number, tier: number): { stat: string; valu
 }
 
 // ===== 装备掉落 =====
+// 普通怪掉率按 tier 阶梯：前期更新频繁带来爽感；后期件件保值，刷少但精
+function getNormalDropRate(tier: number): number {
+  if (tier <= 2) return 0.20
+  if (tier <= 6) return 0.12
+  return 0.08
+}
 function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, monsterElement: string | null = null): any | null {
-  const rate = (isBoss ? 1.0 : 0.20) * luckMul
+  const rate = (isBoss ? 1.0 : getNormalDropRate(tier)) * luckMul
   if (Math.random() >= rate) return null
   const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
   // T1-T2 品质权重上调（前期装备更新频繁带来爽感）
