@@ -23,6 +23,7 @@
           </span>
         </div>
         <button class="drop-table-btn" @click="showDropTable = true">掉落表</button>
+        <button class="drop-table-btn" @click="showToast('坊市暂未开放，敬请期待', 'error')">坊市</button>
         <button class="drop-table-btn" @click="openRanking">风云榜</button>
         <button class="drop-table-btn fengyun-btn" @click="eventStore.openPanel()">
           风云阁<span v-if="eventStore.unreadLegendaryCount > 0" class="ach-badge">{{ eventStore.unreadLegendaryCount }}</span>
