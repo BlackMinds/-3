@@ -20,6 +20,7 @@ dist-ssr/
 
 # Database dump (contains user data, too large for git)
 *.sql
+*.dump
 !server/database/migration.sql
 
 # Legacy code (old Vue+Express project, kept locally for reference)
