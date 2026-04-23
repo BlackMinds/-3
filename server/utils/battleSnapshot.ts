@@ -56,7 +56,8 @@ export async function buildCharacterSnapshot(
        FROM character_skills cs
        LEFT JOIN character_skill_inventory csi
               ON csi.character_id = cs.character_id AND csi.skill_id = cs.skill_id
-      WHERE cs.character_id = $1 AND cs.equipped = TRUE`,
+      WHERE cs.character_id = $1 AND cs.equipped = TRUE
+      ORDER BY cs.skill_type, cs.slot_index`,
     [characterId]
   )
   const equippedSkills = buildEquippedSkillInfo(skillRows)

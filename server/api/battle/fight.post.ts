@@ -657,7 +657,8 @@ export default defineEventHandler(async (event) => {
          FROM character_skills cs
          LEFT JOIN character_skill_inventory csi
                 ON csi.character_id = cs.character_id AND csi.skill_id = cs.skill_id
-        WHERE cs.character_id = $1 AND cs.equipped = TRUE`,
+        WHERE cs.character_id = $1 AND cs.equipped = TRUE
+        ORDER BY cs.skill_type, cs.slot_index`,
       [char.id]
     )
     const { rows: buffRows } = await pool.query('SELECT * FROM character_buffs WHERE character_id = $1 AND (expire_time > NOW() OR remaining_fights > 0)', [char.id])
