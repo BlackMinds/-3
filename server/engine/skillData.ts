@@ -116,7 +116,7 @@ export const PASSIVE_SKILLS: Skill[] = [
   { id: 'earth_wall', name: '厚土心法', type: 'passive', rarity: 'blue', element: 'earth', multiplier: 0, description: '防御+10%,气血+8%,土抗+15%', effect: { DEF_percent: 10, HP_percent: 8, RESIST_EARTH: 0.15 } },
   { id: 'crit_master', name: '破绽感知', type: 'passive', rarity: 'purple', element: 'metal', multiplier: 0, description: '暴击率+8%,暴击伤害+22%', effect: { CRIT_RATE_flat: 0.08, CRIT_DMG_flat: 0.22 } },
   { id: 'earth_fortitude', name: '不动如山', type: 'passive', rarity: 'purple', element: 'earth', multiplier: 0, description: '防御+15%,气血+12%,控制抗性+20%', effect: { DEF_percent: 15, HP_percent: 12, RESIST_CTRL: 0.20 } },
-  { id: 'poison_body', name: '百毒不侵', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '木抗+30%,控制抗性+10%,吸血+4%', effect: { RESIST_WOOD: 0.30, RESIST_CTRL: 0.10, LIFESTEAL_flat: 0.04 } },
+  { id: 'poison_body', name: '百毒不侵', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '木抗+30%,控制抗性+10%,吸血+5%', effect: { RESIST_WOOD: 0.30, RESIST_CTRL: 0.10, LIFESTEAL_flat: 0.05 } },
   { id: 'fire_mastery', name: '焚天之体', type: 'passive', rarity: 'purple', element: 'fire', multiplier: 0, description: '攻击+15%,火抗+20%', effect: { ATK_percent: 15, RESIST_FIRE: 0.20 } },
   { id: 'dot_amplifier', name: '万毒归一', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你造成的灼烧/中毒/流血伤害+30%,攻击+8%,暴击率+3%', effect: { dot_amplifier_percent: 30, ATK_percent: 8, CRIT_RATE_flat: 0.03 } },
   { id: 'phantom_step', name: '飘渺神行', type: 'passive', rarity: 'purple', element: 'water', multiplier: 0, description: '闪避+8%,闪避后下次攻击必暴击,速度+8%', effect: { DODGE_flat: 0.08, crit_after_dodge: true, SPD_percent: 8 } },

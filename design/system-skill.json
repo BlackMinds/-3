@@ -368,8 +368,8 @@
       },
       {
         "id": "fire_mastery", "name": "焚天之体", "rarity": "purple", "element": "fire",
-        "effect": { "fire_damage_percent": 20, "burn_damage_bonus": 0.30, "RESIST_FIRE": 0.20 },
-        "description": "火系伤害+20%，灼烧伤害+30%，火抗+20%",
+        "effect": { "ATK_percent": 15, "RESIST_FIRE": 0.20 },
+        "description": "攻击+15%，火抗+20%",
         "root_synergy": "火灵根：灼烧持续+2回合"
       },
       {

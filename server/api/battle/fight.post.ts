@@ -783,11 +783,13 @@ export default defineEventHandler(async (event) => {
 
         // v3.2: 累加 cultivation_exp (不再自动突破,由玩家手动点击"突破"按钮)
         // applyCultivationExp 现在只做飞升末阶软封顶,不会改 tier/stage
+        // 写入瘦身: tier/stage 由突破接口负责, current_map 由前端 /game/update-character 接口负责,
+        // 这里都不再重复写,减少 characters 表 UPDATE 体积与 Neon page version 累积
         const newExpTotal = Number(baseline.cultivation_exp || 0) + totalExp
         const br = applyCultivationExp(newExpTotal, baseline.realm_tier || 1, baseline.realm_stage || 1)
         await client.query(
-          `UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, spirit_stone = spirit_stone + $4, level_exp = level_exp + $5, current_map = $6, last_online = NOW() WHERE id = $7`,
-          [br.cultivation_exp, br.realm_tier, br.realm_stage, totalStone, levelExp, map_id, char.id]
+          `UPDATE characters SET cultivation_exp = $1, spirit_stone = spirit_stone + $2, level_exp = level_exp + $3, last_online = NOW() WHERE id = $4`,
+          [br.cultivation_exp, totalStone, levelExp, char.id]
         )
 
         // 检查升级（统一使用 realm.ts 的工具，与前端公式一致）
