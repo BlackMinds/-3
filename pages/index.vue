@@ -25,6 +25,7 @@
         <button class="drop-table-btn" @click="showDropTable = true">掉落表</button>
         <button class="drop-table-btn" @click="showToast('坊市暂未开放，敬请期待', 'error')">坊市</button>
         <button class="drop-table-btn" @click="openRanking">风云榜</button>
+        <button class="drop-table-btn" @click="openPkDojo">斗法台</button>
         <button class="drop-table-btn fengyun-btn" @click="eventStore.openPanel()">
           风云阁<span v-if="eventStore.unreadLegendaryCount > 0" class="ach-badge">{{ eventStore.unreadLegendaryCount }}</span>
         </button>
@@ -2151,6 +2152,7 @@
             <table class="help-table"><tbody>
               <tr><td>掉落表</td><td>查看当前地图怪物的掉落概率和档次</td></tr>
               <tr><td>风云榜</td><td>境界/等级/灵石/宗门 4 种全服排行</td></tr>
+              <tr><td>斗法台</td><td>1v1 自由 PvP,输入对手道号即可挑战(每日 10 次)</td></tr>
               <tr><td>风云阁</td><td>全服传奇掉落/事件播报,红点提示新传奇</td></tr>
               <tr><td>成就</td><td>多维度成就追踪,领取奖励,佩戴称号</td></tr>
               <tr><td>秘境</td><td>2-4 人组队副本,独占高品质奖励(开发中)</td></tr>
@@ -2206,6 +2208,20 @@
           <div class="help-section">
             <div class="help-title">离线挂机（维护中）</div>
             <p class="help-text" style="color: var(--fade-ink);">功能存在数值异常，暂时下线维护。已开始离线的玩家可正常结束并领取收益。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">斗法台 · 自由 PvP</div>
+            <p class="help-text">头部「斗法台」按钮入口。输入对手道号即可发起 1v1 切磋,无需对方在线(基于角色快照异步模拟)。</p>
+            <table class="help-table"><tbody>
+              <tr><td>每日次数</td><td>主动挑战上限 <b>10 次</b>/日(自然日,凌晨重置)</td></tr>
+              <tr><td>战斗修正</td><td>HP×1.3 / 伤害×0.7 / DOT×0.6 / 暴伤-15%(与宗门战 1v1 同套)</td></tr>
+              <tr><td>失败惩罚</td><td>败方扣除 <b>1%</b> 境界修为</td></tr>
+              <tr><td>被扣保护</td><td>同一玩家单日最多被扣 10 次,超出免扣(战报照写)</td></tr>
+              <tr><td>奖励</td><td>无任何奖励,纯论道切磋</td></tr>
+              <tr><td>对手限制</td><td>不能挑战自己;无境界差/战力差限制(任何人都可挑战)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;">弹窗顶部「⚔ 挑战 / 📜 战记」两个标签页:挑战页发起切磋并显示当场战报;战记页查看自己最近 20 场记录(含主动/被动场次,胜负、修为变化、详细战报可点击展开)。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">⚠ 战斗使用对方"装备 + 功法 + 等级"的实时快照,丹药效果不计入(避免不公平)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">宗门系统</div>
@@ -2555,6 +2571,98 @@
       </div>
     </div>
 
+    <!-- ==================== 斗法台弹窗 ==================== -->
+    <div v-if="showPkDojo" class="modal-overlay" @click="showPkDojo = false">
+      <div class="modal-content" @click.stop style="max-width: 680px;">
+        <div class="modal-header">
+          <h3>⚔ 斗法台</h3>
+          <button class="modal-close" @click="showPkDojo = false">×</button>
+        </div>
+        <div class="pk-tabs">
+          <button :class="['pk-tab', { active: pkTab === 'challenge' }]" @click="pkTab = 'challenge'">⚔ 挑战</button>
+          <button :class="['pk-tab', { active: pkTab === 'history' }]" @click="switchPkHistory">📜 战记 (近 20 场)</button>
+        </div>
+        <div class="modal-body">
+          <!-- ===== 挑战 tab ===== -->
+          <template v-if="pkTab === 'challenge'">
+            <p class="pk-rules">
+              ① 输入对手道号即可挑战，每日 <b>{{ pkQuota.limit }}</b> 次
+              ② 1v1 模式：HP×1.3 / 伤害×0.7 / DOT×0.6 / 暴伤-15%
+              ③ 失败方扣除 <b>1%</b> 境界修为，每人单日最多被扣 10 次（超出免扣）
+              ④ 无奖励，纯论道
+            </p>
+            <div class="pk-quota-row">
+              今日剩余次数：<b :style="{ color: pkQuota.remaining > 0 ? '#88ff88' : '#ff6666' }">{{ pkQuota.remaining }} / {{ pkQuota.limit }}</b>
+            </div>
+            <div class="pk-input-row">
+              <input
+                v-model="pkTargetName"
+                class="pk-input"
+                placeholder="输入对手道号..."
+                maxlength="20"
+                :disabled="pkLoading || pkQuota.remaining <= 0"
+                @keyup.enter="doPkChallenge"
+              />
+              <button
+                class="pk-btn"
+                :disabled="pkLoading || pkQuota.remaining <= 0 || !pkTargetName.trim()"
+                @click="doPkChallenge"
+              >{{ pkLoading ? '斗法中...' : '挑战' }}</button>
+            </div>
+
+            <!-- 战报 -->
+            <div v-if="pkResult" class="pk-result">
+              <div :class="['pk-verdict', pkResult.winnerSide === 'a' ? 'win' : 'lose']">
+                {{ pkResult.winnerSide === 'a' ? '🏆 你击败了' : '💀 你不敌' }}
+                <span class="pk-foe-name">{{ pkResult.winnerSide === 'a' ? pkResult.loserName : pkResult.winnerName }}</span>
+                <span v-if="pkResult.cultivationLoss > 0" class="pk-loss">
+                  · {{ pkResult.winnerSide === 'a' ? pkResult.loserName : '你' }}损失修为 {{ pkResult.cultivationLoss }}
+                </span>
+                <span v-else-if="pkResult.winnerSide === 'b'" class="pk-loss-skip">· 今日已被扣 10 次，免扣</span>
+              </div>
+              <div class="pk-log-list">
+                <div
+                  v-for="(line, idx) in pkResult.battleLog"
+                  :key="idx"
+                  :class="['pk-log', 'pk-log-' + (line.type || 'normal')]"
+                >{{ line.text }}</div>
+              </div>
+            </div>
+          </template>
+
+          <!-- ===== 战记 tab ===== -->
+          <template v-else>
+            <div v-if="pkHistoryLoading" class="pk-history-loading">正在查阅战记...</div>
+            <div v-else-if="pkHistory.length === 0" class="pk-history-empty">尚无战记，去挑战一场吧</div>
+            <div v-else class="pk-history-list">
+              <div
+                v-for="rec in pkHistory"
+                :key="rec.id"
+                :class="['pk-history-row', rec.myWon ? 'win' : 'lose', { expanded: pkExpandedId === rec.id }]"
+              >
+                <div class="pk-history-summary" @click="togglePkExpand(rec.id)">
+                  <span class="pk-history-result">{{ rec.myWon ? '🏆 胜' : '💀 负' }}</span>
+                  <span class="pk-history-role">{{ rec.role === 'attacker' ? '主动挑战' : '被人挑战' }}</span>
+                  <span class="pk-history-foe">{{ rec.foeName }}</span>
+                  <span v-if="rec.myLoss > 0" class="pk-history-loss">扣修为 {{ rec.myLoss }}</span>
+                  <span v-else-if="!rec.myWon" class="pk-history-loss-skip">免扣</span>
+                  <span class="pk-history-time">{{ formatPkTime(rec.foughtAt) }}</span>
+                  <span class="pk-history-arrow">{{ pkExpandedId === rec.id ? '▾' : '▸' }}</span>
+                </div>
+                <div v-if="pkExpandedId === rec.id" class="pk-log-list" style="margin-top: 6px;">
+                  <div
+                    v-for="(line, idx) in rec.battleLog"
+                    :key="idx"
+                    :class="['pk-log', 'pk-log-' + (line.type || 'normal')]"
+                  >{{ line.text }}</div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showSettings" class="modal-overlay" @click="showSettings = false">
       <div class="modal-content" @click.stop style="max-width: 480px;">
         <div class="modal-header">
@@ -2734,6 +2842,85 @@ async function copyQqGroup() {
     showToast('QQ 群号已复制', 'success');
   } catch {
     showToast('复制失败,请手动复制: ' + qq, 'error');
+  }
+}
+
+// ===== 斗法台 =====
+const showPkDojo = ref(false);
+const pkTab = ref<'challenge' | 'history'>('challenge');
+const pkTargetName = ref('');
+const pkLoading = ref(false);
+const pkResult = ref<any>(null);
+const pkQuota = ref({ used: 0, limit: 10, remaining: 10 });
+const pkHistory = ref<any[]>([]);
+const pkHistoryLoading = ref(false);
+const pkExpandedId = ref<number | null>(null);
+
+async function openPkDojo() {
+  showPkDojo.value = true;
+  pkTab.value = 'challenge';
+  pkResult.value = null;
+  pkTargetName.value = '';
+  pkExpandedId.value = null;
+  try {
+    const res: any = await $fetch('/api/pk/quota', { headers: getAuthHeaders() });
+    if (res?.code === 200) pkQuota.value = res.data;
+  } catch (e) { /* ignore */ }
+}
+
+async function switchPkHistory() {
+  pkTab.value = 'history';
+  pkExpandedId.value = null;
+  pkHistoryLoading.value = true;
+  try {
+    const res: any = await $fetch('/api/pk/history', { headers: getAuthHeaders() });
+    if (res?.code === 200) pkHistory.value = res.data || [];
+  } catch (e) { /* ignore */ } finally { pkHistoryLoading.value = false; }
+}
+
+function togglePkExpand(id: number) {
+  pkExpandedId.value = pkExpandedId.value === id ? null : id;
+}
+
+function formatPkTime(t: string): string {
+  const d = new Date(t);
+  if (isNaN(d.getTime())) return '';
+  const now = Date.now();
+  const diff = (now - d.getTime()) / 1000;
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} 天前`;
+  return d.toLocaleDateString('zh-CN');
+}
+
+async function doPkChallenge() {
+  const name = pkTargetName.value.trim();
+  if (!name) { showToast('请输入对手道号', 'error'); return; }
+  if (pkLoading.value) return;
+  pkLoading.value = true;
+  pkResult.value = null;
+  try {
+    const res: any = await $fetch('/api/pk/challenge', {
+      method: 'POST',
+      body: { targetName: name },
+      headers: getAuthHeaders(),
+    });
+    if (res?.code === 200) {
+      pkResult.value = res.data;
+      pkQuota.value.remaining = res.data.remaining;
+      pkQuota.value.used = pkQuota.value.limit - res.data.remaining;
+      // 失败方是自己且确实扣了修为，刷新角色数据
+      if (res.data.winnerSide === 'b' && res.data.cultivationLoss > 0) {
+        try { await (gameStore as any).loadGameData?.(); } catch { /* ignore */ }
+      }
+    } else {
+      showToast(res?.message || '挑战失败', 'error');
+    }
+  } catch (e: any) {
+    showToast(e?.message || '网络错误', 'error');
+  } finally {
+    pkLoading.value = false;
   }
 }
 
@@ -10241,6 +10428,54 @@ onUnmounted(() => {
   max-height: 60vh;
   overflow-y: auto;
 }
+
+/* ===== 斗法台弹窗 ===== */
+.pk-tabs { display: flex; border-bottom: 1px solid rgba(184, 154, 90, 0.2); padding: 0 16px; gap: 0; }
+.pk-tab { flex: 1; padding: 10px 12px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--ink-faint); cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.pk-tab:hover { color: var(--ink); }
+.pk-tab.active { color: var(--gold-ink, #c9a85c); border-bottom-color: var(--gold-ink, #c9a85c); font-weight: bold; }
+.pk-history-loading, .pk-history-empty { text-align: center; padding: 30px 0; color: var(--ink-faint); font-size: 14px; }
+.pk-history-list { display: flex; flex-direction: column; gap: 6px; }
+.pk-history-row { background: rgba(0, 0, 0, 0.15); border-left: 3px solid transparent; border-radius: 3px; transition: background 0.2s; }
+.pk-history-row.win { border-left-color: #88ff88; }
+.pk-history-row.lose { border-left-color: #ff6666; }
+.pk-history-row.expanded { background: rgba(0, 0, 0, 0.25); }
+.pk-history-summary { display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; font-size: 13px; }
+.pk-history-summary:hover { background: rgba(184, 154, 90, 0.06); }
+.pk-history-result { font-weight: bold; min-width: 44px; }
+.pk-history-row.win .pk-history-result { color: #88ff88; }
+.pk-history-row.lose .pk-history-result { color: #ff6666; }
+.pk-history-role { color: var(--ink-faint); min-width: 64px; font-size: 12px; }
+.pk-history-foe { color: var(--gold-ink, #c9a85c); flex: 1; }
+.pk-history-loss { color: #ffaa66; font-size: 12px; }
+.pk-history-loss-skip { color: var(--ink-faint); font-size: 12px; }
+.pk-history-time { color: var(--ink-faint); font-size: 12px; }
+.pk-history-arrow { color: var(--ink-faint); font-size: 12px; width: 16px; text-align: right; }
+.pk-rules { font-size: 12px; color: var(--ink-faint); line-height: 1.7; padding: 8px 10px; background: rgba(180, 130, 70, 0.05); border-left: 2px solid rgba(180, 130, 70, 0.3); border-radius: 2px; margin-bottom: 10px; }
+.pk-rules b { color: var(--gold-ink, #c9a85c); }
+.pk-quota-row { font-size: 13px; margin-bottom: 8px; color: var(--ink-faint); }
+.pk-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.pk-input { flex: 1; padding: 8px 10px; border: 1px solid rgba(184, 154, 90, 0.4); background: rgba(0, 0, 0, 0.2); color: var(--ink); border-radius: 3px; font-size: 14px; }
+.pk-input:focus { outline: none; border-color: var(--gold-ink, #c9a85c); }
+.pk-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.pk-btn { padding: 8px 18px; background: linear-gradient(135deg, #8a3a3a, #c45c4a); color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 14px; font-weight: bold; }
+.pk-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.pk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pk-result { margin-top: 12px; padding: 10px; background: rgba(0, 0, 0, 0.15); border-radius: 4px; }
+.pk-verdict { font-size: 15px; font-weight: bold; margin-bottom: 8px; padding: 6px 8px; border-radius: 3px; }
+.pk-verdict.win { color: #88ff88; background: rgba(136, 255, 136, 0.08); }
+.pk-verdict.lose { color: #ff8866; background: rgba(255, 100, 70, 0.08); }
+.pk-foe-name { color: var(--gold-ink, #c9a85c); margin: 0 4px; }
+.pk-loss { font-weight: normal; font-size: 13px; color: #ffaa66; }
+.pk-loss-skip { font-weight: normal; font-size: 13px; color: var(--ink-faint); }
+.pk-log-list { font-size: 13px; color: #ccc; max-height: 320px; overflow-y: auto; padding: 8px; background: #050510; border-radius: 3px; line-height: 1.7; font-family: 'Consolas', 'Courier New', monospace; }
+.pk-log { padding: 1px 4px; }
+.pk-log-crit { color: #ffaa33; font-weight: bold; }
+.pk-log-kill { color: #ff4444; font-weight: bold; background: rgba(255, 68, 68, 0.08); padding: 3px 4px; border-radius: 2px; }
+.pk-log-death { color: #ff6666; }
+.pk-log-system { color: #88ff88; font-weight: bold; margin: 4px 0; padding: 4px 8px; background: rgba(136, 255, 136, 0.08); border-radius: 3px; }
+.pk-log-buff { color: #88ccff; }
+.pk-log-loot { color: #c9a85c; }
 
 /* ===== 排行榜弹窗 ===== */
 .ranking-modal {

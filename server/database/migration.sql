@@ -835,3 +835,22 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_bonus_expire_at TIMESTAMP DEF
 --   UPDATE characters SET cave_output_mul = 1.5 WHERE name = '玩家名';  -- 永久 1.5 倍
 --   UPDATE characters SET cave_output_mul = 2.0, sponsor_expire_at = NOW() + INTERVAL '30 days' WHERE name = '玩家名';
 --   UPDATE characters SET sr_daily_bonus = 1, sr_bonus_expire_at = NOW() + INTERVAL '30 days' WHERE name = '玩家名';
+
+-- ========================================
+-- 斗法台 PvP 战斗记录
+-- ========================================
+-- 玩家 vs 玩家 1v1 异步对战，每日 10 次主动挑战 / 10 次被扣修为上限
+-- 失败方扣 1% 境界修为；战报存 JSONB
+CREATE TABLE IF NOT EXISTS pk_records (
+  id BIGSERIAL PRIMARY KEY,
+  attacker_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  defender_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  attacker_name VARCHAR(50) NOT NULL,
+  defender_name VARCHAR(50) NOT NULL,
+  winner_side CHAR(1) NOT NULL CHECK (winner_side IN ('a','b')),
+  cultivation_loss BIGINT NOT NULL DEFAULT 0,
+  battle_log JSONB NOT NULL,
+  fought_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_pk_attacker_day ON pk_records (attacker_id, fought_at);
+CREATE INDEX IF NOT EXISTS idx_pk_defender_day ON pk_records (defender_id, fought_at);
