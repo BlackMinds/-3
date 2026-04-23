@@ -30,13 +30,14 @@ export const HERBS: Record<string, { id: string; element: string | null; unlockP
   spirit_grass: { id: 'spirit_grass', element: null,    unlockPlotMaxLevel: 10 },
 }
 
-export const QUALITIES: Record<string, { id: string; multiplier: number; growMinutes: number; baseYield: number; unlockPlotLevel: number }> = {
-  white:  { id: 'white',  multiplier: 1.00, growMinutes: 30,  baseYield: 3, unlockPlotLevel: 1  },
-  green:  { id: 'green',  multiplier: 1.10, growMinutes: 60,  baseYield: 3, unlockPlotLevel: 1  },
-  blue:   { id: 'blue',   multiplier: 1.25, growMinutes: 120, baseYield: 4, unlockPlotLevel: 4  },
-  purple: { id: 'purple', multiplier: 1.50, growMinutes: 240, baseYield: 4, unlockPlotLevel: 7  },
-  gold:   { id: 'gold',   multiplier: 2.00, growMinutes: 480, baseYield: 5, unlockPlotLevel: 10 },
-  red:    { id: 'red',    multiplier: 3.00, growMinutes: 960, baseYield: 5, unlockPlotLevel: 13 },
+// 种植时间不按品质分档：真实成熟时间由 server/api/cave/plant.post.ts 按灵田等级统一计算
+export const QUALITIES: Record<string, { id: string; multiplier: number; baseYield: number; unlockPlotLevel: number }> = {
+  white:  { id: 'white',  multiplier: 1.00, baseYield: 3, unlockPlotLevel: 1  },
+  green:  { id: 'green',  multiplier: 1.10, baseYield: 3, unlockPlotLevel: 1  },
+  blue:   { id: 'blue',   multiplier: 1.25, baseYield: 4, unlockPlotLevel: 4  },
+  purple: { id: 'purple', multiplier: 1.50, baseYield: 4, unlockPlotLevel: 7  },
+  gold:   { id: 'gold',   multiplier: 2.00, baseYield: 5, unlockPlotLevel: 10 },
+  red:    { id: 'red',    multiplier: 3.00, baseYield: 5, unlockPlotLevel: 13 },
 }
 
 export function getPlotConfig(herbFieldLevel: number): { plotCount: number; maxQualityIndex: number } {

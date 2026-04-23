@@ -469,7 +469,6 @@ export interface HerbQualityDef {
   name: string;
   color: string;
   multiplier: number;     // 品质倍率
-  growMinutes: number;    // 成熟时间(分钟)
   baseYield: number;      // 基础产量(株)
   unlockPlotLevel: number; // 解锁该品质需要的灵田等级
 }
@@ -484,13 +483,16 @@ export const HERBS: HerbDef[] = [
   { id: 'spirit_grass', name: '仙灵草', element: null, description: '突破必备', unlockPlotMaxLevel: 10 },
 ];
 
+// 注：品质时间阶梯未采用。实际实现中种植时间不按品质分档，统一由
+//   server/api/cave/plant.post.ts 按灵田等级计算（基础 12h，满级 6h）。
+//   品质在收获瞬间随机决定，与种下的种类/品质无关。
 export const HERB_QUALITIES: HerbQualityDef[] = [
-  { id: 'white',  name: '凡品', color: '#CCCCCC', multiplier: 1.00, growMinutes: 30,  baseYield: 3, unlockPlotLevel: 1  },
-  { id: 'green',  name: '灵品', color: '#00CC00', multiplier: 1.20, growMinutes: 60,  baseYield: 3, unlockPlotLevel: 1  },
-  { id: 'blue',   name: '玄品', color: '#0066FF', multiplier: 1.50, growMinutes: 120, baseYield: 4, unlockPlotLevel: 4  },
-  { id: 'purple', name: '地品', color: '#9933FF', multiplier: 2.00, growMinutes: 240, baseYield: 4, unlockPlotLevel: 7  },
-  { id: 'gold',   name: '天品', color: '#FFAA00', multiplier: 3.00, growMinutes: 480, baseYield: 5, unlockPlotLevel: 10 },
-  { id: 'red',    name: '仙品', color: '#FF3333', multiplier: 5.00, growMinutes: 960, baseYield: 5, unlockPlotLevel: 13 },
+  { id: 'white',  name: '凡品', color: '#CCCCCC', multiplier: 1.00, baseYield: 3, unlockPlotLevel: 1  },
+  { id: 'green',  name: '灵品', color: '#00CC00', multiplier: 1.20, baseYield: 3, unlockPlotLevel: 1  },
+  { id: 'blue',   name: '玄品', color: '#0066FF', multiplier: 1.50, baseYield: 4, unlockPlotLevel: 4  },
+  { id: 'purple', name: '地品', color: '#9933FF', multiplier: 2.00, baseYield: 4, unlockPlotLevel: 7  },
+  { id: 'gold',   name: '天品', color: '#FFAA00', multiplier: 3.00, baseYield: 5, unlockPlotLevel: 10 },
+  { id: 'red',    name: '仙品', color: '#FF3333', multiplier: 5.00, baseYield: 5, unlockPlotLevel: 13 },
 ];
 ```
 
