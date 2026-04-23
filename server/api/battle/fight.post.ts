@@ -9,6 +9,7 @@ import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats } from '~/server/utils/equipment'
 import { EQUIP_PRIMARY_BASE, WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
+import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
 // 战斗锁: 防止同一角色并发刷战斗
 // - inProgressSince: 战斗进行中的开始时间戳，用于拦截"上场未结束又发起"的并发请求
@@ -707,11 +708,26 @@ export default defineEventHandler(async (event) => {
 
     // 应用经验加成
     const expMul = 1 + (expBonusPercent || 0) / 100
-    const totalExp = Math.floor(result.totalExp * expMul)
+    // 追赶机制：领先排行榜前 30 等级均值时按斜率削减经验（同时作用于境界修为和等级经验）
+    const avgLevel = await getTopAvgLevel()
+    const catchUpMul = getCatchUpMultiplier(char.level || 1, avgLevel)
+    const totalExp = Math.floor(result.totalExp * expMul * catchUpMul)
     // 灵石产出: T1-T3 地图 +20%（新手爽感期）
     const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
     const totalStone = Math.floor(result.totalStone * stoneTierBonus)
     const levelExp = totalExp
+
+    // 战报提示：领先榜单时告知玩家本场经验受限（只在胜利且系数 < 1 时提示）
+    if (result.won && catchUpMul < 1.0 && result.totalExp > 0) {
+      const diff = Math.floor((char.level || 1) - avgLevel)
+      const pct = Math.round(catchUpMul * 100)
+      result.logs.push({
+        turn: 0,
+        text: `[追赶机制] 你已领先榜单前 30 平均等级 ${diff} 级，本场修为与经验获取 ${pct}%`,
+        type: 'system',
+        playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
+      })
+    }
 
     // 掉落生成
     const luckMul = 1 + (luckPercent || 0) / 100
