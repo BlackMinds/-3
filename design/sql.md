@@ -35,6 +35,24 @@ UPDATE characters SET sr_daily_bonus = 1,
   sr_bonus_expire_at = NOW() + INTERVAL '30 days'
   WHERE name = '玩家名';
 
+-- 随机蓝色功法 +1（赞助赠品，11 本蓝色功法等概率抽 1 本）
+  WITH picks AS (
+    SELECT (ARRAY[
+      'fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell',
+      'swift_step','iron_skin','thorn_aura','flame_aura','earth_wall'
+    ])[1 + floor(random() * 11)::int] AS skill_id
+    FROM generate_series(1, 这个是数量)        -- ← 这里改 N
+  ),
+  agg AS (
+    SELECT skill_id, COUNT(*)::int AS cnt FROM picks GROUP BY skill_id
+  )
+  INSERT INTO character_skill_inventory (character_id, skill_id, count, level)
+  SELECT c.id, agg.skill_id, agg.cnt, 1
+  FROM characters c CROSS JOIN agg
+  WHERE c.name = '玩家名'
+  ON CONFLICT (character_id, skill_id) DO UPDATE
+    SET count = character_skill_inventory.count + EXCLUDED.count;
+
  SELECT cave_output_mul, COUNT(*) AS 玩家数
   FROM characters
   WHERE cave_output_mul > 1.0
