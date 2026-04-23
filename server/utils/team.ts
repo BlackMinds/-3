@@ -109,3 +109,113 @@ export async function getRoomDetail(roomId: number): Promise<any | null> {
     })),
   }
 }
+
+/**
+ * 聚合单场秘境战斗详情 — 给"历史日志 / 队员回放"用
+ * 注意：team_buffs 和 awaken_items 未持久化，回放场景下会缺失（is_replay: true 时前端不展示）
+ */
+export async function fetchBattleDetail(battleId: number): Promise<any | null> {
+  const pool = getPool()
+  const { rows: bRows } = await pool.query(
+    `SELECT id, room_id, secret_realm_id, difficulty, result, waves_cleared, total_turns, rating, battle_log, finished_at
+     FROM secret_realm_battles WHERE id = $1`,
+    [battleId]
+  )
+  if (bRows.length === 0) return null
+  const b = bRows[0]
+
+  const { rows: contribRows } = await pool.query(
+    `SELECT sc.character_id, sc.damage_dealt, sc.healing_done, sc.damage_taken, sc.contribution,
+            c.name
+     FROM secret_realm_contributions sc
+     JOIN characters c ON c.id = sc.character_id
+     WHERE sc.battle_id = $1
+     ORDER BY sc.contribution DESC`,
+    [battleId]
+  )
+
+  const { rows: rewardRows } = await pool.query(
+    `SELECT character_id, spirit_stone, exp_gained, level_exp, realm_points, equipment_ids, extra_drops
+     FROM secret_realm_rewards WHERE battle_id = $1`,
+    [battleId]
+  )
+  const rewardMap = new Map<number, any>()
+  for (const r of rewardRows) rewardMap.set(r.character_id, r)
+
+  // 收集所有 equipment_ids，一次性 join character_equipment（可能已处理 / 强化）
+  const allEquipIds: number[] = []
+  for (const r of rewardRows) {
+    const ids = Array.isArray(r.equipment_ids) ? r.equipment_ids : []
+    for (const id of ids) if (typeof id === 'number') allEquipIds.push(id)
+  }
+  const equipMap = new Map<number, any>()
+  if (allEquipIds.length > 0) {
+    const { rows: eqRows } = await pool.query(
+      `SELECT id, name, rarity, tier, base_slot FROM character_equipment WHERE id = ANY($1::int[])`,
+      [allEquipIds]
+    )
+    for (const e of eqRows) equipMap.set(e.id, e)
+  }
+
+  const rewards = contribRows.map(c => {
+    const rwd = rewardMap.get(c.character_id)
+    const equipIds: number[] = rwd && Array.isArray(rwd.equipment_ids) ? rwd.equipment_ids : []
+    const extra = rwd?.extra_drops || {}
+    // 装备：命中则展示详情，未命中则返回占位（说明已处理）
+    const equipments = equipIds.map(id => {
+      const e = equipMap.get(id)
+      if (e) return { id: e.id, name: e.name, rarity: e.rarity, tier: e.tier, base_slot: e.base_slot }
+      return { id, name: '[已处理装备]', rarity: 'normal', tier: 0, base_slot: '' }
+    })
+    return {
+      character_id: c.character_id,
+      name: c.name,
+      contribution: Number(c.contribution),
+      damage_dealt: Number(c.damage_dealt),
+      healing_done: Number(c.healing_done),
+      damage_taken: Number(c.damage_taken),
+      spirit_stone: rwd ? Number(rwd.spirit_stone) : 0,
+      exp_gained: rwd ? Number(rwd.exp_gained) : 0,
+      realm_points: rwd ? Number(rwd.realm_points) : 0,
+      equipments,
+      herbs: Array.isArray(extra.herbs) ? extra.herbs : [],
+      skill_pages: Array.isArray(extra.skill_pages) ? extra.skill_pages : [],
+      awaken_items: { awaken_stone: 0, awaken_reroll: 0 }, // 未持久化
+      no_quota: !rwd, // 没有奖励记录 = 当时带人模式
+    }
+  })
+
+  const realm = getSecretRealm(b.secret_realm_id)
+  const diffCfg = realm?.difficulties[b.difficulty as 1 | 2 | 3]
+
+  return {
+    battle_id: b.id,
+    room_id: b.room_id,
+    secret_realm_id: b.secret_realm_id,
+    secret_realm_name: realm?.name || b.secret_realm_id,
+    difficulty: b.difficulty,
+    difficulty_name: diffCfg?.name || '',
+    result: b.result,
+    waves_cleared: b.waves_cleared,
+    total_waves: diffCfg?.waves.length || b.waves_cleared,
+    total_turns: b.total_turns,
+    rating: b.rating,
+    finished_at: b.finished_at,
+    logs: Array.isArray(b.battle_log) ? b.battle_log : [],
+    team_buffs: [], // 未持久化
+    rewards,
+    is_replay: true,
+  }
+}
+
+/**
+ * 判断角色是否参与过某场战斗（用于鉴权）
+ */
+export async function isCharacterInBattle(charId: number, battleId: number): Promise<boolean> {
+  const pool = getPool()
+  const { rows } = await pool.query(
+    'SELECT 1 FROM secret_realm_contributions WHERE battle_id = $1 AND character_id = $2 LIMIT 1',
+    [battleId, charId]
+  )
+  return rows.length > 0
+}

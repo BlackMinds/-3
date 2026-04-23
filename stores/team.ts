@@ -84,7 +84,11 @@ export const useTeamStore = defineStore('team', () => {
     sr_daily_max: 2,
   })
   const battleResult = ref<any | null>(null)
-  const currentPanel = ref<'lobby' | 'realms' | 'create' | 'room' | 'battle' | 'result'>('lobby')
+  const battleHistory = ref<any[]>([])
+  const historyDetail = ref<any | null>(null)
+  const currentPanel = ref<
+    'lobby' | 'realms' | 'create' | 'room' | 'battle' | 'result' | 'history' | 'history-detail'
+  >('lobby')
 
   function setRoom(room: TeamRoomDetail | null) {
     currentRoom.value = room
@@ -103,6 +107,8 @@ export const useTeamStore = defineStore('team', () => {
     realms,
     playerInfo,
     battleResult,
+    battleHistory,
+    historyDetail,
     currentPanel,
     setRoom,
     reset,

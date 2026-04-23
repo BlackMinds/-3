@@ -18,9 +18,10 @@
       </div>
 
       <!-- Tab 切换 -->
-      <div class="sr-tabs" v-if="['lobby','realms'].includes(teamStore.currentPanel)">
+      <div class="sr-tabs" v-if="['lobby','realms','history'].includes(teamStore.currentPanel)">
         <button :class="{ active: teamStore.currentPanel === 'lobby' }" @click="goLobby">组队大厅</button>
         <button :class="{ active: teamStore.currentPanel === 'realms' }" @click="goRealms">秘境介绍</button>
+        <button :class="{ active: teamStore.currentPanel === 'history' }" @click="goHistory">📜 历史日志</button>
         <button class="create-btn" @click="goCreate">+ 创建房间</button>
       </div>
 
@@ -207,7 +208,7 @@
           </template>
         </div>
 
-        <div class="result-section">
+        <div class="result-section" v-if="!teamStore.battleResult.is_replay">
           <h3>队伍增益</h3>
           <div v-if="teamStore.battleResult.team_buffs && teamStore.battleResult.team_buffs.length > 0">
             <div v-for="(b, i) in teamStore.battleResult.team_buffs" :key="i" class="team-buff">{{ b }}</div>
@@ -251,8 +252,124 @@
           </div>
         </div>
 
+        <div class="result-section" v-if="teamStore.battleResult.logs && teamStore.battleResult.logs.length > 0">
+          <h3>
+            <button class="log-toggle" @click="showResultLogs = !showResultLogs">
+              📜 战斗日志 ({{ teamStore.battleResult.logs.length }} 条) {{ showResultLogs ? '▼' : '▶' }}
+            </button>
+          </h3>
+          <div v-if="showResultLogs" class="log-review">
+            <div v-for="(log, i) in teamStore.battleResult.logs" :key="i"
+                 :class="['battle-log-line', 'log-' + (log.type || 'normal')]">
+              {{ log.text }}
+            </div>
+          </div>
+        </div>
+
         <div class="result-actions">
           <button class="btn-primary" @click="backToLobby">返回组队大厅</button>
+        </div>
+      </div>
+
+      <!-- Panel: 战斗历史列表 -->
+      <div v-if="teamStore.currentPanel === 'history'" class="sr-panel">
+        <div v-if="historyLoading" class="sr-empty">加载中...</div>
+        <div v-else-if="teamStore.battleHistory.length === 0" class="sr-empty">
+          暂无战斗记录。去打一场秘境吧！
+        </div>
+        <div v-else class="history-list">
+          <div v-for="h in teamStore.battleHistory" :key="h.battle_id"
+               :class="['history-row', { defeat: h.result === 'defeat' }]"
+               @click="openHistoryDetail(h.battle_id)">
+            <div :class="['hr-rating', 'r-' + (h.rating || 'FAIL')]">
+              {{ h.result === 'victory' ? (h.rating || '—') : '!' }}
+            </div>
+            <div class="hr-main">
+              <div class="hr-title">
+                【{{ h.secret_realm_name }}】· {{ h.difficulty_name }}
+                <span v-if="h.no_quota" class="hr-badge">带人</span>
+              </div>
+              <div class="hr-meta">
+                {{ h.result === 'victory' ? '通关' : `失败 ${h.waves_cleared}/${h.total_waves}` }}
+                · 贡献 {{ (h.my_contribution * 100).toFixed(1) }}%
+                · 伤害 {{ formatNum(h.my_damage) }}
+                <span v-if="!h.no_quota">· 灵石 +{{ formatNum(h.my_spirit_stone) }}</span>
+              </div>
+              <div class="hr-time">{{ formatTime(h.finished_at) }}</div>
+            </div>
+            <div class="hr-arrow">›</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel: 历史详情 -->
+      <div v-if="teamStore.currentPanel === 'history-detail' && teamStore.historyDetail" class="sr-panel result-panel">
+        <div class="history-back">
+          <button class="btn-cancel" @click="backToHistory">← 返回列表</button>
+          <span class="history-title">
+            【{{ teamStore.historyDetail.secret_realm_name }}】· {{ teamStore.historyDetail.difficulty_name }}
+            · {{ formatTime(teamStore.historyDetail.finished_at) }}
+          </span>
+        </div>
+        <div :class="['result-rating', 'r-' + (teamStore.historyDetail.rating || 'FAIL')]">
+          <template v-if="teamStore.historyDetail.result === 'victory'">
+            <div class="rating-big">{{ teamStore.historyDetail.rating }}</div>
+            <div class="rating-sub">秘境通关</div>
+          </template>
+          <template v-else>
+            <div class="rating-big">!</div>
+            <div class="rating-sub">秘境失败（通过 {{ teamStore.historyDetail.waves_cleared }}/{{ teamStore.historyDetail.total_waves }} 波）</div>
+          </template>
+        </div>
+
+        <div class="result-section">
+          <h3>贡献与奖励</h3>
+          <div class="contribution-list">
+            <div v-for="(r, i) in teamStore.historyDetail.rewards" :key="i" class="contribution-row">
+              <div class="c-name">
+                {{ i + 1 }}. {{ r.name }}
+                <span v-if="r.no_quota" class="hr-badge">带人</span>
+              </div>
+              <div class="c-stats">
+                伤害 {{ formatNum(r.damage_dealt) }} · 治疗 {{ formatNum(r.healing_done) }} · 承伤 {{ formatNum(r.damage_taken) }}
+              </div>
+              <div class="c-reward">
+                贡献 <b>{{ (r.contribution * 100).toFixed(1) }}%</b>
+                <template v-if="!r.no_quota">
+                  · 灵石 <b>+{{ formatNum(r.spirit_stone) }}</b>
+                  · 修为 <b>+{{ formatNum(r.exp_gained) }}</b>
+                  · 积分 <b>+{{ r.realm_points }}</b>
+                </template>
+              </div>
+              <div v-if="hasDrops(r)" class="c-drops">
+                <span v-for="(eq, ei) in r.equipments" :key="'e'+ei" class="drop-tag"
+                      :style="{ color: getRarityColor(eq.rarity), borderColor: getRarityColor(eq.rarity) }">
+                  {{ eq.name }}
+                </span>
+                <span v-for="(hb, hi) in r.herbs" :key="'h'+hi" class="drop-tag"
+                      :style="{ color: herbQualityColor(hb.quality), borderColor: herbQualityColor(hb.quality) }">
+                  {{ herbName(hb.herb_id) }} ×{{ hb.count }}
+                </span>
+                <span v-for="(sp, si) in r.skill_pages" :key="'s'+si" class="drop-tag drop-skill">
+                  {{ skillName(sp) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-section" v-if="teamStore.historyDetail.logs && teamStore.historyDetail.logs.length > 0">
+          <h3>
+            <button class="log-toggle" @click="showDetailLogs = !showDetailLogs">
+              📜 战斗日志 ({{ teamStore.historyDetail.logs.length }} 条) {{ showDetailLogs ? '▼' : '▶' }}
+            </button>
+          </h3>
+          <div v-if="showDetailLogs" class="log-review">
+            <div v-for="(log, i) in teamStore.historyDetail.logs" :key="i"
+                 :class="['battle-log-line', 'log-' + (log.type || 'normal')]">
+              {{ log.text }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -290,6 +407,11 @@ const totalLogs = ref(0)
 const logPlayTimer = ref<any>(null)
 const pendingBattleData = ref<any>(null)
 const battleLogBoxRef = ref<HTMLElement | null>(null)
+
+// 历史日志
+const historyLoading = ref(false)
+const showResultLogs = ref(false)
+const showDetailLogs = ref(false)
 
 // 轮询
 let lobbyPollTimer: any = null
@@ -360,6 +482,63 @@ function backToLobby() {
   teamStore.currentPanel = 'lobby'
   fetchRooms()
   fetchRealms()
+}
+async function goHistory() {
+  teamStore.currentPanel = 'history'
+  stopPolling()
+  historyLoading.value = true
+  try {
+    const api = useApi()
+    const res: any = await api('/team/battles', { query: { limit: 30 } })
+    if (res.code === 200) {
+      teamStore.battleHistory = res.data.battles
+    } else {
+      alert(res.message || '加载失败')
+    }
+  } catch (e: any) {
+    console.error('fetch battle history error:', e)
+    alert(e?.data?.message || '加载失败')
+  } finally {
+    historyLoading.value = false
+  }
+}
+async function openHistoryDetail(battleId: number) {
+  try {
+    const api = useApi()
+    const res: any = await api(`/team/battles/${battleId}`)
+    if (res.code === 200) {
+      teamStore.historyDetail = res.data
+      showDetailLogs.value = false
+      teamStore.currentPanel = 'history-detail'
+    } else {
+      alert(res.message || '加载失败')
+    }
+  } catch (e: any) {
+    console.error('fetch battle detail error:', e)
+    alert(e?.data?.message || '加载失败')
+  }
+}
+function backToHistory() {
+  teamStore.historyDetail = null
+  teamStore.currentPanel = 'history'
+}
+function formatTime(ts: string | Date): string {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return '刚刚'
+  if (diffMin < 60) return `${diffMin} 分钟前`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `${diffH} 小时前`
+  const diffD = Math.floor(diffH / 24)
+  if (diffD < 7) return `${diffD} 天前`
+  const m = (d.getMonth() + 1).toString().padStart(2, '0')
+  const day = d.getDate().toString().padStart(2, '0')
+  const hh = d.getHours().toString().padStart(2, '0')
+  const mm = d.getMinutes().toString().padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day} ${hh}:${mm}`
 }
 
 function handleClose() {
@@ -552,11 +731,31 @@ function startRoomPolling() {
       const api = useApi()
       const res: any = await api(`/team/room/${teamStore.currentRoom.room_id}`)
       if (res.code === 200) {
-        // 如果房间已结束，说明战斗已被别人触发或已解散
+        // 如果房间已结束：队长正在走战斗播放（currentPanel 为 'battle'/'result'）时不要打断；
+        // 队员则自动拉最近一场战报并切到 result 面板查看
         if (res.data.room.status === 'finished') {
           stopRoomPolling()
-          teamStore.reset()
-          fetchRooms()
+          const inBattleFlow = teamStore.currentPanel === 'battle' || teamStore.currentPanel === 'result'
+          if (!inBattleFlow) {
+            const roomId = teamStore.currentRoom.room_id
+            try {
+              const latest: any = await api('/team/battles/latest', { query: { room_id: roomId } })
+              if (latest.code === 200) {
+                teamStore.battleResult = latest.data
+                showResultLogs.value = false
+                teamStore.currentPanel = 'result'
+                teamStore.currentRoom = null
+                fetchRealms() // 刷新次数显示
+              } else {
+                teamStore.reset()
+                fetchRooms()
+              }
+            } catch (e) {
+              console.error('fetch latest battle error:', e)
+              teamStore.reset()
+              fetchRooms()
+            }
+          }
         } else {
           teamStore.currentRoom = res.data.room
         }
@@ -878,6 +1077,57 @@ onUnmounted(() => {
 .drop-tag.drop-awaken { color: #d8b4ff; border-color: #6a3d8a; }
 
 .result-actions { margin-top: 20px; }
+
+/* 历史日志 */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-row {
+  display: flex; align-items: center; gap: 12px;
+  background: #1f2229; border: 1px solid #2b2e36; border-radius: 6px;
+  padding: 10px 14px; cursor: pointer; transition: all .15s;
+}
+.history-row:hover { border-color: #e8c58f; background: #2a2419; }
+.history-row.defeat { opacity: .75; }
+.hr-rating {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: bold; flex-shrink: 0;
+  border: 2px solid #2b2e36; background: #15181e;
+}
+.hr-rating.r-S { color: #e8c58f; border-color: #e8c58f; }
+.hr-rating.r-A { color: #a3c972; border-color: #a3c972; }
+.hr-rating.r-B { color: #56ccf2; border-color: #56ccf2; }
+.hr-rating.r-FAIL { color: #eb5757; border-color: #eb5757; }
+.hr-main { flex: 1; min-width: 0; }
+.hr-title { font-size: 14px; color: #d8d9de; margin-bottom: 3px; }
+.hr-meta { font-size: 12px; color: #9ea3ad; margin-bottom: 2px; }
+.hr-time { font-size: 11px; color: #6a6f78; }
+.hr-arrow { color: #6a6f78; font-size: 24px; flex-shrink: 0; }
+.hr-badge {
+  display: inline-block; padding: 1px 6px; background: #2b2e36;
+  color: #9ea3ad; font-size: 10px; border-radius: 3px; margin-left: 4px;
+}
+
+.history-back {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  text-align: left;
+}
+.history-title { font-size: 13px; color: #9ea3ad; }
+
+/* 日志折叠 */
+.log-toggle {
+  background: transparent; border: none; color: #e8c58f;
+  font-size: 14px; cursor: pointer; padding: 0;
+  font-weight: bold;
+}
+.log-toggle:hover { color: #f4d3a5; }
+.log-review {
+  max-height: 320px; overflow-y: auto;
+  background: #15181e; border: 1px solid #2b2e36;
+  padding: 10px; border-radius: 6px;
+  font-size: 12px; line-height: 1.5;
+  margin-top: 6px;
+  text-align: left;
+}
 
 @media (max-width: 768px) {
   .sr-modal { width: calc(100vw - 12px); max-height: calc(100vh - 12px); }
