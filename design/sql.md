@@ -34,3 +34,9 @@ UPDATE characters SET sponsor_oneclick_plant = TRUE WHERE name = '玩家名';
 UPDATE characters SET sr_daily_bonus = 1,
   sr_bonus_expire_at = NOW() + INTERVAL '30 days'
   WHERE name = '玩家名';
+
+ SELECT cave_output_mul, COUNT(*) AS 玩家数
+  FROM characters
+  WHERE cave_output_mul > 1.0
+  GROUP BY cave_output_mul
+  ORDER BY cave_output_mul;
