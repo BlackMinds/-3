@@ -14,16 +14,15 @@
       level_exp = 0
   WHERE name = '杂鱼'; 降级sql
 
--- 双倍 30 天
+-- 1.5 倍产出 30 天
+UPDATE characters SET cave_output_mul = 1.5,
+  sponsor_expire_at = NOW() + INTERVAL '30 days'
+  WHERE name = '风丿火';
 
- UPDATE characters SET cave_output_mul = 2.0,
-    sponsor_expire_at = NOW() + INTERVAL '30 days'
-    WHERE name = '风丿火';
-
--- 三倍 30 天
-UPDATE characters SET cave_output_mul = 3.0,
-sponsor_expire_at = NOW() + INTERVAL '30 days'
-WHERE name = '风丿火';
+-- 2 倍产出 30 天
+UPDATE characters SET cave_output_mul = 2.0,
+  sponsor_expire_at = NOW() + INTERVAL '30 days'
+  WHERE name = '风丿火';
 
 -- 关闭
 UPDATE characters SET cave_output_mul = 1.0, sponsor_expire_at = NULL WHERE name = '风丿火';

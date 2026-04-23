@@ -832,6 +832,6 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_daily_bonus SMALLINT DEFAULT 
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_bonus_expire_at TIMESTAMP DEFAULT NULL;
 -- 发放示例：
 --   UPDATE characters SET sponsor_oneclick_plant = TRUE WHERE name = '玩家名';
---   UPDATE characters SET cave_output_mul = 2.0 WHERE name = '玩家名';  -- 永久双倍
---   UPDATE characters SET cave_output_mul = 3.0, sponsor_expire_at = NOW() + INTERVAL '30 days' WHERE name = '玩家名';
+--   UPDATE characters SET cave_output_mul = 1.5 WHERE name = '玩家名';  -- 永久 1.5 倍
+--   UPDATE characters SET cave_output_mul = 2.0, sponsor_expire_at = NOW() + INTERVAL '30 days' WHERE name = '玩家名';
 --   UPDATE characters SET sr_daily_bonus = 1, sr_bonus_expire_at = NOW() + INTERVAL '30 days' WHERE name = '玩家名';

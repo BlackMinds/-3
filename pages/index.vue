@@ -2388,7 +2388,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">赞助系统</div>
-            <p class="help-text">赞助增加洞府双倍产出 三倍产出 一键种植 秘境次数 随机蓝色功法+1</p>
+            <p class="help-text">赞助增加洞府 1.5 倍 / 2 倍产出 一键种植 秘境次数 随机蓝色功法+1</p>
             <p class="help-text" style="margin-top: 4px;">联系群主</p>
           </div>
         </div>
