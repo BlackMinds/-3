@@ -69,7 +69,7 @@ export interface PvpBalanceConfig {
 
 export const PVP_BALANCE: Record<PvpMode, PvpBalanceConfig> = {
   // 单挑：保留较强的操作空间（神通 CD 博弈），战斗约 4~8 回合
-  '1v1':  { hpMultiplier: 1.3, damageMultiplier: 0.7, dotMultiplier: 0.6, critDmgReduction: 0.15 },
+  '1v1':  { hpMultiplier: 1.8, damageMultiplier: 0.6, dotMultiplier: 0.5, critDmgReduction: 0.35 },
   // 团战/偷袭：3 人 AoE 叠加在对方身上,需要更强缓冲,战斗约 5~10 回合
   'team': { hpMultiplier: 1.5, damageMultiplier: 0.5, dotMultiplier: 0.5, critDmgReduction: 0.20 },
 }
@@ -626,21 +626,20 @@ export function runPvpBattle(
       })
     }
 
-    const dealDamage = (t: PvpFighter, rawDmg: number, isCrit: boolean): number => {
+    // 注意：dealDamage 不在内部 push 吸血日志，由调用方在伤害日志后 push，
+    // 避免出现"先吸血、后伤害"乃至跨回合错位的视觉问题
+    const dealDamage = (t: PvpFighter, rawDmg: number, isCrit: boolean): { final: number; lifestealHeal: number } => {
       const final = applyIncomingDamage(t, rawDmg, isCrit)
       attacker.totalDmgDealt += final
-      // 吸血
+      let lifestealHeal = 0
       if (attacker.lifesteal > 0 && attacker.hp > 0 && attacker.hp < attacker.maxHp) {
         const heal = Math.floor(final * attacker.lifesteal)
         if (heal > 0) {
-          const actualHeal = Math.min(heal, attacker.maxHp - attacker.hp)
-          attacker.hp += actualHeal
-          if (actualHeal > 0) {
-            log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${actualHeal} 点气血` })
-          }
+          lifestealHeal = Math.min(heal, attacker.maxHp - attacker.hp)
+          attacker.hp += lifestealHeal
         }
       }
-      return final
+      return { final, lifestealHeal }
     }
 
     if (hits > 1 && attackTargets.length === 1) {
@@ -652,9 +651,10 @@ export function runPvpBattle(
         if (dr.damage === 0) {
           log({ turn, type: 'dodge', text: `  第 ${h + 1} 段 被 ${liveTarget.name} 闪避` })
         } else {
-          const final = dealDamage(liveTarget, dr.damage, dr.isCrit)
+          const { final, lifestealHeal } = dealDamage(liveTarget, dr.damage, dr.isCrit)
           const critText = dr.isCrit ? '暴击! ' : ''
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  第 ${h + 1} 段 ${critText}对 ${liveTarget.name} 造成 ${final} 伤害` })
+          if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
           if (usedSkill.debuff) tryApplyDebuff(liveTarget, liveTarget.name, usedSkill.debuff as any, attacker.atk, turn)
           triggerAwakenOnHit(attacker, liveTarget, turn)
           triggerRetaliate(attacker, liveTarget, final, dr.isCrit, turn)
@@ -670,13 +670,14 @@ export function runPvpBattle(
           log({ turn, type: 'dodge', text: `  ${t.name} 闪避了 ${attacker.name} 的攻击` })
           continue
         }
-        const final = dealDamage(t, dr.damage, dr.isCrit)
+        const { final, lifestealHeal } = dealDamage(t, dr.damage, dr.isCrit)
         const critText = dr.isCrit ? '暴击! ' : ''
         if (skillLabel) {
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  ${critText}对 ${t.name} 造成 ${final} 伤害` })
         } else {
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `[第${turn}回合] ${prefix}${critText}${attacker.name} 【${usedSkill.name}】对 ${t.name} 造成 ${final} 伤害` })
         }
+        if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
         if (usedSkill.debuff) tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn)
         triggerAwakenOnHit(attacker, t, turn)
         triggerRetaliate(attacker, t, final, dr.isCrit, turn)
@@ -691,8 +692,9 @@ export function runPvpBattle(
           if (chainT) {
             const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(chainT), mul * 0.6, usedSkill.element, usedSkill.ignoreDef)
             if (dr.damage > 0) {
-              const final = dealDamage(chainT, dr.damage, dr.isCrit)
+              const { final, lifestealHeal } = dealDamage(chainT, dr.damage, dr.isCrit)
               log({ turn, type: 'buff', text: `  ✦【连击】${attacker.name} 再次出手，对 ${chainT.name} 造成 ${final} 伤害` })
+              if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
               if (chainT.hp <= 0) chainT.alive = false
             }
           }
