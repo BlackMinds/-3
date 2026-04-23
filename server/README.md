@@ -141,8 +141,8 @@ src/
 | users | 账号(用户名/密码/状态) |
 | characters | 角色(属性/境界/等级/货币/头像/离线状态) |
 | character_equipment | 装备(base_slot/weapon_type/req_level/enhance_level/sub_stats) |
-| character_skills | 已装备功法(active/divine/passive,含等级) |
-| character_skill_inventory | 功法背包(skill_id + count) |
+| character_skills | 已装备功法(active/divine/passive,level 为镜像) |
+| character_skill_inventory | 功法背包(skill_id + count + level,**等级唯一真相源**) |
 | character_pills | 丹药背包(pill_id + quality_factor + count) |
 | character_buffs | 激活buff(pill_id + quality_factor + expire_time) |
 | character_cave | 洞府建筑(building_id + level + 升级/领取时间) |
@@ -153,6 +153,19 @@ src/
 ```bash
 mysql -u root -p < src/database/migration.sql
 ```
+
+### 功法等级单一真相源约定
+
+- `character_skill_inventory.level` 是**权威值**（读/判满以它为准）
+- `character_skills.level` 只作镜像，由写入点全量同步过来
+- 写入规则：
+  - 写 inventory：`UPDATE ... WHERE character_id AND skill_id`（单行）
+  - 同步 skills 镜像：`UPDATE ... WHERE character_id AND skill_id`（不带 slot，所有同 skill_id 行一起同步，兼容历史脏数据）
+  - **禁止**在 skills 上做 `level + 1` 单行自增（会产生镜像分裂）
+- 读取规则：
+  - 对外返回 level 的接口/查询统一用 `COALESCE(csi.level, cs.level, 1)` 的 JOIN 取值
+  - 历史 bug：曾出现 "前端显示 Lv.1 但点升报已满级" 的镜像分裂，根因就是 `character_skills` 单行自增导致同 skill_id 多行 level 不一致
+- 涉及文件：`server/api/skill/{upgrade,equipped,save-equipped}.ts`、`server/utils/{battleSnapshot,achievement,randomEvent}.ts`、`server/api/battle/fight.post.ts`
 
 ## 环境变量 (.env)
 ```env
