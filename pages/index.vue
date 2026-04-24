@@ -3674,7 +3674,7 @@ async function loadShopList() {
 async function doBuyShopItem(itemKey: string) {
   try {
     const res: any = await $fetch('/api/sect/shop/buy', { method: 'POST', body: { item_key: itemKey }, headers: getAuthHeaders() });
-    if (res.code === 200) { showToast(res.message, 'success'); await loadShopList(); await loadSectInfo(); await gameStore.loadGameData(); }
+    if (res.code === 200) { showToast(res.message, 'success'); await loadShopList(); await loadSectInfo(); await gameStore.loadGameData(); await loadUnlockedRecipes(); }
     else showToast(res.message, 'error');
   } catch {}
 }
