@@ -5775,7 +5775,7 @@ function calcPillBuffEffect() {
     if (e.atkPercent)  atk  += e.atkPercent  * qf;
     if (e.defPercent)  def  += e.defPercent  * qf;
     if (e.hpPercent)   hp   += e.hpPercent   * qf;
-    if (e.critRate)    crit += e.critRate    * qf;
+    if (e.critRateFlat) crit += e.critRateFlat * qf;  // 字段名对齐 pillData.ts(原写 critRate 永远读不到)
   }
   return { atk, def, hp, crit };
 }
