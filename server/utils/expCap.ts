@@ -28,14 +28,17 @@ export async function getTopAvgLevel(): Promise<number> {
 }
 
 // 平滑渐降：超平均值越多减越狠，保留 5 级缓冲区避免断崖
+// v3.4.2: 强化斜率,领先者更明显降速
 // diff ≤ 0  → 1.0x
 // diff ∈ (0, 5]   → 1.0x → 0.8x 线性
-// diff ∈ (5, 15]  → 0.8x → 0.5x 线性
-// diff > 15       → 0.5x
+// diff ∈ (5, 15]  → 0.8x → 0.4x 线性 (原 0.5x)
+// diff ∈ (15, 25] → 0.4x → 0.2x 线性 (新增硬砍档)
+// diff > 25       → 0.2x (原 0.5x, 榜首段直接 1/5)
 export function getCatchUpMultiplier(playerLevel: number, avgLevel: number): number {
   const diff = playerLevel - avgLevel
   if (diff <= 0) return 1.0
   if (diff <= 5) return 1.0 - (diff / 5) * 0.2
-  if (diff <= 15) return 0.8 - ((diff - 5) / 10) * 0.3
-  return 0.5
+  if (diff <= 15) return 0.8 - ((diff - 5) / 10) * 0.4
+  if (diff <= 25) return 0.4 - ((diff - 15) / 10) * 0.2
+  return 0.2
 }
