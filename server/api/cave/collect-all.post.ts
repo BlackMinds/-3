@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getChar, BUILDINGS, calcOutput, getSponsorMul } from '~/server/utils/cave'
 import { applyCultivationExp } from '~/server/utils/realm'
+import { updateSectDailyTask } from '~/server/utils/sect'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -9,6 +10,7 @@ export default defineEventHandler(async (event) => {
   const charId = char.id
 
   const client = await pool.connect()
+  let collectedCount = 0
   try {
     await client.query('BEGIN')
 
@@ -29,6 +31,7 @@ export default defineEventHandler(async (event) => {
 
       if (config.output.type === 'exp') totalExp += amount
       else if (config.output.type === 'spirit_stone') totalStone += amount
+      collectedCount++
 
       await client.query('UPDATE character_cave SET last_collect_time = NOW() WHERE id = $1', [row.id])
     }
@@ -51,6 +54,11 @@ export default defineEventHandler(async (event) => {
     }
 
     await client.query('COMMIT')
+
+    // 宗门任务:每个实际领到产出的建筑算 1 次（与 /api/cave/collect 单次行为一致）
+    if (collectedCount > 0) {
+      await updateSectDailyTask(charId, 'cave', collectedCount)
+    }
 
     const { rows: updated } = await pool.query('SELECT * FROM characters WHERE id = $1', [charId])
     return { code: 200, data: { totalExp, totalStone, totalHerb: 0, character: updated[0] } }
