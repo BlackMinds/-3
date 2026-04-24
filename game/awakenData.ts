@@ -122,10 +122,12 @@ const PENDANT_POOL: AwakenDef[] = [
     tiers: { blue: 0.06, purple: 0.10, gold: 0.15, red: 0.22 },
     desc: (v) => `身法 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_doom', name: '玄冥', slot: 'pendant', stat: 'critDmg',
-    tiers: { blue: 0.15, purple: 0.25, gold: 0.40, red: 0.60 },
+    // v3.4: red 60→50 (-10pp), 其他 tier 按比例降
+    tiers: { blue: 0.12, purple: 0.22, gold: 0.34, red: 0.50 },
     desc: (v) => `暴伤 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_insight', name: '神识', slot: 'pendant', stat: 'spirit',
-    tiers: { blue: 10, purple: 20, gold: 35, red: 60 },
+    // v3.4: red 60→50 (-17%), 其他 tier 按比例
+    tiers: { blue: 8, purple: 17, gold: 30, red: 50 },
     desc: (v) => `神识 +${v} 点（+${(v * 0.5).toFixed(1)}% 神通伤害）` },
   { id: 'aw_harmony', name: '聚元', slot: 'pendant', stat: 'harmonyPct',
     tiers: { blue: 0.03, purple: 0.05, gold: 0.07, red: 0.10 },

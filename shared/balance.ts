@@ -81,7 +81,7 @@ export const WEAPON_BONUS: Record<string, {
   sword: { ATK_pct: 5,  CRIT_RATE_flat: 3 },
   blade: { ATK_pct: 10, CRIT_DMG_flat: 15 },
   spear: { ATK_pct: 3,  SPD_pct: 12, LIFESTEAL_flat: 3 },
-  fan:   { ATK_pct: 3,  SPIRIT_pct: 25 },
+  fan:   { ATK_pct: 3,  SPIRIT_pct: 20 }, // v3.4: 25→20 (-5pp, 匹配其他武器量级)
 }
 
 // =====================================================================

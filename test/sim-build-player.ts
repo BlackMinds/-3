@@ -94,11 +94,11 @@ function getSubStatExpected(rarityIdx: number, tier: number): {
     spd:     avgFlat(1, 8)   * countFlatW20,
     spirit:  avgFlat(1, 6)   * countFlatW20,
     critRate:  avgPct(1, 3)  * countPctW10Good,
-    critDmg:   avgPct(2, 10) * countPctW10Good,
-    lifesteal: avgPct(1, 2)  * countPctW10Good,
-    dodge:     avgPct(1, 2)  * countPctW10Good,
+    critDmg:   avgPct(2, 8)  * countPctW10Good, // v3.4: max 10→8
+    lifesteal: avgPct(1, 1)  * countPctW10Good, // v3.4: max 2→1
+    dodge:     avgPct(1, 1)  * countPctW10Good, // v3.4: max 2→1
     armorPen:  avgPct(1, 5)  * countPctW10Good,
-    accuracy:  avgPct(1, 3)  * countPctW10,
+    accuracy:  avgPct(1, 2)  * countPctW10,     // v3.4: max 3→2
     atkPct:    avgPct(1, 3)  * countPctW10,
     defPct:    avgPct(1, 3)  * countPctW10,
     hpPct:     avgPct(1, 4)  * countPctW10,

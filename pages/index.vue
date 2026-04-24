@@ -2290,7 +2290,7 @@
               <tr><td>剑</td><td>攻击+5%, 会心率+3% (均衡)</td></tr>
               <tr><td>刀</td><td>攻击+10%, 会心伤害+15% (爆发)</td></tr>
               <tr><td>枪</td><td>攻击+3%, 身法+12%, 吸血+3% (持久)</td></tr>
-              <tr><td>扇</td><td>攻击+3%, 神通+15%, 神识+10% (法术)</td></tr>
+              <tr><td>扇</td><td>攻击+3%, 神识+20% (法术)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘等 15 种。装备有等级需求(T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195)。</p>
             <p class="help-text" style="margin-top: 4px;">低阶图品质权重前期已上调,更易刷出蓝紫装。</p>
@@ -3959,7 +3959,9 @@ const secondaryStats = computed(() => {
   const wb = weaponBonus.value;
   const xb = equipExtendedBonus.value;
   const ab = awakenBonus.value;
-  const spiritBonus = Math.floor((c.spirit || 0) * wb.SPIRIT_percent / 100);
+  // v3.4: 武器 SPIRIT_percent 应作用于整体 spirit (基础+装备主/副属性+附灵), 不只是 c.spirit
+  const spiritTotalBeforeWeapon = (c.spirit || 0) + eb.SPIRIT + ab.spirit;
+  const spiritBonus = Math.floor(spiritTotalBeforeWeapon * wb.SPIRIT_percent / 100);
   const rb = currentRealmBonus.value;
   // 功法被动加成（全是小数：0.05 = 5%），面板要乘 100 显示
   const pe = gameStore.equippedSkills?.passiveEffects || {} as any;

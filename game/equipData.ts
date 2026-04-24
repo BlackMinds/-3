@@ -57,7 +57,7 @@ export const WEAPON_TYPES: WeaponTypeDef[] = [
   {
     id: 'fan', name: '扇',
     description: '提升神识,强化神通威力,适合法术流',
-    bonus: { ATK_percent: 3, SPIRIT_percent: 25 },
+    bonus: { ATK_percent: 3, SPIRIT_percent: 20 }, // v3.4: 25→20
   },
 ];
 

@@ -37,14 +37,14 @@ export const SUB_STAT_POOL = [
   { stat: 'HP_PCT',         min: 1,  max: 4,   weight: 10 },
   { stat: 'SPD_PCT',        min: 1,  max: 2,   weight: 10 },
   { stat: 'ACCURACY',       min: 1,  max: 2,   weight: 10 }, // v3.4: max 3→2 (-33%)
-  { stat: 'METAL_DMG',      min: 1,  max: 5,   weight: 10 },
-  { stat: 'WOOD_DMG',       min: 1,  max: 5,   weight: 10 },
-  { stat: 'WATER_DMG',      min: 1,  max: 5,   weight: 10 },
-  { stat: 'FIRE_DMG',       min: 1,  max: 5,   weight: 10 },
-  { stat: 'EARTH_DMG',      min: 1,  max: 5,   weight: 10 },
+  { stat: 'METAL_DMG',      min: 1,  max: 4,   weight: 10 }, // v3.4: max 5→4 (-20%)
+  { stat: 'WOOD_DMG',       min: 1,  max: 4,   weight: 10 },
+  { stat: 'WATER_DMG',      min: 1,  max: 4,   weight: 10 },
+  { stat: 'FIRE_DMG',       min: 1,  max: 4,   weight: 10 },
+  { stat: 'EARTH_DMG',      min: 1,  max: 4,   weight: 10 },
   // 好词条（v3.0 weight 5→10,神器概率 0.002% → ~0.7%）
   { stat: 'CRIT_RATE',      min: 1,  max: 3,   weight: 10 },
-  { stat: 'CRIT_DMG',       min: 2,  max: 10,  weight: 10 },
+  { stat: 'CRIT_DMG',       min: 2,  max: 8,   weight: 10 }, // v3.4: max 10→8 (-20%)
   { stat: 'LIFESTEAL',      min: 1,  max: 1,   weight: 10 }, // v3.4: max 2→1 (-50%)
   { stat: 'DODGE',          min: 1,  max: 1,   weight: 10 }, // v3.4: max 2→1 (-50%)
   { stat: 'ARMOR_PEN',      min: 1,  max: 5,   weight: 10 },
