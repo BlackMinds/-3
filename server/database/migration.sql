@@ -881,3 +881,44 @@ CREATE TABLE IF NOT EXISTS pk_records (
 );
 CREATE INDEX IF NOT EXISTS idx_pk_attacker_day ON pk_records (attacker_id, fought_at);
 CREATE INDEX IF NOT EXISTS idx_pk_defender_day ON pk_records (defender_id, fought_at);
+
+-- ========================================
+-- 技能石系统（v6 完全替代旧功法）
+-- ========================================
+
+-- 石头库存：每个角色持有的石头（按 id + level 唯一）
+CREATE TABLE IF NOT EXISTS character_stone_inventory (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  stone_id VARCHAR(50) NOT NULL,
+  level INT NOT NULL DEFAULT 1,
+  count INT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (character_id, stone_id, level)
+);
+CREATE INDEX IF NOT EXISTS idx_stone_inv_char ON character_stone_inventory (character_id);
+
+-- 功法书（空壳 + 已镶嵌石头）
+-- stones 字段为 JSONB 数组：按孔位顺序存石头ID，空位为 null
+-- 例: ["core_burn", "amp_dmg_mid", null, null, null]（紫品 4 孔，质变孔空）
+CREATE TABLE IF NOT EXISTS character_skill_books (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  book_id VARCHAR(50) NOT NULL,      -- e.g. book_active_green_fire
+  stones JSONB NOT NULL DEFAULT '[]'::jsonb,
+  level INT NOT NULL DEFAULT 1,
+  equipped BOOLEAN DEFAULT FALSE,
+  equipped_slot INT DEFAULT NULL,    -- 装备槽位索引（主修 0 / 神通 0~2 / 被动 0~2）
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_book_char ON character_skill_books (character_id);
+CREATE INDEX IF NOT EXISTS idx_book_char_equipped ON character_skill_books (character_id, equipped);
+
+-- 拆石丹 / 石灵碎片 计入通用材料 character_materials 表，不额外建表
+
+-- 迁移标记：记录老功法 → 新书石头是否已执行
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS stone_migration_done BOOLEAN DEFAULT FALSE;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS stone_migration_at TIMESTAMP DEFAULT NULL;
+
+-- 迁移期免费拆石窗口：以 migration_at + 30 天为界，免费拆卸
+-- 前端根据 now - stone_migration_at < 30 days 判断
