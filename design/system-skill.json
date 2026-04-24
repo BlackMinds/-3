@@ -229,8 +229,8 @@
       {
         "id": "wood_heal", "name": "生生不息", "rarity": "purple", "element": "wood",
         "type": "buff", "multiplier": 0, "cd_turns": 8,
-        "buff": { "type": "regen", "value_percent": 0.08, "duration_turns": 4 },
-        "description": "每回合回8%气血，持续4回合",
+        "buff": { "type": "regen", "value_percent": 0.04, "duration_turns": 4 },
+        "description": "每回合回4%气血，持续4回合",
         "root_synergy": "木灵根：额外清除所有debuff"
       },
       {
@@ -302,9 +302,9 @@
       },
       {
         "id": "water_flow", "name": "流水心法", "rarity": "green", "element": "water",
-        "effect": { "regen_per_turn_percent": 0.02, "RESIST_WATER": 0.10 },
-        "description": "每回合回2%气血，水抗+10%",
-        "root_synergy": "水灵根：回血→4%/回合"
+        "effect": { "regen_per_turn_percent": 0.01, "RESIST_WATER": 0.10 },
+        "description": "每回合回1%气血，水抗+10%",
+        "root_synergy": "水灵根：回血→2%/回合"
       },
       {
         "id": "root_grip", "name": "盘根术", "rarity": "green", "element": "wood",
@@ -386,14 +386,14 @@
       },
       {
         "id": "healing_spring", "name": "春风化雨", "rarity": "purple", "element": "wood",
-        "effect": { "heal_amplifier_percent": 30, "regen_per_turn_percent": 0.02, "RESIST_WATER": 0.10, "RESIST_WOOD": 0.10 },
-        "description": "你受到的治疗+30%，每回合回血+2%，水/木抗+10%",
+        "effect": { "heal_amplifier_percent": 30, "regen_per_turn_percent": 0.01, "RESIST_WATER": 0.10, "RESIST_WOOD": 0.10 },
+        "description": "你受到的治疗+30%，每回合回血+1%，水/木抗+10%",
         "root_synergy": "木灵根：治疗效果额外+10%"
       },
       {
         "id": "water_mastery", "name": "渊海之心", "rarity": "gold", "element": "water",
-        "effect": { "water_damage_percent": 20, "freeze_chance_bonus": 0.10, "regen_per_turn_percent": 0.03, "RESIST_WATER": 0.20 },
-        "description": "水伤+20%，冻结概率+10%，每回合回3%血，水抗+20%",
+        "effect": { "water_damage_percent": 20, "freeze_chance_bonus": 0.10, "regen_per_turn_percent": 0.015, "RESIST_WATER": 0.20 },
+        "description": "水伤+20%，冻结概率+10%，每回合回1.5%血，水抗+20%",
         "root_synergy": "水灵根：冻结期间敌方受伤+30%"
       },
       {

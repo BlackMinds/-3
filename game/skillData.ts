@@ -94,9 +94,9 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'sword_storm', name: '剑雨纷飞', type: 'divine', rarity: 'purple', element: 'metal', multiplier: 2.3, cdTurns: 7, description: '[3目标] 230%伤害,30%流血3回合', debuff: { type: 'bleed', chance: 0.30, duration: 3 }, targetCount: 3 },
   { id: 'twin_flame', name: '双焰斩', type: 'divine', rarity: 'purple', element: 'fire', multiplier: 2.8, cdTurns: 6, description: '[2目标] 280%伤害,40%灼烧3回合', debuff: { type: 'burn', chance: 0.40, duration: 3 }, targetCount: 2 },
   { id: 'flurry_palm', name: '连环掌', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 2.9, cdTurns: 6, description: '[3段] 单体3×96%伤害,每段30%中毒', debuff: { type: 'poison', chance: 0.30, duration: 3 }, hitCount: 3 },
-  { id: 'spring_heal', name: '灵泉术', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 7, description: '回复200%攻击力气血,每回合回5% 3回合', buff: { type: 'regen', duration: 3, valuePercent: 0.05 }, healAtkRatio: 2.0 },
+  { id: 'spring_heal', name: '灵泉术', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 7, description: '回复200%攻击力气血,每回合回2.5% 3回合', buff: { type: 'regen', duration: 3, valuePercent: 0.025 }, healAtkRatio: 2.0 },
   { id: 'blood_fury', name: '嗜血诀', type: 'divine', rarity: 'purple', element: null, multiplier: 0, cdTurns: 8, description: '攻击+35% 4回合', buff: { type: 'atk_up', duration: 4, value: 0.35 } },
-  { id: 'wood_heal', name: '生生不息', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 0, cdTurns: 8, description: '每回合回8%气血,持续4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.08 } },
+  { id: 'wood_heal', name: '生生不息', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 0, cdTurns: 8, description: '每回合回4%气血,持续4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.04 } },
   { id: 'mirror_water', name: '明镜止水', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 9, description: '反弹30%伤害 3回合', buff: { type: 'reflect', duration: 3, value: 0.30 } },
   // 天品
   { id: 'metal_burst', name: '万剑归宗', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 4.5, cdTurns: 10, description: '造成450%伤害,40%流血3回合', debuff: { type: 'bleed', chance: 0.40, duration: 3 } },
@@ -104,7 +104,7 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'life_drain', name: '噬魂大法', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 3.5, cdTurns: 8, description: '造成350%伤害并吸血,40%降低敌方攻击20% 3回合', debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.20 } },
   { id: 'inferno_burst', name: '九天玄火阵', type: 'divine', rarity: 'gold', element: 'fire', multiplier: 3.5, cdTurns: 10, description: '[群攻] 全体350%伤害,50%灼烧4回合', debuff: { type: 'burn', chance: 0.50, duration: 4 }, isAoe: true },
   { id: 'storm_blade', name: '暴风斩', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 3.8, cdTurns: 8, description: '[5段] 单体5×76%伤害,每段40%流血', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, hitCount: 5 },
-  { id: 'heaven_heal', name: '天地归元', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 0, cdTurns: 10, description: '回复400%攻击力气血,每回合回8% 4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.08 }, healAtkRatio: 4.0 },
+  { id: 'heaven_heal', name: '天地归元', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 0, cdTurns: 10, description: '回复400%攻击力气血,每回合回4% 4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.04 }, healAtkRatio: 4.0 },
   // 仙品
   { id: 'time_stop', name: '时光凝滞', type: 'divine', rarity: 'red', element: null, multiplier: 0, cdTurns: 12, description: '[群攻] 全体冻结2回合,自身攻击+25% 3回合', debuff: { type: 'freeze', chance: 1.0, duration: 2 }, buff: { type: 'atk_up', duration: 3, value: 0.25 }, isAoe: true },
   { id: 'heavenly_wrath', name: '天罚雷劫', type: 'divine', rarity: 'red', element: 'metal', multiplier: 5.8, cdTurns: 12, description: '造成580%伤害,40%眩晕1回合', debuff: { type: 'stun', chance: 0.40, duration: 1 } },
@@ -115,7 +115,7 @@ export const PASSIVE_SKILLS: Skill[] = [
   // 灵品
   { id: 'body_refine', name: '金刚体', type: 'passive', rarity: 'green', element: 'earth', multiplier: 0, description: '防御+10%,土抗+10%', effect: { DEF_percent: 10, RESIST_EARTH: 0.10 } },
   { id: 'flame_body', name: '焚体诀', type: 'passive', rarity: 'green', element: 'fire', multiplier: 0, description: '攻击+8%,火抗+10%', effect: { ATK_percent: 8, RESIST_FIRE: 0.10 } },
-  { id: 'water_flow', name: '流水心法', type: 'passive', rarity: 'green', element: 'water', multiplier: 0, description: '每回合回2%气血,水抗+10%', effect: { regen_per_turn_percent: 0.02, RESIST_WATER: 0.10 } },
+  { id: 'water_flow', name: '流水心法', type: 'passive', rarity: 'green', element: 'water', multiplier: 0, description: '每回合回1%气血,水抗+10%', effect: { regen_per_turn_percent: 0.01, RESIST_WATER: 0.10 } },
   { id: 'root_grip', name: '盘根术', type: 'passive', rarity: 'green', element: 'wood', multiplier: 0, description: '气血+10%,木抗+10%', effect: { HP_percent: 10, RESIST_WOOD: 0.10 } },
   { id: 'metal_skin', name: '金身术', type: 'passive', rarity: 'green', element: 'metal', multiplier: 0, description: '防御+8%,金抗+10%', effect: { DEF_percent: 8, RESIST_METAL: 0.10 } },
   // 玄品
@@ -131,9 +131,9 @@ export const PASSIVE_SKILLS: Skill[] = [
   { id: 'fire_mastery', name: '焚天之体', type: 'passive', rarity: 'purple', element: 'fire', multiplier: 0, description: '攻击+12%,火抗+20%', effect: { ATK_percent: 12, RESIST_FIRE: 0.20 } },
   { id: 'dot_amplifier', name: '万毒归一', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你造成的灼烧/中毒/流血伤害+25%,攻击+6%,暴击率+3%', effect: { dot_amplifier_percent: 25, ATK_percent: 6, CRIT_RATE_flat: 0.03 } },
   { id: 'phantom_step', name: '飘渺神行', type: 'passive', rarity: 'purple', element: 'water', multiplier: 0, description: '闪避+8%,闪避后下次攻击必暴击,速度+8%', effect: { DODGE_flat: 0.08, crit_after_dodge: true, SPD_percent: 8 } },
-  { id: 'healing_spring', name: '春风化雨', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你受到的治疗+30%,每回合回血+2%,水/木抗+10%', effect: { heal_amplifier_percent: 30, regen_per_turn_percent: 0.02, RESIST_WATER: 0.10, RESIST_WOOD: 0.10 } },
+  { id: 'healing_spring', name: '春风化雨', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你受到的治疗+30%,每回合回血+1%,水/木抗+10%', effect: { heal_amplifier_percent: 30, regen_per_turn_percent: 0.01, RESIST_WATER: 0.10, RESIST_WOOD: 0.10 } },
   // 天品
-  { id: 'water_mastery', name: '渊海之心', type: 'passive', rarity: 'gold', element: 'water', multiplier: 0, description: '每回合回3%血,水抗+20%,防御+12%', effect: { regen_per_turn_percent: 0.03, RESIST_WATER: 0.20, DEF_percent: 12 } },
+  { id: 'water_mastery', name: '渊海之心', type: 'passive', rarity: 'gold', element: 'water', multiplier: 0, description: '每回合回1.5%血,水抗+20%,防御+12%', effect: { regen_per_turn_percent: 0.015, RESIST_WATER: 0.20, DEF_percent: 12 } },
   { id: 'battle_frenzy', name: '战意沸腾', type: 'passive', rarity: 'gold', element: null, multiplier: 0, description: '攻击+15%, 会心率+5%, 会心伤害+18%', effect: { ATK_percent: 15, CRIT_RATE_flat: 0.05, CRIT_DMG_flat: 0.18 } },
   { id: 'heavenly_body', name: '不灭金身', type: 'passive', rarity: 'gold', element: 'earth', multiplier: 0, description: '防御+15%,减伤8%,土抗+25%,免死1次保留20%血', effect: { DEF_percent: 15, damage_reduction_flat: 0.08, RESIST_EARTH: 0.25, revive_once: true } },
   // 仙品
