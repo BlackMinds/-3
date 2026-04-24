@@ -232,8 +232,13 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
 }
 
 // ===== 功法掉落（已有功法权重递减） =====
+// T1-T3 前期慷慨：让新人快速凑满 3 个槽位；T4+ 维持稀缺
+function getSkillDropRate(tier: number, isBoss: boolean): number {
+  if (tier <= 3) return isBoss ? 0.15 : 0.015
+  return isBoss ? 0.10 : 0.008
+}
 function generateSkillDrop(tier: number, isBoss: boolean, luckMul: number = 1, ownedCounts: Record<string, number> = {}): string | null {
-  const rate = (isBoss ? 0.10 : 0.008) * luckMul
+  const rate = getSkillDropRate(tier, isBoss) * luckMul
   if (Math.random() >= rate) return null
   const pools: Record<number, string[]> = {
     1: ['wind_blade','vine_whip','ice_palm','flame_sword','quake_fist','body_refine','flame_body','water_flow','root_grip','metal_skin'],
