@@ -7,7 +7,7 @@ import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/
 import { getSecretRealm } from '~/server/engine/secretRealmData'
 import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/engine/teamBattleEngine'
 import { getCharacterByUserId, ensureDailyReset, getRoomDetail, getSrDailyMax } from '~/server/utils/team'
-import { generateSecretRealmDrops, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
+import { generateSecretRealmDrops, generateSecretRealmEquip, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
@@ -345,6 +345,13 @@ export default defineEventHandler(async (event) => {
           allMembers.length,
           allOwnedSkills,
         )
+        // v3.4: S 评级团队奖励 — 额外送 1 件红装 (由 distributeEquipments 自动分给贡献第一)
+        if (result.rating === 'S' && result.killedMonsters.length > 0) {
+          const randomKill = result.killedMonsters[Math.floor(Math.random() * result.killedMonsters.length)]
+          drops.bossEquipments.push(
+            generateSecretRealmEquip(realm.dropTier, difficulty, false, randomKill.element, 5)
+          )
+        }
       }
 
       // 装备分配（仅分给有次数的队员；无次数的"带队"玩家不在分配名单）

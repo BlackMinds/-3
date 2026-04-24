@@ -34,10 +34,18 @@ function bossGuaranteedRarityIdx(difficulty: 1 | 2 | 3): number {
   return Math.random() < 0.2 ? 5 : 4
 }
 
-export function generateSecretRealmEquip(tier: number, difficulty: 1 | 2 | 3, isBoss: boolean, monsterElement: string | null = null): any {
+export function generateSecretRealmEquip(
+  tier: number,
+  difficulty: 1 | 2 | 3,
+  isBoss: boolean,
+  monsterElement: string | null = null,
+  forceRarityIdx?: number, // v3.4: S 评级奖励等强制指定品质的场景
+): any {
   // 品质
   let rarityIdx: number
-  if (isBoss) {
+  if (forceRarityIdx !== undefined) {
+    rarityIdx = forceRarityIdx
+  } else if (isBoss) {
     rarityIdx = bossGuaranteedRarityIdx(difficulty)
   } else {
     const w = SR_EQUIP_WEIGHTS[difficulty] || SR_EQUIP_WEIGHTS[1]

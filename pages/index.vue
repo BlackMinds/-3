@@ -2409,6 +2409,10 @@
             <div class="help-title">秘境组队 (新)</div>
             <p class="help-text">2-4 人协作副本,公开大厅制,点【秘境】进入组队页面。</p>
             <p class="help-text" style="margin-top: 4px;">6 大秘境 × 3 难度(普通/困难/噩梦),独占高品质装备/首通奖励/高倍经验。同宗门成员组队额外 +10% 全属性加成。</p>
+            <p class="help-text" style="margin-top: 6px;"><b>Boss 保底装备：</b>普通 = 紫色 / 困难 = 金色 / 噩梦 = 80% 金 + 20% 红。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>战斗评级：</b>S (回合少+无阵亡) / A (较快) / B (正常)。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>评级奖励倍率：</b>S 经验/灵石/积分 ×1.5; A ×1.25; B ×1.0。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--cinnabar);"><b>★ S 评级额外奖励：</b>通关评级 S 时额外掉落 1 件固定红色装备（不受难度影响，普通难度打出 S 也能拿红装）。红装按贡献分配给队内贡献最高的成员。</p>
           </div>
           <div class="help-section">
             <div class="help-title">赞助系统</div>
