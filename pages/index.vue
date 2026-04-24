@@ -2807,7 +2807,7 @@
         v-for="tab in tabs"
         :key="tab.id"
         :class="['nav-item', { active: gameStore.activeTab === tab.id }]"
-        @click="gameStore.activeTab = tab.id"
+        @click="onTabClick(tab.id)"
       >
         <span class="nav-icon">{{ tab.icon }}</span>
         <span class="nav-label">{{ tab.label }}</span>
@@ -3859,9 +3859,18 @@ const tabs = [
   { id: 'character' as const, icon: '人', label: '角色' },
   { id: 'cultivate' as const, icon: '丹', label: '炼丹' },
   { id: 'skills' as const, icon: '法', label: '功法' },
+  { id: 'stones' as const, icon: '石', label: '技能石' },
   { id: 'cave' as const, icon: '府', label: '洞府' },
   { id: 'sect' as const, icon: '门', label: '宗门' },
 ];
+
+function onTabClick(tabId: string) {
+  if (tabId === 'stones') {
+    navigateTo('/stones')
+    return
+  }
+  gameStore.activeTab = tabId as any
+}
 
 // 灵根信息
 const rootInfo = computed(() => {
