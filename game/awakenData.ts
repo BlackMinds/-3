@@ -31,8 +31,9 @@ export interface AwakenEffect {
 // ============ 兵器（13 条 / 输出向）============
 const WEAPON_POOL: AwakenDef[] = [
   { id: 'aw_bloodlust', name: '嗜血', slot: 'weapon', stat: 'lifesteal',
-    tiers: { blue: 0.03, purple: 0.05, gold: 0.07, red: 0.10 },
-    desc: (v) => `攻击吸血 +${(v * 100).toFixed(0)}%` },
+    // v3.4: tiers -50%
+    tiers: { blue: 0.015, purple: 0.025, gold: 0.035, red: 0.05 },
+    desc: (v) => `攻击吸血 +${(v * 100).toFixed(1)}%` },
   { id: 'aw_soulburn', name: '焚魂', slot: 'weapon', stat: 'burnOnHitChance',
     tiers: { blue: 0.08, purple: 0.12, gold: 0.18, red: 0.25 },
     desc: (v) => `命中时 ${(v * 100).toFixed(0)}% 概率灼烧 2 回合` },
@@ -89,8 +90,9 @@ const ARMOR_POOL: AwakenDef[] = [
     tiers: { blue: 0.10, purple: 0.15, gold: 0.20, red: 0.30 },
     desc: (v) => `受击时 ${(v * 100).toFixed(0)}% 概率使对方灼烧` },
   { id: 'aw_evasion', name: '疾影', slot: 'armor', stat: 'dodge',
-    tiers: { blue: 0.03, purple: 0.05, gold: 0.07, red: 0.10 },
-    desc: (v) => `闪避 +${(v * 100).toFixed(0)}%` },
+    // v3.4: tiers -50%
+    tiers: { blue: 0.015, purple: 0.025, gold: 0.035, red: 0.05 },
+    desc: (v) => `闪避 +${(v * 100).toFixed(1)}%` },
   { id: 'aw_regen', name: '回春', slot: 'armor', stat: 'regenPerTurn',
     tiers: { blue: 0.02, purple: 0.03, gold: 0.05, red: 0.07 },
     desc: (v) => `每回合回复 ${(v * 100).toFixed(0)}% 最大气血` },
@@ -147,7 +149,8 @@ const PENDANT_POOL: AwakenDef[] = [
     tiers: { blue: 0, purple: 1, gold: 1, red: 2 },
     desc: (v) => `施加减益持续回合 +${v}` },
   { id: 'aw_accuracy', name: '洞悉', slot: 'pendant', stat: 'accuracyBonus',
-    tiers: { blue: 5, purple: 8, gold: 12, red: 18 },
+    // v3.4: tiers -50%
+    tiers: { blue: 3, purple: 4, gold: 6, red: 9 },
     desc: (v) => `命中 +${v}` },
   { id: 'aw_sect_bonus', name: '弘愿', slot: 'pendant', stat: 'sectContribBonus',
     tiers: { blue: 0.05, purple: 0.08, gold: 0.12, red: 0.18 },

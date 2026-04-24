@@ -104,13 +104,18 @@ const args = parseArgs()
 if (args.preset && args.tier !== undefined) {
   reportBuild(args.preset, args.tier, args.runs || 1000)
 } else {
-  // 默认: 跑 baseline
-  console.log('\n🎯 v3.0 数值体系 baseline 验证\n')
+  // 默认: 跑 baseline (T1-T10 全段)
+  console.log('\n🎯 v3.4 数值体系 baseline 验证 (T1-T10)\n')
   const scenarios: { preset: string; tier: number }[] = [
-    { preset: 'T1_early', tier: 1 },
-    { preset: 'T3_mid',   tier: 3 },
-    { preset: 'T5_mid',   tier: 5 },
-    { preset: 'T7_late',  tier: 7 },
+    { preset: 'T1_early',  tier: 1 },
+    { preset: 'T2_early',  tier: 2 },
+    { preset: 'T3_mid',    tier: 3 },
+    { preset: 'T4_mid',    tier: 4 },
+    { preset: 'T5_mid',    tier: 5 },
+    { preset: 'T6_mid',    tier: 6 },
+    { preset: 'T7_late',   tier: 7 },
+    { preset: 'T8_late',   tier: 8 },
+    { preset: 'T9_late',   tier: 9 },
     { preset: 'T10_final', tier: 10 },
   ]
   for (const s of scenarios) {

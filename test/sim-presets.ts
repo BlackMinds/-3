@@ -15,12 +15,31 @@ export const PRESETS: Record<string, { name: string; build: PlayerBuild; element
     },
     element: 'metal',
   },
+  'T2_early': {
+    name: 'T2 前期(筑基)',
+    build: {
+      level: 25, realmTier: 2, realmStage: 3,
+      equipTier: 2, equipRarity: 'green', enhanceLevel: 2,
+      weaponType: 'sword', skillLevel: 1,
+    },
+    element: 'metal',
+  },
   'T3_mid': {
     name: 'T3 中期(金丹)',
     build: {
       level: 45, realmTier: 3, realmStage: 3,
       equipTier: 3, equipRarity: 'blue', enhanceLevel: 3,
       weaponType: 'sword', skillLevel: 2,
+    },
+    element: 'metal',
+  },
+  'T4_mid': {
+    name: 'T4 中期(元婴)',
+    build: {
+      level: 70, realmTier: 4, realmStage: 3,
+      equipTier: 4, equipRarity: 'blue', enhanceLevel: 4,
+      weaponType: 'sword', skillLevel: 2,
+      awakenRarity: 'blue',
     },
     element: 'metal',
   },
@@ -34,6 +53,16 @@ export const PRESETS: Record<string, { name: string; build: PlayerBuild; element
     },
     element: 'metal',
   },
+  'T6_mid': {
+    name: 'T6 中后期(渡劫)',
+    build: {
+      level: 130, realmTier: 6, realmStage: 3,
+      equipTier: 6, equipRarity: 'purple', enhanceLevel: 6,
+      weaponType: 'blade', skillLevel: 3,
+      awakenRarity: 'purple', pillFull: true,
+    },
+    element: 'metal',
+  },
   'T7_late': {
     name: 'T7 中后期(大乘,金装)',
     build: {
@@ -41,6 +70,26 @@ export const PRESETS: Record<string, { name: string; build: PlayerBuild; element
       equipTier: 7, equipRarity: 'gold', enhanceLevel: 7,
       weaponType: 'blade', skillLevel: 4,
       awakenRarity: 'purple', pillFull: true,
+    },
+    element: 'metal',
+  },
+  'T8_late': {
+    name: 'T8 后期(飞升)',
+    build: {
+      level: 175, realmTier: 8, realmStage: 3,
+      equipTier: 8, equipRarity: 'gold', enhanceLevel: 8,
+      weaponType: 'blade', skillLevel: 4,
+      awakenRarity: 'gold', pillFull: true,
+    },
+    element: 'metal',
+  },
+  'T9_late': {
+    name: 'T9 尾盘(大乘上)',
+    build: {
+      level: 190, realmTier: 8, realmStage: 7,
+      equipTier: 9, equipRarity: 'red', enhanceLevel: 9,
+      weaponType: 'blade', skillLevel: 5,
+      awakenRarity: 'gold', pillFull: true,
     },
     element: 'metal',
   },

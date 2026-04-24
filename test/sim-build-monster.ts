@@ -34,25 +34,34 @@ const ROLE_COEF: Record<string, { hp: number; atk: number; def: number; spd: num
   boss:     { hp: 0.35, atk: 0.30, def: 0.25, spd: 0.10 },
 }
 
+// v3.4.1: HP_SCALE T5+ -5%, ATK_SCALE 0.75 → 0.70
+const HP_SCALE_BY_TIER: Record<number, number> = {
+  1: 0.95, 2: 0.95, 3: 0.95, 4: 0.95,
+  5: 1.17, 6: 1.26, 7: 1.36, 8: 1.44, 9: 1.44, 10: 1.44,
+}
+const ATK_SCALE = 0.70
+
 export function buildMonster(m: MonsterBuild): MonsterStats {
   const r = ROLE_COEF[m.role] || ROLE_COEF.balanced
   const power = m.power
+  const hpScale = HP_SCALE_BY_TIER[m.tier] ?? 0.95
 
-  let maxHp = Math.floor(power * r.hp * 10)     // ← ×10 是真实公式
-  let atk = Math.floor(power * r.atk)
+  let maxHp = Math.floor(power * r.hp * 10 * hpScale)
+  let atk = Math.floor(power * r.atk * ATK_SCALE)
   let def = Math.floor(power * r.def * 0.6)
   let spd = Math.floor(power * r.spd * 0.5)
 
   // 暴击/闪避/吸血/破甲/命中 (按 role 和 tier 叠加)
-  let critRate = 0.05
-  let critDmg = 1.5
+  let critRate = 0.05 + m.tier * 0.01
+  let critDmg = 1.5 + m.tier * 0.05
   if (m.role === 'dps') { critRate += 0.05; critDmg += 0.2 }
   if (m.role === 'boss') { critRate += 0.03; critDmg += 0.3 }
 
+  // v3.4: 怪物闪避/命中拉满
   let dodge = 0
-  if (m.role === 'speed') dodge = 0.05 + m.tier * 0.02
-  if (m.role === 'dps') dodge = m.tier * 0.01
-  if (m.role === 'boss') dodge = 0.02 + m.tier * 0.005
+  if (m.role === 'speed') dodge = 0.08 + m.tier * 0.03
+  if (m.role === 'dps') dodge = m.tier * 0.015
+  if (m.role === 'boss') dodge = 0.05 + m.tier * 0.015
 
   let lifesteal = 0
   if (m.role === 'boss' && m.tier >= 3) lifesteal = 0.03 + m.tier * 0.005
@@ -63,12 +72,12 @@ export function buildMonster(m: MonsterBuild): MonsterStats {
   if (m.role === 'boss') armorPen = m.tier * 2
 
   let accuracy = m.tier * 1
-  if (m.role === 'boss') accuracy = m.tier * 2
+  if (m.role === 'boss') accuracy = m.tier * 3
 
   return {
     maxHp, atk, def, spd,
     critRate: Math.min(0.50, critRate),
-    critDmg: Math.min(3.0, critDmg),
+    critDmg: Math.min(2.5, critDmg), // v3.4: 3.0→2.5
     dodge: Math.min(0.30, dodge),
     lifesteal: Math.min(0.15, lifesteal),
     armorPen: Math.min(30, armorPen),

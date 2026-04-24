@@ -25,20 +25,22 @@ export interface BattleResult {
   playerDps: number // 实际 DPS
 }
 
-// 简化的"技能平均 multiplier"
-// 真实战斗: 主修 (1.2-1.5 multiplier, 每回合) + 3 个神通技能 (1.5-7.5 multiplier, CD 5-12)
-//          + 套装加成 + 附灵触发(frenzy 开场 45%+ / execute <30% hp +60%) + DOT
-// 综合加成约 3-5x (这是模拟器的简化; 真实战斗中 combo 后可到 8-10x)
-// 暴露出的问题: 光靠技能 multiplier 不够, 需要玩家刷到"毕业装 + 神通 Lv5 + 红附灵"才能打
-const AVG_SKILL_MUL = 4.0
+// v3.4: sim 双方对称化 + 建模玩家 BD 效应
+// 玩家: 主修 1.3 (每回合) + 神通大招 CD 5-12 (2-5x), 综合 ≈ 2.3
+// 怪物: 普攻 1.0 + 元素技 / 大招 CD 3-10 (1.5-4x), 综合 ≈ 1.4
+// 玩家"BD 隐性收益"(金钟罩/回血/免死/斩杀/减伤) 综合 EHP 额外 ×2.0, DPS 额外 ×1.2
+const PLAYER_SKILL_MUL = 2.3
+const MONSTER_SKILL_MUL = 1.4
+const PLAYER_EHP_BD_MUL = 2.0
+const PLAYER_DPS_BD_MUL = 1.2
 
-// 元素克制矩阵 (复刻 battleEngine)
+// 元素克制矩阵 (复刻 battleEngine, v3.4: 从 BATTLE_FORMULA 读)
 const ELEMENT_MATRIX: Record<string, Record<string, number>> = {
-  metal: { wood: 1.3, water: 0.7 },
-  wood:  { earth: 1.3, metal: 0.7 },
-  water: { fire: 1.3, earth: 0.7 },
-  fire:  { metal: 1.3, water: 0.7 },
-  earth: { water: 1.3, wood: 0.7 },
+  metal: { wood: BATTLE_FORMULA.elementCounterMul, water: BATTLE_FORMULA.elementResistedMul },
+  wood:  { earth: BATTLE_FORMULA.elementCounterMul, metal: BATTLE_FORMULA.elementResistedMul },
+  water: { fire: BATTLE_FORMULA.elementCounterMul, earth: BATTLE_FORMULA.elementResistedMul },
+  fire:  { metal: BATTLE_FORMULA.elementCounterMul, water: BATTLE_FORMULA.elementResistedMul },
+  earth: { water: BATTLE_FORMULA.elementCounterMul, wood: BATTLE_FORMULA.elementResistedMul },
 }
 function getElementMulti(attacker: string | null, defender: string | null): number {
   if (!attacker || !defender) return 1.0
@@ -81,7 +83,9 @@ export function simulateBattle(
   playerElement: string | null = null,
   maxTurns: number = 150,
 ): BattleResult {
-  let playerHp = player.maxHp
+  // v3.4: 玩家 BD 隐性 EHP (金钟罩/回血/免死/减伤 综合)
+  const playerEffectiveMaxHp = Math.floor(player.maxHp * PLAYER_EHP_BD_MUL)
+  let playerHp = playerEffectiveMaxHp
   let monsterHp = monster.maxHp
   let playerDmgDealt = 0
   let playerDmgTaken = 0
@@ -103,31 +107,32 @@ export function simulateBattle(
         player.armorPen, player.accuracy,
         monster.dodge,
         playerElement, monster.element,
-        AVG_SKILL_MUL,
+        PLAYER_SKILL_MUL,
       )
       if (r.dodged) {
         dodges++ // 玩家被敌人闪避
       } else {
-        monsterHp -= r.damage
-        playerDmgDealt += r.damage
+        const dmg = Math.floor(r.damage * PLAYER_DPS_BD_MUL) // BD 加成 (斩杀/逆鳞/vs-boss)
+        monsterHp -= dmg
+        playerDmgDealt += dmg
         if (r.isCrit) crits++
         // 吸血
-        if (player.lifesteal > 0 && r.damage > 0) {
-          const heal = Math.floor(r.damage * player.lifesteal)
-          playerHp = Math.min(player.maxHp, playerHp + heal)
+        if (player.lifesteal > 0 && dmg > 0) {
+          const heal = Math.floor(dmg * player.lifesteal)
+          playerHp = Math.min(playerEffectiveMaxHp, playerHp + heal)
         }
       }
     }
     if (monsterHp <= 0) break
 
-    // 怪物反击
+    // 怪物反击 (v3.4: 用 MONSTER_SKILL_MUL)
     const r2 = calcDamage(
       monster.atk, player.def,
       monster.critRate, monster.critDmg,
       monster.armorPen, monster.accuracy,
       player.dodge,
       monster.element, playerElement,
-      1.0, // 怪物用普攻
+      MONSTER_SKILL_MUL,
     )
     if (!r2.dodged) {
       playerHp -= r2.damage

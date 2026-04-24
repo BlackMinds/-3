@@ -19,7 +19,7 @@
 // 玩家 cap 设为怪物 cap × 1.5~2.0,保留极限 build 空间
 export const PLAYER_CAPS = {
   critRate: 0.75,   // 75%  (怪物 50%, 1.5x)
-  critDmg: 3.5,     // 350% (怪物 300%, 1.17x)
+  critDmg: 2.8,     // 280% (v3.4: 3.5→2.8, 消除"互秒" — 降暴击方差)
   dodge: 0.45,      // 45%  (怪物 30%, 1.5x) — v3.0 从 40% 上调
   lifesteal: 0.25,  // 25%  (怪物 15%, 1.67x)
   armorPen: 60,     // 60   (怪物 30, 2.0x)
@@ -99,15 +99,17 @@ export interface RealmBonus {
   crit_rate: number; crit_dmg: number; dodge: number
 }
 
+// v3.4: T5+ HP flat+pct 梯度放大 (×1.3/1.4/1.5/1.6), 消除 T5+ "互秒"
+// 仅放大 HP 维度, ATK/DEF/SPD/CRIT 保持 — 老玩家只会变壮, 不会变弱
 export const REALM_BONUSES: Record<number, RealmBonus> = {
   1: { hp: 0,     atk: 0,    def: 0,    spd: 0,   hp_pct: 0,   atk_pct: 0,   def_pct: 0,   crit_rate: 0,    crit_dmg: 0,    dodge: 0    },
   2: { hp: 70,    atk: 5,    def: 3,    spd: 3,   hp_pct: 3,   atk_pct: 3,   def_pct: 3,   crit_rate: 0.007,crit_dmg: 0.04, dodge: 0    },
   3: { hp: 200,   atk: 17,   def: 10,   spd: 8,   hp_pct: 8,   atk_pct: 8,   def_pct: 7,   crit_rate: 0.013,crit_dmg: 0.08, dodge: 0.007},
   4: { hp: 500,   atk: 50,   def: 27,   spd: 20,  hp_pct: 14,  atk_pct: 14,  def_pct: 13,  crit_rate: 0.027,crit_dmg: 0.15, dodge: 0.013},
-  5: { hp: 1300,  atk: 130,  def: 75,   spd: 50,  hp_pct: 21,  atk_pct: 21,  def_pct: 18,  crit_rate: 0.04, crit_dmg: 0.22, dodge: 0.02 },
-  6: { hp: 3300,  atk: 330,  def: 180,  spd: 120, hp_pct: 32,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.053,crit_dmg: 0.34, dodge: 0.027},
-  7: { hp: 8300,  atk: 830,  def: 470,  spd: 270, hp_pct: 46,  atk_pct: 46,  def_pct: 39,  crit_rate: 0.067,crit_dmg: 0.45, dodge: 0.033},
-  8: { hp: 20000, atk: 2000, def: 1170, spd: 670, hp_pct: 70,  atk_pct: 70,  def_pct: 56,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.04 },
+  5: { hp: 1700,  atk: 130,  def: 75,   spd: 50,  hp_pct: 27,  atk_pct: 21,  def_pct: 18,  crit_rate: 0.04, crit_dmg: 0.22, dodge: 0.02 },
+  6: { hp: 4600,  atk: 330,  def: 180,  spd: 120, hp_pct: 45,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.053,crit_dmg: 0.34, dodge: 0.027},
+  7: { hp: 12500, atk: 830,  def: 470,  spd: 270, hp_pct: 69,  atk_pct: 46,  def_pct: 39,  crit_rate: 0.067,crit_dmg: 0.45, dodge: 0.033},
+  8: { hp: 32000, atk: 2000, def: 1170, spd: 670, hp_pct: 112, atk_pct: 70,  def_pct: 56,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.04 },
 }
 
 export function getRealmStageMultiplier(stage: number): number {
@@ -155,9 +157,9 @@ export const PASSIVE_PCT_CAP = 40 // atkPercent/defPercent/hpPercent/spdPercent 
 // 八、战斗公式常量
 // =====================================================================
 export const BATTLE_FORMULA = {
-  atkDefRatioDefWeight: 0.5,   // atkDefRatio = atk / (atk + def * 0.5)
-  elementCounterMul: 1.3,      // 克: ×1.3
-  elementResistedMul: 0.7,     // 被克: ×0.7
+  atkDefRatioDefWeight: 0.8,   // v3.4: 0.5→0.8, DEF 更值钱, 降伤
+  elementCounterMul: 1.15,     // v3.4: 1.3→1.15, 软化克制一刀流
+  elementResistedMul: 0.88,    // v3.4: 0.7→0.88, 软化被克
   elementNeutralMul: 1.0,      // 无关: ×1.0
   maxResistRate: 0.7,          // 五行抗性 cap 70%
 } as const
