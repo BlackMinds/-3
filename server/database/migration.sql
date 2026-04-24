@@ -721,14 +721,21 @@ CREATE TABLE IF NOT EXISTS spirit_vein_node (
 );
 
 -- 初始化 6 个节点（静态配置）
+-- v3.7 灵石奖励 -60%（低档 2000→800 / 中档 5000→2000 / 上档 12000→4800 / 极品 25000→10000），修为不变
 INSERT INTO spirit_vein_node (id, name, tier, stone_reward, exp_reward, guard_limit, min_sect_level) VALUES
-  (1, '青木灵脉', 'low',     2000,  500, 2, 1),
-  (2, '赤焰灵脉', 'low',     2000,  500, 2, 1),
-  (3, '玄水灵脉', 'mid',     5000, 1200, 3, 3),
-  (4, '黄土灵脉', 'mid',     5000, 1200, 3, 3),
-  (5, '白金灵脉', 'high',   12000, 3000, 4, 5),
-  (6, '九天灵脉', 'supreme',25000, 6000, 5, 7)
+  (1, '青木灵脉', 'low',      800,  500, 2, 1),
+  (2, '赤焰灵脉', 'low',      800,  500, 2, 1),
+  (3, '玄水灵脉', 'mid',     2000, 1200, 3, 3),
+  (4, '黄土灵脉', 'mid',     2000, 1200, 3, 3),
+  (5, '白金灵脉', 'high',    4800, 3000, 4, 5),
+  (6, '九天灵脉', 'supreme',10000, 6000, 5, 7)
 ON CONFLICT (id) DO NOTHING;
+
+-- 老库回填：灵石奖励 -60%（幂等，只改值匹配旧档的行）
+UPDATE spirit_vein_node SET stone_reward =   800 WHERE id IN (1, 2) AND stone_reward =  2000;
+UPDATE spirit_vein_node SET stone_reward =  2000 WHERE id IN (3, 4) AND stone_reward =  5000;
+UPDATE spirit_vein_node SET stone_reward =  4800 WHERE id =  5      AND stone_reward = 12000;
+UPDATE spirit_vein_node SET stone_reward = 10000 WHERE id =  6      AND stone_reward = 25000;
 
 CREATE TABLE IF NOT EXISTS spirit_vein_occupation (
   node_id SMALLINT PRIMARY KEY REFERENCES spirit_vein_node(id),
