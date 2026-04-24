@@ -3848,10 +3848,12 @@ const mainStats = computed(() => {
   const awakenHpBonus  = Math.floor(c.max_hp * ab.hpPct);
   const awakenSpdBonus = Math.floor(c.spd * ab.spdPct);
 
-  const atkBonus = (p ? Math.floor(c.atk * p.atkPercent / 100) : 0) + eb.ATK + weaponAtkBonus + lb.atk + realmAtkBonus + awakenAtkBonus;
-  const defBonus = (p ? Math.floor(c.def * p.defPercent / 100) : 0) + eb.DEF + lb.def + realmDefBonus + awakenDefBonus;
-  const hpBonus = (p ? Math.floor(c.max_hp * p.hpPercent / 100) : 0) + eb.HP + lb.hp + realmHpBonus + awakenHpBonus;
-  const spdBonus = (p ? Math.floor(c.spd * p.spdPercent / 100) : 0) + eb.SPD + weaponSpdBonus + lb.spd + realmSpdBonus + awakenSpdBonus;
+  // 丹药 buff 的固定值加成（小聚灵 +20 / 小铁皮 +15 / 小培元 +300 等初级丹）
+  const pb = calcPillBuffEffect();
+  const atkBonus = (p ? Math.floor(c.atk * p.atkPercent / 100) : 0) + eb.ATK + weaponAtkBonus + lb.atk + realmAtkBonus + awakenAtkBonus + Math.floor(pb.atkFlat);
+  const defBonus = (p ? Math.floor(c.def * p.defPercent / 100) : 0) + eb.DEF + lb.def + realmDefBonus + awakenDefBonus + Math.floor(pb.defFlat);
+  const hpBonus = (p ? Math.floor(c.max_hp * p.hpPercent / 100) : 0) + eb.HP + lb.hp + realmHpBonus + awakenHpBonus + Math.floor(pb.hpFlat);
+  const spdBonus = (p ? Math.floor(c.spd * p.spdPercent / 100) : 0) + eb.SPD + weaponSpdBonus + lb.spd + realmSpdBonus + awakenSpdBonus + Math.floor(pb.spdFlat);
   return [
     { label: '气血', value: formatNum(c.max_hp + hpBonus), bonus: hpBonus },
     { label: '攻击', value: formatNum(c.atk + atkBonus), bonus: atkBonus },
@@ -4190,8 +4192,13 @@ watch(() => gameStore.battleLogs.length, async () => {
   }
 });
 
+// 30s tick：让丹药 buff 过期后面板自动刷新（calcPillBuffEffect 会引用 tickTime.value 做 reactive 依赖）
+const tickTime = ref(Date.now());
+let _tickTimer: any = null;
+
 // 初始化
 onMounted(async () => {
+  _tickTimer = setInterval(() => { tickTime.value = Date.now(); }, 30000);
   const res = await gameStore.loadGameData();
   if (res?.code === 200 && !res.data) {
     navigateTo('/create', { replace: true });
@@ -4270,6 +4277,7 @@ function stopKeepAlive() {
 }
 
 onUnmounted(() => {
+  if (_tickTimer) { clearInterval(_tickTimer); _tickTimer = null; }
   eventStore.stopPolling();
   document.removeEventListener('visibilitychange', onVisibilityChange);
   if (stopBattleWatch) { stopBattleWatch(); stopBattleWatch = null; }
@@ -4648,11 +4656,12 @@ function syncEquippedSkills() {
     }
   }
 
-  // 叠加丹药 buff
+  // 叠加丹药 buff（百分比类；固定值类由 mainStats 在 atkBonus 等处单独累加）
   const buffEffect = calcPillBuffEffect();
   atkPercent += buffEffect.atk;
   defPercent += buffEffect.def;
   hpPercent  += buffEffect.hp;
+  spdPercent += buffEffect.spd;
   critRate   += buffEffect.crit / 100; // critRate 是 0-1 小数
 
   // 叠加武器类型加成
@@ -5763,21 +5772,30 @@ function getBuffEffectLines(buff: any): string[] {
 }
 
 // 计算丹药 buff 的总属性加成
+// 注意：tickTime.value 引用是为了让 computed 在 buff 过期时自动重算
 function calcPillBuffEffect() {
+  void tickTime.value;  // reactive 依赖：每 30s 触发重算，让过期 buff 立即从面板消失
   let atk = 0, def = 0, hp = 0, crit = 0;
+  let atkFlat = 0, defFlat = 0, hpFlat = 0, spdFlat = 0, spd = 0;
   for (const buff of activeBuffs.value) {
-    // 检查是否过期
     if (buff.expire_time && new Date(buff.expire_time).getTime() <= Date.now()) continue;
     const recipe = PILL_RECIPES.find(r => r.id === buff.pill_id);
     if (!recipe || !recipe.buffEffect) continue;
     const qf = Number(buff.quality_factor) || 1.0;
     const e = recipe.buffEffect;
-    if (e.atkPercent)  atk  += e.atkPercent  * qf;
-    if (e.defPercent)  def  += e.defPercent  * qf;
-    if (e.hpPercent)   hp   += e.hpPercent   * qf;
-    if (e.critRateFlat) crit += e.critRateFlat * qf;  // 字段名对齐 pillData.ts(原写 critRate 永远读不到)
+    // 百分比类
+    if (e.atkPercent)   atk  += e.atkPercent  * qf;
+    if (e.defPercent)   def  += e.defPercent  * qf;
+    if (e.hpPercent)    hp   += e.hpPercent   * qf;
+    if (e.spdPercent)   spd  += e.spdPercent  * qf;
+    if (e.critRateFlat) crit += e.critRateFlat * qf;
+    // 固定值类（初级丹药：小聚灵 +20 / 小铁皮 +15 / 小培元 +300 等）
+    if (e.atkFlat)      atkFlat += e.atkFlat * qf;
+    if (e.defFlat)      defFlat += e.defFlat * qf;
+    if (e.hpFlat)       hpFlat  += e.hpFlat  * qf;
+    if (e.spdFlat)      spdFlat += e.spdFlat * qf;
   }
-  return { atk, def, hp, crit };
+  return { atk, def, hp, crit, spd, atkFlat, defFlat, hpFlat, spdFlat };
 }
 
 const hoverEquip = ref<any>(null);
