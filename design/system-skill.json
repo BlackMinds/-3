@@ -398,9 +398,9 @@
       },
       {
         "id": "battle_frenzy", "name": "战意沸腾", "rarity": "gold", "element": null,
-        "effect": { "ATK_per_kill_percent": 3, "max_stacks": 10 },
-        "description": "每击杀一只怪物ATK+3%，最多叠10层，换怪重置",
-        "root_synergy": "火/金灵根：最大叠加→15层"
+        "effect": { "ATK_percent": 15, "CRIT_RATE_flat": 0.05, "CRIT_DMG_flat": 0.18 },
+        "description": "攻击+15%, 会心率+5%, 会心伤害+18%",
+        "root_synergy": "火/金灵根：ATK 加成额外 +5%"
       },
       {
         "id": "heavenly_body", "name": "不灭金身", "rarity": "gold", "element": "earth",

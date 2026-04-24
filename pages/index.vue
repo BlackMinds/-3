@@ -4655,11 +4655,6 @@ function syncEquippedSkills() {
     if (e.skill_cd_reduction_turns) skillCdReduction = Math.max(skillCdReduction, e.skill_cd_reduction_turns);
     if (e.atk_per_kill_percent)   atkPerKill         = Math.max(atkPerKill, e.atk_per_kill_percent);
     if (e.max_stacks)             maxStacks          = Math.max(maxStacks, e.max_stacks);
-
-    // 战意沸腾叠层加成 (动态)
-    if (e.atk_per_kill_percent && gameStore.battleFrenzyStacks) {
-      atkPercent += e.atk_per_kill_percent * gameStore.battleFrenzyStacks * lvMul;
-    }
   }
 
   // 叠加丹药 buff（百分比类；固定值类由 mainStats 在 atkBonus 等处单独累加）
