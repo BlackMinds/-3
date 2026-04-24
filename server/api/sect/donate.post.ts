@@ -38,8 +38,8 @@ export default defineEventHandler(async (event) => {
     }
 
     const actualAmount = Math.min(amount, canDonate)
-    // 捐献贡献换算: 0.5 → 0.3，防止富豪玩家秒刷满贡献
-    const contribution = Math.floor(actualAmount * 0.3)
+    // 捐献贡献换算: 0.5 → 0.3 → 0.1，灵石产出量持续上涨，再次收紧避免捐献成为唯一贡献源
+    const contribution = Math.floor(actualAmount * 0.1)
 
     // 条件扣灵石：避免扣为负数
     const { rowCount: deducted } = await client.query(

@@ -210,7 +210,7 @@ v1.x 版本玩家到 T7+ 后战力达到百万级，数字膨胀臃肿，换装/
 | 7 | 离线效率 70% → 85% | `server/api/game/offline-claim.post.ts:27` + `offline-status.get.ts:23` | ✅ |
 | 8 | 宗门签到加境界加成 | `server/engine/sectData.ts:234` + `sign-in.post.ts` | ✅ |
 | 9 | 宗门门槛 Lv.10 → Lv.15 | `server/engine/sectData.ts:225` | ✅ |
-| 10 | 宗门捐献换算 0.5 → 0.3 | `server/api/sect/donate.post.ts:25` | ✅ |
+| 10 | 宗门捐献换算 0.5 → 0.3 → 0.1 | `server/api/sect/donate.post.ts:42` | ✅ |
 | 11 | 聚宝盆基础产出 500 → 800 | `game/caveData.ts:59` | ✅ |
 | 12 | 打怪灵石 T1-T3 +20% | `server/api/battle/fight.post.ts:544` | ✅ |
 | 13 | T1-T2 装备品质权重上调 | `server/api/battle/fight.post.ts:216` | ✅ |
