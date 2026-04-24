@@ -3955,11 +3955,17 @@ const secondaryStats = computed(() => {
   const ab = awakenBonus.value;
   const spiritBonus = Math.floor((c.spirit || 0) * wb.SPIRIT_percent / 100);
   const rb = currentRealmBonus.value;
+  // 功法被动加成（全是小数：0.05 = 5%），面板要乘 100 显示
+  const pe = gameStore.equippedSkills?.passiveEffects || {} as any;
+  const peCritRate = (pe.critRate || 0) * 100;
+  const peCritDmg = (pe.critDmg || 0) * 100;
+  const peDodge = (pe.dodge || 0) * 100;
+  const peLifesteal = (pe.lifesteal || 0) * 100;
   return [
-    { label: '会心率', value: ((Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100 + ab.critRate * 100).toFixed(1) + '%' },
-    { label: '会心伤害', value: ((Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100 + ab.critDmg * 100).toFixed(0) + '%' },
-    { label: '闪避率', value: ((Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100 + ab.dodge * 100).toFixed(1) + '%' },
-    { label: '吸血', value: ((Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat + ab.lifesteal * 100).toFixed(1) + '%' },
+    { label: '会心率', value: ((Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100 + ab.critRate * 100 + peCritRate).toFixed(1) + '%' },
+    { label: '会心伤害', value: ((Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100 + ab.critDmg * 100 + peCritDmg).toFixed(0) + '%' },
+    { label: '闪避率', value: ((Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100 + ab.dodge * 100 + peDodge).toFixed(1) + '%' },
+    { label: '吸血', value: ((Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat + ab.lifesteal * 100 + peLifesteal).toFixed(1) + '%' },
     { label: '神识', value: String((c.spirit || 0) + eb.SPIRIT + spiritBonus + ab.spirit) },
     { label: '破甲', value: (xb.ARMOR_PEN + ab.armorPen * 100).toFixed(1) + '%' },
     { label: '命中', value: (xb.ACCURACY + ab.accuracy).toFixed(1) + '%' },
