@@ -95,16 +95,16 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'metal_burst', name: '万剑归宗', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 4.5, cdTurns: 10, description: '造成450%伤害,40%流血3回合', debuff: { type: 'bleed', chance: 0.40, duration: 3 } },
   { id: 'quake_stomp', name: '地裂天崩', type: 'divine', rarity: 'gold', element: 'earth', multiplier: 3.8, cdTurns: 9, description: '造成380%伤害,30%眩晕1回合,自身防御+20% 3回合', debuff: { type: 'stun', chance: 0.30, duration: 1 }, buff: { type: 'def_up', duration: 3, value: 0.20 } },
   { id: 'life_drain', name: '噬魂大法', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 3.5, cdTurns: 8, description: '造成350%伤害并吸血,40%降低敌方攻击20% 3回合', debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.20 } },
-  { id: 'inferno_burst', name: '九天玄火阵', type: 'divine', rarity: 'gold', element: 'fire', multiplier: 2.8, cdTurns: 10, description: '[群攻] 全体280%伤害,50%灼烧4回合', debuff: { type: 'burn', chance: 0.50, duration: 4 }, isAoe: true },
+  { id: 'inferno_burst', name: '九天玄火阵', type: 'divine', rarity: 'gold', element: 'fire', multiplier: 3.5, cdTurns: 10, description: '[群攻] 全体350%伤害,50%灼烧4回合', debuff: { type: 'burn', chance: 0.50, duration: 4 }, isAoe: true },
   { id: 'storm_blade', name: '暴风斩', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 3.8, cdTurns: 8, description: '[5段] 单体5×76%伤害,每段40%流血', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, hitCount: 5 },
   { id: 'heaven_heal', name: '天地归元', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 0, cdTurns: 10, description: '回复400%攻击力气血,每回合回8% 4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.08 }, healAtkRatio: 4.0 },
   { id: 'time_stop', name: '时光凝滞', type: 'divine', rarity: 'red', element: null, multiplier: 0, cdTurns: 12, description: '[群攻] 全体冻结2回合,自身攻击+25% 3回合', debuff: { type: 'freeze', chance: 1.0, duration: 2 }, buff: { type: 'atk_up', duration: 3, value: 0.25 }, isAoe: true },
-  { id: 'heavenly_wrath', name: '天罚雷劫', type: 'divine', rarity: 'red', element: 'metal', multiplier: 5.0, cdTurns: 12, description: '造成500%伤害,40%眩晕1回合', debuff: { type: 'stun', chance: 0.40, duration: 1 } },
+  { id: 'heavenly_wrath', name: '天罚雷劫', type: 'divine', rarity: 'red', element: 'metal', multiplier: 5.8, cdTurns: 12, description: '造成580%伤害,40%眩晕1回合', debuff: { type: 'stun', chance: 0.40, duration: 1 } },
 ];
 
 // 被动功法 (19个)
 export const PASSIVE_SKILLS: Skill[] = [
-  { id: 'body_refine', name: '金刚体', type: 'passive', rarity: 'green', element: 'earth', multiplier: 0, description: '防御+10%', effect: { DEF_percent: 10 } },
+  { id: 'body_refine', name: '金刚体', type: 'passive', rarity: 'green', element: 'earth', multiplier: 0, description: '防御+10%,土抗+10%', effect: { DEF_percent: 10, RESIST_EARTH: 0.10 } },
   { id: 'flame_body', name: '焚体诀', type: 'passive', rarity: 'green', element: 'fire', multiplier: 0, description: '攻击+8%,火抗+10%', effect: { ATK_percent: 8, RESIST_FIRE: 0.10 } },
   { id: 'water_flow', name: '流水心法', type: 'passive', rarity: 'green', element: 'water', multiplier: 0, description: '每回合回2%气血,水抗+10%', effect: { regen_per_turn_percent: 0.02, RESIST_WATER: 0.10 } },
   { id: 'root_grip', name: '盘根术', type: 'passive', rarity: 'green', element: 'wood', multiplier: 0, description: '气血+10%,木抗+10%', effect: { HP_percent: 10, RESIST_WOOD: 0.10 } },
