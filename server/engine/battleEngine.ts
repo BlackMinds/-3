@@ -210,7 +210,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     skills.push({ name: '疾风连击', multiplier: 1.8, cdTurns: 3, element: null, hitCount: 4, description: '疾风连击4段' });
   }
   if (tier >= 2 && (role === 'tank' || role === 'boss')) {
-    skills.push({ name: '吞噬灵气', multiplier: 0, cdTurns: 6, element: null, healPercent: 0.10, isHeal: true, description: '回复10%气血' });
+    skills.push({ name: '吞噬灵气', multiplier: 0, cdTurns: 6, element: null, healPercent: 0.05, isHeal: true, description: '回复5%气血' });
   }
 
   // T3+ (v3.4: 整体 -15~18%)
@@ -233,7 +233,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
 
   // T4+ (v3.4: multiHit -23~25%, 控制率 -10pp)
   if (tier >= 4) {
-    skills.push({ name: '妖力恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.15, isHeal: true, description: '回复15%气血' });
+    skills.push({ name: '妖力恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.08, isHeal: true, description: '回复8%气血' });
     skills.push({ name: '咆哮震慑', multiplier: 1.8, cdTurns: 6, element: null, debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '威压咆哮' });
   }
   if (tier >= 4 && elem) {
@@ -266,7 +266,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     if (t6Skills[elem]) skills.push(t6Skills[elem]);
   }
   if (tier >= 6) {
-    skills.push({ name: '涅槃重生', multiplier: 0, cdTurns: 12, element: null, healPercent: 0.20, isHeal: true, buff: { type: 'def_up', value: 0.20, duration: 3 }, description: '回复20%气血+防御' });
+    skills.push({ name: '涅槃重生', multiplier: 0, cdTurns: 12, element: null, healPercent: 0.10, isHeal: true, buff: { type: 'def_up', value: 0.20, duration: 3 }, description: '回复10%气血+防御' });
     skills.push({ name: '千刃绞杀', multiplier: 3.0, cdTurns: 9, element: null, hitCount: 5, debuff: { type: 'bleed', chance: 0.20, duration: 3 }, description: '5段绞杀' });
   }
 
@@ -274,19 +274,19 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 7) {
     skills.push({ name: '天雷制裁', multiplier: 2.8, cdTurns: 8, element: 'metal', debuff: { type: 'stun', chance: 0.30, duration: 2 }, description: '天雷眩晕' });
     skills.push({ name: '灭世连击', multiplier: 3.5, cdTurns: 10, element: null, hitCount: 6, debuff: { type: 'stun', chance: 0.10, duration: 1 }, description: '6段灭世' });
-    skills.push({ name: '天地造化', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.28, isHeal: true, description: '回复28%气血' });
+    skills.push({ name: '天地造化', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.14, isHeal: true, description: '回复14%气血' });
   }
 
   // T8+ (v3.4)
   if (tier >= 8) {
     skills.push({ name: '混沌吞噬', multiplier: 4.0, cdTurns: 10, element: null, hitCount: 4, debuff: { type: 'stun', chance: 0.25, duration: 2 }, description: '混沌4段' });
-    skills.push({ name: '太古沉眠', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.32, isHeal: true, buff: { type: 'def_up', value: 0.40, duration: 4 }, description: '回复32%+防御' });
+    skills.push({ name: '太古沉眠', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.16, isHeal: true, buff: { type: 'def_up', value: 0.40, duration: 4 }, description: '回复16%+防御' });
   }
 
   // Boss (v3.4)
   if (isBoss) {
     skills.push({ name: '首领之吼', multiplier: 1.2, cdTurns: 6, element: null, debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.15 }, description: '降攻15%' });
-    if (tier >= 2) skills.push({ name: '首领恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.12, isHeal: true, description: '回复12%' });
+    if (tier >= 2) skills.push({ name: '首领恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.06, isHeal: true, description: '回复6%' });
     if (tier >= 3) skills.push({ name: '威压震慑', multiplier: 2.0, cdTurns: 7, element: null, debuff: { type: 'stun', chance: 0.25, duration: 1 }, description: '眩晕1回合' });
     if (tier >= 4) skills.push({ name: '凶煞之气', multiplier: 0, cdTurns: 8, element: null, buff: { type: 'def_up', value: 0.30, duration: 4 }, description: '防御+30%' });
     if (tier >= 5) skills.push({ name: '首领乱舞', multiplier: 2.7, cdTurns: 7, element: null, hitCount: 4, debuff: { type: 'bleed', chance: 0.25, duration: 3 }, description: '4段连击' });
@@ -354,10 +354,10 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const r = ratios[template.role] || ratios.balanced;
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
   const role = template.role;
-  // v3.4.1: HP_SCALE T5+ 每档 -5% (sim 诊断发现玩家杀怪过慢)
+  // v3.5: HP 整体 ×2 (配合玩家 HP ×2, 回合数翻倍)
   const HP_SCALE_BY_TIER: Record<number, number> = {
-    1: 0.95, 2: 0.95, 3: 0.95, 4: 0.95,
-    5: 1.17, 6: 1.26, 7: 1.36, 8: 1.44,
+    1: 1.90, 2: 1.90, 3: 1.90, 4: 1.90,
+    5: 2.34, 6: 2.52, 7: 2.72, 8: 2.88,
   };
   const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.95;
   // v3.4.1: ATK_SCALE 0.75 → 0.70 (-6.7%)

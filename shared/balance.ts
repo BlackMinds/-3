@@ -103,13 +103,13 @@ export interface RealmBonus {
 // 仅放大 HP 维度, ATK/DEF/SPD/CRIT 保持 — 老玩家只会变壮, 不会变弱
 export const REALM_BONUSES: Record<number, RealmBonus> = {
   1: { hp: 0,     atk: 0,    def: 0,    spd: 0,   hp_pct: 0,   atk_pct: 0,   def_pct: 0,   crit_rate: 0,    crit_dmg: 0,    dodge: 0    },
-  2: { hp: 70,    atk: 5,    def: 3,    spd: 3,   hp_pct: 3,   atk_pct: 3,   def_pct: 3,   crit_rate: 0.007,crit_dmg: 0.04, dodge: 0    },
-  3: { hp: 200,   atk: 17,   def: 10,   spd: 8,   hp_pct: 8,   atk_pct: 8,   def_pct: 7,   crit_rate: 0.013,crit_dmg: 0.08, dodge: 0.007},
-  4: { hp: 500,   atk: 50,   def: 27,   spd: 20,  hp_pct: 14,  atk_pct: 14,  def_pct: 13,  crit_rate: 0.027,crit_dmg: 0.15, dodge: 0.013},
-  5: { hp: 1700,  atk: 130,  def: 75,   spd: 50,  hp_pct: 27,  atk_pct: 21,  def_pct: 18,  crit_rate: 0.04, crit_dmg: 0.22, dodge: 0.02 },
-  6: { hp: 4600,  atk: 330,  def: 180,  spd: 120, hp_pct: 45,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.053,crit_dmg: 0.34, dodge: 0.027},
-  7: { hp: 12500, atk: 830,  def: 470,  spd: 270, hp_pct: 69,  atk_pct: 46,  def_pct: 39,  crit_rate: 0.067,crit_dmg: 0.45, dodge: 0.033},
-  8: { hp: 32000, atk: 2000, def: 1170, spd: 670, hp_pct: 112, atk_pct: 70,  def_pct: 56,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.04 },
+  2: { hp: 140,   atk: 5,    def: 3,    spd: 3,   hp_pct: 6,   atk_pct: 3,   def_pct: 3,   crit_rate: 0.007,crit_dmg: 0.04, dodge: 0    },
+  3: { hp: 400,   atk: 17,   def: 10,   spd: 8,   hp_pct: 16,  atk_pct: 8,   def_pct: 7,   crit_rate: 0.013,crit_dmg: 0.08, dodge: 0.007},
+  4: { hp: 1000,  atk: 50,   def: 27,   spd: 20,  hp_pct: 28,  atk_pct: 14,  def_pct: 13,  crit_rate: 0.027,crit_dmg: 0.15, dodge: 0.013},
+  5: { hp: 3400,  atk: 130,  def: 75,   spd: 50,  hp_pct: 54,  atk_pct: 21,  def_pct: 18,  crit_rate: 0.04, crit_dmg: 0.22, dodge: 0.02 },
+  6: { hp: 9200,  atk: 330,  def: 180,  spd: 120, hp_pct: 90,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.053,crit_dmg: 0.34, dodge: 0.027},
+  7: { hp: 25000, atk: 830,  def: 470,  spd: 270, hp_pct: 138, atk_pct: 46,  def_pct: 39,  crit_rate: 0.067,crit_dmg: 0.45, dodge: 0.033},
+  8: { hp: 64000, atk: 2000, def: 1170, spd: 670, hp_pct: 224, atk_pct: 70,  def_pct: 56,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.04 },
 }
 
 export function getRealmStageMultiplier(stage: number): number {
@@ -137,10 +137,10 @@ export function getRealmBonusAtLevel(tier: number, stage: number): RealmBonus {
 // 五、等级加成 (每升 1 级的 flat 加成)
 // =====================================================================
 export function getLevelStatGain(lv: number): { hp: number; atk: number; def: number; spd: number } {
-  if (lv <= 50)  return { hp: 5,  atk: 2,  def: 1, spd: 1 }
-  if (lv <= 100) return { hp: 10, atk: 4,  def: 2, spd: 2 }
-  if (lv <= 150) return { hp: 20, atk: 8,  def: 4, spd: 3 }
-  return                 { hp: 40, atk: 15, def: 8, spd: 5 }
+  if (lv <= 50)  return { hp: 10, atk: 2,  def: 1, spd: 1 }
+  if (lv <= 100) return { hp: 20, atk: 4,  def: 2, spd: 2 }
+  if (lv <= 150) return { hp: 40, atk: 8,  def: 4, spd: 3 }
+  return                 { hp: 80, atk: 15, def: 8, spd: 5 }
 }
 
 // =====================================================================

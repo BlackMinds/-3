@@ -34,10 +34,10 @@ const ROLE_COEF: Record<string, { hp: number; atk: number; def: number; spd: num
   boss:     { hp: 0.35, atk: 0.30, def: 0.25, spd: 0.10 },
 }
 
-// v3.4.1: HP_SCALE T5+ -5%, ATK_SCALE 0.75 → 0.70
+// v3.5: HP 整体 ×2 (配合玩家 HP ×2, 回合数翻倍)
 const HP_SCALE_BY_TIER: Record<number, number> = {
-  1: 0.95, 2: 0.95, 3: 0.95, 4: 0.95,
-  5: 1.17, 6: 1.26, 7: 1.36, 8: 1.44, 9: 1.44, 10: 1.44,
+  1: 1.90, 2: 1.90, 3: 1.90, 4: 1.90,
+  5: 2.34, 6: 2.52, 7: 2.72, 8: 2.88, 9: 2.88, 10: 2.88,
 }
 const ATK_SCALE = 0.70
 

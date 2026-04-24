@@ -49,10 +49,10 @@ export default defineEventHandler(async (event) => {
     // 等级加成
     const lv = char.level || 1
     for (let i = 1; i < lv; i++) {
-      if (i <= 50) { maxHp += 5; atk += 2; def += 1 }
-      else if (i <= 100) { maxHp += 10; atk += 4; def += 2 }
-      else if (i <= 150) { maxHp += 20; atk += 8; def += 4 }
-      else { maxHp += 40; atk += 15; def += 8 }
+      if (i <= 50) { maxHp += 10; atk += 2; def += 1 }
+      else if (i <= 100) { maxHp += 20; atk += 4; def += 2 }
+      else if (i <= 150) { maxHp += 40; atk += 8; def += 4 }
+      else { maxHp += 80; atk += 15; def += 8 }
     }
 
     // 装备加成
