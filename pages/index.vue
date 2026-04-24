@@ -2122,7 +2122,16 @@
           <h3>万界仙途 · 帮助</h3>
           <button class="modal-close" @click="showHelpDoc = false">×</button>
         </div>
+        <div class="help-tabs">
+          <button :class="['help-tab', { active: helpTab === 'basic' }]" @click="helpTab = 'basic'">基础</button>
+          <button :class="['help-tab', { active: helpTab === 'battle' }]" @click="helpTab = 'battle'">战斗</button>
+          <button :class="['help-tab', { active: helpTab === 'growth' }]" @click="helpTab = 'growth'">养成</button>
+          <button :class="['help-tab', { active: helpTab === 'pvp' }]" @click="helpTab = 'pvp'">宗门/PvP</button>
+          <button :class="['help-tab', { active: helpTab === 'realm' }]" @click="helpTab = 'realm'">秘境</button>
+          <button :class="['help-tab', { active: helpTab === 'misc' }]" @click="helpTab = 'misc'">其他</button>
+        </div>
         <div class="modal-body">
+          <div v-show="helpTab === 'basic'">
           <div class="help-section">
             <div class="help-title">交流反馈 · QQ 群</div>
             <p class="help-text">
@@ -2159,6 +2168,8 @@
               <tr><td>设置</td><td>背景主题/自动出售规则(按品质和阶位)</td></tr>
             </tbody></table>
           </div>
+          </div>
+          <div v-show="helpTab === 'battle'">
           <div class="help-section">
             <div class="help-title">等级系统</div>
             <p class="help-text">等级上限 200 级,打怪获得等级经验自动升级。等级提供属性加成,按段递增:</p>
@@ -2209,6 +2220,8 @@
             <div class="help-title">离线挂机（维护中）</div>
             <p class="help-text" style="color: var(--fade-ink);">功能存在数值异常，暂时下线维护。已开始离线的玩家可正常结束并领取收益。</p>
           </div>
+          </div>
+          <div v-show="helpTab === 'pvp'">
           <div class="help-section">
             <div class="help-title">斗法台 · 自由 PvP</div>
             <p class="help-text">头部「斗法台」按钮入口。输入对手道号即可发起 1v1 切磋,无需对方在线(基于角色快照异步模拟)。</p>
@@ -2283,6 +2296,8 @@
             <p class="help-text">宗门战结算、押注返利、灵脉涌灵分成、被偷袭通知等<b>所有异步奖励</b>均通过邮件下发,离线上线即可查看 + 一键领取。</p>
             <p class="help-text" style="margin-top: 4px;">邮件分类: 宗门战 / 押注 / 灵脉涌灵 / 灵脉偷袭 / 奖池。邮件 30 天过期前会<b>自动发放附件</b>,避免漏领。</p>
           </div>
+          </div>
+          <div v-show="helpTab === 'growth'">
           <div class="help-section">
             <div class="help-title">装备系统</div>
             <p class="help-text">7 个槽位: 兵器/法袍/法冠/步云靴/法宝/灵戒/灵佩。6 级品质: 凡器→灵器→法器→灵宝→仙器→太古神器。兵器有 4 种类型:</p>
@@ -2394,6 +2409,41 @@
               <tr><td>万能残页</td><td>合成任意功法残页(配合 ON CONFLICT 堆叠机制)</td></tr>
             </tbody></table>
           </div>
+          </div>
+          <div v-show="helpTab === 'realm'">
+          <div class="help-section">
+            <div class="help-title">秘境组队</div>
+            <p class="help-text">2-4 人协作副本,公开大厅制,点【秘境】进入组队页面。6 大秘境 × 3 难度(普通/困难/噩梦),独占高品质装备/首通奖励/高倍经验。同宗门成员组队额外 +10% 全属性加成。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">Boss 保底装备</div>
+            <table class="help-table"><tbody>
+              <tr><td>普通难度</td><td>Boss 保底 <b>紫色</b></td></tr>
+              <tr><td>困难难度</td><td>Boss 保底 <b>金色</b></td></tr>
+              <tr><td>噩梦难度</td><td>Boss <b>80% 金 + 20% 红</b></td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">战斗评级机制</div>
+            <p class="help-text">每波允许回合 = max(20, 基础回合 + 怪物数 × 5),所有波次加总为总允许回合。</p>
+            <table class="help-table"><tbody>
+              <tr><td>S</td><td>全员存活 + 总回合 < 允许 × <b>50%</b></td></tr>
+              <tr><td>A</td><td>全员存活 + 总回合 < 允许 × <b>70%</b></td></tr>
+              <tr><td>B</td><td>其他胜利(超时 / 有人阵亡)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;"><b>举例（SR-1 · 普通难度 3 波）：</b>第 1 波 3 怪 = 30 回合 / 第 2 波 2 怪 = 25 回合 / 第 3 波 Boss = 20 回合,总允许 75 回合。→ 37 回合内全员活通关拿 <b>S</b>；53 回合内拿 <b>A</b>；其他拿 <b>B</b>。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">评级奖励</div>
+            <table class="help-table"><tbody>
+              <tr><td>S 评级</td><td>经验/灵石/积分 ×<b>1.5</b></td></tr>
+              <tr><td>A 评级</td><td>经验/灵石/积分 ×<b>1.25</b></td></tr>
+              <tr><td>B 评级</td><td>经验/灵石/积分 ×1.0</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px; color: var(--cinnabar);"><b>★ S 评级额外奖励：</b>通关评级 S 时额外掉落 <b>1 件固定红色装备</b>(不受难度影响,普通难度打出 S 也能拿红装)。红装按贡献分配给队内贡献最高的成员。</p>
+          </div>
+          </div>
+          <div v-show="helpTab === 'misc'">
           <div class="help-section">
             <div class="help-title">成就与称号</div>
             <p class="help-text">多维度追踪: 境界/等级/战斗/收集/炼丹/洞府/宗门等。完成成就领取灵石/装备箱/功法箱,部分成就解锁专属称号。</p>
@@ -2406,18 +2456,10 @@
             <p class="help-text" style="margin-top: 4px;"><b>天道造化</b>: 战斗中随机触发稀有事件(仙缘/机缘/异宝),弹窗即时展示奖励。</p>
           </div>
           <div class="help-section">
-            <div class="help-title">秘境组队 (新)</div>
-            <p class="help-text">2-4 人协作副本,公开大厅制,点【秘境】进入组队页面。</p>
-            <p class="help-text" style="margin-top: 4px;">6 大秘境 × 3 难度(普通/困难/噩梦),独占高品质装备/首通奖励/高倍经验。同宗门成员组队额外 +10% 全属性加成。</p>
-            <p class="help-text" style="margin-top: 6px;"><b>Boss 保底装备：</b>普通 = 紫色 / 困难 = 金色 / 噩梦 = 80% 金 + 20% 红。</p>
-            <p class="help-text" style="margin-top: 4px;"><b>战斗评级：</b>S (回合少+无阵亡) / A (较快) / B (正常)。</p>
-            <p class="help-text" style="margin-top: 4px;"><b>评级奖励倍率：</b>S 经验/灵石/积分 ×1.5; A ×1.25; B ×1.0。</p>
-            <p class="help-text" style="margin-top: 4px; color: var(--cinnabar);"><b>★ S 评级额外奖励：</b>通关评级 S 时额外掉落 1 件固定红色装备（不受难度影响，普通难度打出 S 也能拿红装）。红装按贡献分配给队内贡献最高的成员。</p>
-          </div>
-          <div class="help-section">
             <div class="help-title">赞助系统</div>
             <p class="help-text">赞助增加洞府 1.5 倍 / 2 倍产出 一键种植 秘境次数 随机蓝色功法+1</p>
             <p class="help-text" style="margin-top: 4px;">联系群主</p>
+          </div>
           </div>
         </div>
       </div>
@@ -2826,6 +2868,7 @@ const showMonsterTip = ref(false);
 const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showHelpDoc = ref(false);
+const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'misc'>('basic');
 const showSettings = ref(false);
 
 async function copyQqGroup() {
@@ -8479,6 +8522,35 @@ onUnmounted(() => {
 }
 
 /* 帮助弹窗 */
+.help-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+.help-tab {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--ink-light);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.help-tab:hover {
+  color: var(--gold-ink);
+  border-color: var(--gold-ink);
+}
+.help-tab.active {
+  color: var(--gold-ink);
+  border-color: var(--gold-ink);
+  background: rgba(201, 168, 92, 0.08);
+}
+
 .help-section {
   margin-bottom: 16px;
 }
