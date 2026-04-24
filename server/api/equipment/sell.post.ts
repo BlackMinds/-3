@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 
     if (equipRows.length === 0) return { code: 400, message: '装备不存在或已穿戴' }
 
-    const sellPrices: Record<string, number> = { white: 10, green: 50, blue: 200, purple: 1000, gold: 5000, red: 20000 }
+    const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 } // v3.4.2: -70%
     const enhLv = equipRows[0].enhance_level || 0
     const price = Math.floor((sellPrices[equipRows[0].rarity] || 10) * equipRows[0].tier * (1 + enhLv * 0.1))
 

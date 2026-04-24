@@ -2,8 +2,9 @@ import { getPool } from '~/server/database/db'
 import { getCharId } from '~/server/utils/equipment'
 import { SKILL_MAP } from '~/server/engine/skillData'
 
+// v3.4.2: 出售价 -70%
 const SKILL_SELL_PRICES: Record<string, number> = {
-  white: 10, green: 50, blue: 200, purple: 1000, gold: 5000, red: 20000,
+  white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000,
 }
 
 export default defineEventHandler(async (event) => {

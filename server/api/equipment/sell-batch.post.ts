@@ -4,7 +4,7 @@ import { updateSectDailyTask } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 
 const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
-const SELL_PRICES: Record<string, number> = { white: 10, green: 50, blue: 200, purple: 1000, gold: 5000, red: 20000 }
+const SELL_PRICES: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 } // v3.4.2: -70%
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
