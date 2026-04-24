@@ -1157,11 +1157,12 @@ export function runWaveBattle(
       continue;
     }
 
-    // 先后手判定: 比较玩家身法和怪物平均身法；减速必定后攻
-    const avgMonsterSpd = aliveMonsters.reduce((sum, m) => sum + m.stats.spd, 0) / aliveMonsters.length;
+    // 先后手判定: 比较玩家身法和怪物【最慢身法】；减速必定后攻
+    // 改为对比最慢怪：避免高速 dps 怪混在队伍里把平均拉爆，让玩家明显感知到自己堆的身法
+    const minMonsterSpd = Math.min(...aliveMonsters.map(m => m.stats.spd));
     const spdUpSum = sumPlayerBuff('spd_up');
     const effPlayerSpd = spdUpSum > 0 ? player.spd * (1 + spdUpSum) : player.spd;
-    let playerFirst = effPlayerSpd >= avgMonsterSpd;
+    let playerFirst = effPlayerSpd >= minMonsterSpd;
     if (hasSlow(player)) playerFirst = false;
 
     // 选目标(血量最低)
