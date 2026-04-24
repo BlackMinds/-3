@@ -18,9 +18,10 @@
       </div>
 
       <!-- Tab 切换 -->
-      <div class="sr-tabs" v-if="['lobby','realms','history'].includes(teamStore.currentPanel)">
+      <div class="sr-tabs" v-if="['lobby','realms','history','shop'].includes(teamStore.currentPanel)">
         <button :class="{ active: teamStore.currentPanel === 'lobby' }" @click="goLobby">组队大厅</button>
         <button :class="{ active: teamStore.currentPanel === 'realms' }" @click="goRealms">秘境介绍</button>
+        <button :class="{ active: teamStore.currentPanel === 'shop' }" @click="goShop">🏪 积分商店</button>
         <button :class="{ active: teamStore.currentPanel === 'history' }" @click="goHistory">📜 历史日志</button>
         <button class="create-btn" @click="goCreate">+ 创建房间</button>
       </div>
@@ -70,6 +71,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Panel: 积分商店 -->
+      <SecretRealmShop v-if="teamStore.currentPanel === 'shop'" @updated="onShopUpdated" />
 
       <!-- Panel: 秘境介绍 -->
       <div v-if="teamStore.currentPanel === 'realms'" class="sr-panel">
@@ -385,6 +389,7 @@ import { useTeamStore } from '~/stores/team'
 import { HERBS, HERB_QUALITIES } from '~/game/herbData'
 import { ALL_SKILLS } from '~/game/skillData'
 import { getRarityColor } from '~/game/equipData'
+import SecretRealmShop from '~/components/SecretRealmShop.vue'
 
 const props = defineProps<{
   open: boolean
@@ -476,6 +481,14 @@ function goLobby() {
 function goRealms() {
   teamStore.currentPanel = 'realms'
   fetchRealms()
+}
+function goShop() {
+  teamStore.currentPanel = 'shop'
+  stopPolling()
+  fetchRealms()  // 刷新顶栏的积分显示
+}
+function onShopUpdated() {
+  fetchRealms()  // 购买后刷新积分
 }
 function goCreate() {
   teamStore.currentPanel = 'create'

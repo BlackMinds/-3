@@ -529,6 +529,19 @@ CREATE TABLE IF NOT EXISTS secret_realm_clears (
 
 CREATE INDEX IF NOT EXISTS idx_src_clear_char ON secret_realm_clears (character_id);
 
+-- 秘境商店购买记录（秘境积分商店，周限购）
+CREATE TABLE IF NOT EXISTS realm_shop_purchases (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  item_key VARCHAR(50) NOT NULL,
+  quantity INT DEFAULT 1,
+  cost_points INT NOT NULL,
+  week_start DATE NOT NULL,
+  purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_realm_shop_char_week ON realm_shop_purchases (character_id, week_start, item_key);
+
 -- ========================================
 -- 随机事件系统（天道造化 / 风云阁）
 -- ========================================
@@ -540,6 +553,13 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS event_pending_id INT DEFAULT NUL
 
 -- v3.3 突破丹改为 "+20% 下次突破成功率"：嗑丹后置位，突破时消耗
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS breakthrough_boost_pending BOOLEAN DEFAULT FALSE;
+
+-- v3.7 突破丹改为分档数值（小突破丹 +10% / 宗门突破丹 +20% / 突破丹 +25%），高覆盖低、不叠加
+-- 0 表示未激活，>0 表示已激活的 buff 百分比
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS breakthrough_boost_pct SMALLINT NOT NULL DEFAULT 0;
+-- 兼容老字段：之前已 pending=TRUE 的回填到 pct=20
+UPDATE characters SET breakthrough_boost_pct = 20
+  WHERE breakthrough_boost_pending = TRUE AND breakthrough_boost_pct = 0;
 
 CREATE INDEX IF NOT EXISTS idx_char_active ON characters (last_active_at);
 

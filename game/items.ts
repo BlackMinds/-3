@@ -36,6 +36,8 @@ export const ITEM_INFO: Record<string, ItemInfo> = {
   // —— 修为类 ——
   permanent_stat:     { name: '道果结晶',   description: '永久属性 +1%（攻/防/血 三选一）',       category: 'character', needsTarget: 'stat' },
   breakthrough_boost: { name: '宗门突破丹', description: '下次突破成功率 +20%（上限 100%，不论成败消耗一次）', category: 'character' },
+  small_breakthrough_pill: { name: '小突破丹', description: '下次突破成功率 +10%（上限 100%，不论成败消耗一次）', category: 'character' },
+  big_breakthrough_pill:   { name: '突破丹',   description: '下次突破成功率 +25%（上限 100%，不论成败消耗一次）', category: 'character' },
   reset_root:         { name: '天道洗髓丹', description: '重置灵根属性',                           category: 'character', needsTarget: 'root' },
   // —— 功法类 ——
   universal_skill_page: { name: '万能功法残页', description: '转化为指定功法的 1 张残页',         category: 'skill', needsTarget: 'skill' },

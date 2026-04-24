@@ -2024,7 +2024,7 @@
                 <span class="realm-rate-label">突破成功率</span>
                 <span class="realm-rate-val success">
                   {{ Math.round(breakthroughEffectiveRate * 100) }}%
-                  <span v-if="hasBreakthroughBoost" class="realm-boost-tag">含突破丹 +20%</span>
+                  <span v-if="hasBreakthroughBoost" class="realm-boost-tag">含突破丹 +{{ breakthroughBoostPct }}%</span>
                 </span>
               </div>
               <div class="realm-rate-row" v-if="breakthroughFailPenalty > 0">
@@ -2390,7 +2390,7 @@
             <table class="help-table"><tbody>
               <tr><td>洗髓丹</td><td>重置灵根属性(保留境界/等级/装备)</td></tr>
               <tr><td>道果结晶</td><td>永久提升单项基础属性,叠加无上限</td></tr>
-              <tr><td>突破丹</td><td>下次突破成功率 +20%（上限 100%,不论成败消耗一次）</td></tr>
+              <tr><td>小突破丹 / 宗门突破丹 / 突破丹</td><td>下次突破成功率 +10% / +20% / +25%（不叠加,高覆盖低;上限 100%,不论成败消耗一次）</td></tr>
               <tr><td>万能残页</td><td>合成任意功法残页(配合 ON CONFLICT 堆叠机制)</td></tr>
             </tbody></table>
           </div>
@@ -3292,13 +3292,17 @@ const breakthroughRate = computed(() => {
   return getBreakthroughRateAt(tier, stage, maxStage);
 });
 
+const breakthroughBoostPct = computed(() => {
+  return Number((gameStore.character as any)?.breakthrough_boost_pct || 0);
+});
+
 const hasBreakthroughBoost = computed(() => {
-  return !!(gameStore.character as any)?.breakthrough_boost_pending;
+  return breakthroughBoostPct.value > 0;
 });
 
 const breakthroughEffectiveRate = computed(() => {
   const base = breakthroughRate.value;
-  return hasBreakthroughBoost.value ? Math.min(1, base + 0.2) : base;
+  return hasBreakthroughBoost.value ? Math.min(1, base + breakthroughBoostPct.value / 100) : base;
 });
 
 const breakthroughFailPenalty = computed(() => {
@@ -5613,9 +5617,13 @@ async function useSectItem(item: any) {
     return;
   }
 
-  if (id === 'breakthrough_boost') {
+  if (id === 'breakthrough_boost' || id === 'small_breakthrough_pill' || id === 'big_breakthrough_pill') {
     try {
-      const res: any = await $fetch('/api/game/use-breakthrough-pill', { method: 'POST', headers: getAuthHeaders() });
+      const res: any = await $fetch('/api/game/use-breakthrough-pill', {
+        method: 'POST',
+        body: { pill_id: id },
+        headers: getAuthHeaders(),
+      });
       if (res.code === 200) { showToast(res.message, 'success'); await loadPills(); await gameStore.loadGameData(); }
       else showToast(res.message, 'error');
     } catch {}

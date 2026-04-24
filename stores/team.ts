@@ -87,7 +87,7 @@ export const useTeamStore = defineStore('team', () => {
   const battleHistory = ref<any[]>([])
   const historyDetail = ref<any | null>(null)
   const currentPanel = ref<
-    'lobby' | 'realms' | 'create' | 'room' | 'battle' | 'result' | 'history' | 'history-detail'
+    'lobby' | 'realms' | 'create' | 'room' | 'battle' | 'result' | 'history' | 'history-detail' | 'shop'
   >('lobby')
 
   function setRoom(room: TeamRoomDetail | null) {
