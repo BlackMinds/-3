@@ -12,16 +12,16 @@ export interface SectLevelConfig {
 }
 
 export const SECT_LEVELS: SectLevelConfig[] = [
-  { level: 1,  upgradeCost: 0,             maxMembers: 10, atkBonus: 0.02, defBonus: 0.02, expBonus: 0.05, shopUnlock: 'basic' },
-  { level: 2,  upgradeCost: 500000,        maxMembers: 15, atkBonus: 0.04, defBonus: 0.04, expBonus: 0.08, shopUnlock: 'basic' },
-  { level: 3,  upgradeCost: 1500000,       maxMembers: 20, atkBonus: 0.06, defBonus: 0.06, expBonus: 0.12, shopUnlock: 'advanced' },
-  { level: 4,  upgradeCost: 5000000,       maxMembers: 25, atkBonus: 0.08, defBonus: 0.08, expBonus: 0.16, shopUnlock: 'advanced' },
-  { level: 5,  upgradeCost: 15000000,      maxMembers: 30, atkBonus: 0.10, defBonus: 0.10, expBonus: 0.20, shopUnlock: 'rare' },
-  { level: 6,  upgradeCost: 50000000,      maxMembers: 35, atkBonus: 0.13, defBonus: 0.13, expBonus: 0.25, shopUnlock: 'set' },
-  { level: 7,  upgradeCost: 150000000,     maxMembers: 40, atkBonus: 0.16, defBonus: 0.16, expBonus: 0.30, shopUnlock: 'set' },
-  { level: 8,  upgradeCost: 500000000,     maxMembers: 45, atkBonus: 0.20, defBonus: 0.20, expBonus: 0.36, shopUnlock: 'legend' },
-  { level: 9,  upgradeCost: 1500000000,    maxMembers: 48, atkBonus: 0.25, defBonus: 0.25, expBonus: 0.42, shopUnlock: 'legend' },
-  { level: 10, upgradeCost: 5000000000,    maxMembers: 50, atkBonus: 0.30, defBonus: 0.30, expBonus: 0.50, shopUnlock: 'supreme' },
+  { level: 1,  upgradeCost: 0,             maxMembers: 15, atkBonus: 0.02, defBonus: 0.02, expBonus: 0.05, shopUnlock: 'basic' },
+  { level: 2,  upgradeCost: 500000,        maxMembers: 20, atkBonus: 0.04, defBonus: 0.04, expBonus: 0.08, shopUnlock: 'basic' },
+  { level: 3,  upgradeCost: 1500000,       maxMembers: 25, atkBonus: 0.06, defBonus: 0.06, expBonus: 0.12, shopUnlock: 'advanced' },
+  { level: 4,  upgradeCost: 5000000,       maxMembers: 30, atkBonus: 0.08, defBonus: 0.08, expBonus: 0.16, shopUnlock: 'advanced' },
+  { level: 5,  upgradeCost: 15000000,      maxMembers: 35, atkBonus: 0.10, defBonus: 0.10, expBonus: 0.20, shopUnlock: 'rare' },
+  { level: 6,  upgradeCost: 50000000,      maxMembers: 40, atkBonus: 0.13, defBonus: 0.13, expBonus: 0.25, shopUnlock: 'set' },
+  { level: 7,  upgradeCost: 150000000,     maxMembers: 45, atkBonus: 0.16, defBonus: 0.16, expBonus: 0.30, shopUnlock: 'set' },
+  { level: 8,  upgradeCost: 500000000,     maxMembers: 50, atkBonus: 0.20, defBonus: 0.20, expBonus: 0.36, shopUnlock: 'legend' },
+  { level: 9,  upgradeCost: 1500000000,    maxMembers: 53, atkBonus: 0.25, defBonus: 0.25, expBonus: 0.42, shopUnlock: 'legend' },
+  { level: 10, upgradeCost: 5000000000,    maxMembers: 55, atkBonus: 0.30, defBonus: 0.30, expBonus: 0.50, shopUnlock: 'supreme' },
 ];
 
 export function getSectLevelConfig(level: number): SectLevelConfig {
