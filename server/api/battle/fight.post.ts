@@ -707,7 +707,10 @@ export default defineEventHandler(async (event) => {
       const template: MonsterTemplate = mapData.boss
       monsterList.push({ stats: generateMonsterStats(template), template })
     } else {
-      const waveSize = 1 + Math.floor(Math.random() * 4)
+      // T1/T2 前期顺度优化: 怪物数量 1-2 只; T3+ 维持 1-4 只
+      const waveSize = mapData.tier <= 2
+        ? 1 + Math.floor(Math.random() * 2)
+        : 1 + Math.floor(Math.random() * 4)
       for (let i = 0; i < waveSize; i++) {
         const m = mapData.monsters[rand(0, mapData.monsters.length - 1)]
         const template: MonsterTemplate = m
