@@ -2173,8 +2173,8 @@
             <div class="help-title">顶部功能按钮</div>
             <table class="help-table"><tbody>
               <tr><td>掉落表</td><td>查看当前地图怪物的掉落概率和档次</td></tr>
-              <tr><td>风云榜</td><td>境界/等级/灵石/宗门 4 种全服排行</td></tr>
-              <tr><td>斗法台</td><td>1v1 自由 PvP,输入对手道号即可挑战(每日 10 次)</td></tr>
+              <tr><td>风云榜</td><td>境界/等级/灵石/斗法/宗门 5 种全服排行</td></tr>
+              <tr><td>斗法台</td><td>1v1 自由 PvP,输入对手道号即可挑战(每日 10 次,胜负计积分)</td></tr>
               <tr><td>风云阁</td><td>全服传奇掉落/事件播报,红点提示新传奇</td></tr>
               <tr><td>成就</td><td>多维度成就追踪,领取奖励,佩戴称号</td></tr>
               <tr><td>秘境</td><td>2-4 人组队副本,独占高品质奖励(开发中)</td></tr>
@@ -2218,7 +2218,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">五行相克</div>
-            <p class="help-text">金克木、木克土、土克水、水克火、火克金。克制伤害 ×1.3,被克 ×0.7。功法属性匹配灵根 +20% 伤害(灵根共鸣)。怪物对自身属性有 40% 抗性。</p>
+            <p class="help-text">金克木、木克土、土克水、水克火、火克金。克制伤害 ×1.15,被克 ×0.88。功法属性匹配灵根 +20% 伤害(灵根共鸣)。怪物对自身属性有 40% 抗性。</p>
           </div>
           <div class="help-section">
             <div class="help-title">境界系统</div>
@@ -2244,11 +2244,42 @@
               <tr><td>战斗修正</td><td>HP×1.8 / 伤害×0.6 / DOT×0.5 / 暴伤-35%(与宗门战 1v1 同套)</td></tr>
               <tr><td>失败惩罚</td><td>败方扣除 <b>1%</b> 境界修为</td></tr>
               <tr><td>被扣保护</td><td>同一玩家单日最多被扣 10 次,超出免扣(战报照写)</td></tr>
-              <tr><td>奖励</td><td>无任何奖励,纯论道切磋</td></tr>
+              <tr><td>积分变化</td><td>胜方加分 / 败方扣分(初始 1000,跨境界加权,详见下表)</td></tr>
               <tr><td>对手限制</td><td>不能挑战自己;无境界差/战力差限制(任何人都可挑战)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;">弹窗顶部「⚔ 挑战 / 📜 战记」两个标签页:挑战页发起切磋并显示当场战报;战记页查看自己最近 20 场记录(含主动/被动场次,胜负、修为变化、详细战报可点击展开)。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">⚠ 战斗使用对方"装备 + 功法 + 等级"的实时快照,丹药效果不计入(避免不公平)。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>积分加权表</b>(按胜负双方境界差,鼓励逆袭、抑制躺平):</p>
+            <table class="help-table"><tbody>
+              <tr><td>境界差</td><td>胜方加分</td><td>败方扣分</td></tr>
+              <tr><td>低 4 阶+</td><td>+60</td><td>-2</td></tr>
+              <tr><td>低 3 阶</td><td>+44</td><td>-2</td></tr>
+              <tr><td>低 2 阶</td><td>+36</td><td>-4</td></tr>
+              <tr><td>低 1 阶</td><td>+28</td><td>-7</td></tr>
+              <tr><td><b>同境界</b></td><td><b>+20</b></td><td><b>-10</b></td></tr>
+              <tr><td>高 1 阶</td><td>+14</td><td>-16</td></tr>
+              <tr><td>高 2 阶</td><td>+8</td><td>-22</td></tr>
+              <tr><td>高 3 阶+</td><td>+5</td><td>-28</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">积分有 floor 0 保护(不会扣到负数),被扣保护期外(单日 10 次后)不再扣分。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>段位</b>(每 200 分一档,临界点附近再赢一场就能升档):</p>
+            <table class="help-table"><tbody>
+              <tr><td>武徒</td><td>0~999</td><td>斗者</td><td>1000~1199</td></tr>
+              <tr><td>斗师</td><td>1200~1399</td><td>大斗师</td><td>1400~1599</td></tr>
+              <tr><td>斗灵</td><td>1600~1799</td><td>斗王</td><td>1800~1999</td></tr>
+              <tr><td>斗皇</td><td>2000~2199</td><td>斗宗</td><td>2200~2399</td></tr>
+              <tr><td>斗尊</td><td>2400~2599</td><td><span style="color: #ffd700;">斗圣</span></td><td>2600+</td></tr>
+            </tbody></table>
+
+            <p class="help-text" style="margin-top: 10px;"><b>每日 12:00 榜首奖励</b>(取斗法榜前 10 邮件下发):</p>
+            <table class="help-table"><tbody>
+              <tr><td>第 1 名</td><td>25,000 灵石 + 灵枢玉×1 + 称号「论道魁首」3 天 + atk/def/hp +3%</td></tr>
+              <tr><td>第 2-3 名</td><td>15,000 灵石 + 灵枢玉×1 + 称号「斗法翘楚」3 天 + atk/def/hp +1.5%</td></tr>
+              <tr><td>第 4-10 名</td><td>7,500 灵石 + 灵枢玉×1</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">称号 buff 连续上榜会续期不累加;名次升降覆盖最新值(从第 1 跌到第 2,buff 自动从 +3% 降到 +1.5%)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">宗门系统</div>
@@ -2465,7 +2496,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">风云榜 · 风云阁</div>
-            <p class="help-text"><b>风云榜</b>: 境界/等级/灵石/宗门 4 种全服排行,查看自己在天道秩序中的位置。</p>
+            <p class="help-text"><b>风云榜</b>: 境界/等级/灵石/<span style="color: var(--gold-ink);">斗法</span>/宗门 5 种全服排行,查看自己在天道秩序中的位置。<b>斗法榜</b>显示段位 chip + 积分,前 10 每日 12:00 自动发奖(详见斗法台帮助)。</p>
             <p class="help-text" style="margin-top: 4px;"><b>风云阁</b>: 全服传奇事件播报(传说级装备掉落/首通 Boss/突破飞升等),红点提示未读传奇。</p>
             <p class="help-text" style="margin-top: 4px;"><b>天道造化</b>: 战斗中随机触发稀有事件(仙缘/机缘/异宝),弹窗即时展示奖励。</p>
           </div>
