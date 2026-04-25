@@ -57,8 +57,8 @@ export const BUILDINGS: BuildingDef[] = [
     icon: '宝',
     description: '汇聚四方灵脉,产出灵石。',
     maxLevel: 20,
-    // 2026-04-25: base 800→1500 — 满级 31417→58909 灵石/h, 24h 约 141 万对齐红装强化消耗
-    output: { type: 'spirit_stone', base: 1500, perLevelMul: 1.22 },
+    // 2026-04-25: base 800→900 — 满级 31417→35341 灵石/h, 24h 约 84.8 万 (+12% 温和提升)
+    output: { type: 'spirit_stone', base: 900, perLevelMul: 1.22 },
     baseCost: 2000,
     costMul: 1.8,
     baseTime: 0,
