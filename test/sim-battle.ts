@@ -25,12 +25,12 @@ export interface BattleResult {
   playerDps: number // 实际 DPS
 }
 
-// v3.4: sim 双方对称化 + 建模玩家 BD 效应
-// 玩家: 主修 1.3 (每回合) + 神通大招 CD 5-12 (2-5x), 综合 ≈ 2.3
-// 怪物: 普攻 1.0 + 元素技 / 大招 CD 3-10 (1.5-4x), 综合 ≈ 1.4
+// v3.5: 玩家主修 ×0.85 + 神通 ×0.60, 怪物攻击型 ×0.60
+// 玩家: 主修 1.10 (×30%权重) + 神通均值 1.8 (×70%权重), 综合 ≈ 1.50 (旧 2.3)
+// 怪物: 综合 1.4 × 0.60 = 0.84 (旧 1.4)
 // 玩家"BD 隐性收益"(金钟罩/回血/免死/斩杀/减伤) 综合 EHP 额外 ×2.0, DPS 额外 ×1.2
-const PLAYER_SKILL_MUL = 2.3
-const MONSTER_SKILL_MUL = 1.4
+const PLAYER_SKILL_MUL = 1.50
+const MONSTER_SKILL_MUL = 0.84
 const PLAYER_EHP_BD_MUL = 2.0
 const PLAYER_DPS_BD_MUL = 1.2
 

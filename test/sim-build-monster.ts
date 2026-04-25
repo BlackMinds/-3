@@ -34,12 +34,12 @@ const ROLE_COEF: Record<string, { hp: number; atk: number; def: number; spd: num
   boss:     { hp: 0.35, atk: 0.30, def: 0.25, spd: 0.10 },
 }
 
-// v3.5: HP 整体 ×2 (配合玩家 HP ×2, 回合数翻倍)
+// v3.5 削弱: HP_SCALE × 0.60 联动玩家 DPS 下降, 保持 TTK
 const HP_SCALE_BY_TIER: Record<number, number> = {
-  1: 1.90, 2: 1.90, 3: 1.90, 4: 1.90,
-  5: 2.34, 6: 2.52, 7: 2.72, 8: 2.88, 9: 2.88, 10: 2.88,
+  1: 1.14, 2: 1.14, 3: 1.14, 4: 1.14,
+  5: 1.40, 6: 1.51, 7: 1.63, 8: 1.73, 9: 1.73, 10: 1.73,
 }
-const ATK_SCALE = 0.70
+const ATK_SCALE = 0.665
 
 export function buildMonster(m: MonsterBuild): MonsterStats {
   const r = ROLE_COEF[m.role] || ROLE_COEF.balanced
