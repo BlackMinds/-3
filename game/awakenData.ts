@@ -148,7 +148,7 @@ const PENDANT_POOL: AwakenDef[] = [
     tiers: { blue: 0.05, purple: 0.08, gold: 0.12, red: 0.15 },
     desc: (v) => `对精英怪伤害 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_debuff_lord', name: '天师', slot: 'pendant', stat: 'debuffDurationBonus',
-    tiers: { blue: 0, purple: 1, gold: 1, red: 2 },
+    tiers: { blue: 0, purple: 1, gold: 1, red: 1 },
     desc: (v) => `施加减益持续回合 +${v}` },
   { id: 'aw_accuracy', name: '洞悉', slot: 'pendant', stat: 'accuracyBonus',
     // v3.4: tiers -50%
