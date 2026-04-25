@@ -3,10 +3,10 @@ import { currentSeasonNo, currentStage, currentSeasonStart, currentSeasonEnd } f
 import { generateMatches, runSeasonFights } from '~/server/utils/sectWarEngine'
 
 /**
- * 宗门战周期性任务
+ * 宗门战周期性任务（压缩节奏 v2）
  * - 周一 00:00: 开赛季（status=registering）
- * - 周三 00:00: 匹配 + betting
- * - 周五 20:00: 开赛 + 结算（fighting → settled）
+ * - 周一 20:00: 匹配 + 进入 betting
+ * - 周二 20:00: 开赛 + 结算（fighting → settled）
  *
  * 通过 GitHub Actions 每小时触发一次，自动判断当前阶段需要做什么
  */

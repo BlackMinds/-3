@@ -9,7 +9,7 @@ import { sendMail, sendMailBatch, upsertTimedBuff } from '~/server/utils/mail'
 import { computeOdds, currentSeasonNo } from '~/server/utils/sectWarOdds'
 
 /**
- * 周三 00:00 — 生成对阵 + 赔率
+ * 周一 20:00 — 生成对阵 + 赔率
  */
 export async function generateMatches(seasonId: number): Promise<{ matchesCreated: number; byes: number }> {
   const pool = getPool()
@@ -177,7 +177,7 @@ function toInput(snap: CharacterSnapshot, sectId?: number): PvpFighterInput {
 }
 
 /**
- * 周五 20:00 — 批量跑本赛季所有对阵 + 结算奖励/押注
+ * 周二 20:00 — 批量跑本赛季所有对阵 + 结算奖励/押注
  */
 export async function runSeasonFights(seasonId: number) {
   const pool = getPool()

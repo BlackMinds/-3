@@ -60,11 +60,11 @@ export function currentSeasonEnd(now: Date = new Date()): Date {
 }
 
 /**
- * 当前赛季阶段
- * - registering: 周一 00:00 ~ 周三 00:00
- * - betting:     周三 00:00 ~ 周五 20:00
- * - fighting:    周五 20:00 ~ 周五 20:30
- * - settled:     周五 20:30 ~ 周日 24:00
+ * 当前赛季阶段（压缩节奏 v2：报名/押注/开打全在前两天完成）
+ * - registering: 周一 00:00 ~ 周一 20:00
+ * - betting:     周一 20:00 ~ 周二 20:00
+ * - fighting:    周二 20:00 ~ 周二 20:30
+ * - settled:     周二 20:30 ~ 周日 24:00
  */
 export function currentStage(now: Date = new Date()): 'registering' | 'betting' | 'fighting' | 'settled' {
   const cnNow = new Date(now.getTime() + 8 * 3600 * 1000)
@@ -72,13 +72,10 @@ export function currentStage(now: Date = new Date()): 'registering' | 'betting' 
   const hour = cnNow.getUTCHours()
   const mon = dayOfWeek === 1
   const tue = dayOfWeek === 2
-  const wed = dayOfWeek === 3
-  const thu = dayOfWeek === 4
-  const fri = dayOfWeek === 5
 
-  if (mon || tue) return 'registering'
-  if (wed || thu) return 'betting'
-  if (fri && hour < 20) return 'betting'
-  if (fri && hour === 20) return 'fighting'
+  if (mon && hour < 20) return 'registering'
+  if (mon && hour >= 20) return 'betting'
+  if (tue && hour < 20) return 'betting'
+  if (tue && hour === 20) return 'fighting'
   return 'settled'
 }

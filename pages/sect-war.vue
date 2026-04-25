@@ -282,8 +282,8 @@ const canBet = computed(() => !betSideLocked.value && betAmount.value >= 1000 &&
 function stageText(s: string) { return { registering: '报名中', betting: '押注中', fighting: '激战中', settled: '已结束' }[s] || s }
 function stageTip(s: string) {
   return {
-    registering: '宗主/副宗主可提交 9 人阵容（周三 00:00 截止）',
-    betting: '对阵已公布，可押注 · 周五 20:00 开赛',
+    registering: '宗主/副宗主可提交 9 人阵容（周一 20:00 截止）',
+    betting: '对阵已公布，可押注 · 周二 20:00 开赛',
     fighting: '赛事进行中，自动结算…',
     settled: '本届已结束 · 奖励已通过邮件发放',
   }[s] || ''

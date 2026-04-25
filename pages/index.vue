@@ -2258,8 +2258,8 @@
             <p class="help-text" style="margin-top: 6px;">赛程节点(均为中国时区):</p>
             <table class="help-table"><tbody>
               <tr><td>周一 00:00</td><td>开启报名 — 宗主/副宗主挑选 9 名弟子(境界需筑基以上)</td></tr>
-              <tr><td>周三 00:00</td><td>自动按战力匹配对阵 + 押注窗口开启(持续 48h)</td></tr>
-              <tr><td>周五 20:00</td><td>正式开赛 + 奖励/押注即时结算</td></tr>
+              <tr><td>周一 20:00</td><td>报名截止 + 自动按战力匹配对阵 + 押注窗口开启(持续 24h)</td></tr>
+              <tr><td>周二 20:00</td><td>正式开赛 + 奖励/押注即时结算</td></tr>
               <tr><td>周日 24:00</td><td>赛季关闭,下周重新报名</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;"><b>奖励体系:</b></p>
@@ -2271,7 +2271,7 @@
               <tr><td>论道之星</td><td>单挑 MVP 获得"论道之星"称号(7 天) + atk/def/hp +3%</td></tr>
               <tr><td>问道魁首</td><td>累计 3 次论道之星,授予永久称号</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;"><b>押注系统:</b>所有玩家可在周三~周五押注"宗门胜方",单场上限 5 万灵石。<span style="color: #c45c4a;">⚠ 禁止押注自家宗门(防内部套利)</span>。手续费 5%。</p>
+            <p class="help-text" style="margin-top: 6px;"><b>押注系统:</b>所有玩家可在周一晚~周二晚押注"宗门胜方",单场上限 5 万灵石。<span style="color: #c45c4a;">⚠ 禁止押注自家宗门(防内部套利)</span>。手续费 5%。</p>
             <p class="help-text" style="margin-top: 6px;"><b>PvP 平衡系数</b>(区别于单人历练,让战斗更有策略深度):</p>
             <table class="help-table"><tbody>
               <tr><td>单挑 1v1</td><td>角色 HP ×1.3,伤害 ×0.7,DOT ×0.6,暴伤 -15%。战斗约 4~8 回合</td></tr>

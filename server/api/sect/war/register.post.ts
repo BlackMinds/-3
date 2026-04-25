@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     return { code: 403, message: '仅宗主/副宗主可提交阵容' }
   }
   const stage = currentStage()
-  if (stage !== 'registering') return { code: 400, message: '当前不在报名期（周一 00:00 ~ 周三 00:00）' }
+  if (stage !== 'registering') return { code: 400, message: '当前不在报名期（周一 00:00 ~ 周一 20:00）' }
 
   const body = await readBody(event)
   const duel: number[] = Array.isArray(body?.rosterDuel) ? body.rosterDuel.map(Number) : []
