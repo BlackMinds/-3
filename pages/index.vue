@@ -3913,11 +3913,19 @@ function onSectSubTabChange(tab: string) {
 }
 
 // 切换标签时自动刷新对应数据
+// P5: 把 cave/cultivate 需要的数据从 onMounted 移到这里，按需加载省 Function 调用
+// cultivate 用 30s 新鲜度阀（craft 完成后更新时间戳，避免短时间反复切回都重 fetch）
+let cultivateLoadedAt = 0;
+const CULTIVATE_FRESH_MS = 30_000;
 watch(() => gameStore.activeTab, (tab) => {
   if (tab === 'sect') loadSectInfo();
-  if (tab === 'cave') { gameStore.loadGameData(); loadCave(); }
+  if (tab === 'cave') { gameStore.loadGameData(); loadCave(); loadPlots(); }
   if (tab === 'character') { gameStore.loadGameData(); loadEquipList(); }
   if (tab === 'skills') { gameStore.loadGameData(); loadSkillInventory(); }
+  if (tab === 'cultivate' && Date.now() - cultivateLoadedAt > CULTIVATE_FRESH_MS) {
+    cultivateLoadedAt = Date.now();
+    loadPills(); loadUnlockedRecipes(); loadHerbs();
+  }
 });
 
 const tabs = [
@@ -4349,18 +4357,17 @@ onMounted(async () => {
     navigateTo('/create', { replace: true });
   }
   initHerbSelections();
-  loadSkillInventory();
-  loadEquipList();
-  loadPills();
-  loadUnlockedRecipes();
-  loadBuffs();
-  loadCave();
-  loadHerbs();
-  loadPlots();
-  checkOfflineRewards();
   loadSettings();
-  // 天道造化轮询：60 秒一次
+  // 必须立即加载（影响战斗加成 / 弹窗 / 红点）
+  loadBuffs();
+  checkOfflineRewards();
+  // 天道造化轮询：120 秒一次（合并 pending + broadcast 调用）
   eventStore.startPolling();
+  // P5: 以下数据按需加载（切到对应 tab 时 watch 触发）
+  // - loadSkillInventory   → skills tab
+  // - loadEquipList        → character tab
+  // - loadCave / loadPlots → cave tab
+  // - loadPills / loadUnlockedRecipes / loadHerbs → cultivate tab
   // 每秒触发响应式刷新(用于显示待领取数量和升级倒计时)
   caveTickTimer.value = window.setInterval(() => {
     caveTick.value++;
@@ -5611,6 +5618,7 @@ async function executeCraft(recipe: PillRecipe, fire_position: number) {
       fireResult.value = res.data;
       await loadHerbs();
       await loadPills();
+      cultivateLoadedAt = Date.now(); // 标记新鲜，30s 内切走再切回不重 fetch
     } else {
       fireResult.value = { error: res.message || '炼丹失败' };
     }
