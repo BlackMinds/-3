@@ -374,8 +374,8 @@
       },
       {
         "id": "dot_amplifier", "name": "万毒归一", "rarity": "purple", "element": "wood",
-        "effect": { "dot_amplifier_percent": 30, "ATK_percent": 8, "CRIT_RATE_flat": 0.03 },
-        "description": "你造成的灼烧/中毒/流血伤害+30%，攻击+8%，暴击率+3%",
+        "effect": { "dot_amplifier_percent": 25, "ATK_percent": 6, "CRIT_RATE_flat": 0.03 },
+        "description": "你造成的灼烧/中毒/流血伤害+25%，攻击+6%，暴击率+3%",
         "root_synergy": "木灵根：DOT 类 debuff 持续+1回合"
       },
       {
