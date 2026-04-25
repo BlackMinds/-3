@@ -28,6 +28,11 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // 战斗主动停止时清服务端守卫，避免切图/离开后立即重开被 DB battle_end_at 残值拦下
+    if (body.clear_battle_end === true) {
+      fields.push('battle_end_at = NULL')
+    }
+
     if (fields.length === 0) {
       return { code: 400, message: '无更新字段' }
     }

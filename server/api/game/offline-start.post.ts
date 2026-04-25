@@ -83,7 +83,8 @@ export default defineEventHandler(async (event) => {
       `UPDATE characters
           SET offline_start = NOW(),
               offline_map = $1,
-              offline_snapshot = $2
+              offline_snapshot = $2,
+              battle_end_at = NULL
         WHERE id = $3`,
       [mapId, JSON.stringify(snapshot), char.id]
     )

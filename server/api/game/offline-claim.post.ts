@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
     if (!snapshot || !snapshot.playerStats || !snapshot.equippedSkills) {
       // 老数据兼容：清掉离线状态，提示玩家
       await pool.query(
-        `UPDATE characters SET offline_start = NULL, offline_map = NULL, offline_snapshot = NULL WHERE id = $1`,
+        `UPDATE characters SET offline_start = NULL, offline_map = NULL, offline_snapshot = NULL, battle_end_at = NULL WHERE id = $1`,
         [char.id]
       )
       return { code: 400, message: '离线快照缺失（旧数据），已清除离线状态。请重新开始挂机。' }
@@ -145,6 +145,7 @@ export default defineEventHandler(async (event) => {
         offline_start = NULL,
         offline_map = NULL,
         offline_snapshot = NULL,
+        battle_end_at = NULL,
         last_online = NOW()
       WHERE id = $6`,
       [br.cultivation_exp, br.realm_tier, br.realm_stage, stoneGained, levelExpGained, char.id]

@@ -229,7 +229,9 @@ export const useGameStore = defineStore('game', () => {
     // fetchInFlight 不清：让飞行中的请求自然返回时释放，期间 startBattle 被挡住避免并发
     currentMonsterInfo.value = null
     deathCooldown.value = 0
-    flushSave()
+    // 主动停战 = 放弃当前批次的剩余播放，告诉服务端清 battle_end_at，
+    // 否则切图/离开立即重开会被 DB 残留的批次守卫（最长 ~90s）拦成连续 409
+    flushSave(true)
   }
 
   function scheduleFight() {
@@ -475,11 +477,13 @@ export const useGameStore = defineStore('game', () => {
     battleLogs.value = []
   }
 
-  function flushSave() {
+  function flushSave(clearBattleEnd = false) {
     if (character.value) {
+      const body: any = { current_map: currentMapId.value }
+      if (clearBattleEnd) body.clear_battle_end = true
       fetchApi('/game/update-character', {
         method: 'POST',
-        body: { current_map: currentMapId.value },
+        body,
       }).catch(() => {})
     }
   }
