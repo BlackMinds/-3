@@ -984,3 +984,24 @@ UPDATE character_equipment
 SET primary_stat = 'CRIT_DMG',
     primary_value = GREATEST(1, ROUND(primary_value * 2.5)::int)
 WHERE base_slot = 'ring' AND primary_stat = 'CRIT_RATE';
+
+-- ========================================
+-- 玄冥附灵削弱 (aw_doom): tiers 整体 ×0.7（2026-04-25）
+-- ========================================
+-- 戒指改 CRIT_DMG 主属性后，玄冥 red 50% 占 cap 余量 38% 偏强；
+-- 按比例下调 blue 12→8 / purple 22→15 / gold 34→24 / red 50→35。
+-- 已发出的玄冥附灵按映射缩，幂等（新值不在旧值列表里，二次跑不会再缩）。
+UPDATE character_equipment
+SET awaken_effect = jsonb_set(
+  awaken_effect,
+  '{value}',
+  CASE (awaken_effect->>'value')::numeric
+    WHEN 0.12 THEN '0.08'::jsonb
+    WHEN 0.22 THEN '0.15'::jsonb
+    WHEN 0.34 THEN '0.24'::jsonb
+    WHEN 0.50 THEN '0.35'::jsonb
+    ELSE awaken_effect->'value'
+  END
+)
+WHERE awaken_effect->>'id' = 'aw_doom'
+  AND (awaken_effect->>'value')::numeric IN (0.12, 0.22, 0.34, 0.50);

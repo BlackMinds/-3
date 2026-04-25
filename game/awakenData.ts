@@ -122,8 +122,8 @@ const PENDANT_POOL: AwakenDef[] = [
     tiers: { blue: 0.06, purple: 0.10, gold: 0.15, red: 0.22 },
     desc: (v) => `身法 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_doom', name: '玄冥', slot: 'pendant', stat: 'critDmg',
-    // v3.4: red 60→50 (-10pp), 其他 tier 按比例降
-    tiers: { blue: 0.12, purple: 0.22, gold: 0.34, red: 0.50 },
+    // v3.4: red 60→50 (-10pp); 戒指改 CRIT_DMG 主属性后再 ×0.7 (red 50→35) 让玄冥不再独大
+    tiers: { blue: 0.08, purple: 0.15, gold: 0.24, red: 0.35 },
     desc: (v) => `暴伤 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_insight', name: '神识', slot: 'pendant', stat: 'spirit',
     // v3.4: red 60→50 (-17%), 其他 tier 按比例
