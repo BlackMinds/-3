@@ -1030,10 +1030,13 @@ export function runWaveBattle(
           }
         }
         // 玩家 buff：明镜止水（reflect）按 dmg 百分比反弹, 单次反弹 cap = 玩家 ATK × 4
+        // 附加底量: 玩家 maxHP × 8% 独立叠加 (不受 cap), 给反弹一个体面下限, 不受小怪低伤害挤压
         const reflectSum = sumPlayerBuff('reflect');
         if (reflectSum > 0 && dmg > 0) {
           const reflectCap = Math.floor(player.atk * 4);
-          const rf = Math.min(Math.floor(dmg * reflectSum), reflectCap);
+          const baseRf = Math.min(Math.floor(dmg * reflectSum), reflectCap);
+          const hpBonus = Math.floor(player.maxHp * 0.08);
+          const rf = baseRf + hpBonus;
           if (rf > 0) {
             sourceMonster.stats.hp -= rf;
             logs.push({ turn, text: `  【明镜反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
