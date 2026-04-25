@@ -139,23 +139,23 @@ export function generateSecretRealmSkillPage(tier: number, isBoss: boolean, owne
 }
 
 // ========== 附灵道具掉落 ==========
-// 附灵石 awaken_stone: 整场 roll 一次（普通 25% / 困难 50% / 噩梦 80%），Boss 额外保底 +1（噩梦 +2）
-// 灵枢玉 awaken_reroll: 整场 roll 一次（普通 5% / 困难 15% / 噩梦 35%），噩梦 Boss 30% 额外追加
+// 附灵石 awaken_stone: 整场 roll 一次（普通 20% / 困难 40% / 噩梦 60%），每只 Boss 怪保底 +1
+// 灵枢玉 awaken_reroll: 整场 roll 一次（普通 3% / 困难 10% / 噩梦 22%），噩梦 Boss 18% 额外追加
 function rollAwakenStoneBase(difficulty: 1 | 2 | 3): number {
-  const rate = difficulty === 1 ? 0.25 : difficulty === 2 ? 0.50 : 0.80
+  const rate = difficulty === 1 ? 0.20 : difficulty === 2 ? 0.40 : 0.60
   return Math.random() < rate ? 1 : 0
 }
 function rollAwakenStoneBossBonus(difficulty: 1 | 2 | 3): number {
-  // 每个 Boss 都触发保底
-  return difficulty === 3 ? 2 : 1
+  // 每只 Boss 怪都触发保底（噩梦原 ×2 拉得太猛，改回 ×1）
+  return 1
 }
 function rollRerollStoneBase(difficulty: 1 | 2 | 3): number {
-  const rate = difficulty === 1 ? 0.05 : difficulty === 2 ? 0.15 : 0.35
+  const rate = difficulty === 1 ? 0.03 : difficulty === 2 ? 0.10 : 0.22
   return Math.random() < rate ? 1 : 0
 }
 function rollRerollStoneBossBonus(difficulty: 1 | 2 | 3): number {
   if (difficulty !== 3) return 0
-  return Math.random() < 0.30 ? 1 : 0
+  return Math.random() < 0.18 ? 1 : 0
 }
 
 // 强化石（T4+ 秘境）：整场基础 roll + Boss 保底追加

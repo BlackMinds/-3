@@ -301,7 +301,7 @@ export default defineEventHandler(async (event) => {
 
     const rewardFactor = cfg.rewardMul * 1.5 // 1.5x 组队加成
     const totalBaseStone = Math.floor(avgMonsterPower * baseStoneUnit * rewardFactor)
-    const totalBaseExp = Math.floor(avgMonsterPower * baseExpUnit * 1.2) // 经验不分摊，1.2x 组队加成
+    const totalBaseExp = Math.floor(avgMonsterPower * baseExpUnit * 1.2) // 1.2x 组队加成；按贡献度分摊（与 stone 一致）
 
     // 失败只给 30%
     const rewardMul = result.won ? 1 : 0.3
@@ -427,7 +427,8 @@ export default defineEventHandler(async (event) => {
 
         const stoneRatio = 0.4 + 0.6 * c.contribution
         const myStone = Math.floor(totalBaseStone * stoneRatio * rewardMul * ratingMul)
-        const myExp = Math.floor(totalBaseExp * rewardMul * ratingMul * (1 + expTeamBonus))
+        // 经验与灵石对齐按贡献度分摊（原本不分摊 = 4 人各拿全额，整队总流出 4×，与 stone 语义不一致）
+        const myExp = Math.floor(totalBaseExp * stoneRatio * rewardMul * ratingMul * (1 + expTeamBonus))
         const myPoints = Math.floor(basePoints * stoneRatio)
 
         // --- 保存装备到 character_equipment ---
