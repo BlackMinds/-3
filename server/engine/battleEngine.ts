@@ -203,12 +203,6 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 2) {
     skills.push({ name: '蛮力撞击', multiplier: 1.6, cdTurns: 5, element: null, debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '猛烈撞击' });
   }
-  if (tier >= 2 && role === 'dps') {
-    skills.push({ name: '连续撕咬', multiplier: 2.0, cdTurns: 4, element: null, hitCount: 3, description: '连续撕咬3段' });
-  }
-  if (tier >= 2 && role === 'speed') {
-    skills.push({ name: '疾风连击', multiplier: 1.8, cdTurns: 3, element: null, hitCount: 4, description: '疾风连击4段' });
-  }
   if (tier >= 2 && (role === 'tank' || role === 'boss')) {
     skills.push({ name: '吞噬灵气', multiplier: 0, cdTurns: 6, element: null, healPercent: 0.05, isHeal: true, description: '回复5%气血' });
   }
@@ -227,31 +221,17 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 3) {
     skills.push({ name: '妖气封印', multiplier: 1.0, cdTurns: 7, element: null, debuff: { type: 'silence', chance: 0.30, duration: 2 }, description: '封印神通' });
   }
-  if (tier >= 3 && !['dps', 'speed'].includes(role)) {
-    skills.push({ name: '乱爪', multiplier: 2.0, cdTurns: 5, element: null, hitCount: 3, description: '疯狂乱抓3段' });
-  }
 
-  // T4+ (v3.4: multiHit -23~25%, 控制率 -10pp)
+  // T4+ (v3.4: 控制率 -10pp; 2026-04-25: 移除单体多段连击系列)
   if (tier >= 4) {
     skills.push({ name: '妖力恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.08, isHeal: true, description: '回复8%气血' });
     skills.push({ name: '咆哮震慑', multiplier: 1.8, cdTurns: 6, element: null, debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '威压咆哮' });
-  }
-  if (tier >= 4 && elem) {
-    const multiHitSkills: Record<string, MonsterSkillDef> = {
-      fire:  { name: '连环火弹', multiplier: 2.2, cdTurns: 6, element: 'fire', hitCount: 4, debuff: { type: 'burn', chance: 0.15, duration: 2 }, description: '4枚火弹' },
-      water: { name: '冰晶乱射', multiplier: 2.0, cdTurns: 6, element: 'water', hitCount: 3, debuff: { type: 'freeze', chance: 0.12, duration: 1 }, description: '冰晶3段' },
-      wood:  { name: '荆棘连刺', multiplier: 2.0, cdTurns: 6, element: 'wood', hitCount: 4, debuff: { type: 'poison', chance: 0.15, duration: 2 }, description: '荆棘4段' },
-      metal: { name: '暴风利刃', multiplier: 2.3, cdTurns: 6, element: 'metal', hitCount: 5, debuff: { type: 'bleed', chance: 0.12, duration: 2 }, description: '利刃5段' },
-      earth: { name: '碎石连击', multiplier: 2.1, cdTurns: 6, element: 'earth', hitCount: 3, debuff: { type: 'stun', chance: 0.10, duration: 1 }, description: '碎石3段' },
-    };
-    if (multiHitSkills[elem]) skills.push(multiHitSkills[elem]);
   }
 
   // T5+ (v3.4)
   if (tier >= 5) {
     skills.push({ name: '狂暴', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'atk_up', value: 0.25, duration: 4 }, description: '攻击+25%' });
     skills.push({ name: '锁魂术', multiplier: 1.5, cdTurns: 7, element: null, debuff: { type: 'root', chance: 0.40, duration: 2 }, description: '束缚2回合' });
-    skills.push({ name: '雷霆万钧', multiplier: 2.3, cdTurns: 7, element: 'metal', hitCount: 3, debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '雷霆3段' });
   }
 
   // T6+ (v3.4)
@@ -267,19 +247,16 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   }
   if (tier >= 6) {
     skills.push({ name: '涅槃重生', multiplier: 0, cdTurns: 12, element: null, healPercent: 0.10, isHeal: true, buff: { type: 'def_up', value: 0.20, duration: 3 }, description: '回复10%气血+防御' });
-    skills.push({ name: '千刃绞杀', multiplier: 3.0, cdTurns: 9, element: null, hitCount: 5, debuff: { type: 'bleed', chance: 0.20, duration: 3 }, description: '5段绞杀' });
   }
 
   // T7+ (v3.4)
   if (tier >= 7) {
     skills.push({ name: '天雷制裁', multiplier: 2.8, cdTurns: 8, element: 'metal', debuff: { type: 'stun', chance: 0.30, duration: 2 }, description: '天雷眩晕' });
-    skills.push({ name: '灭世连击', multiplier: 3.5, cdTurns: 10, element: null, hitCount: 6, debuff: { type: 'stun', chance: 0.10, duration: 1 }, description: '6段灭世' });
     skills.push({ name: '天地造化', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.14, isHeal: true, description: '回复14%气血' });
   }
 
   // T8+ (v3.4)
   if (tier >= 8) {
-    skills.push({ name: '混沌吞噬', multiplier: 4.0, cdTurns: 10, element: null, hitCount: 4, debuff: { type: 'stun', chance: 0.25, duration: 2 }, description: '混沌4段' });
     skills.push({ name: '太古沉眠', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.16, isHeal: true, buff: { type: 'def_up', value: 0.40, duration: 4 }, description: '回复16%+防御' });
   }
 
@@ -289,9 +266,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     if (tier >= 2) skills.push({ name: '首领恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.06, isHeal: true, description: '回复6%' });
     if (tier >= 3) skills.push({ name: '威压震慑', multiplier: 2.0, cdTurns: 7, element: null, debuff: { type: 'stun', chance: 0.25, duration: 1 }, description: '眩晕1回合' });
     if (tier >= 4) skills.push({ name: '凶煞之气', multiplier: 0, cdTurns: 8, element: null, buff: { type: 'def_up', value: 0.30, duration: 4 }, description: '防御+30%' });
-    if (tier >= 5) skills.push({ name: '首领乱舞', multiplier: 2.7, cdTurns: 7, element: null, hitCount: 4, debuff: { type: 'bleed', chance: 0.25, duration: 3 }, description: '4段连击' });
     if (tier >= 6) skills.push({ name: '灭世怒吼', multiplier: 2.5, cdTurns: 9, element: null, debuff: { type: 'stun', chance: 0.35, duration: 2 }, description: '眩晕2回合' });
-    if (tier >= 7) skills.push({ name: '首领灭杀', multiplier: 4.0, cdTurns: 10, element: null, hitCount: 5, debuff: { type: 'stun', chance: 0.15, duration: 1 }, description: '5段灭杀' });
   }
 
   return skills;
