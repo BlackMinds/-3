@@ -1005,3 +1005,9 @@ SET awaken_effect = jsonb_set(
 )
 WHERE awaken_effect->>'id' = 'aw_doom'
   AND (awaken_effect->>'value')::numeric IN (0.12, 0.22, 0.34, 0.50);
+
+-- ============================================
+-- 离线挂机 v2: 开始离线时快照角色完整战斗输入
+-- 结算时基于快照真打 N 场，按胜率算收益（防止低战力切高图刷收益）
+-- ============================================
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS offline_snapshot JSONB DEFAULT NULL;

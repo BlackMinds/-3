@@ -27,7 +27,7 @@ function randFloat(min: number, max: number): number {
 }
 
 // ===== 地图数据 =====
-interface MapMonster {
+export interface MapMonster {
   name: string; power: number; element: string | null;
   exp: number; stone_min: number; stone_max: number;
   role: string; drop_table: string;
@@ -35,7 +35,7 @@ interface MapMonster {
 
 // v3.4.2 经验削减: T1-T3 ×0.9 / T4 ×0.8 / T5 ×0.65 / T6 ×0.55 / T7 ×0.45 / T8+ ×0.4
 // v3.4.2 灵石削减: T1-T3 ×0.7 / T4 ×0.4 / T5 ×0.25 / T6 ×0.18 / T7 ×0.12 / T8+ ×0.1
-const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; boss: MapMonster | null }> = {
+export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; boss: MapMonster | null }> = {
   qingfeng_valley: {
     tier: 1,
     monsters: [
@@ -297,7 +297,7 @@ function generateHerbDrop(tier: number, monsterElement: string | null, isBoss: b
 }
 
 // ===== 构建玩家战斗属性 =====
-function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows: any[]): { stats: BattlerStats; expBonusPercent: number; luckPercent: number } {
+export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows: any[]): { stats: BattlerStats; expBonusPercent: number; luckPercent: number } {
   let atk = Number(char.atk)
   let def = Number(char.def)
   let maxHp = Number(char.max_hp)

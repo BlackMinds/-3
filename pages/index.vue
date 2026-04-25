@@ -107,8 +107,14 @@
           >
             开始历练
           </button>
-          <!-- 离线挂机功能维护中：存在战力绕过漏洞，入口临时下线。
-               保留"结束离线"按钮让已开始挂机的玩家仍可正常结算。 -->
+          <!-- 灰度发布：v2 新版离线挂机暂时只对 user_id=1（开发者测试账号）开放 -->
+          <button
+            v-if="!gameStore.isBattling && !isOffline && userStore.userId === 1"
+            class="ctrl-btn offline-start-btn"
+            @click="startOffline"
+          >
+            离线挂机
+          </button>
           <button
             v-if="!gameStore.isBattling && isOffline"
             class="ctrl-btn offline-end-btn"
@@ -1502,10 +1508,10 @@
             <!-- 被动功法 -->
             <template v-else>
               <div class="tooltip-sub">
-                当前数值: × {{ (1 + (hoverCurrentLevel - 1) * 0.10).toFixed(2) }}
+                当前数值: × {{ (1 + (hoverCurrentLevel - 1) * 0.15).toFixed(2) }}
               </div>
               <div class="tooltip-sub" style="color: var(--jade);">
-                Lv.{{ hoverCurrentLevel + 1 }}: × {{ (1 + hoverCurrentLevel * 0.10).toFixed(2) }} (+10%)
+                Lv.{{ hoverCurrentLevel + 1 }}: × {{ (1 + hoverCurrentLevel * 0.15).toFixed(2) }} (+15%)
               </div>
             </template>
             <div class="tooltip-sub" style="margin-top: 4px; color: var(--gold-ink);">
@@ -2068,7 +2074,10 @@
             <p class="offline-efficiency">离线效率: {{ offlineData.efficiency }}% (上限12小时)</p>
           </div>
 
-          <p v-if="!offlineClaimed" class="offline-hint">以下为预估收益，点击结算后发放</p>
+          <p v-if="!offlineClaimed" class="offline-hint">以下为预估上限，结算时按战斗胜率实际发放</p>
+          <p v-if="offlineClaimed && offlineData.winRate !== undefined" class="offline-hint" :style="{ color: offlineData.winRate >= 50 ? 'var(--jade)' : 'var(--blood)' }">
+            模拟胜率: {{ offlineData.winRate }}%{{ offlineData.earlyStopped ? '（连败 5 场提前结束）' : '' }}
+          </p>
 
           <div class="stats-table" style="margin: 12px 0;">
             <div class="stats-row">
@@ -2221,8 +2230,9 @@
             <p class="help-text">消耗 <b>100 × 境界Tier</b> 灵石/小时,获得 <b>80 × Tier × 小时 × (1 + 阶段 × 0.1)</b> 修为。可选 1~8 小时。境界越高闭关效率越高。</p>
           </div>
           <div class="help-section">
-            <div class="help-title">离线挂机（维护中）</div>
-            <p class="help-text" style="color: var(--fade-ink);">功能存在数值异常，暂时下线维护。已开始离线的玩家可正常结束并领取收益。</p>
+            <div class="help-title">离线挂机</div>
+            <p class="help-text">点击"离线挂机"开始：系统会快照当前角色战斗状态(战力/装备/功法)。结算时按快照模拟 N 场战斗,<b>按真实胜率</b>发放经验/灵石/装备/功法/灵草掉落,上限 12 小时。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">⚠ 切到打不动的高阶图挂机不会获得收益(连败 5 场自动停止),请挑选战力够得着的地图。</p>
           </div>
           </div>
           <div v-show="helpTab === 'pvp'">
@@ -2359,7 +2369,7 @@
             <p class="help-text" style="margin-top: 4px;">不受上限影响: 五行抗性/控制抗性/暴击率/暴击伤害/闪避/吸血/免死/反弹/每回合回血/破甲/命中/CD 缩减等特殊效果仍可叠加。</p>
             <p class="help-text" style="margin-top: 6px;"><b>紫色被动 build 配合（T5-T6 掉落）：</b></p>
             <table class="help-table"><tbody>
-              <tr><td>万毒归一</td><td>DOT 流核心：你造成的灼烧/中毒/流血伤害+30%。配合剑雨纷飞(流血)/双焰斩(灼烧)/连环掌(中毒)/九天玄火阵</td></tr>
+              <tr><td>万毒归一</td><td>DOT 流核心：你造成的灼烧/中毒/流血伤害+25%,附带攻击+6%/暴击率+3%。配合剑雨纷飞(流血)/双焰斩(灼烧)/连环掌(中毒)/九天玄火阵</td></tr>
               <tr><td>飘渺神行</td><td>闪避反击流：闪避+8%、速度+8%，闪避后下次攻击必暴击。搭配速度装备/吸血神通形成"闪→暴→吸血"循环</td></tr>
               <tr><td>春风化雨</td><td>持久回血流：你受到的所有治疗(神通/被动 regen)+30%，自身每回合回血+1%，水/木抗+10%。搭配灵泉术/生生不息/天地归元</td></tr>
             </tbody></table>
@@ -4212,6 +4222,8 @@ async function claimOfflineRewards() {
     if (res.code === 200 && res.data) {
       offlineClaimed.value = true;
       offlineClaimResult.value = res.data;
+      // v2: 用真实结算结果替换原预估值，弹窗里展示的就是实发数字
+      offlineData.value = { ...offlineData.value, ...res.data };
       isOffline.value = false;
       if (res.data.character) {
         gameStore.character = res.data.character;
@@ -4219,6 +4231,8 @@ async function claimOfflineRewards() {
       loadEquipList();
       loadSkillInventory();
       loadHerbs();
+    } else if (res.code !== 200) {
+      showToast(res.message || '领取离线收益失败', 'error');
     }
   } catch (e) {
     console.error('领取离线收益失败', e);
@@ -4645,6 +4659,8 @@ function getScaledSkillDesc(skill: any, level: number): string {
     if (e.damage_reduction_flat) parts.push(`减伤${(e.damage_reduction_flat * m * 100).toFixed(0)}%`);
     if (e.reflect_damage_percent) parts.push(`反弹${(e.reflect_damage_percent * m * 100).toFixed(0)}%伤害`);
     if (e.regen_per_turn_percent) parts.push(`每回合回${(e.regen_per_turn_percent * m * 100).toFixed(0)}%血`);
+    if (e.dot_amplifier_percent) parts.push(`灼烧/中毒/流血+${(e.dot_amplifier_percent * m).toFixed(0)}%`);
+    if (e.heal_amplifier_percent) parts.push(`受治疗+${(e.heal_amplifier_percent * m).toFixed(0)}%`);
     if (e.RESIST_METAL) parts.push(`金抗+${(e.RESIST_METAL * m * 100).toFixed(0)}%`);
     if (e.RESIST_WOOD) parts.push(`木抗+${(e.RESIST_WOOD * m * 100).toFixed(0)}%`);
     if (e.RESIST_WATER) parts.push(`水抗+${(e.RESIST_WATER * m * 100).toFixed(0)}%`);
@@ -6663,6 +6679,14 @@ onUnmounted(() => {
 }
 .offline-btn:hover {
   background: rgba(91, 142, 170, 0.18);
+}
+.offline-start-btn {
+  background: rgba(132, 178, 219, 0.10);
+  border-color: rgba(132, 178, 219, 0.30);
+  color: #84b2db;
+}
+.offline-start-btn:hover {
+  background: rgba(132, 178, 219, 0.18);
 }
 .offline-end-btn {
   background: rgba(201, 168, 92, 0.10);

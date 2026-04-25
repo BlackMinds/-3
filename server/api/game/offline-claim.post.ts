@@ -1,10 +1,26 @@
 import { getPool } from '~/server/database/db'
-import { OFFLINE_MAP_DATA } from '~/server/utils/offlineMapData'
+import { ALL_MAPS } from '~/server/api/battle/fight.post'
+import { generateMonsterStats, runWaveBattle, type BattlerStats, type MonsterTemplate, type EquippedSkillInfo } from '~/server/engine/battleEngine'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
 import { rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
+
+/**
+ * 离线挂机结算 v2：基于开始离线时的快照真打 N 场
+ *
+ * - simulateMin = min((now - offline_start)/60000, 720) 分钟
+ * - 每分钟 1 场代表战（runWaveBattle），每场代表 12 次实际战斗的产出
+ * - 5 连败提前 break，按当前累计发奖（避免低战力挂在高图也能领满）
+ * - 不出 BOSS（按设计：BOSS 掉落特殊，不适合抽样外推）
+ * - 装备/功法/灵草掉落数量 = 总击杀 × 现有比例
+ */
+
+const REPRESENTATIVE_BATTLES_PER_MIN = 12 // 每场代表战折算 12 次实际战斗（保持原产出曲线）
+const MAX_OFFLINE_MIN = 720
+const LOSS_STREAK_LIMIT = 5
+const EFFICIENCY = 0.55 // 离线效率（与 v1 一致：12h 离线 ≈ 10h 在线产出）
 
 export default defineEventHandler(async (event) => {
   try {
@@ -19,28 +35,99 @@ export default defineEventHandler(async (event) => {
 
     const startTime = new Date(char.offline_start).getTime()
     const now = Date.now()
-    const offlineMin = Math.min((now - startTime) / 60000, 720)
+    const simulateMin = Math.floor(Math.min((now - startTime) / 60000, MAX_OFFLINE_MIN))
 
-    // 优先用开始离线时快照的 offline_map（防止离线期间切图刷高阶图收益）
-    // 旧数据无 offline_map 时 fallback 到 current_map
     const mapId = char.offline_map || char.current_map || 'qingfeng_valley'
-    const mapData = OFFLINE_MAP_DATA[mapId]
+    const mapData = ALL_MAPS[mapId]
     if (!mapData) return { code: 400, message: '地图数据错误' }
 
-    const battlesPerMin = 12
-    const monstersPerBattle = 3
-    const totalKills = Math.floor(offlineMin * battlesPerMin) * monstersPerBattle
-    const efficiency = 0.55 // 离线效率 55%：离线 12h ≈ 在线 10h 的产出
+    // 反序列化快照（v1 老数据可能没 snapshot：fallback 到当前角色重新构建——但这里不便重建，
+    // 直接给个安全默认：按"无装备弱角色"打，等于自然降到 0 收益，保护漏洞不会放出）
+    let snapshot: any = null
+    if (char.offline_snapshot) {
+      snapshot = typeof char.offline_snapshot === 'string'
+        ? JSON.parse(char.offline_snapshot)
+        : char.offline_snapshot
+    }
+    if (!snapshot || !snapshot.playerStats || !snapshot.equippedSkills) {
+      // 老数据兼容：清掉离线状态，提示玩家
+      await pool.query(
+        `UPDATE characters SET offline_start = NULL, offline_map = NULL, offline_snapshot = NULL WHERE id = $1`,
+        [char.id]
+      )
+      return { code: 400, message: '离线快照缺失（旧数据），已清除离线状态。请重新开始挂机。' }
+    }
 
-    const expGained = Math.floor(totalKills * mapData.avgExp * efficiency)
-    const stoneGained = Math.floor(totalKills * mapData.avgStone * efficiency)
+    const playerStatsBase: BattlerStats = snapshot.playerStats
+    const equippedSkills: EquippedSkillInfo = snapshot.equippedSkills
+    const expBonusPercent = Number(snapshot.expBonusPercent || 0)
+    const luckPercent = Number(snapshot.luckPercent || 0)
+
+    // === 真打 N 场 ===
+    let wins = 0
+    let losses = 0
+    let lossStreak = 0
+    let battlesRun = 0
+    let cumulativeKilled = 0
+    let cumulativeExpRaw = 0
+    let cumulativeStoneRaw = 0
+
+    for (let i = 0; i < simulateMin; i++) {
+      // 生成 wave（与 fight.post.ts 一致：T1/T2 1-2 只，T3+ 1-4 只，不出 BOSS）
+      const waveSize = mapData.tier <= 2
+        ? 1 + Math.floor(Math.random() * 2)
+        : 1 + Math.floor(Math.random() * 4)
+      const monsterList: { stats: BattlerStats; template: MonsterTemplate }[] = []
+      for (let j = 0; j < waveSize; j++) {
+        const m = mapData.monsters[rand(0, mapData.monsters.length - 1)]
+        const template: MonsterTemplate = m
+        monsterList.push({ stats: generateMonsterStats(template), template })
+      }
+
+      // T2 怪物削弱（与 fight.post.ts 同步）
+      if (mapData.tier === 2) {
+        for (const it of monsterList) {
+          it.stats.atk = Math.floor(it.stats.atk * 0.80)
+          it.stats.maxHp = Math.floor(it.stats.maxHp * 0.90)
+          it.stats.hp = it.stats.maxHp
+        }
+      }
+
+      // 跑战斗（playerStats 浅拷贝避免 buff/debuff 累计）
+      const result = runWaveBattle(
+        { ...playerStatsBase, hp: playerStatsBase.maxHp },
+        monsterList,
+        equippedSkills
+      )
+      battlesRun++
+
+      if (result.won) {
+        wins++
+        lossStreak = 0
+        cumulativeKilled += result.monstersKilled.length
+        cumulativeExpRaw += result.totalExp
+        cumulativeStoneRaw += result.totalStone
+      } else {
+        losses++
+        lossStreak++
+        if (lossStreak >= LOSS_STREAK_LIMIT) break
+      }
+    }
+
+    // === 收益折算：每场代表战 × 12 实际战斗 × efficiency × (1 + expBonus%) × (1 + luck%) ===
+    const expMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY * (1 + expBonusPercent / 100)
+    const stoneMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY * (1 + luckPercent / 100)
+    const dropMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY
+
+    const totalKills = Math.floor(cumulativeKilled * dropMultiplier)
+    const expGained = Math.floor(cumulativeExpRaw * expMultiplier)
+    const stoneGained = Math.floor(cumulativeStoneRaw * stoneMultiplier)
     const levelExpGained = expGained
 
-    // 累加 cultivation_exp 并自动扣除突破
+    // 累加 cultivation_exp 并扣除突破
     const newExpTotal = Number(char.cultivation_exp || 0) + expGained
     const br = applyCultivationExp(newExpTotal, char.realm_tier || 1, char.realm_stage || 1)
 
-    // 更新角色数据 + 清除离线状态
     await pool.query(
       `UPDATE characters SET
         cultivation_exp = $1,
@@ -50,12 +137,13 @@ export default defineEventHandler(async (event) => {
         level_exp = level_exp + $5,
         offline_start = NULL,
         offline_map = NULL,
+        offline_snapshot = NULL,
         last_online = NOW()
       WHERE id = $6`,
       [br.cultivation_exp, br.realm_tier, br.realm_stage, stoneGained, levelExpGained, char.id]
     )
 
-    // 检查升级（统一使用 realm.ts 的工具，与前端公式一致）
+    // 升级判定
     const lvResult = applyLevelExp(Number(char.level_exp || 0) + levelExpGained, char.level || 1)
     const newLevel = lvResult.level
     const levelUps = lvResult.levelUps
@@ -63,12 +151,12 @@ export default defineEventHandler(async (event) => {
       await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
     }
 
-    // 生成掉落装备(简化: 只生成数量, 不生成具体属性太多了)
-    const equipCount = Math.floor(totalKills * 0.08 * efficiency)
-    const skillCount = Math.floor(totalKills * 0.02 * efficiency)
-    const herbCount = Math.floor(totalKills * 0.10 * efficiency)
+    // === 装备/功法/灵草掉落（按总击杀 × 比例） ===
+    const equipCount = Math.floor(totalKills * 0.08)
+    const skillCount = Math.floor(totalKills * 0.02)
+    const herbCount = Math.floor(totalKills * 0.10)
 
-    // 装备掉落: 按tier生成
+    // 装备掉落
     const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
     const slotNames = ['兵器', '法袍', '法冠', '步云靴', '法宝', '灵戒', '灵佩']
     const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
@@ -81,7 +169,6 @@ export default defineEventHandler(async (event) => {
     const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
     const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
 
-    // 批量插入装备(最多25个)
     const actualEquipCount = Math.min(equipCount, 25)
     for (let i = 0; i < actualEquipCount; i++) {
       const w = weights[mapData.tier] || weights[1]
@@ -103,7 +190,7 @@ export default defineEventHandler(async (event) => {
       )
     }
 
-    // 功法掉落(最多10个)
+    // 功法掉落
     const skillPools: Record<number, string[]> = {
       1: ['wind_blade','vine_whip','ice_palm','flame_sword','quake_fist','body_refine','flame_body','water_flow','root_grip','metal_skin'],
       3: ['fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell','swift_step','iron_skin','thorn_aura','flame_aura','earth_wall'],
@@ -126,7 +213,7 @@ export default defineEventHandler(async (event) => {
       )
     }
 
-    // 灵草掉落(最多20个)
+    // 灵草掉落
     const herbIds = ['common_herb', 'metal_herb', 'wood_herb', 'water_herb', 'fire_herb', 'earth_herb']
     const qualityOrder = ['white', 'green', 'blue', 'purple', 'gold']
     const actualHerbCount = Math.min(herbCount, 20)
@@ -146,8 +233,8 @@ export default defineEventHandler(async (event) => {
       )
     }
 
-    // === 成就触发 ===
-    const offlineHours = Math.floor(offlineMin / 60)
+    // 成就
+    const offlineHours = Math.floor(simulateMin / 60)
     if (offlineHours > 0) checkAchievements(char.id, 'offline_hours', offlineHours).catch(() => {})
     if (stoneGained >= 500000) checkAchievements(char.id, 'offline_rich', 1).catch(() => {})
     checkAchievements(char.id, 'total_stone', stoneGained).catch(() => {})
@@ -155,13 +242,20 @@ export default defineEventHandler(async (event) => {
     checkAchievements(char.id, 'char_level', newLevel).catch(() => {})
     checkAchievements(char.id, 'skill_pages', actualSkillCount).catch(() => {})
 
-    // 返回最新角色
     const { rows: updated } = await pool.query('SELECT * FROM characters WHERE id = $1', [char.id])
+
+    const winRate = battlesRun > 0 ? Math.round((wins / battlesRun) * 100) : 0
+    const earlyStopped = lossStreak >= LOSS_STREAK_LIMIT
 
     return {
       code: 200,
       data: {
-        offlineMinutes: Math.floor(offlineMin),
+        offlineMinutes: simulateMin,
+        battlesSimulated: battlesRun,
+        winRate, // 0-100
+        earlyStopped,
+        totalKills,
+        totalBattles: Math.floor(simulateMin * REPRESENTATIVE_BATTLES_PER_MIN), // UI 兼容字段
         expGained,
         stoneGained,
         levelUps,
