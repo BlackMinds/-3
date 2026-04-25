@@ -38,9 +38,6 @@ export const useGameStore = defineStore('game', () => {
   // 上次 startBattle 调用时刻，兜底守卫：即便 fight 请求还没发出就被 stopBattle，也至少拦 START_GUARD_MS
   const lastStartAt = ref(0)
   const START_GUARD_MS = 2000
-  // 收到后端 409 (battle_end_at 还压着) 时置 true, 给 UI 显示"强制结束上场战斗"按钮
-  // 适用场景: A 端登录开战 → 没播完日志就关页面/切账号 → B 端登录被一直拦
-  const battleStuck = ref(false)
 
   // 死亡冷却
   const deathCooldown = ref(0)
@@ -227,22 +224,6 @@ export const useGameStore = defineStore('game', () => {
     flushSave()
   }
 
-  async function forceEndBattle() {
-    try {
-      const res: any = await fetchApi('/battle/force-end', { method: 'POST' })
-      if (res?.code === 200) {
-        battleStuck.value = false
-        expectedBattleEndAt.value = 0
-        lastStartAt.value = 0
-        addLog(0, '已强制结束上场战斗，可以重新开始历练了', 'system')
-      } else {
-        addLog(0, res?.message || '强制结束失败', 'system')
-      }
-    } catch {
-      addLog(0, '强制结束失败，请稍后重试', 'system')
-    }
-  }
-
   function scheduleFight() {
     if (!isBattling.value || deathCooldown.value > 0) return
     if (logQueue.value.length > 0) return
@@ -292,15 +273,11 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (res.code !== 200) {
-        // 409 上场未结束: 不自动重试 (避免一直弹提示), 让用户手动点"强制结束上场战斗"
-        // 429 冷却: 1.5s 后自动重试
+        // 429 冷却 / 409 上场未结束 需让用户感知；其他错误按原样打日志
+        // 重试延迟 1.5s 与 BATTLE_COOLDOWN_MS 对齐，避免快速切换拉爆请求
         if (res.code === 409) {
-          addLog(0, res.message || '上场战斗未结束，请点击「强制结束上场战斗」', 'system')
-          battleStuck.value = true
-          stopBattle()
-          return
-        }
-        if (res.code === 429) {
+          addLog(0, res.message || '上场战斗未结束，请稍候', 'system')
+        } else if (res.code === 429) {
           addLog(0, res.message || '战斗冷却中', 'system')
         } else {
           addLog(0, res.message || '战斗请求失败', 'system')
@@ -492,7 +469,6 @@ export const useGameStore = defineStore('game', () => {
     currentMonsterInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
-    battleStuck,
-    loadGameData, changeMap, startBattle, stopBattle, forceEndBattle, resumeBattleIfStalled, clearLogs, addLog, flushSave, tryBreakthrough,
+    loadGameData, changeMap, startBattle, stopBattle, resumeBattleIfStalled, clearLogs, addLog, flushSave, tryBreakthrough,
   }
 })

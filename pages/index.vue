@@ -101,19 +101,11 @@
         <!-- 战斗控制 -->
         <div class="battle-controls">
           <button
-            v-if="!gameStore.isBattling && !isOffline && !gameStore.battleStuck"
+            v-if="!gameStore.isBattling && !isOffline"
             class="ctrl-btn start-btn"
             @click="battleStartTime = Date.now(); gameStore.startBattle()"
           >
             开始历练
-          </button>
-          <button
-            v-if="!gameStore.isBattling && gameStore.battleStuck"
-            class="ctrl-btn force-end-btn"
-            @click="gameStore.forceEndBattle()"
-            title="若 A 端登录开战后未播完日志就退出，会留下锁定状态。点此清除即可恢复战斗"
-          >
-            ⚠ 强制结束上场战斗
           </button>
           <!-- 离线挂机功能维护中：存在战力绕过漏洞，入口临时下线。
                保留"结束离线"按钮让已开始挂机的玩家仍可正常结算。 -->
@@ -6654,14 +6646,6 @@ onUnmounted(() => {
 }
 .offline-end-btn:hover {
   background: rgba(201, 168, 92, 0.18);
-}
-.force-end-btn {
-  background: rgba(192, 86, 86, 0.10);
-  border-color: rgba(192, 86, 86, 0.35);
-  color: #c05656;
-}
-.force-end-btn:hover {
-  background: rgba(192, 86, 86, 0.18);
 }
 .secret-realm-btn {
   background: rgba(163, 201, 114, 0.10);
