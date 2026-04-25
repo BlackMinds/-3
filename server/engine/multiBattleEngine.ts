@@ -326,11 +326,14 @@ export function runPvpBattle(
   function tryApplyDebuff(
     target: PvpFighter, targetName: string,
     debuff: { type: DebuffType; chance: number; duration: number; value?: number },
-    attackerAtk: number, turn: number
+    attackerAtk: number, turn: number,
+    inflictor?: PvpFighter
   ): boolean {
     if (Math.random() >= debuff.chance) return false
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type)
-    let duration = debuff.duration
+    const durBonus = inflictor?.awakenState?.debuffDurationBonus || 0
+    let duration = debuff.duration + durBonus
+    const tianshiTag = durBonus > 0 ? ` ✦天师+${durBonus}` : ''
     if (isCtrl) {
       const r = Math.min(0.7, target.resists.ctrl || 0)
       if (r > 0 && Math.random() < r) {
@@ -340,7 +343,7 @@ export function runPvpBattle(
     }
     if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
       target.frozenTurns = Math.max(target.frozenTurns, duration)
-      log({ turn, type: 'normal', text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合` })
+      log({ turn, type: 'normal', text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tianshiTag}` })
       return true
     }
     // PvP DOT 缩放
@@ -362,7 +365,7 @@ export function runPvpBattle(
     else if (debuff.type === 'atk_down') text += ` (攻击-${((debuff.value || 0.15) * 100).toFixed(0)}%)`
     else if (debuff.type === 'slow') text += ` (必定后攻)`
     else if (debuff.type === 'silence') text += ` (无法使用神通)`
-    log({ turn, type: 'normal', text: `  ${text}` })
+    log({ turn, type: 'normal', text: `  ${text}${tianshiTag}` })
     return true
   }
 
@@ -475,10 +478,10 @@ export function runPvpBattle(
       }
     }
     if (pe.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
-      tryApplyDebuff(attacker, attacker.name, { type: 'poison', chance: 1, duration: 2 }, victim.atk, turn)
+      tryApplyDebuff(attacker, attacker.name, { type: 'poison', chance: 1, duration: 2 }, victim.atk, turn, victim)
     }
     if (pe.burnOnHitTaken && Math.random() < pe.burnOnHitTaken) {
-      tryApplyDebuff(attacker, attacker.name, { type: 'burn', chance: 1, duration: 2 }, victim.atk, turn)
+      tryApplyDebuff(attacker, attacker.name, { type: 'burn', chance: 1, duration: 2 }, victim.atk, turn, victim)
     }
     if (isCrit && pe.reflectOnCrit && Math.random() < pe.reflectOnCrit) {
       const rfc = Math.floor(dmg * 0.5)
@@ -491,19 +494,18 @@ export function runPvpBattle(
   function triggerAwakenOnHit(attacker: PvpFighter, target: PvpFighter, turn: number) {
     const st = attacker.awakenState
     if (!st) return
-    const durBonus = st.debuffDurationBonus || 0
     if (st.burnOnHitChance > 0 && Math.random() < st.burnOnHitChance) {
-      if (tryApplyDebuff(target, target.name, { type: 'burn', chance: 1.0, duration: 2 + durBonus }, attacker.atk, turn)) {
+      if (tryApplyDebuff(target, target.name, { type: 'burn', chance: 1.0, duration: 2 }, attacker.atk, turn, attacker)) {
         log({ turn, type: 'buff', text: `  ✦【焚魂】${target.name}被烈焰灼烧` })
       }
     }
     if (st.poisonOnHitChance > 0 && Math.random() < st.poisonOnHitChance) {
-      if (tryApplyDebuff(target, target.name, { type: 'poison', chance: 1.0, duration: 2 + durBonus }, attacker.atk, turn)) {
+      if (tryApplyDebuff(target, target.name, { type: 'poison', chance: 1.0, duration: 2 }, attacker.atk, turn, attacker)) {
         log({ turn, type: 'buff', text: `  ✦【淬毒】${target.name}中毒` })
       }
     }
     if (st.bleedOnHitChance > 0 && Math.random() < st.bleedOnHitChance) {
-      if (tryApplyDebuff(target, target.name, { type: 'bleed', chance: 1.0, duration: 2 + durBonus }, attacker.atk, turn)) {
+      if (tryApplyDebuff(target, target.name, { type: 'bleed', chance: 1.0, duration: 2 }, attacker.atk, turn, attacker)) {
         log({ turn, type: 'buff', text: `  ✦【裂魂】${target.name}流血不止` })
       }
     }
@@ -596,7 +598,7 @@ export function runPvpBattle(
       if (usedSkill.debuff && (usedSkill.isAoe || (usedSkill.targetCount && usedSkill.targetCount > 1))) {
         const targets = usedSkill.isAoe ? enemies.filter(e => e.alive) : enemies.filter(e => e.alive).slice(0, usedSkill.targetCount || 1)
         for (const t of targets) {
-          tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn)
+          tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
         }
       }
       return
@@ -655,7 +657,7 @@ export function runPvpBattle(
           const critText = dr.isCrit ? '暴击! ' : ''
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  第 ${h + 1} 段 ${critText}对 ${liveTarget.name} 造成 ${final} 伤害` })
           if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
-          if (usedSkill.debuff) tryApplyDebuff(liveTarget, liveTarget.name, usedSkill.debuff as any, attacker.atk, turn)
+          if (usedSkill.debuff) tryApplyDebuff(liveTarget, liveTarget.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
           triggerAwakenOnHit(attacker, liveTarget, turn)
           triggerRetaliate(attacker, liveTarget, final, dr.isCrit, turn)
           if (liveTarget.hp <= 0) liveTarget.alive = false
@@ -678,7 +680,7 @@ export function runPvpBattle(
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `[第${turn}回合] ${prefix}${critText}${attacker.name} 【${usedSkill.name}】对 ${t.name} 造成 ${final} 伤害` })
         }
         if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
-        if (usedSkill.debuff) tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn)
+        if (usedSkill.debuff) tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
         triggerAwakenOnHit(attacker, t, turn)
         triggerRetaliate(attacker, t, final, dr.isCrit, turn)
         if (t.hp <= 0) t.alive = false
