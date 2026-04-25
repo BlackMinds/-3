@@ -148,6 +148,22 @@ export const useGameStore = defineStore('game', () => {
         if (!loaded.value && res.data.current_map) {
           currentMapId.value = res.data.current_map
         }
+        // 同步服务端 battle_end_at 守卫到前端 expectedBattleEndAt：
+        // 切账号/刷新/组件重挂导致 store 重建后，DB 守卫可能还有 ~90s 未过期，
+        // 没有这一步会让 scheduleFight 立刻发请求撞 409 风暴（每 1.5s 一次直到守卫过期）
+        // 用 (battle_end_at_ms - server_now_ms) 算剩余毫秒数避开时钟漂移
+        const beaMs = Number(res.data.battle_end_at_ms) || 0
+        const snowMs = Number(res.data.server_now_ms) || 0
+        if (beaMs > 0 && snowMs > 0 && beaMs > snowMs) {
+          const target = Date.now() + (beaMs - snowMs) + 500
+          expectedBattleEndAt.value = Math.max(expectedBattleEndAt.value, target)
+        } else if (res.data.battle_end_at) {
+          // 兜底：旧响应只有 battle_end_at 字符串时按客户端时钟比较
+          const t = new Date(res.data.battle_end_at).getTime()
+          if (Number.isFinite(t) && t > Date.now()) {
+            expectedBattleEndAt.value = Math.max(expectedBattleEndAt.value, t + 1000)
+          }
+        }
         loaded.value = true
       }
       return res
@@ -303,12 +319,19 @@ export const useGameStore = defineStore('game', () => {
       // 后端已计算整批 → 不论 session 是否过期，守卫都按全批 logs 总时长设置，
       // 防止"开始→离开→立即开始"在请求返回后 expectedBattleEndAt 未被写入就绕过守卫
       const battles: any[] = res?.code === 200 && Array.isArray(res.data?.battles) ? res.data.battles : []
-      const totalLogsLen = battles.reduce((sum, b) => sum + (Array.isArray(b.logs) ? b.logs.length : 0), 0)
-      // 与服务端 battle_end_at 公式对齐：客户端真实墙钟 = (totalLogsLen - 场次数) 秒（每场首条立即播 + 场间无间隔）
-      // +1s buffer 让 scheduleFight 等到点发请求时服务端守卫确保已过期，避免撞 409
-      if (totalLogsLen > 0) {
-        const playbackSec = Math.max(1, totalLogsLen - battles.length + 1)
-        expectedBattleEndAt.value = Date.now() + playbackSec * LOG_INTERVAL_MS
+      // 优先用服务端权威 battleEndAt：(battleEndAt - serverNow) = 守卫剩余毫秒数，加 Date.now() 得到本地 expected，
+      // 避免基于 totalLogsLen 估算 + 客户端时钟/网络抖动导致前端误判守卫已过期撞 409 风暴
+      const serverBattleEndAt = Number(res?.data?.battleEndAt) || 0
+      const serverNow = Number(res?.data?.serverNow) || 0
+      if (serverBattleEndAt > 0 && serverNow > 0 && serverBattleEndAt > serverNow) {
+        expectedBattleEndAt.value = Date.now() + (serverBattleEndAt - serverNow) + 500
+      } else {
+        // 兜底：旧版服务端不带这两个字段时仍按本地估算（前端首部上线后会被服务端权威值覆盖）
+        const totalLogsLen = battles.reduce((sum, b) => sum + (Array.isArray(b.logs) ? b.logs.length : 0), 0)
+        if (totalLogsLen > 0) {
+          const playbackSec = Math.max(1, totalLogsLen - battles.length + 1)
+          expectedBattleEndAt.value = Date.now() + playbackSec * LOG_INTERVAL_MS
+        }
       }
       fetchInFlight.value = false
 
@@ -319,11 +342,24 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (res.code !== 200) {
-        // 429 冷却 / 409 上场未结束 需让用户感知；其他错误按原样打日志
-        // 重试延迟 1.5s 与 BATTLE_COOLDOWN_MS 对齐，避免快速切换拉爆请求
+        // 409 上场未结束：服务端回吐 battleEndAt，把它写进 expectedBattleEndAt 让 scheduleFight 静默等到点，
+        // 不再 1500ms 暴力重试 + spam 日志（state 丢失场景下会撞出满屏 60+ 条提示）
         if (res.code === 409) {
-          addLog(0, res.message || '上场战斗未结束，请稍候', 'system')
-        } else if (res.code === 429) {
+          // 服务端回吐 battleEndAt + serverNow：用差值算剩余毫秒数（避开时钟漂移），写进 expectedBattleEndAt 让 scheduleFight 静默等到点
+          const battleEndAt = Number(res.data?.battleEndAt) || 0
+          const serverNow409 = Number(res.data?.serverNow) || 0
+          if (battleEndAt > 0 && serverNow409 > 0 && battleEndAt > serverNow409) {
+            const target = Date.now() + (battleEndAt - serverNow409) + 500
+            expectedBattleEndAt.value = Math.max(expectedBattleEndAt.value, target)
+          } else if (battleEndAt > Date.now()) {
+            // 兜底：旧版服务端只回吐 battleEndAt（无 serverNow）时按客户端时钟比较
+            expectedBattleEndAt.value = Math.max(expectedBattleEndAt.value, battleEndAt + 1000)
+          }
+          inFight.value = false
+          battleTimer.value = window.setTimeout(() => scheduleFight(), 1500)
+          return
+        }
+        if (res.code === 429) {
           addLog(0, res.message || '战斗冷却中', 'system')
         } else {
           addLog(0, res.message || '战斗请求失败', 'system')

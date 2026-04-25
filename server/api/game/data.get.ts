@@ -4,7 +4,9 @@ export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
     const { rows } = await pool.query(
-      'SELECT * FROM characters WHERE user_id = $1',
+      `SELECT *, EXTRACT(EPOCH FROM battle_end_at) * 1000 AS battle_end_at_ms,
+              EXTRACT(EPOCH FROM NOW()) * 1000 AS server_now_ms
+         FROM characters WHERE user_id = $1`,
       [event.context.userId]
     )
 

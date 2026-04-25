@@ -643,7 +643,16 @@ export default defineEventHandler(async (event) => {
     const entry = battleLock.get(char.id) || {}
     const now = Date.now()
     if (entry.inProgressSince && now - entry.inProgressSince < MAX_BATTLE_DURATION_MS * batchCount) {
-      return { code: 409, message: '上场战斗未结束，请稍候' }
+      // 同 ③ 路径：把 DB 守卫到期时间和服务端当前时间一起回吐，前端用差值算剩余毫秒数避开时钟漂移
+      const { rows: gRows } = await pool.query(
+        `SELECT EXTRACT(EPOCH FROM battle_end_at) * 1000 AS bea_ms,
+                EXTRACT(EPOCH FROM NOW()) * 1000 AS now_ms
+           FROM characters WHERE id = $1`,
+        [char.id]
+      )
+      const battleEndAt = Number(gRows[0]?.bea_ms) || 0
+      const serverNow = Number(gRows[0]?.now_ms) || Date.now()
+      return { code: 409, message: '上场战斗未结束，请稍候', data: { battleEndAt, serverNow } }
     }
     if (entry.cooldownUntil && now < entry.cooldownUntil) {
       return { code: 429, message: '战斗冷却中' }
@@ -658,7 +667,16 @@ export default defineEventHandler(async (event) => {
       [guardSeconds, char.id]
     )
     if (!guardTaken) {
-      return { code: 409, message: '上场战斗未结束，请稍候' }
+      // 把守卫到期时间和服务端当前时间一起回吐，前端用 (battleEndAt - serverNow) 算剩余毫秒数避开时钟漂移
+      const { rows: gRows } = await pool.query(
+        `SELECT EXTRACT(EPOCH FROM battle_end_at) * 1000 AS bea_ms,
+                EXTRACT(EPOCH FROM NOW()) * 1000 AS now_ms
+           FROM characters WHERE id = $1`,
+        [char.id]
+      )
+      const battleEndAt = Number(gRows[0]?.bea_ms) || 0
+      const serverNow = Number(gRows[0]?.now_ms) || Date.now()
+      return { code: 409, message: '上场战斗未结束，请稍候', data: { battleEndAt, serverNow } }
     }
     battleLock.set(char.id, { inProgressSince: now })
     lockedCharId = char.id
@@ -968,16 +986,25 @@ export default defineEventHandler(async (event) => {
     // battle_end_at 必须 ≤ 客户端真实播放时长，否则下一批 scheduleFight
     // 在播完瞬间发请求会撞到守卫 → 连续 409 "上场战斗未结束"。
     const guardSeconds2 = Math.max(1, totalLogsLen - battles.length)
-    await pool.query(
-      `UPDATE characters SET battle_end_at = NOW() + ($1 || ' seconds')::INTERVAL WHERE id = $2`,
+    // RETURNING 同步回吐 battle_end_at 和服务端 NOW()：前端用 (battleEndAt - serverNow) 算剩余毫秒数，
+    // 避免基于 totalLogsLen 估算 + Date.now() 锚点导致的时钟/网络偏差累积撞 409
+    const { rows: gRows } = await pool.query(
+      `UPDATE characters SET battle_end_at = NOW() + ($1 || ' seconds')::INTERVAL
+        WHERE id = $2
+        RETURNING EXTRACT(EPOCH FROM battle_end_at) * 1000 AS bea_ms,
+                  EXTRACT(EPOCH FROM NOW()) * 1000 AS now_ms`,
       [String(guardSeconds2), char.id]
     )
+    const battleEndAt = Number(gRows[0]?.bea_ms) || 0
+    const serverNow = Number(gRows[0]?.now_ms) || Date.now()
 
     return {
       code: 200,
       data: {
         battles,
         character: lastUpdatedChar,
+        battleEndAt,
+        serverNow,
       },
     }
   } catch (error: any) {
