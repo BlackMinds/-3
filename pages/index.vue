@@ -3579,19 +3579,16 @@ function stageLabel(s: string) {
 }
 
 async function loadSectTabMeta() {
-  const calls = [
-    $fetch('/api/mail/unread-count', { headers: { Authorization: 'Bearer ' + (useUserStore().token || '') } }).catch(() => null),
-    $fetch('/api/sect/war/season', { headers: { Authorization: 'Bearer ' + (useUserStore().token || '') } }).catch(() => null),
-    $fetch('/api/spirit-vein/map', { headers: { Authorization: 'Bearer ' + (useUserStore().token || '') } }).catch(() => null),
-  ];
-  const [mail, season, vein] = await Promise.all(calls);
-  if (mail?.code === 200) {
-    globalMailUnread.value = mail.data.unread;
-    globalMailUnclaimed.value = mail.data.unclaimed;
-  }
-  if (season?.code === 200) sectWarStage.value = season.data.stage;
-  if (vein?.code === 200 && gameStore.character?.sect_id) {
-    myVeinOccupyCount.value = vein.data.sectOccupyMap[gameStore.character.sect_id] || 0;
+  // P5: 合并 mail/unread-count + sect/war/season + spirit-vein/map 为一次调用
+  try {
+    const res: any = await $fetch('/api/sect/tab-meta', { headers: getAuthHeaders() });
+    if (res?.code !== 200) return;
+    globalMailUnread.value = res.data.mail.unread;
+    globalMailUnclaimed.value = res.data.mail.unclaimed;
+    sectWarStage.value = res.data.sectWar.stage;
+    myVeinOccupyCount.value = res.data.spiritVein.myVeinOccupyCount;
+  } catch (e) {
+    // 静默失败，不影响主流程
   }
 }
 
