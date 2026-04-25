@@ -729,6 +729,7 @@ function finishBattle(data: any) {
 
 // ============ 轮询 ============
 // P3: 间隔从 3s/2.5s 拉到 8s/5s,且页面不可见时跳过(后台标签页不浪费 Function)
+// P5: 大厅 8s → 15s（大厅刷新对实时性要求低，省 ~47% Function 调用）
 function startLobbyPolling() {
   stopLobbyPolling()
   fetchRooms()
@@ -736,7 +737,7 @@ function startLobbyPolling() {
   lobbyPollTimer = setInterval(() => {
     if (typeof document !== 'undefined' && document.hidden) return
     if (teamStore.currentPanel === 'lobby') fetchRooms()
-  }, 8000)
+  }, 15000)
 }
 function stopLobbyPolling() {
   if (lobbyPollTimer) clearInterval(lobbyPollTimer)
