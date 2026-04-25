@@ -1,5 +1,4 @@
 import { getPool } from '~/server/database/db'
-import { OFFLINE_MAP_DATA } from '~/server/utils/offlineMapData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -11,31 +10,21 @@ export default defineEventHandler(async (event) => {
 
     const startTime = new Date(char.offline_start).getTime()
     const now = Date.now()
-    const offlineMin = Math.min((now - startTime) / 60000, 720)
-    // 与 offline-claim 保持一致：优先用快照的 offline_map
+    const MAX_OFFLINE_MIN = 600 // 上限 10 小时（与 offline-claim 保持一致）
+    const MIN_OFFLINE_MIN = 10  // 至少 10 分钟才能领取
+    const offlineMin = Math.min((now - startTime) / 60000, MAX_OFFLINE_MIN)
     const mapId = char.offline_map || char.current_map || 'qingfeng_valley'
-    const mapData = OFFLINE_MAP_DATA[mapId]
-    if (!mapData) return { code: 200, data: null }
-
-    const battlesPerMin = 12
-    const monstersPerBattle = 3
-    const totalBattles = Math.floor(offlineMin * battlesPerMin)
-    const totalKills = totalBattles * monstersPerBattle
-    const efficiency = 0.55 // 与 offline-claim.post.ts 保持一致
+    const efficiency = 1.0 // 与 offline-claim.post.ts 保持一致：100%
 
     return {
       code: 200,
       data: {
         offlineMinutes: Math.floor(offlineMin),
         mapName: mapId,
-        totalBattles,
-        totalKills,
-        expGained: Math.floor(totalKills * mapData.avgExp * efficiency),
-        stoneGained: Math.floor(totalKills * mapData.avgStone * efficiency),
-        equipCount: Math.min(Math.floor(totalKills * 0.08 * efficiency), 25),
-        skillCount: Math.min(Math.floor(totalKills * 0.05 * efficiency), 10),
-        herbCount: Math.min(Math.floor(totalKills * 0.10 * efficiency), 20),
         efficiency: Math.round(efficiency * 100),
+        maxHours: MAX_OFFLINE_MIN / 60,
+        minMinutes: MIN_OFFLINE_MIN,
+        canClaim: offlineMin >= MIN_OFFLINE_MIN,
         startTime: char.offline_start,
       },
     }

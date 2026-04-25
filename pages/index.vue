@@ -2071,15 +2071,19 @@
         <div class="modal-body">
           <div class="offline-summary">
             <p class="offline-time">已离线 <span style="color: var(--gold-ink);">{{ formatOfflineTime(offlineData.offlineMinutes) }}</span></p>
-            <p class="offline-efficiency">离线效率: {{ offlineData.efficiency }}% (上限12小时)</p>
+            <p class="offline-efficiency">离线效率: {{ offlineData.efficiency }}% (上限{{ offlineData.maxHours || 10 }}小时)</p>
           </div>
 
-          <p v-if="!offlineClaimed" class="offline-hint">以下为预估上限，结算时按战斗胜率实际发放</p>
+          <p v-if="!offlineClaimed" class="offline-hint" :style="{ color: offlineData.canClaim ? 'var(--fade-ink)' : 'var(--cinnabar)' }">
+            {{ offlineData.canClaim
+              ? '挂机进行中，结算时按战斗胜率发放奖励'
+              : `挂机至少 ${offlineData.minMinutes || 10} 分钟才能领取` }}
+          </p>
           <p v-if="offlineClaimed && offlineData.winRate !== undefined" class="offline-hint" :style="{ color: offlineData.winRate >= 50 ? 'var(--jade)' : 'var(--blood)' }">
             模拟胜率: {{ offlineData.winRate }}%{{ offlineData.earlyStopped ? '（连败 5 场提前结束）' : '' }}
           </p>
 
-          <div class="stats-table" style="margin: 12px 0;">
+          <div v-if="offlineClaimed" class="stats-table" style="margin: 12px 0;">
             <div class="stats-row">
               <span class="stats-label">战斗场次</span>
               <span class="stats-val">{{ offlineData.totalBattles }}</span>
@@ -2114,9 +2118,9 @@
             v-if="!offlineClaimed"
             class="offline-claim-btn"
             @click="claimOfflineRewards"
-            :disabled="offlineClaiming"
+            :disabled="offlineClaiming || !offlineData.canClaim"
           >
-            {{ offlineClaiming ? '结算中...' : '结束离线并领取' }}
+            {{ offlineClaiming ? '结算中...' : (offlineData.canClaim ? '结束离线并领取' : `还需挂机 ${Math.max(0, (offlineData.minMinutes || 10) - (offlineData.offlineMinutes || 0))} 分钟`) }}
           </button>
           <div v-else class="offline-claimed-msg">
             <span style="color: var(--jade);">结算完成，奖励已发放!</span>
@@ -2231,7 +2235,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">离线挂机</div>
-            <p class="help-text">点击"离线挂机"开始：系统会快照当前角色战斗状态(战力/装备/功法)。结算时按快照模拟 N 场战斗,<b>按真实胜率</b>发放经验/灵石/装备/功法/灵草掉落,上限 12 小时。</p>
+            <p class="help-text">点击"离线挂机"开始：系统会快照当前角色战斗状态(战力/装备/功法)。结算时按快照模拟 N 场战斗,<b>按真实胜率</b>发放经验/灵石/装备/功法/灵草掉落,效率 100%、上限 10 小时,需挂机至少 10 分钟才能领取。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">⚠ 切到打不动的高阶图挂机不会获得收益(连败 5 场自动停止),请挑选战力够得着的地图。</p>
           </div>
           </div>

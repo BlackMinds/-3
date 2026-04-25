@@ -10,7 +10,9 @@ import { rand } from '~/server/utils/random'
 /**
  * 离线挂机结算 v2：基于开始离线时的快照真打 N 场
  *
- * - simulateMin = min((now - offline_start)/60000, 720) 分钟
+ * - simulateMin = min((now - offline_start)/60000, 600) 分钟（上限 10 小时）
+ * - 离线效率 100%（与在线产出 1:1）
+ * - 必须挂机至少 10 分钟才能结算
  * - 每分钟 1 场代表战（runWaveBattle），每场代表 12 次实际战斗的产出
  * - 5 连败提前 break，按当前累计发奖（避免低战力挂在高图也能领满）
  * - 不出 BOSS（按设计：BOSS 掉落特殊，不适合抽样外推）
@@ -18,9 +20,10 @@ import { rand } from '~/server/utils/random'
  */
 
 const REPRESENTATIVE_BATTLES_PER_MIN = 12 // 每场代表战折算 12 次实际战斗（保持原产出曲线）
-const MAX_OFFLINE_MIN = 720
+const MAX_OFFLINE_MIN = 600 // 上限 10 小时
+const MIN_OFFLINE_MIN = 10  // 至少挂机 10 分钟才能结算
 const LOSS_STREAK_LIMIT = 5
-const EFFICIENCY = 0.55 // 离线效率（与 v1 一致：12h 离线 ≈ 10h 在线产出）
+const EFFICIENCY = 1.0 // 离线效率 100%（与在线产出对齐）
 
 export default defineEventHandler(async (event) => {
   try {
@@ -36,6 +39,10 @@ export default defineEventHandler(async (event) => {
     const startTime = new Date(char.offline_start).getTime()
     const now = Date.now()
     const simulateMin = Math.floor(Math.min((now - startTime) / 60000, MAX_OFFLINE_MIN))
+
+    if (simulateMin < MIN_OFFLINE_MIN) {
+      return { code: 400, message: `离线挂机至少需 ${MIN_OFFLINE_MIN} 分钟才能结算` }
+    }
 
     const mapId = char.offline_map || char.current_map || 'qingfeng_valley'
     const mapData = ALL_MAPS[mapId]
