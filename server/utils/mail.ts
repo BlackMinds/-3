@@ -14,6 +14,7 @@ export type MailAttachment =
   | { type: 'contribution'; amount: number }
   | { type: 'exp'; amount: number }
   | { type: 'material'; itemId: string; quality?: 'white' | 'green' | 'blue' | 'purple' | 'gold'; qty: number }
+  | { type: 'pill'; pillId: string; qualityFactor?: number; qty: number }
   | { type: 'recipe'; recipeId: string }
   | { type: 'title'; titleKey: string; duration: number }
   | { type: 'timed_buff'; sourceType: string; sourceId?: string; statKey: string; statValue: number; duration: number }
@@ -178,6 +179,15 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
          ON CONFLICT (character_id, material_id, quality)
          DO UPDATE SET count = character_materials.count + EXCLUDED.count`,
         [characterId, att.itemId, att.quality || 'blue', att.qty]
+      )
+      break
+    case 'pill':
+      await client.query(
+        `INSERT INTO character_pills (character_id, pill_id, quality_factor, count)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (character_id, pill_id, quality_factor)
+         DO UPDATE SET count = character_pills.count + EXCLUDED.count`,
+        [characterId, att.pillId, att.qualityFactor ?? 1.0, att.qty]
       )
       break
     case 'recipe':

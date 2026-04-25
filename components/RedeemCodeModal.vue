@@ -72,6 +72,10 @@ function describeAttachment(att: any): string {
       const q = att.quality && att.quality !== 'blue' ? `（${QUALITY_NAME[att.quality] || att.quality}）` : ''
       return `${name}${q} ×${att.qty}`
     }
+    case 'pill': {
+      const name = ITEM_INFO[att.pillId]?.name || att.pillId
+      return `${name} ×${att.qty}`
+    }
     case 'recipe':
       return `丹方解锁：${att.recipeId}`
     case 'title':

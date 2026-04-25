@@ -906,9 +906,13 @@ CREATE TABLE IF NOT EXISTS redeem_code_claims (
 CREATE INDEX IF NOT EXISTS idx_redeem_claims_char ON redeem_code_claims (character_id);
 
 -- 内置兑换码：附灵道具大礼包
+-- 附灵石/灵枢玉权威表是 character_pills（不是 character_materials），用 pill 类型附件
+-- 已存在则覆盖更新 attachments，方便修订奖励内容
 INSERT INTO redeem_codes (code, attachments, description) VALUES
 ('XIANTU2026', '[
-  {"type":"material","itemId":"awaken_stone","quality":"blue","qty":10},
-  {"type":"material","itemId":"awaken_reroll","quality":"blue","qty":20}
+  {"type":"pill","pillId":"awaken_stone","qty":10},
+  {"type":"pill","pillId":"awaken_reroll","qty":20}
 ]'::jsonb, '附灵道具大礼包：附灵石×10 + 灵枢玉×20')
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT (code) DO UPDATE SET
+  attachments = EXCLUDED.attachments,
+  description = EXCLUDED.description;
