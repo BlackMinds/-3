@@ -4724,6 +4724,7 @@ function getScaledSkillDesc(skill: any, level: number): string {
     if (e.revive_once) parts.push('免死1次保留20%血');
     if (e.skill_cd_reduction_turns) parts.push(`所有神通CD-${e.skill_cd_reduction_turns}`);
     if (e.atk_per_kill_percent) parts.push(`每击杀+${(e.atk_per_kill_percent * m).toFixed(0)}%攻击,最多${e.max_stacks || 8}层`);
+    if (e.crit_after_dodge) parts.push('闪避后下次攻击必暴击');
   }
 
   return parts.join(',') || skill.description;
@@ -4763,7 +4764,7 @@ async function upgradeSkill(type: string, slotIndex: number, skill: Skill) {
 }
 
 function syncEquippedSkills() {
-  // 计算被动加成 (按等级 +10%/级, Lv5 = 1.4x) - 数据驱动
+  // 计算被动加成 (按等级 +15%/级, Lv5 = 1.6x) - 与描述/战斗引擎保持一致
   let atkPercent = 0, defPercent = 0, hpPercent = 0, spdPercent = 0;
   let critRate = 0, critDmg = 0, dodge = 0, lifesteal = 0;
   let resistFire = 0, resistWater = 0, resistWood = 0, resistMetal = 0, resistEarth = 0, resistCtrl = 0;
@@ -4776,7 +4777,7 @@ function syncEquippedSkills() {
     const p = equippedPassives.value[i];
     if (!p || !p.effect) continue;
     const lv = getSkillLevel('passive', i, p.id);
-    const lvMul = 1 + (lv - 1) * 0.10;
+    const lvMul = 1 + (lv - 1) * 0.15;
     const e = p.effect;
 
     if (e.ATK_percent)            atkPercent          += e.ATK_percent * lvMul;
