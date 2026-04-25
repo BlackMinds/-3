@@ -1011,3 +1011,11 @@ WHERE awaken_effect->>'id' = 'aw_doom'
 -- 结算时基于快照真打 N 场，按胜率算收益（防止低战力切高图刷收益）
 -- ============================================
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS offline_snapshot JSONB DEFAULT NULL;
+
+-- ============================================
+-- 斗法积分（2026-04-25）
+-- 斗法台 1v1 PvP 胜负积分，用于风云榜·斗法榜排序
+-- 起始 1000；胜 +20 / 败 -10（floor 0）；败方与修为扣减共用 DAILY_LOSS_LIMIT
+-- ============================================
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS arena_score INT NOT NULL DEFAULT 1000;
+CREATE INDEX IF NOT EXISTS idx_arena_rank ON characters (arena_score DESC);

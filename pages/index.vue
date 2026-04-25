@@ -2587,6 +2587,7 @@
                   <div class="rank-detail">
                     <span v-if="rankingTab === 'level'">Lv.{{ item.level }}</span>
                     <span v-else-if="rankingTab === 'wealth'" class="rank-stone">{{ formatNum(item.spiritStone) }}</span>
+                    <span v-else-if="rankingTab === 'arena'" class="rank-arena">{{ formatNum(item.arenaScore) }} 分</span>
                     <span v-else>Lv.{{ item.level }}</span>
                   </div>
                   <div class="rank-sect">{{ item.sectName || '—' }}</div>
@@ -2991,7 +2992,7 @@ async function doPkChallenge() {
 
 // ===== 排行榜 =====
 const showRanking = ref(false);
-const rankingTab = ref<'realm' | 'level' | 'wealth' | 'sect'>('realm');
+const rankingTab = ref<'realm' | 'level' | 'wealth' | 'arena' | 'sect'>('realm');
 const rankingLoading = ref(false);
 const rankingList = ref<any[]>([]);
 const rankingSectList = ref<any[]>([]);
@@ -3001,6 +3002,7 @@ const rankingTabs = [
   { key: 'realm' as const, label: '境界榜' },
   { key: 'level' as const, label: '等级榜' },
   { key: 'wealth' as const, label: '灵石榜' },
+  { key: 'arena' as const, label: '斗法榜' },
   { key: 'sect' as const, label: '宗门榜' },
 ];
 
@@ -3015,7 +3017,7 @@ async function openRanking() {
   await fetchRankingData();
 }
 
-async function switchRankingTab(tab: 'realm' | 'level' | 'wealth' | 'sect') {
+async function switchRankingTab(tab: 'realm' | 'level' | 'wealth' | 'arena' | 'sect') {
   rankingTab.value = tab;
   await fetchRankingData();
 }
@@ -3028,6 +3030,7 @@ async function fetchRankingData() {
       case 'realm':  res = await $fetch('/api/ranking/realm', { headers: getAuthHeaders() }); break;
       case 'level':  res = await $fetch('/api/ranking/level', { headers: getAuthHeaders() }); break;
       case 'wealth': res = await $fetch('/api/ranking/wealth', { headers: getAuthHeaders() }); break;
+      case 'arena':  res = await $fetch('/api/ranking/arena',  { headers: getAuthHeaders() }); break;
       case 'sect':   res = await $fetch('/api/ranking/sect', { headers: getAuthHeaders() }); break;
     }
     if (res?.code === 200 && res.data) {
