@@ -11,7 +11,7 @@ export interface BuildingConfig {
 }
 
 export const BUILDINGS: Record<string, BuildingConfig> = {
-  spirit_array:   { id: 'spirit_array',   maxLevel: 20, baseCost: 1000,  costMul: 1.6, baseTime: 0,   output: { type: 'exp',          base: 120, perLevelMul: 1.17 } },
+  spirit_array:   { id: 'spirit_array',   maxLevel: 20, baseCost: 1000,  costMul: 1.6, baseTime: 0,   output: { type: 'exp',          base: 144, perLevelMul: 1.17 } },
   herb_field:     { id: 'herb_field',     maxLevel: 15, baseCost: 1500,  costMul: 1.7, baseTime: 0   },
   treasure_pot:   { id: 'treasure_pot',   maxLevel: 20, baseCost: 2000,  costMul: 1.8, baseTime: 0,   output: { type: 'spirit_stone', base: 900, perLevelMul: 1.22 } },
   martial_hall:   { id: 'martial_hall',   maxLevel: 10, baseCost: 3000,  costMul: 2.5, baseTime: 60 },

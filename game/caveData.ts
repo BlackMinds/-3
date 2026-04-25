@@ -34,7 +34,8 @@ export const BUILDINGS: BuildingDef[] = [
     description: '凝聚天地灵气,产出修为。',
     maxLevel: 20,
     // 2026-04-25: base 50→120, perLevelMul 1.15→1.17 — 满级 712→2611 修为/h, 接近 1h 战斗修为量
-    output: { type: 'exp', base: 120, perLevelMul: 1.17 },
+    // 2026-04-26: base 120→144 (+20%) — 满级 ~3133 修为/h, 进一步贴近高境界 1h 战斗修为量
+    output: { type: 'exp', base: 144, perLevelMul: 1.17 },
     baseCost: 1000,
     costMul: 1.6,
     baseTime: 0,
