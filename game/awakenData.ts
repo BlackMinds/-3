@@ -128,7 +128,7 @@ const PENDANT_POOL: AwakenDef[] = [
   { id: 'aw_insight', name: '神识', slot: 'pendant', stat: 'spirit',
     // v3.4: red 60→50 (-17%), 其他 tier 按比例
     tiers: { blue: 8, purple: 17, gold: 30, red: 50 },
-    desc: (v) => `神识 +${v} 点（+${(v * 0.5).toFixed(1)}% 神通伤害）` },
+    desc: (v) => `神识 +${v} 点（+${(v * 0.1).toFixed(1)}% 神通伤害）` },
   { id: 'aw_harmony', name: '聚元', slot: 'pendant', stat: 'harmonyPct',
     tiers: { blue: 0.03, purple: 0.05, gold: 0.07, red: 0.10 },
     desc: (v) => `攻击/气血/防御 同时 +${(v * 100).toFixed(0)}%` },

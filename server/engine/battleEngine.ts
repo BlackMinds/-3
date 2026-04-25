@@ -50,7 +50,7 @@ export interface BattlerStats {
   armorPen?: number;
   accuracy?: number;
   elementDmg?: { metal: number; wood: number; water: number; fire: number; earth: number };
-  spirit?: number; // 神识: 每点+0.5%神通伤害
+  spirit?: number; // 神识: 每点+0.1%神通伤害
   awaken?: PlayerAwakenState; // 装备附灵运行时状态（v1.2 新增）
 }
 
@@ -1220,9 +1220,9 @@ export function runWaveBattle(
       mul *= 1.2;
       rootMatched = true;
     }
-    // 神识加成神通伤害: 每点神识+0.5%
+    // 神识加成神通伤害: 每点神识+0.1% (2026-04-25: 0.5%→0.1% — 神识 216 时旧 +108% 神通伤害过强)
     if (isDivine && player.spirit && player.spirit > 0) {
-      mul *= 1 + player.spirit * 0.005;
+      mul *= 1 + player.spirit * 0.001;
     }
     // 玩家 buff：atk_up 通过 mul 放大（与 def_up 临时放大 def 对称，避免战意沸腾累积冲突）
     const atkUpSum = sumPlayerBuff('atk_up');
@@ -1314,6 +1314,8 @@ export function runWaveBattle(
             if (usedSkill.debuff) tryApplyDebuff(curTarget, curTarget.stats.name, usedSkill.debuff as any, player.atk, turn);
             // v1.2 附灵：命中触发 DOT
             triggerAwakenOnHit(curTarget, curTarget.stats.name, turn);
+          } else {
+            logs.push({ turn, text: `  第${hitsDone + 1}段 被${curTarget.stats.name}闪避`, type: 'normal', ...snap() });
           }
           hitsDone++;
         }
@@ -1337,6 +1339,13 @@ export function runWaveBattle(
             if (usedSkill.debuff) tryApplyDebuff(t, t.stats.name, usedSkill.debuff as any, player.atk, turn);
             // v1.2 附灵：命中触发 DOT
             triggerAwakenOnHit(t, t.stats.name, turn);
+          } else {
+            // 闪避日志：避免多目标技能里被闪避的目标"凭空消失"，让玩家以为多目标没生效
+            if (skillLabel) {
+              logs.push({ turn, text: `  ${t.stats.name} 闪避了你的攻击`, type: 'normal', ...snap() });
+            } else {
+              logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】被${t.stats.name}闪避`, type: 'normal', ...snap() });
+            }
           }
         }
 

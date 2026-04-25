@@ -497,7 +497,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   // 灵根共鸣 + 神识
   let mul = used.multiplier
   if (used.element && p.stats.spiritualRoot && used.element === p.stats.spiritualRoot) mul *= 1.2
-  if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.005
+  if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.001
 
   // 治疗 / buff 技能
   if (mul === 0) {
