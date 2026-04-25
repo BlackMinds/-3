@@ -4,6 +4,7 @@
 import { getPool } from '~/server/database/db';
 import { generateEquipName } from './equipNameData';
 import { EQUIP_PRIMARY_BASE } from '~/shared/balance';
+import { rollSubStats } from '~/server/utils/equipment';
 
 // ========== 类型定义 ==========
 export interface AchievementReward {
@@ -221,33 +222,14 @@ const EQUIP_BOX_WEIGHTS: Record<string, number[]> = {
 
 function rand(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-// 副属性生成（和 battle.ts 逻辑一致）
-const DROP_SUB_POOL = [
-  { stat: 'ATK', min: 5, max: 30 }, { stat: 'DEF', min: 3, max: 20 },
-  { stat: 'HP', min: 20, max: 150 }, { stat: 'SPD', min: 2, max: 15 },
-  { stat: 'CRIT_RATE', min: 1, max: 5 }, { stat: 'CRIT_DMG', min: 5, max: 20 },
-  { stat: 'LIFESTEAL', min: 1, max: 5 }, { stat: 'DODGE', min: 1, max: 4 },
-  { stat: 'ARMOR_PEN', min: 3, max: 15 }, { stat: 'ACCURACY', min: 2, max: 10 },
-];
+// 副属性数量按品质区间随机（与 RARITY_SUB_COUNT 固定值不同，箱子保留范围抽奖手感）
+const SUB_COUNT_RANGE: [number, number][] = [[0,0],[0,1],[1,2],[2,3],[3,4],[4,5]];
 
 function generateSubStats(rarityIdx: number, tier: number): any[] {
-  const subCountRange: [number, number][] = [[0,0],[0,1],[1,2],[2,3],[3,4],[4,5]];
-  const [minSubs, maxSubs] = subCountRange[rarityIdx] || [0, 0];
+  const [minSubs, maxSubs] = SUB_COUNT_RANGE[rarityIdx] || [0, 0];
   const count = rand(minSubs, maxSubs);
   if (count === 0) return [];
-  const subs: any[] = [];
-  const used = new Set<string>();
-  for (let i = 0; i < count; i++) {
-    const available = DROP_SUB_POOL.filter(s => !used.has(s.stat));
-    if (available.length === 0) break;
-    const pick = available[rand(0, available.length - 1)];
-    used.add(pick.stat);
-    const qualityMul = 1 + rarityIdx * 0.15;
-    const tierMul = 1 + (tier - 1) * 0.1;
-    const value = Math.floor(rand(pick.min, pick.max) * qualityMul * tierMul);
-    subs.push({ stat: pick.stat, value: Math.max(1, value) });
-  }
-  return subs;
+  return rollSubStats(rarityIdx, tier, count);
 }
 
 export function generateEquipBox(boxType: 'normal' | 'fine' | 'legend', charLevel: number): any {
