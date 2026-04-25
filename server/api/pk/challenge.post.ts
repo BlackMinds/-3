@@ -1,12 +1,11 @@
 import { getPool } from '~/server/database/db'
 import { buildCharacterSnapshot, type CharacterSnapshot } from '~/server/utils/battleSnapshot'
 import { runPvpBattle, type PvpFighterInput } from '~/server/engine/multiBattleEngine'
+import { arenaScoreOnWin, arenaScoreOnLoss } from '~/shared/arenaRanks'
 
 const DAILY_CHALLENGE_LIMIT = 10
 const DAILY_LOSS_LIMIT = 10
 const CULTIVATION_LOSS_PCT = 0.01
-const ARENA_SCORE_WIN = 20
-const ARENA_SCORE_LOSS = 10
 
 function toInput(snap: CharacterSnapshot): PvpFighterInput {
   return {
@@ -26,7 +25,7 @@ export default defineEventHandler(async (event) => {
 
     // 1. 取自己角色
     const { rows: meRows } = await pool.query(
-      'SELECT id, name FROM characters WHERE user_id = $1',
+      'SELECT id, name, realm_tier FROM characters WHERE user_id = $1',
       [userId]
     )
     if (meRows.length === 0) return { code: 400, message: '角色不存在' }
@@ -34,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
     // 2. 查对手
     const { rows: foeRows } = await pool.query(
-      'SELECT id, name, cultivation_exp FROM characters WHERE name = $1',
+      'SELECT id, name, cultivation_exp, realm_tier FROM characters WHERE name = $1',
       [targetName]
     )
     if (foeRows.length === 0) return { code: 404, message: '查无此人' }
@@ -70,6 +69,12 @@ export default defineEventHandler(async (event) => {
     const winnerId = winnerSide === 'a' ? me.id : foe.id
     const loserId = winnerSide === 'a' ? foe.id : me.id
     const loserName = winnerSide === 'a' ? foe.name : me.name
+    const winnerTier = Number(winnerSide === 'a' ? me.realm_tier : foe.realm_tier) || 1
+    const loserTier  = Number(winnerSide === 'a' ? foe.realm_tier : me.realm_tier) || 1
+
+    // 跨境界积分加权: 低境界打赢高境界 +多, 高境界欺负低境界 +少
+    const scoreGain = arenaScoreOnWin(winnerTier, loserTier)
+    const scoreLossMax = arenaScoreOnLoss(loserTier, winnerTier)
 
     // 6. 事务：锁 loser → 检查今日被扣次数 → 扣修为/扣分 → 胜方加分 → 写记录
     const client = await pool.connect()
@@ -102,16 +107,16 @@ export default defineEventHandler(async (event) => {
           )
         }
         // 与修为扣减同步：超过 DAILY_LOSS_LIMIT 后败方不再掉分
-        scoreLoss = ARENA_SCORE_LOSS
+        scoreLoss = scoreLossMax
         await client.query(
           'UPDATE characters SET arena_score = GREATEST(0, arena_score - $1) WHERE id = $2',
           [scoreLoss, loserId]
         )
       }
-      // 胜方加分（受 DAILY_CHALLENGE_LIMIT 自然限制：单日最多 +20×10=200）
+      // 胜方加分（受 DAILY_CHALLENGE_LIMIT 自然限制：单日最多 10 场）
       await client.query(
         'UPDATE characters SET arena_score = arena_score + $1 WHERE id = $2',
-        [ARENA_SCORE_WIN, winnerId]
+        [scoreGain, winnerId]
       )
       await client.query(
         `INSERT INTO pk_records
@@ -134,7 +139,8 @@ export default defineEventHandler(async (event) => {
         winnerName: winnerSide === 'a' ? me.name : foe.name,
         loserName,
         cultivationLoss,
-        scoreGain: winnerSide === 'a' ? ARENA_SCORE_WIN : -scoreLoss,
+        // 自己赢: +scoreGain; 自己输: -scoreLoss (受 DAILY_LOSS_LIMIT 影响, 0 = 今日已被打满次)
+        scoreGain: winnerSide === 'a' ? scoreGain : -scoreLoss,
         battleLog: result.logs,
         sideAName: me.name,
         sideBName: foe.name,

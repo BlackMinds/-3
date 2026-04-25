@@ -1,4 +1,5 @@
 import { getPool } from '~/server/database/db'
+import { getArenaRank } from '~/shared/arenaRanks'
 
 const REALM_NAMES: Record<number, string> = {
   1: '练气', 2: '筑基', 3: '金丹', 4: '元婴',
@@ -20,6 +21,8 @@ const ROOT_NAMES: Record<string, string> = {
 }
 
 function formatCharRow(row: any, rank: number) {
+  const score = Number(row.arena_score || 0)
+  const arenaRank = getArenaRank(score)
   return {
     rank,
     characterId: row.id,
@@ -30,7 +33,9 @@ function formatCharRow(row: any, rank: number) {
     realmStage: row.realm_stage,
     realmDisplay: getRealmDisplay(row.realm_tier, row.realm_stage),
     level: row.level || 1,
-    arenaScore: Number(row.arena_score || 0),
+    arenaScore: score,
+    arenaRankName: arenaRank.name,
+    arenaRankColor: arenaRank.color,
     sectName: row.sect_name || null,
   }
 }

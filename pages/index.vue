@@ -2587,7 +2587,10 @@
                   <div class="rank-detail">
                     <span v-if="rankingTab === 'level'">Lv.{{ item.level }}</span>
                     <span v-else-if="rankingTab === 'wealth'" class="rank-stone">{{ formatNum(item.spiritStone) }}</span>
-                    <span v-else-if="rankingTab === 'arena'" class="rank-arena">{{ formatNum(item.arenaScore) }} 分</span>
+                    <span v-else-if="rankingTab === 'arena'" class="rank-arena">
+                      <span class="arena-rank-chip" :style="{ color: item.arenaRankColor, borderColor: item.arenaRankColor }">{{ item.arenaRankName }}</span>
+                      {{ formatNum(item.arenaScore) }}
+                    </span>
                     <span v-else>Lv.{{ item.level }}</span>
                   </div>
                   <div class="rank-sect">{{ item.sectName || '—' }}</div>
@@ -10800,6 +10803,24 @@ onUnmounted(() => {
 
 .rank-stone {
   color: var(--cinnabar-light);
+}
+
+.rank-arena {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-light);
+}
+
+.arena-rank-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid currentColor;
+  border-radius: 3px;
 }
 
 .rank-sect {
