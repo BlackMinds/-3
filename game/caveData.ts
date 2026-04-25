@@ -33,7 +33,8 @@ export const BUILDINGS: BuildingDef[] = [
     icon: '阵',
     description: '凝聚天地灵气,产出修为。',
     maxLevel: 20,
-    output: { type: 'exp', base: 50, perLevelMul: 1.15 },
+    // 2026-04-25: base 50→120, perLevelMul 1.15→1.17 — 满级 712→2611 修为/h, 接近 1h 战斗修为量
+    output: { type: 'exp', base: 120, perLevelMul: 1.17 },
     baseCost: 1000,
     costMul: 1.6,
     baseTime: 0,
@@ -56,7 +57,8 @@ export const BUILDINGS: BuildingDef[] = [
     icon: '宝',
     description: '汇聚四方灵脉,产出灵石。',
     maxLevel: 20,
-    output: { type: 'spirit_stone', base: 800, perLevelMul: 1.22 },
+    // 2026-04-25: base 800→1500 — 满级 31417→58909 灵石/h, 24h 约 141 万对齐红装强化消耗
+    output: { type: 'spirit_stone', base: 1500, perLevelMul: 1.22 },
     baseCost: 2000,
     costMul: 1.8,
     baseTime: 0,
