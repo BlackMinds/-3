@@ -260,7 +260,7 @@
             <div class="char-col-left">
               <div class="panel-title sub-title">主属性</div>
               <div class="stats-grid">
-                <div class="stat-row" v-for="s in mainStats" :key="s.label">
+                <div class="stat-row clickable" v-for="s in mainStats" :key="s.label" @click="openStatDetail(s)">
                   <span class="s-label">{{ s.label }}</span>
                   <span class="s-value">{{ s.value }}<span v-if="s.bonus > 0" class="s-bonus">(+{{ formatNum(s.bonus) }})</span></span>
                 </div>
@@ -279,7 +279,7 @@
 
               <div class="panel-title sub-title">二级属性</div>
               <div class="stats-grid">
-                <div class="stat-row" v-for="s in secondaryStats" :key="s.label">
+                <div class="stat-row clickable" v-for="s in secondaryStats" :key="s.label" @click="openStatDetail(s)">
                   <span class="s-label">{{ s.label }}</span>
                   <span class="s-value">
                     {{ s.value }}
@@ -290,7 +290,7 @@
 
               <div class="panel-title sub-title">五行抗性</div>
               <div class="stats-grid">
-                <div class="stat-row" v-for="s in resistStats" :key="s.label">
+                <div class="stat-row clickable" v-for="s in resistStats" :key="s.label" @click="openStatDetail(s)">
                   <span class="s-label">{{ s.label }}</span>
                   <div class="resist-bar-wrap">
                     <div class="resist-bar" :style="{ width: s.percent + '%', background: s.color }"></div>
@@ -301,7 +301,7 @@
 
               <div class="panel-title sub-title">五行强化</div>
               <div class="stats-grid">
-                <div class="stat-row" v-for="s in elementDmgStats" :key="s.label">
+                <div class="stat-row clickable" v-for="s in elementDmgStats" :key="s.label" @click="openStatDetail(s)">
                   <span class="s-label" :style="{ color: s.color }">{{ s.label }}</span>
                   <span class="s-value">{{ s.value }}</span>
                 </div>
@@ -2057,6 +2057,48 @@
           <div v-if="realmChallengeResult" class="realm-result" :class="{ success: realmChallengeResult.includes('成功') }">
             {{ realmChallengeResult }}
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 属性详情弹窗 ==================== -->
+    <div v-if="statDetailOpen && statDetailData" class="modal-overlay" @click="statDetailOpen = false">
+      <div class="modal-content" @click.stop style="max-width: 420px;">
+        <div class="modal-header">
+          <h3>{{ statDetailData.label }} · 加成明细</h3>
+          <button class="modal-close" @click="statDetailOpen = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="stat-detail-summary">
+            <div class="stat-detail-row">
+              <span class="stat-detail-key">最终值</span>
+              <span class="stat-detail-val" style="color: var(--gold-ink);">{{ statDetailData.value }}</span>
+            </div>
+            <div class="stat-detail-row" v-if="statDetailData.base !== undefined">
+              <span class="stat-detail-key">基础值</span>
+              <span class="stat-detail-val">{{ formatStatNum(statDetailData.base, statDetailData.unit) }}</span>
+            </div>
+            <div class="stat-detail-row" v-if="statDetailData.bonus !== undefined">
+              <span class="stat-detail-key">总加成</span>
+              <span class="stat-detail-val" :style="{ color: statDetailData.bonus >= 0 ? 'var(--jade)' : 'var(--blood)' }">
+                {{ statDetailData.bonus >= 0 ? '+' : '' }}{{ formatStatNum(statDetailData.bonus, statDetailData.unit) }}
+              </span>
+            </div>
+          </div>
+          <div class="stat-detail-divider"></div>
+          <div class="stat-detail-list" v-if="statDetailData.steps && statDetailData.steps.length > 0">
+            <div class="stat-detail-step" v-for="(st, idx) in statDetailData.steps" :key="idx">
+              <span class="stat-detail-step-src">{{ st.source }}</span>
+              <span class="stat-detail-step-delta" :style="{ color: st.delta >= 0 ? 'var(--jade)' : 'var(--blood)' }">
+                {{ st.delta >= 0 ? '+' : '' }}{{ formatStatNum(st.delta, statDetailData.unit) }}
+              </span>
+              <div class="stat-detail-step-note" v-if="st.note">{{ st.note }}</div>
+            </div>
+          </div>
+          <div v-else class="stat-detail-empty">暂无任何加成来源</div>
+          <p class="stat-detail-tip" v-if="statDetailData.capped">
+            ⚠ 已达硬上限 {{ statDetailData.capLabel }}，溢出部分不生效
+          </p>
         </div>
       </div>
     </div>
@@ -3947,43 +3989,153 @@ const rootGlow = computed(() => rootInfo.value?.glow || 'rgba(201,168,92,0.3)');
 const rootChar = computed(() => rootInfo.value?.char || '道');
 const rootName = computed(() => rootInfo.value?.name || '');
 
-// 主属性
+// ===== 属性详情弹窗 =====
+type StatStep = { source: string; delta: number; note?: string };
+const statDetailOpen = ref(false);
+const statDetailData = ref<any>(null);
+function openStatDetail(s: any) {
+  statDetailData.value = s;
+  statDetailOpen.value = true;
+}
+function formatStatNum(n: number, unit?: string): string {
+  if (unit === '%') {
+    return n.toFixed(Math.abs(n) >= 10 ? 0 : 1) + '%';
+  }
+  // 整数主属性：直接 toFixed(0) 后过 formatNum
+  return formatNumber(Math.round(n));
+}
+
+// 主属性 — 严格镜像 server/api/battle/fight.post.ts 的 buildPlayerStats 计算顺序，
+// 让面板与战斗逐步乘除一致（飘渺神行/万毒归一等百分比被动加成基数 = 总值，不是白板）。
+// 同时记录每一步加成来源，供属性详情弹窗显示。
 const mainStats = computed(() => {
   const c = gameStore.character;
   if (!c) return [];
-  const p = gameStore.equippedSkills?.passiveEffects;
   const eb = equipBonus.value;
   const wb = weaponBonus.value;
   const rb = currentRealmBonus.value;
-  // 武器类型百分比加成
-  const weaponAtkBonus = Math.floor(c.atk * wb.ATK_percent / 100);
-  const weaponSpdBonus = Math.floor(c.spd * wb.SPD_percent / 100);
-
-  const lb = gameStore.levelBonus;
-  // 境界加成: 固定值 + 百分比
-  const realmAtkBonus = rb.atk + Math.floor(c.atk * rb.atk_pct / 100);
-  const realmDefBonus = rb.def + Math.floor(c.def * rb.def_pct / 100);
-  const realmHpBonus = rb.hp + Math.floor(c.max_hp * rb.hp_pct / 100);
-  const realmSpdBonus = rb.spd;
-
-  // 附灵主属性 %（以 base 为基数，与 fight.post.ts 的算法口径一致）
   const ab = awakenBonus.value;
-  const awakenAtkBonus = Math.floor(c.atk * ab.atkPct);
-  const awakenDefBonus = Math.floor(c.def * ab.defPct);
-  const awakenHpBonus  = Math.floor(c.max_hp * ab.hpPct);
-  const awakenSpdBonus = Math.floor(c.spd * ab.spdPct);
-
-  // 丹药 buff 的固定值加成（小聚灵 +20 / 小铁皮 +15 / 小培元 +300 等初级丹）
+  const lb = gameStore.levelBonus;
   const pb = calcPillBuffEffect();
-  const atkBonus = (p ? Math.floor(c.atk * p.atkPercent / 100) : 0) + eb.ATK + weaponAtkBonus + lb.atk + realmAtkBonus + awakenAtkBonus + Math.floor(pb.atkFlat);
-  const defBonus = (p ? Math.floor(c.def * p.defPercent / 100) : 0) + eb.DEF + lb.def + realmDefBonus + awakenDefBonus + Math.floor(pb.defFlat);
-  const hpBonus = (p ? Math.floor(c.max_hp * p.hpPercent / 100) : 0) + eb.HP + lb.hp + realmHpBonus + awakenHpBonus + Math.floor(pb.hpFlat);
-  const spdBonus = (p ? Math.floor(c.spd * p.spdPercent / 100) : 0) + eb.SPD + weaponSpdBonus + lb.spd + realmSpdBonus + awakenSpdBonus + Math.floor(pb.spdFlat);
+
+  // 4 条独立的累计 + 步骤明细
+  const baseAtk = Number(c.atk), baseDef = Number(c.def), baseHp = Number(c.max_hp), baseSpd = Number(c.spd);
+  let atk = baseAtk, def = baseDef, maxHp = baseHp, spd = baseSpd;
+  const atkSteps: StatStep[] = [], defSteps: StatStep[] = [], hpSteps: StatStep[] = [], spdSteps: StatStep[] = [];
+  const push = (arr: StatStep[], source: string, before: number, after: number, note?: string) => {
+    const d = after - before;
+    if (d !== 0) arr.push({ source, delta: d, note });
+  };
+
+  // 1) 等级
+  let p = atk; atk += lb.atk; push(atkSteps, '等级加成', p, atk);
+  p = def; def += lb.def; push(defSteps, '等级加成', p, def);
+  p = maxHp; maxHp += lb.hp; push(hpSteps, '等级加成', p, maxHp);
+  p = spd; spd += lb.spd; push(spdSteps, '等级加成', p, spd);
+
+  // 2) 境界 flat
+  p = atk; atk += rb.atk; push(atkSteps, '境界 flat', p, atk);
+  p = def; def += rb.def; push(defSteps, '境界 flat', p, def);
+  p = maxHp; maxHp += rb.hp; push(hpSteps, '境界 flat', p, maxHp);
+  p = spd; spd += rb.spd; push(spdSteps, '境界 flat', p, spd);
+
+  // 3) 装备 主属性 + 副属性 flat（聚合后整体显示，避免步骤过多）
+  p = atk; atk += eb.ATK || 0; push(atkSteps, '装备 主+副属性', p, atk);
+  p = def; def += eb.DEF || 0; push(defSteps, '装备 主+副属性', p, def);
+  p = maxHp; maxHp += eb.HP || 0; push(hpSteps, '装备 主+副属性', p, maxHp);
+  p = spd; spd += eb.SPD || 0; push(spdSteps, '装备 主+副属性', p, spd);
+
+  // 4) 附灵主属性 %
+  if (ab.atkPct > 0) { p = atk; atk = Math.floor(atk * (1 + ab.atkPct)); push(atkSteps, `附灵 +${(ab.atkPct * 100).toFixed(1)}%`, p, atk); }
+  if (ab.defPct > 0) { p = def; def = Math.floor(def * (1 + ab.defPct)); push(defSteps, `附灵 +${(ab.defPct * 100).toFixed(1)}%`, p, def); }
+  if (ab.hpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + ab.hpPct)); push(hpSteps, `附灵 +${(ab.hpPct * 100).toFixed(1)}%`, p, maxHp); }
+  if (ab.spdPct > 0) { p = spd; spd = Math.floor(spd * (1 + ab.spdPct)); push(spdSteps, `附灵 +${(ab.spdPct * 100).toFixed(1)}%`, p, spd); }
+
+  // 5) 武器类型 + 装备副属性 X_PCT 合并一次乘
+  const equipAtkPct = (eb as any).ATK_PCT || 0;
+  const equipDefPct = (eb as any).DEF_PCT || 0;
+  const equipHpPct = (eb as any).HP_PCT || 0;
+  const equipSpdPct = (eb as any).SPD_PCT || 0;
+  const totalAtkPct = (wb.ATK_percent || 0) + equipAtkPct;
+  const totalSpdPct = (wb.SPD_percent || 0) + equipSpdPct;
+  if (totalAtkPct > 0) { p = atk; atk = Math.floor(atk * (1 + totalAtkPct / 100)); push(atkSteps, `武器类型+装备% 合计 +${totalAtkPct.toFixed(1)}%`, p, atk); }
+  if (equipDefPct > 0) { p = def; def = Math.floor(def * (1 + equipDefPct / 100)); push(defSteps, `装备 +${equipDefPct.toFixed(1)}%`, p, def); }
+  if (equipHpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + equipHpPct / 100)); push(hpSteps, `装备 +${equipHpPct.toFixed(1)}%`, p, maxHp); }
+  if (totalSpdPct > 0) { p = spd; spd = Math.floor(spd * (1 + totalSpdPct / 100)); push(spdSteps, `武器类型+装备% 合计 +${totalSpdPct.toFixed(1)}%`, p, spd); }
+
+  // 6) 丹药 — flat 先加再 pct 乘
+  if ((pb.atkFlat || 0) > 0 || (pb.atk || 0) > 0) { p = atk; atk = Math.floor((atk + (pb.atkFlat || 0)) * (1 + (pb.atk || 0) / 100)); push(atkSteps, `丹药 +${pb.atkFlat || 0} +${(pb.atk || 0).toFixed(1)}%`, p, atk); }
+  if ((pb.defFlat || 0) > 0 || (pb.def || 0) > 0) { p = def; def = Math.floor((def + (pb.defFlat || 0)) * (1 + (pb.def || 0) / 100)); push(defSteps, `丹药 +${pb.defFlat || 0} +${(pb.def || 0).toFixed(1)}%`, p, def); }
+  if ((pb.hpFlat || 0) > 0 || (pb.hp || 0) > 0) { p = maxHp; maxHp = Math.floor((maxHp + (pb.hpFlat || 0)) * (1 + (pb.hp || 0) / 100)); push(hpSteps, `丹药 +${pb.hpFlat || 0} +${(pb.hp || 0).toFixed(1)}%`, p, maxHp); }
+  if ((pb.spdFlat || 0) > 0 || (pb.spd || 0) > 0) { p = spd; spd = Math.floor((spd + (pb.spdFlat || 0)) * (1 + (pb.spd || 0) / 100)); push(spdSteps, `丹药 +${pb.spdFlat || 0} +${(pb.spd || 0).toFixed(1)}%`, p, spd); }
+
+  // 7) 境界百分比
+  if (rb.atk_pct > 0) { p = atk; atk = Math.floor(atk * (1 + rb.atk_pct / 100)); push(atkSteps, `境界 +${rb.atk_pct}%`, p, atk); }
+  if (rb.def_pct > 0) { p = def; def = Math.floor(def * (1 + rb.def_pct / 100)); push(defSteps, `境界 +${rb.def_pct}%`, p, def); }
+  if (rb.hp_pct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + rb.hp_pct / 100)); push(hpSteps, `境界 +${rb.hp_pct}%`, p, maxHp); }
+
+  // 8) 道果结晶
+  const permAtkPct = Number((c as any).permanent_atk_pct || 0);
+  const permDefPct = Number((c as any).permanent_def_pct || 0);
+  const permHpPct = Number((c as any).permanent_hp_pct || 0);
+  if (permAtkPct > 0) { p = atk; atk = Math.floor(atk * (1 + permAtkPct / 100)); push(atkSteps, `道果结晶 +${permAtkPct}%`, p, atk); }
+  if (permDefPct > 0) { p = def; def = Math.floor(def * (1 + permDefPct / 100)); push(defSteps, `道果结晶 +${permDefPct}%`, p, def); }
+  if (permHpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + permHpPct / 100)); push(hpSteps, `道果结晶 +${permHpPct}%`, p, maxHp); }
+
+  // 9a) 宗门等级加成
+  const sect = sectInfo.value;
+  if (sect && sect.sect) {
+    const sAtk = Number(sect.sect.atk_bonus || 0);
+    const sDef = Number(sect.sect.def_bonus || 0);
+    if (sAtk > 0) { p = atk; atk = Math.floor(atk * (1 + sAtk)); push(atkSteps, `宗门等级 +${(sAtk * 100).toFixed(0)}%`, p, atk); }
+    if (sDef > 0) { p = def; def = Math.floor(def * (1 + sDef)); push(defSteps, `宗门等级 +${(sDef * 100).toFixed(0)}%`, p, def); }
+  }
+  // 9b) 宗门技能（已学且未冻结）
+  for (const s of sectSkillsList.value) {
+    if (!s || !s.learned || s.frozen) continue;
+    const eff = s.currentEffects;
+    if (!eff) continue;
+    if (eff.hp_percent) { p = maxHp; maxHp = Math.floor(maxHp * (1 + eff.hp_percent / 100)); push(hpSteps, `${s.name} +${eff.hp_percent.toFixed(1)}%`, p, maxHp); }
+    if (eff.all_percent) {
+      const pct = eff.all_percent;
+      p = atk; atk = Math.floor(atk * (1 + pct / 100)); push(atkSteps, `${s.name} +${pct.toFixed(1)}%`, p, atk);
+      p = def; def = Math.floor(def * (1 + pct / 100)); push(defSteps, `${s.name} +${pct.toFixed(1)}%`, p, def);
+      p = maxHp; maxHp = Math.floor(maxHp * (1 + pct / 100)); push(hpSteps, `${s.name} +${pct.toFixed(1)}%`, p, maxHp);
+      p = spd; spd = Math.floor(spd * (1 + pct / 100)); push(spdSteps, `${s.name} +${pct.toFixed(1)}%`, p, spd);
+    }
+  }
+
+  // 10) 功法被动百分比（最后乘，含 PASSIVE_PCT_CAP=40）
+  let passAtkPct = 0, passDefPct = 0, passHpPct = 0, passSpdPct = 0;
+  const passNames: string[] = [];
+  for (let i = 0; i < equippedPassives.value.length; i++) {
+    const pp = equippedPassives.value[i];
+    if (!pp || !pp.effect) continue;
+    const lv = getSkillLevel('passive', i, pp.id);
+    const lvMul = 1 + (lv - 1) * 0.15;
+    let hit = false;
+    if (pp.effect.ATK_percent) { passAtkPct += pp.effect.ATK_percent * lvMul; hit = true; }
+    if (pp.effect.DEF_percent) { passDefPct += pp.effect.DEF_percent * lvMul; hit = true; }
+    if (pp.effect.HP_percent) { passHpPct += pp.effect.HP_percent * lvMul; hit = true; }
+    if (pp.effect.SPD_percent) { passSpdPct += pp.effect.SPD_percent * lvMul; hit = true; }
+    if (hit) passNames.push(`${pp.name} Lv${lv}`);
+  }
+  const PASSIVE_PCT_CAP = 40;
+  passAtkPct = Math.min(passAtkPct, PASSIVE_PCT_CAP);
+  passDefPct = Math.min(passDefPct, PASSIVE_PCT_CAP);
+  passHpPct = Math.min(passHpPct, PASSIVE_PCT_CAP);
+  passSpdPct = Math.min(passSpdPct, PASSIVE_PCT_CAP);
+  const passNote = passNames.join(' / ');
+  if (passAtkPct > 0) { p = atk; atk = Math.floor(atk * (1 + passAtkPct / 100)); push(atkSteps, `功法被动 +${passAtkPct.toFixed(1)}%`, p, atk, passNote); }
+  if (passDefPct > 0) { p = def; def = Math.floor(def * (1 + passDefPct / 100)); push(defSteps, `功法被动 +${passDefPct.toFixed(1)}%`, p, def, passNote); }
+  if (passHpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + passHpPct / 100)); push(hpSteps, `功法被动 +${passHpPct.toFixed(1)}%`, p, maxHp, passNote); }
+  if (passSpdPct > 0) { p = spd; spd = Math.floor(spd * (1 + passSpdPct / 100)); push(spdSteps, `功法被动 +${passSpdPct.toFixed(1)}%`, p, spd, passNote); }
+
   return [
-    { label: '气血', value: formatNum(c.max_hp + hpBonus), bonus: hpBonus },
-    { label: '攻击', value: formatNum(c.atk + atkBonus), bonus: atkBonus },
-    { label: '防御', value: formatNum(c.def + defBonus), bonus: defBonus },
-    { label: '身法', value: formatNum(c.spd + spdBonus), bonus: spdBonus },
+    { label: '气血', value: formatNum(maxHp), bonus: maxHp - baseHp, base: baseHp, total: maxHp, steps: hpSteps, unit: '' },
+    { label: '攻击', value: formatNum(atk), bonus: atk - baseAtk, base: baseAtk, total: atk, steps: atkSteps, unit: '' },
+    { label: '防御', value: formatNum(def), bonus: def - baseDef, base: baseDef, total: def, steps: defSteps, unit: '' },
+    { label: '身法', value: formatNum(spd), bonus: spd - baseSpd, base: baseSpd, total: spd, steps: spdSteps, unit: '' },
   ];
 });
 
@@ -4073,6 +4225,7 @@ const awakenBonus = computed(() => {
 });
 
 // 二级属性
+// 二级属性 — 按来源拆开累加，避免 pe.value 内已合并的 wb / 丹药 项被重复算。
 const secondaryStats = computed(() => {
   const c = gameStore.character;
   if (!c) return [];
@@ -4080,48 +4233,95 @@ const secondaryStats = computed(() => {
   const wb = weaponBonus.value;
   const xb = equipExtendedBonus.value;
   const ab = awakenBonus.value;
-  // v3.4: 武器 SPIRIT_percent 应作用于整体 spirit (基础+装备主/副属性+附灵), 不只是 c.spirit
-  const spiritTotalBeforeWeapon = (c.spirit || 0) + eb.SPIRIT + ab.spirit;
-  const spiritBonus = Math.floor(spiritTotalBeforeWeapon * wb.SPIRIT_percent / 100);
   const rb = currentRealmBonus.value;
-  // 功法被动加成（全是小数：0.05 = 5%），面板要乘 100 显示
-  const pe = gameStore.equippedSkills?.passiveEffects || {} as any;
-  const peCritRate = (pe.critRate || 0) * 100;
-  const peCritDmg = (pe.critDmg || 0) * 100;
-  const peDodge = (pe.dodge || 0) * 100;
-  const peLifesteal = (pe.lifesteal || 0) * 100;
-  // 战斗服务器对以下属性应用 PLAYER_CAPS 硬上限（见 server/api/battle/fight.post.ts buildPlayerStats）
-  // 面板显示必须与实际生效值一致，否则玩家会看到"100% 暴击却不暴击"
-  const rawCritRate  = (Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100 + ab.critRate * 100 + peCritRate;
-  const rawCritDmg   = (Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100 + ab.critDmg * 100 + peCritDmg;
-  const rawDodge     = (Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100 + ab.dodge * 100 + peDodge;
-  const rawLifesteal = (Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat + ab.lifesteal * 100 + peLifesteal;
-  const rawArmorPen  = xb.ARMOR_PEN + ab.armorPen * 100;
-  const rawAccuracy  = xb.ACCURACY + ab.accuracy;
-  const capCritRate  = PLAYER_CAPS.critRate * 100;
-  const capCritDmg   = PLAYER_CAPS.critDmg * 100;
-  const capDodge     = PLAYER_CAPS.dodge * 100;
-  const capLifesteal = PLAYER_CAPS.lifesteal * 100;
-  const capArmorPen  = PLAYER_CAPS.armorPen;
-  const capAccuracy  = PLAYER_CAPS.accuracy;
-  const fmtCap = (raw: number, cap: number, digits: number, suffix = '%') => {
-    const eff = Math.min(raw, cap);
+  const pb = calcPillBuffEffect();
+
+  // 纯被动功法对二级属性的贡献（lvMul 0.15，全部转为百分数 / 单位 1）
+  let passCritRate = 0, passCritDmg = 0, passDodge = 0, passLifesteal = 0;
+  for (let i = 0; i < equippedPassives.value.length; i++) {
+    const pp = equippedPassives.value[i];
+    if (!pp || !pp.effect) continue;
+    const lv = getSkillLevel('passive', i, pp.id);
+    const lvMul = 1 + (lv - 1) * 0.15;
+    if (pp.effect.CRIT_RATE_flat) passCritRate += pp.effect.CRIT_RATE_flat * lvMul * 100;
+    if (pp.effect.CRIT_DMG_flat) passCritDmg += pp.effect.CRIT_DMG_flat * lvMul * 100;
+    if (pp.effect.DODGE_flat) passDodge += pp.effect.DODGE_flat * lvMul * 100;
+    if (pp.effect.LIFESTEAL_flat) passLifesteal += pp.effect.LIFESTEAL_flat * lvMul * 100;
+  }
+
+  // 神识：v3.4 武器 SPIRIT_percent 作用于"基础 + 装备主+副 + 附灵"
+  const spiritTotalBeforeWeapon = Number(c.spirit || 0) + (eb.SPIRIT || 0) + (ab.spirit || 0);
+  const spiritWeaponBonus = Math.floor(spiritTotalBeforeWeapon * (wb.SPIRIT_percent || 0) / 100);
+
+  // 通用 builder：base + 一组 contributions（百分数加法）+ 可选 cap
+  const buildStat = (label: string, base: number, baseSrc: string, items: { source: string; value: number }[], cap: number | null, digits: number, suffix = '%') => {
+    const steps: StatStep[] = [];
+    let raw = base;
+    if (base !== 0) steps.push({ source: baseSrc, delta: base });
+    for (const it of items) {
+      if (it.value !== 0) { steps.push({ source: it.source, delta: it.value }); raw += it.value; }
+    }
+    const capped = cap !== null && raw > cap;
+    const eff = cap !== null ? Math.min(raw, cap) : raw;
+    if (capped) steps.push({ source: `已达硬上限 ${cap!.toFixed(0)}${suffix}`, delta: eff - raw });
     return {
+      label,
       value: eff.toFixed(digits) + suffix,
-      capped: raw > cap,
-      capLabel: cap.toFixed(0) + suffix,
+      capped,
+      capLabel: cap !== null ? cap.toFixed(0) + suffix : '',
+      base, total: eff, bonus: eff - base, steps, unit: suffix,
     };
   };
+
   return [
-    { label: '会心率',   ...fmtCap(rawCritRate,  capCritRate,  1) },
-    { label: '会心伤害', ...fmtCap(rawCritDmg,   capCritDmg,   0) },
-    { label: '闪避率',   ...fmtCap(rawDodge,     capDodge,     1) },
-    { label: '吸血',     ...fmtCap(rawLifesteal, capLifesteal, 1) },
-    { label: '神识', value: String((c.spirit || 0) + eb.SPIRIT + spiritBonus + ab.spirit), capped: false, capLabel: '' },
-    { label: '破甲',     ...fmtCap(rawArmorPen,  capArmorPen,  1) },
-    { label: '命中',     ...fmtCap(rawAccuracy,  capAccuracy,  1) },
-    { label: '灵气浓度', value: (xb.SPIRIT_DENSITY + ab.spiritDensity * 100).toFixed(1) + '%', capped: false, capLabel: '' },
-    { label: '福缘',     value: (xb.LUCK + ab.luck * 100).toFixed(1) + '%', capped: false, capLabel: '' },
+    buildStat('会心率', Number(c.crit_rate) * 100, '基础', [
+      { source: '装备 主+副', value: eb.CRIT_RATE || 0 },
+      { source: '武器类型', value: wb.CRIT_RATE_flat || 0 },
+      { source: '境界', value: rb.crit_rate * 100 },
+      { source: '附灵', value: ab.critRate * 100 },
+      { source: '功法被动', value: passCritRate },
+      { source: '丹药', value: pb.crit || 0 },
+    ], PLAYER_CAPS.critRate * 100, 1),
+    buildStat('会心伤害', Number(c.crit_dmg) * 100, '基础', [
+      { source: '装备 主+副', value: eb.CRIT_DMG || 0 },
+      { source: '武器类型', value: wb.CRIT_DMG_flat || 0 },
+      { source: '境界', value: rb.crit_dmg * 100 },
+      { source: '附灵', value: ab.critDmg * 100 },
+      { source: '功法被动', value: passCritDmg },
+    ], PLAYER_CAPS.critDmg * 100, 0),
+    buildStat('闪避率', Number(c.dodge) * 100, '基础', [
+      { source: '装备 副属性', value: eb.DODGE || 0 },
+      { source: '境界', value: rb.dodge * 100 },
+      { source: '附灵', value: ab.dodge * 100 },
+      { source: '功法被动', value: passDodge },
+    ], PLAYER_CAPS.dodge * 100, 1),
+    buildStat('吸血', Number(c.lifesteal) * 100, '基础', [
+      { source: '装备 副属性', value: eb.LIFESTEAL || 0 },
+      { source: '武器类型', value: wb.LIFESTEAL_flat || 0 },
+      { source: '附灵', value: ab.lifesteal * 100 },
+      { source: '功法被动', value: passLifesteal },
+    ], PLAYER_CAPS.lifesteal * 100, 1),
+    buildStat('神识', Number(c.spirit || 0), '基础', [
+      { source: '装备 主+副', value: eb.SPIRIT || 0 },
+      { source: '附灵', value: ab.spirit || 0 },
+      { source: `武器类型 +${(wb.SPIRIT_percent || 0)}%`, value: spiritWeaponBonus },
+    ], null, 0, ''),
+    buildStat('破甲', 0, '基础', [
+      { source: '装备 副属性', value: xb.ARMOR_PEN || 0 },
+      { source: '附灵', value: ab.armorPen * 100 },
+    ], PLAYER_CAPS.armorPen, 1),
+    buildStat('命中', 0, '基础', [
+      { source: '装备 副属性', value: xb.ACCURACY || 0 },
+      { source: '附灵', value: ab.accuracy || 0 },
+    ], PLAYER_CAPS.accuracy, 1),
+    buildStat('灵气浓度', 0, '基础', [
+      { source: '装备 副属性', value: xb.SPIRIT_DENSITY || 0 },
+      { source: '附灵', value: ab.spiritDensity * 100 },
+    ], null, 1),
+    buildStat('福缘', 0, '基础', [
+      { source: '装备 副属性', value: xb.LUCK || 0 },
+      { source: '附灵', value: ab.luck * 100 },
+    ], null, 1),
   ];
 });
 
@@ -4129,21 +4329,39 @@ const secondaryStats = computed(() => {
 const resistStats = computed(() => {
   const c = gameStore.character;
   if (!c) return [];
-  const p = gameStore.equippedSkills?.passiveEffects;
   const ab = awakenBonus.value;
-  const rm = Number(c.resist_metal || 0) + (p?.resistMetal || 0) + ab.allResist;
-  const rw = Number(c.resist_wood || 0) + (p?.resistWood || 0) + ab.allResist;
-  const rwa = Number(c.resist_water || 0) + (p?.resistWater || 0) + ab.allResist;
-  const rf = Number(c.resist_fire || 0) + (p?.resistFire || 0) + ab.allResist;
-  const re = Number(c.resist_earth || 0) + (p?.resistEarth || 0) + ab.allResist;
-  const rc = Number(c.resist_ctrl || 0) + (p?.resistCtrl || 0) + ab.ctrlResist;
+  // 纯被动功法对各抗性的贡献（lvMul 0.15，结果是 0-1 小数）
+  let passMetal = 0, passWood = 0, passWater = 0, passFire = 0, passEarth = 0, passCtrl = 0;
+  for (let i = 0; i < equippedPassives.value.length; i++) {
+    const pp = equippedPassives.value[i];
+    if (!pp || !pp.effect) continue;
+    const lv = getSkillLevel('passive', i, pp.id);
+    const lvMul = 1 + (lv - 1) * 0.15;
+    if (pp.effect.RESIST_METAL) passMetal += pp.effect.RESIST_METAL * lvMul;
+    if (pp.effect.RESIST_WOOD) passWood += pp.effect.RESIST_WOOD * lvMul;
+    if (pp.effect.RESIST_WATER) passWater += pp.effect.RESIST_WATER * lvMul;
+    if (pp.effect.RESIST_FIRE) passFire += pp.effect.RESIST_FIRE * lvMul;
+    if (pp.effect.RESIST_EARTH) passEarth += pp.effect.RESIST_EARTH * lvMul;
+    if (pp.effect.RESIST_CTRL) passCtrl += pp.effect.RESIST_CTRL * lvMul;
+  }
+  const buildResist = (label: string, baseVal: number, passVal: number, allResistVal: number, color: string) => {
+    const steps: StatStep[] = [];
+    let raw = baseVal;
+    if (baseVal !== 0) steps.push({ source: '基础', delta: baseVal * 100 });
+    if (passVal !== 0) { steps.push({ source: '功法被动', delta: passVal * 100 }); raw += passVal; }
+    if (allResistVal !== 0) { steps.push({ source: '附灵 全抗', delta: allResistVal * 100 }); raw += allResistVal; }
+    return {
+      label, value: (raw * 100).toFixed(1) + '%', percent: raw * 100 / 0.7, color,
+      base: baseVal * 100, total: raw * 100, bonus: (raw - baseVal) * 100, steps, capped: false, capLabel: '', unit: '%',
+    };
+  };
   return [
-    { label: '金抗', value: (rm * 100).toFixed(1) + '%', percent: rm * 100 / 0.7, color: '#c9a85c' },
-    { label: '木抗', value: (rw * 100).toFixed(1) + '%', percent: rw * 100 / 0.7, color: '#6baa7d' },
-    { label: '水抗', value: (rwa * 100).toFixed(1) + '%', percent: rwa * 100 / 0.7, color: '#5b8eaa' },
-    { label: '火抗', value: (rf * 100).toFixed(1) + '%', percent: rf * 100 / 0.7, color: '#c45c4a' },
-    { label: '土抗', value: (re * 100).toFixed(1) + '%', percent: re * 100 / 0.7, color: '#a08a60' },
-    { label: '控制抗性', value: (rc * 100).toFixed(1) + '%', percent: rc * 100 / 0.7, color: '#9f7fb8' },
+    buildResist('金抗', Number(c.resist_metal || 0), passMetal, ab.allResist, '#c9a85c'),
+    buildResist('木抗', Number(c.resist_wood || 0), passWood, ab.allResist, '#6baa7d'),
+    buildResist('水抗', Number(c.resist_water || 0), passWater, ab.allResist, '#5b8eaa'),
+    buildResist('火抗', Number(c.resist_fire || 0), passFire, ab.allResist, '#c45c4a'),
+    buildResist('土抗', Number(c.resist_earth || 0), passEarth, ab.allResist, '#a08a60'),
+    buildResist('控制抗性', Number(c.resist_ctrl || 0), passCtrl, ab.ctrlResist, '#9f7fb8'),
   ];
 });
 
@@ -4151,12 +4369,22 @@ const resistStats = computed(() => {
 const elementDmgStats = computed(() => {
   const xb = equipExtendedBonus.value;
   const ab = awakenBonus.value;
+  const buildElem = (label: string, eq: number, aw: number, color: string) => {
+    const steps: StatStep[] = [];
+    if (eq !== 0) steps.push({ source: '装备 副属性', delta: eq });
+    if (aw !== 0) steps.push({ source: '附灵', delta: aw });
+    const total = eq + aw;
+    return {
+      label, value: total.toFixed(1) + '%', color,
+      base: 0, total, bonus: total, steps, capped: false, capLabel: '', unit: '%',
+    };
+  };
   return [
-    { label: '金系强化', value: (xb.METAL_DMG + ab.metalDmg * 100).toFixed(1) + '%', color: '#c9a85c' },
-    { label: '木系强化', value: (xb.WOOD_DMG  + ab.woodDmg  * 100).toFixed(1) + '%', color: '#6baa7d' },
-    { label: '水系强化', value: (xb.WATER_DMG + ab.waterDmg * 100).toFixed(1) + '%', color: '#5b8eaa' },
-    { label: '火系强化', value: (xb.FIRE_DMG  + ab.fireDmg  * 100).toFixed(1) + '%', color: '#c45c4a' },
-    { label: '土系强化', value: (xb.EARTH_DMG + ab.earthDmg * 100).toFixed(1) + '%', color: '#a08a60' },
+    buildElem('金系强化', xb.METAL_DMG || 0, ab.metalDmg * 100, '#c9a85c'),
+    buildElem('木系强化', xb.WOOD_DMG  || 0, ab.woodDmg  * 100, '#6baa7d'),
+    buildElem('水系强化', xb.WATER_DMG || 0, ab.waterDmg * 100, '#5b8eaa'),
+    buildElem('火系强化', xb.FIRE_DMG  || 0, ab.fireDmg  * 100, '#c45c4a'),
+    buildElem('土系强化', xb.EARTH_DMG || 0, ab.earthDmg * 100, '#a08a60'),
   ];
 });
 
@@ -4361,6 +4589,11 @@ onMounted(async () => {
   // 必须立即加载（影响战斗加成 / 弹窗 / 红点）
   loadBuffs();
   checkOfflineRewards();
+  // 宗门加成在角色 Tab 面板要算进去（不阻塞首屏；只有已加入宗门才拉）
+  if ((gameStore.character as any)?.sect_id) {
+    loadSectInfo().catch(() => {});
+    loadSectSkills().catch(() => {});
+  }
   // 天道造化轮询：120 秒一次（合并 pending + broadcast 调用）
   eventStore.startPolling();
   // P5: 以下数据按需加载（切到对应 tab 时 watch 触发）
@@ -7330,6 +7563,94 @@ onUnmounted(() => {
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 3px;
+}
+.stat-row.clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.stat-row.clickable:hover {
+  background: rgba(212, 168, 92, 0.08);
+}
+
+/* ===== 属性详情弹窗 ===== */
+.stat-detail-summary {
+  background: rgba(212, 168, 92, 0.04);
+  border: 1px solid rgba(212, 168, 92, 0.18);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.stat-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.stat-detail-key {
+  color: var(--ink-light);
+}
+.stat-detail-val {
+  color: #d8ceb8;
+  font-weight: 500;
+}
+.stat-detail-divider {
+  height: 1px;
+  background: rgba(212, 168, 92, 0.18);
+  margin: 8px 0;
+}
+.stat-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-detail-step {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  padding: 5px 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.stat-detail-step:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.04);
+}
+.stat-detail-step-src {
+  color: var(--ink-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-detail-step-delta {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+}
+.stat-detail-step-note {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--fade-ink);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+.stat-detail-empty {
+  text-align: center;
+  color: var(--fade-ink);
+  padding: 12px 0;
+  font-size: 13px;
+}
+.stat-detail-tip {
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: rgba(196, 92, 74, 0.08);
+  border: 1px solid rgba(196, 92, 74, 0.3);
+  border-radius: 3px;
+  color: #d4a85c;
+  font-size: 12px;
+  letter-spacing: 0.5px;
 }
 
 .s-label {
