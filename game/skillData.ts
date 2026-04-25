@@ -86,7 +86,7 @@ export const DIVINE_SKILLS: Skill[] = [
   // 玄品
   { id: 'fire_rain', name: '天火术', type: 'divine', rarity: 'blue', element: 'fire', multiplier: 0.90, cdTurns: 5, description: '[群攻] 全体90%伤害,20%灼烧3回合', debuff: { type: 'burn', chance: 0.20, duration: 3 }, isAoe: true },
   { id: 'frost_nova', name: '霜冻新星', type: 'divine', rarity: 'blue', element: 'water', multiplier: 0.85, cdTurns: 6, description: '[群攻] 全体85%伤害,50%冻结2回合', debuff: { type: 'freeze', chance: 0.50, duration: 2 }, isAoe: true },
-  { id: 'earth_shield', name: '厚土盾', type: 'divine', rarity: 'blue', element: 'earth', multiplier: 0, cdTurns: 7, description: '获得250%攻击的护盾,持续4回合', buff: { type: 'shield', duration: 4, value: 2.5 } },
+  { id: 'earth_shield', name: '厚土盾', type: 'divine', rarity: 'blue', element: 'earth', multiplier: 0, cdTurns: 7, description: '获得150%攻击的护盾,持续4回合', buff: { type: 'shield', duration: 4, value: 1.5 } },
   { id: 'quake_wave', name: '地裂波', type: 'divine', rarity: 'blue', element: 'earth', multiplier: 0.85, cdTurns: 6, description: '[群攻] 全体85%伤害,30%脆弱3回合', debuff: { type: 'brittle', chance: 0.30, duration: 3, value: 0.20 }, isAoe: true },
   { id: 'vine_prison', name: '万藤缚', type: 'divine', rarity: 'blue', element: 'wood', multiplier: 0.85, cdTurns: 7, description: '[群攻] 全体85%伤害,50%束缚2回合', debuff: { type: 'root', chance: 0.50, duration: 2 }, isAoe: true },
   { id: 'golden_bell', name: '金钟罩', type: 'divine', rarity: 'blue', element: 'metal', multiplier: 0, cdTurns: 8, description: '受到伤害减半,持续2回合', buff: { type: 'immune', duration: 2 } },
@@ -94,19 +94,19 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'sword_storm', name: '剑雨纷飞', type: 'divine', rarity: 'purple', element: 'metal', multiplier: 1.62, cdTurns: 7, description: '[3目标] 162%伤害,30%流血3回合', debuff: { type: 'bleed', chance: 0.30, duration: 3 }, targetCount: 3 },
   { id: 'twin_flame', name: '双焰斩', type: 'divine', rarity: 'purple', element: 'fire', multiplier: 2.04, cdTurns: 6, description: '[2目标] 204%伤害,40%灼烧3回合', debuff: { type: 'burn', chance: 0.40, duration: 3 }, targetCount: 2 },
   { id: 'flurry_palm', name: '连环掌', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 1.98, cdTurns: 6, description: '[3段] 单体3×66%伤害,每段30%中毒', debuff: { type: 'poison', chance: 0.30, duration: 3 }, hitCount: 3 },
-  { id: 'spring_heal', name: '灵泉术', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 7, description: '回复200%攻击力气血,每回合回2.5% 3回合', buff: { type: 'regen', duration: 3, valuePercent: 0.025 }, healAtkRatio: 2.0 },
-  { id: 'blood_fury', name: '嗜血诀', type: 'divine', rarity: 'purple', element: null, multiplier: 0, cdTurns: 8, description: '攻击+35% 4回合', buff: { type: 'atk_up', duration: 4, value: 0.35 } },
-  { id: 'wood_heal', name: '生生不息', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 0, cdTurns: 8, description: '每回合回4%气血,持续4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.04 } },
-  { id: 'mirror_water', name: '明镜止水', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 9, description: '反弹40%伤害+8%最大气血 3回合(基础反弹≤4倍攻击力)', buff: { type: 'reflect', duration: 3, value: 0.40 } },
+  { id: 'spring_heal', name: '灵泉术', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 7, description: '回复120%攻击力气血,每回合回1.5% 3回合', buff: { type: 'regen', duration: 3, valuePercent: 0.015 }, healAtkRatio: 1.2 },
+  { id: 'blood_fury', name: '嗜血诀', type: 'divine', rarity: 'purple', element: null, multiplier: 0, cdTurns: 8, description: '攻击+21% 4回合', buff: { type: 'atk_up', duration: 4, value: 0.21 } },
+  { id: 'wood_heal', name: '生生不息', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 0, cdTurns: 8, description: '每回合回2.4%气血,持续4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.024 } },
+  { id: 'mirror_water', name: '明镜止水', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 9, description: '反弹24%伤害+5%最大气血 3回合(基础反弹≤4倍攻击力)', buff: { type: 'reflect', duration: 3, value: 0.24 } },
   // 天品
   { id: 'metal_burst', name: '万剑归宗', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 3.48, cdTurns: 10, description: '造成348%伤害,40%流血3回合', debuff: { type: 'bleed', chance: 0.40, duration: 3 } },
   { id: 'quake_stomp', name: '地裂天崩', type: 'divine', rarity: 'gold', element: 'earth', multiplier: 2.88, cdTurns: 9, description: '造成288%伤害,30%眩晕1回合,自身防御+20% 3回合', debuff: { type: 'stun', chance: 0.30, duration: 1 }, buff: { type: 'def_up', duration: 3, value: 0.20 } },
   { id: 'life_drain', name: '噬魂大法', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 2.70, cdTurns: 8, description: '造成270%伤害并吸血,40%降低敌方攻击20% 3回合', debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.20 } },
   { id: 'inferno_burst', name: '九天玄火阵', type: 'divine', rarity: 'gold', element: 'fire', multiplier: 2.10, cdTurns: 10, description: '[群攻] 全体210%伤害,50%灼烧4回合', debuff: { type: 'burn', chance: 0.50, duration: 4 }, isAoe: true },
   { id: 'storm_blade', name: '暴风斩', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 2.88, cdTurns: 8, description: '[5段] 单体5×58%伤害,每段40%流血', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, hitCount: 5 },
-  { id: 'heaven_heal', name: '天地归元', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 0, cdTurns: 10, description: '回复400%攻击力气血,每回合回4% 4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.04 }, healAtkRatio: 4.0 },
+  { id: 'heaven_heal', name: '天地归元', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 0, cdTurns: 10, description: '回复240%攻击力气血,每回合回2.4% 4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.024 }, healAtkRatio: 2.4 },
   // 仙品
-  { id: 'time_stop', name: '时光凝滞', type: 'divine', rarity: 'red', element: null, multiplier: 0, cdTurns: 12, description: '[群攻] 全体冻结2回合,自身攻击+25% 3回合', debuff: { type: 'freeze', chance: 1.0, duration: 2 }, buff: { type: 'atk_up', duration: 3, value: 0.25 }, isAoe: true },
+  { id: 'time_stop', name: '时光凝滞', type: 'divine', rarity: 'red', element: null, multiplier: 0, cdTurns: 12, description: '[群攻] 全体冻结2回合,自身攻击+15% 3回合', debuff: { type: 'freeze', chance: 1.0, duration: 2 }, buff: { type: 'atk_up', duration: 3, value: 0.15 }, isAoe: true },
   { id: 'heavenly_wrath', name: '天罚雷劫', type: 'divine', rarity: 'red', element: 'metal', multiplier: 4.80, cdTurns: 12, description: '造成480%伤害,40%眩晕1回合', debuff: { type: 'stun', chance: 0.40, duration: 1 } },
 ];
 

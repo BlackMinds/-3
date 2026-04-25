@@ -1038,12 +1038,13 @@ export function runWaveBattle(
           }
         }
         // 玩家 buff：明镜止水（reflect）按 dmg 百分比反弹, 单次反弹 cap = 玩家 ATK × 4
-        // 附加底量: 玩家 maxHP × 8% 独立叠加 (不受 cap), 给反弹一个体面下限, 不受小怪低伤害挤压
+        // 附加底量: 玩家 maxHP × 5% 独立叠加 (不受 cap), 给反弹一个体面下限, 不受小怪低伤害挤压
+        // v3.5: 8% → 5%, 与 reflect value 0.40 → 0.24 联动削弱
         const reflectSum = sumPlayerBuff('reflect');
         if (reflectSum > 0 && dmg > 0) {
           const reflectCap = Math.floor(player.atk * 4);
           const baseRf = Math.min(Math.floor(dmg * reflectSum), reflectCap);
-          const hpBonus = Math.floor(player.maxHp * 0.08);
+          const hpBonus = Math.floor(player.maxHp * 0.05);
           const rf = baseRf + hpBonus;
           if (rf > 0) {
             sourceMonster.stats.hp -= rf;
@@ -1251,7 +1252,10 @@ export function runWaveBattle(
         logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】回复 ${heal} 点气血`, type: 'buff', ...snap() });
       }
       if (usedSkill.buff) {
-        logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】`, type: 'buff', ...snap() });
+        // 若已通过 healAtkRatio 写过本次"神通发动"标题, buff 只追加效果行, 避免重复
+        if (!usedSkill.healAtkRatio) {
+          logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】`, type: 'buff', ...snap() });
+        }
         applyPlayerBuff(usedSkill.buff as any, usedSkill.name, turn);
       }
       // AOE debuff (如时光凝滞)
