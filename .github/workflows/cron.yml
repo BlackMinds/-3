@@ -10,6 +10,8 @@ on:
     - cron: '0 16 * * 1'
     # 天道造化抽奖 — 北京 08:00~23:30 每 30 分钟（= UTC 00:00~15:30）
     - cron: '*/30 0-15 * * *'
+    # 斗法榜每日奖励 — 每天 UTC 04:00（北京 12:00）
+    - cron: '0 4 * * *'
   workflow_dispatch:
 
 env:
@@ -60,3 +62,14 @@ jobs:
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
+
+  arena-tick:
+    if: github.event.schedule == '0 4 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arena daily top 10 reward
+        run: |
+          curl -sfL -X POST "$APP_URL/api/cron/arena-tick" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 60

@@ -196,6 +196,8 @@ export const TITLES: Record<string, TitleDef> = {
   '问道魁首': { id: '问道魁首', name: '问道魁首', quality: 'gold' },
   '百战宗师': { id: '百战宗师', name: '百战宗师', quality: 'purple' },
   '灵脉霸主': { id: '灵脉霸主', name: '灵脉霸主', quality: 'purple' },
+  '论道魁首': { id: '论道魁首', name: '论道魁首', quality: 'gold' },
+  '斗法翘楚': { id: '斗法翘楚', name: '斗法翘楚', quality: 'purple' },
 };
 
 // ========== 等级 → Tier 映射 ==========
