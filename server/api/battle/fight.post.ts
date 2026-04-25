@@ -963,10 +963,14 @@ export default defineEventHandler(async (event) => {
       if (!result.won) break
     }
 
-    // 用整批总日志长度精确覆盖 battle_end_at（每条 1s + 1s 兜底）
+    // 客户端"每条日志间隔 1s + 第一条立即播 + 场与场之间无间隔"，
+    // K 场总日志 totalLogsLen 条 → 真实墙钟 ≈ totalLogsLen - K 秒。
+    // battle_end_at 必须 ≤ 客户端真实播放时长，否则下一批 scheduleFight
+    // 在播完瞬间发请求会撞到守卫 → 连续 409 "上场战斗未结束"。
+    const guardSeconds2 = Math.max(1, totalLogsLen - battles.length)
     await pool.query(
       `UPDATE characters SET battle_end_at = NOW() + ($1 || ' seconds')::INTERVAL WHERE id = $2`,
-      [String(Math.max(1, totalLogsLen + 1)), char.id]
+      [String(guardSeconds2), char.id]
     )
 
     return {
