@@ -10838,17 +10838,21 @@ onUnmounted(() => {
 
 .rank-arena {
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 1.2;
   color: var(--ink-light);
 }
 
 .arena-rank-chip {
   display: inline-block;
-  padding: 1px 6px;
-  font-size: 11px;
-  letter-spacing: 1px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0;
+  white-space: nowrap;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid currentColor;
   border-radius: 3px;
