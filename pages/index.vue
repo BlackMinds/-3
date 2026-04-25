@@ -160,9 +160,10 @@
           <div class="hud-vs">VS</div>
 
           <!-- 怪物侧 -->
-          <div class="hud-side hud-monster" @mouseenter="showMonsterTip = true" @mouseleave="showMonsterTip = false">
+          <div class="hud-side hud-monster" @mouseleave="showMonsterTip = false">
             <div class="wave-monsters-grid">
-              <div v-for="(name, i) in gameStore.waveMonsterNames" :key="i" class="wave-monster-cell">
+              <div v-for="(name, i) in gameStore.waveMonsterNames" :key="i" class="wave-monster-cell"
+                   @mouseenter="hoveredMonsterIndex = i; showMonsterTip = true">
                 <div class="wave-cell-name">{{ name }}</div>
                 <div class="wave-cell-bar">
                   <div class="wave-cell-fill" :style="{ width: (gameStore.waveMonsterMaxHps[i] ? Math.max(0, gameStore.waveMonsterHps[i] / gameStore.waveMonsterMaxHps[i] * 100) : 100) + '%' }"></div>
@@ -172,25 +173,25 @@
 
             <!-- 怪物信息浮窗 -->
             <transition name="tip-fade">
-              <div v-if="showMonsterTip && gameStore.currentMonsterInfo" class="monster-tooltip">
+              <div v-if="showMonsterTip && displayedMonsterInfo" class="monster-tooltip">
                 <div class="tip-header">
-                  <span class="tip-name">{{ gameStore.currentMonsterInfo.name }}</span>
-                  <span v-if="gameStore.currentMonsterInfo.element" class="tip-elem" :style="{ color: elemColor(gameStore.currentMonsterInfo.element) }">
-                    {{ elemName(gameStore.currentMonsterInfo.element) }}属性
+                  <span class="tip-name">{{ displayedMonsterInfo.name }}</span>
+                  <span v-if="displayedMonsterInfo.element" class="tip-elem" :style="{ color: elemColor(displayedMonsterInfo.element) }">
+                    {{ elemName(displayedMonsterInfo.element) }}属性
                   </span>
-                  <span v-if="gameStore.currentMonsterInfo.role === 'boss'" class="tip-boss">BOSS</span>
+                  <span v-if="displayedMonsterInfo.role === 'boss'" class="tip-boss">BOSS</span>
                 </div>
                 <div class="tip-stats">
-                  <span>气血 {{ formatNum(gameStore.currentMonsterInfo.maxHp) }}</span>
-                  <span>攻击 {{ formatNum(gameStore.currentMonsterInfo.atk) }}</span>
-                  <span>防御 {{ formatNum(gameStore.currentMonsterInfo.def) }}</span>
-                  <span>身法 {{ formatNum(gameStore.currentMonsterInfo.spd) }}</span>
-                  <span v-if="gameStore.currentMonsterInfo.crit_rate">暴击率 {{ ((gameStore.currentMonsterInfo.crit_rate || 0) * 100).toFixed(1) }}%</span>
-                  <span v-if="gameStore.currentMonsterInfo.crit_dmg">暴伤 {{ ((gameStore.currentMonsterInfo.crit_dmg || 0) * 100).toFixed(0) }}%</span>
-                  <span v-if="gameStore.currentMonsterInfo.dodge && gameStore.currentMonsterInfo.dodge > 0">闪避 {{ ((gameStore.currentMonsterInfo.dodge || 0) * 100).toFixed(1) }}%</span>
-                  <span v-if="gameStore.currentMonsterInfo.lifesteal && gameStore.currentMonsterInfo.lifesteal > 0">吸血 {{ ((gameStore.currentMonsterInfo.lifesteal || 0) * 100).toFixed(1) }}%</span>
-                  <span v-if="gameStore.currentMonsterInfo.armorPen && gameStore.currentMonsterInfo.armorPen > 0">破甲 {{ gameStore.currentMonsterInfo.armorPen }}</span>
-                  <span v-if="gameStore.currentMonsterInfo.accuracy && gameStore.currentMonsterInfo.accuracy > 0">命中 {{ gameStore.currentMonsterInfo.accuracy }}</span>
+                  <span>气血 {{ formatNum(displayedMonsterInfo.maxHp) }}</span>
+                  <span>攻击 {{ formatNum(displayedMonsterInfo.atk) }}</span>
+                  <span>防御 {{ formatNum(displayedMonsterInfo.def) }}</span>
+                  <span>身法 {{ formatNum(displayedMonsterInfo.spd) }}</span>
+                  <span v-if="displayedMonsterInfo.crit_rate">暴击率 {{ ((displayedMonsterInfo.crit_rate || 0) * 100).toFixed(1) }}%</span>
+                  <span v-if="displayedMonsterInfo.crit_dmg">暴伤 {{ ((displayedMonsterInfo.crit_dmg || 0) * 100).toFixed(0) }}%</span>
+                  <span v-if="displayedMonsterInfo.dodge && displayedMonsterInfo.dodge > 0">闪避 {{ ((displayedMonsterInfo.dodge || 0) * 100).toFixed(1) }}%</span>
+                  <span v-if="displayedMonsterInfo.lifesteal && displayedMonsterInfo.lifesteal > 0">吸血 {{ ((displayedMonsterInfo.lifesteal || 0) * 100).toFixed(1) }}%</span>
+                  <span v-if="displayedMonsterInfo.armorPen && displayedMonsterInfo.armorPen > 0">破甲 {{ displayedMonsterInfo.armorPen }}</span>
+                  <span v-if="displayedMonsterInfo.accuracy && displayedMonsterInfo.accuracy > 0">命中 {{ displayedMonsterInfo.accuracy }}</span>
                 </div>
                 <div class="tip-divider" v-if="monsterResistSummary.length > 0"></div>
                 <div class="tip-resists" v-if="monsterResistSummary.length > 0">
@@ -204,7 +205,7 @@
                 <div class="tip-divider"></div>
                 <div class="tip-skills-title">技能</div>
                 <div class="tip-skills">
-                  <div v-for="(skill, i) in gameStore.currentMonsterInfo.skills" :key="i" class="tip-skill">
+                  <div v-for="(skill, i) in displayedMonsterInfo.skills" :key="i" class="tip-skill">
                     {{ skill }}
                   </div>
                 </div>
@@ -2968,6 +2969,14 @@ const cultivating = ref(false);
 const cultMsg = ref('');
 const cultMsgType = ref('cult-success');
 const showMonsterTip = ref(false);
+const hoveredMonsterIndex = ref(0);
+const displayedMonsterInfo = computed(() => {
+  const arr = gameStore.waveMonstersInfo;
+  if (Array.isArray(arr) && arr.length > 0) {
+    return arr[hoveredMonsterIndex.value] || arr[0] || gameStore.currentMonsterInfo;
+  }
+  return gameStore.currentMonsterInfo;
+});
 const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showRedeemCode = ref(false);
@@ -3403,7 +3412,7 @@ const realmChallengeResult = ref<string | null>(null);
 
 // 怪物抗性摘要
 const monsterResistSummary = computed(() => {
-  const info = gameStore.currentMonsterInfo;
+  const info = displayedMonsterInfo.value;
   if (!info?.resists) return [];
   const elemNames: Record<string, string> = { metal: '金抗', wood: '木抗', water: '水抗', fire: '火抗', earth: '土抗', ctrl: '控抗' };
   const elemColors: Record<string, string> = { metal: '#c9a85c', wood: '#6baa7d', water: '#5b8eaa', fire: '#c45c4a', earth: '#a08a60', ctrl: '#b888cc' };
@@ -3423,7 +3432,7 @@ const monsterResistSummary = computed(() => {
 
 // 玩家相对该怪物的抗性提示
 const playerResistAdvantage = computed(() => {
-  const info = gameStore.currentMonsterInfo;
+  const info = displayedMonsterInfo.value;
   const char = gameStore.character;
   if (!info?.element || !char) return '';
   const resistKey = `resist_${info.element}` as keyof typeof char;

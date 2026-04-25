@@ -942,25 +942,26 @@ export default defineEventHandler(async (event) => {
       totalLogsLen += Array.isArray(result.logs) ? result.logs.length : 0
 
       const monsterNames = monsterList.map(m => m.stats.name)
-      const firstMonster = monsterList[0]
-      const monsterInfo = firstMonster ? {
-        name: firstMonster.stats.name,
-        element: firstMonster.template.element,
-        power: firstMonster.template.power,
-        maxHp: firstMonster.stats.maxHp,
-        atk: firstMonster.stats.atk,
-        def: firstMonster.stats.def,
-        spd: firstMonster.stats.spd,
-        crit_rate: firstMonster.stats.crit_rate,
-        crit_dmg: firstMonster.stats.crit_dmg,
-        dodge: firstMonster.stats.dodge,
-        lifesteal: firstMonster.stats.lifesteal,
-        armorPen: firstMonster.stats.armorPen || 0,
-        accuracy: firstMonster.stats.accuracy || 0,
-        resists: firstMonster.stats.resists || null,
-        role: firstMonster.template.role,
-        skills: buildMonsterSkillDescriptions(firstMonster.template),
-      } : null
+      const monstersInfo = monsterList.map(m => ({
+        name: m.stats.name,
+        element: m.template.element,
+        power: m.template.power,
+        maxHp: m.stats.maxHp,
+        atk: m.stats.atk,
+        def: m.stats.def,
+        spd: m.stats.spd,
+        crit_rate: m.stats.crit_rate,
+        crit_dmg: m.stats.crit_dmg,
+        dodge: m.stats.dodge,
+        lifesteal: m.stats.lifesteal,
+        armorPen: m.stats.armorPen || 0,
+        accuracy: m.stats.accuracy || 0,
+        resists: m.stats.resists || null,
+        role: m.template.role,
+        skills: buildMonsterSkillDescriptions(m.template),
+      }))
+      // monsterInfo 保留为 monstersInfo[0] 的别名兜底旧前端
+      const monsterInfo = monstersInfo[0] || null
 
       battles.push({
         won: result.won,
@@ -970,6 +971,7 @@ export default defineEventHandler(async (event) => {
         monsterNames,
         monstersMaxHp: monsterList.map(m => m.stats.maxHp),
         monsterInfo,
+        monstersInfo,
         logs: result.logs,
         drops: allDrops.map(d => {
           if (d.type === 'equipment') return d.data.name

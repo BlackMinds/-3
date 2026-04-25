@@ -26,6 +26,8 @@ export const useGameStore = defineStore('game', () => {
   const waveMonsterNames = ref<string[]>([])
   const waveMonsterHps = ref<number[]>([])
   const waveMonsterMaxHps = ref<number[]>([])
+  // 整波怪物信息数组：tooltip 按 hover 索引选取对应那只，避免永远只显示第 1 只
+  const waveMonstersInfo = ref<(MonsterBattleInfo | null)[]>([])
   const inFight = ref(false)
   // 只在 fetch 真正返回前为 true；独立于 inFight（UI 语义），专防并发 fetch
   const fetchInFlight = ref(false)
@@ -232,6 +234,7 @@ export const useGameStore = defineStore('game', () => {
     inFight.value = false
     // fetchInFlight 不清：让飞行中的请求自然返回时释放，期间 startBattle 被挡住避免并发
     currentMonsterInfo.value = null
+    waveMonstersInfo.value = []
     deathCooldown.value = 0
     // 注意: 不主动清服务端 battle_end_at —— 那是 c147065 防多实例并发战斗的唯一守卫，
     // 擦除后会让上一批飞行中的 fight 与新 fight 在不同实例上同时执行（双倍奖励）。
@@ -277,6 +280,7 @@ export const useGameStore = defineStore('game', () => {
     waveMonsterMaxHps.value = (b.monsterNames || []).map((_: string, i: number) => b.monstersMaxHp?.[i] ?? (b.monsterInfo?.maxHp ?? 0))
     waveMonsterHps.value = [...waveMonsterMaxHps.value]
     currentMonsterInfo.value = b.monsterInfo || null
+    waveMonstersInfo.value = Array.isArray(b.monstersInfo) ? b.monstersInfo : (b.monsterInfo ? [b.monsterInfo] : [])
     displayPlayerHp.value = character.value.max_hp
     displayPlayerMaxHp.value = character.value.max_hp
 
@@ -533,7 +537,7 @@ export const useGameStore = defineStore('game', () => {
     character, loaded, battleLogs, isBattling, currentMapId,
     killCount, sessionExp, sessionStone, sessionDrops, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
-    currentMonsterInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
+    currentMonsterInfo, waveMonstersInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
     loadGameData, changeMap, startBattle, stopBattle, resumeBattleIfStalled, clearLogs, addLog, flushSave, tryBreakthrough,
