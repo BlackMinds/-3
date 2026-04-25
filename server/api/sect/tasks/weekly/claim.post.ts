@@ -3,7 +3,7 @@ import { getCharByUserId, weekStartStr } from '~/server/utils/sect'
 import { rand } from '~/server/utils/random'
 import { WEEKLY_TASK_TYPES } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_SUB_COUNT_RANGE, RARITY_STAT_MUL } from '~/shared/balance'
 import { rollSubStats } from '~/server/utils/equipment'
 
 export default defineEventHandler(async (event) => {
@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
         const slot = slots[slotIdx]
         const ps = primaryStats[slot]
         const tier = rand(5, 7)
-        const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * 1.25))
+        const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * RARITY_STAT_MUL[4] * 1.10))
         const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
         const equipName = generateEquipName('gold', slot, weaponType, tier, ps, null, '强化竞赛')
         const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[4] || [0, 0]

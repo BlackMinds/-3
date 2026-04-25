@@ -2,7 +2,7 @@ import { getPool } from '~/server/database/db'
 import { getCharId, rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
     const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
     const ps = primaryStats[slot]
     const tier = rand(6, 8)
-    const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * 1.25))
+    const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * RARITY_STAT_MUL[4] * 1.10))
 
     // 4条副属性（金品 rarityIdx=4）
     const subs = rollSubStats(4, tier, 4)
