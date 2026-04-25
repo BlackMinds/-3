@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
       else if (eq.primary_stat === 'DEF') def += primary
       else if (eq.primary_stat === 'HP') maxHp += primary
       else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
+      else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
     }
 
     // 宗门加成

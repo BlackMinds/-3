@@ -205,7 +205,7 @@ export function buildPlayer(build: PlayerBuild): PlayerStats {
     atk = Math.floor(atk * (1 + PILL_PCT_CAP))
     def = Math.floor(def * (1 + PILL_PCT_CAP))
     maxHp = Math.floor(maxHp * (1 + PILL_PCT_CAP))
-    critRate += 0.08 // crit_pill_1 + basic 估算
+    critRate += 0.03 // basic_crit_pill 估算
     sources.pill_full = true
   }
 

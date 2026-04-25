@@ -10,7 +10,7 @@
     { "slot": "helmet",   "name": "法冠",   "primary_stat": "HP",        "description": "头部法器" },
     { "slot": "boots",    "name": "步云靴", "primary_stat": "SPD",       "description": "脚部法器" },
     { "slot": "treasure", "name": "法宝",   "primary_stat": "variable",  "description": "攻击型/防御型/辅助型法宝" },
-    { "slot": "ring",     "name": "灵戒",   "primary_stat": "CRIT_RATE", "description": "储物戒指兼战斗" },
+    { "slot": "ring",     "name": "灵戒",   "primary_stat": "CRIT_DMG",  "description": "储物戒指兼战斗" },
     { "slot": "pendant",  "name": "灵佩",   "primary_stat": "SPIRIT",    "description": "提升神识" }
   ],
 

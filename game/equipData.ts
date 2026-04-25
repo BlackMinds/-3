@@ -73,7 +73,7 @@ export const EQUIP_SLOTS = [
   { slot: 'helmet',   name: '法冠',   primaryStat: 'HP' },
   { slot: 'boots',    name: '步云靴', primaryStat: 'SPD' },
   { slot: 'treasure', name: '法宝',   primaryStat: 'ATK' },
-  { slot: 'ring',     name: '灵戒',   primaryStat: 'CRIT_RATE' },
+  { slot: 'ring',     name: '灵戒',   primaryStat: 'CRIT_DMG' },
   { slot: 'pendant',  name: '灵佩',   primaryStat: 'SPIRIT' },
 ];
 

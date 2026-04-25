@@ -144,6 +144,7 @@ export async function buildCharacterSnapshot(
     else if (eq.primary_stat === 'HP') maxHp += primary
     else if (eq.primary_stat === 'SPD') spd += primary
     else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
+    else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
     else if (eq.primary_stat === 'SPIRIT') spirit += primary
 
     if (eq.weapon_type && WEAPON_BONUS[eq.weapon_type]) {
@@ -213,7 +214,6 @@ export async function buildCharacterSnapshot(
         case 'elite_atk_pill':  pillAtkPct   += 0.10 * qf; break
         case 'elite_def_pill':  pillDefPct   += 0.10 * qf; break
         case 'elite_hp_pill':   pillHpPct    += 0.12 * qf; break
-        case 'crit_pill_1':     pillCritFlat += 0.05 * qf; break
         case 'full_pill_1':
           pillAtkPct += 0.06 * qf
           pillDefPct += 0.06 * qf

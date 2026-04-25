@@ -164,25 +164,6 @@ export const PILL_RECIPES: PillRecipe[] = [
 
   // ===== 高级战斗丹药(中等百分比, 需宗门商店解锁) =====
   {
-    id: 'crit_pill_1',
-    name: '破妄丹',
-    type: 'battle',
-    rarity: 'purple',
-    level: 'elite',
-    requireUnlock: true,
-    cost: 3000,
-    herbCost: [
-      { herb_id: 'fire_herb',   count: 5 },
-      { herb_id: 'metal_herb',  count: 3 },
-      { herb_id: 'common_herb', count: 5 },
-    ],
-    tierRequired: 3,
-    successRate: 0.40,
-    description: '会心率+5%,持续10场战斗(需宗门商店解锁丹方)',
-    buffDuration: 10,
-    buffEffect: { critRateFlat: 5 },
-  },
-  {
     id: 'elite_atk_pill',
     name: '大聚灵丹',
     type: 'battle',

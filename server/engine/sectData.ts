@@ -96,7 +96,6 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: 'breakthrough_pill',  name: '宗门突破丹',   description: '突破成功率+20%(一次性)',   cost: 5000,  weeklyLimit: 2,  requiredSectLevel: 3, category: 'advanced', effect: { type: 'breakthrough_boost', value: 20 } },
   { key: 'high_herb_pack',     name: '高级灵草包',   description: '随机3种灵草(紫品质+)',     cost: 4000,  weeklyLimit: 2,  requiredSectLevel: 3, category: 'advanced', effect: { type: 'herb_pack', minQuality: 'purple', count: 3 } },
   { key: 'reroll_sub',         name: '装备鉴定符',   description: '重随装备1条副属性',        cost: 3000,  weeklyLimit: 3,  requiredSectLevel: 3, category: 'advanced', effect: { type: 'reroll_sub_stat', value: 1 } },
-  { key: 'recipe_crit',        name: '破妄丹方·残卷', description: '永久解锁【破妄丹】炼制配方', cost: 3000,  weeklyLimit: 1, requiredSectLevel: 3, category: 'advanced', effect: { type: 'unlock_pill_recipe', pill_id: 'crit_pill_1' } },
 
   // 稀有 (宗门5级)
   { key: 'sect_skill_page',    name: '宗门秘法残页', description: '随机地品功法残页x1',       cost: 10000, weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'skill_page', quality: 'purple' } },

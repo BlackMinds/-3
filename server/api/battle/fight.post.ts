@@ -217,7 +217,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) { idx = i; break } }
   const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
   const slotIdx = rand(0, slots.length - 1)
-  const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
+  const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]
   const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[idx]))
@@ -363,6 +363,7 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
     else if (eq.primary_stat === 'HP') maxHp += primary
     else if (eq.primary_stat === 'SPD') spd += primary
     else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
+    else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
     else if (eq.primary_stat === 'SPIRIT') spirit += primary
 
     // 武器类型加成
@@ -510,7 +511,6 @@ function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows
       case 'elite_atk_pill': pillAtkPct += 0.10 * qf; break
       case 'elite_def_pill': pillDefPct += 0.10 * qf; break
       case 'elite_hp_pill':  pillHpPct  += 0.12 * qf; break
-      case 'crit_pill_1':    pillCritFlat += 0.05 * qf; break
       case 'full_pill_1':
         pillAtkPct += 0.06 * qf
         pillDefPct += 0.06 * qf

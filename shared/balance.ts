@@ -37,6 +37,7 @@ export const EQUIP_PRIMARY_BASE: Record<string, number> = {
   HP: 200,
   SPD: 15,
   CRIT_RATE: 0.8,  // v3.0: 从 1 降到 0.8, T10红+10 从 50% → 40%
+  CRIT_DMG: 2.0,   // 戒指主属性: T10红+10 = 2.0×10×2.5×2.0 = 100%, 顶配 150%→250% (cap 280%)
   SPIRIT: 8,
 }
 

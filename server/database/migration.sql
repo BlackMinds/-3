@@ -916,3 +916,71 @@ INSERT INTO redeem_codes (code, attachments, description) VALUES
 ON CONFLICT (code) DO UPDATE SET
   attachments = EXCLUDED.attachments,
   description = EXCLUDED.description;
+
+-- ========================================
+-- 破妄丹（crit_pill_1）下线 - 数据清理与玩家补偿（2026-04-25）
+-- ========================================
+-- 退还策略：
+--   1) 已解锁配方：邮件返还 3000 宗门贡献（按购买原价）
+--   2) 背包内剩余瓶数：邮件返还 3000 × count 灵石（按炼制基础成本）
+--   3) 在生效的 buff：静默清除（数值微小，不补偿）
+-- 幂等：用 ref_type 唯一标记，已发过补偿邮件的玩家不会重复发
+-- 顺序：先发邮件 → 再删源数据；任意中断都能再次安全执行
+
+-- 1) 已解锁配方退贡献
+INSERT INTO mails (character_id, category, title, content, attachments, ref_type, ref_id, expires_at)
+SELECT
+  ur.character_id,
+  'system',
+  '【破妄丹】下线补偿',
+  '尊敬的道友：破妄丹已从仙途退场。系统返还您当初购买丹方的 3000 宗门贡献。',
+  jsonb_build_array(jsonb_build_object('type','contribution','amount',3000)),
+  'cleanup_crit_pill_1_recipe',
+  ur.character_id::text,
+  NOW() + INTERVAL '30 days'
+FROM character_unlocked_recipes ur
+WHERE ur.pill_id = 'crit_pill_1'
+  AND NOT EXISTS (
+    SELECT 1 FROM mails m
+    WHERE m.character_id = ur.character_id
+      AND m.ref_type = 'cleanup_crit_pill_1_recipe'
+  );
+
+-- 2) 背包瓶数按 3000×count 退灵石（聚合多 quality_factor 行）
+WITH pill_holders AS (
+  SELECT character_id, SUM(count)::int AS total_count
+  FROM character_pills
+  WHERE pill_id = 'crit_pill_1'
+  GROUP BY character_id
+)
+INSERT INTO mails (character_id, category, title, content, attachments, ref_type, ref_id, expires_at)
+SELECT
+  ph.character_id,
+  'system',
+  '【破妄丹】回收返还',
+  format('尊敬的道友：破妄丹已从仙途退场。背包中 %s 瓶破妄丹按炼制基础成本返还 %s 灵石。', ph.total_count, ph.total_count * 3000),
+  jsonb_build_array(jsonb_build_object('type','spirit_stone','amount', ph.total_count * 3000)),
+  'cleanup_crit_pill_1_pills',
+  ph.character_id::text,
+  NOW() + INTERVAL '30 days'
+FROM pill_holders ph
+WHERE NOT EXISTS (
+  SELECT 1 FROM mails m
+  WHERE m.character_id = ph.character_id
+    AND m.ref_type = 'cleanup_crit_pill_1_pills'
+);
+
+-- 3) 删除残留数据（邮件已发，可安全删除）
+DELETE FROM character_buffs           WHERE pill_id = 'crit_pill_1';
+DELETE FROM character_pills           WHERE pill_id = 'crit_pill_1';
+DELETE FROM character_unlocked_recipes WHERE pill_id = 'crit_pill_1';
+
+-- ========================================
+-- 戒指主属性 CRIT_RATE → CRIT_DMG（2026-04-25）
+-- ========================================
+-- 因戒指主属性改为会心伤害（base 0.8 → 2.0），按 ×2.5 缩放原 primary_value
+-- WHERE 仅匹配旧 CRIT_RATE 行，幂等：跑过一次后不会重复匹配
+UPDATE character_equipment
+SET primary_stat = 'CRIT_DMG',
+    primary_value = GREATEST(1, ROUND(primary_value * 2.5)::int)
+WHERE base_slot = 'ring' AND primary_stat = 'CRIT_RATE';

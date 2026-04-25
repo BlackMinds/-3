@@ -275,7 +275,10 @@
               <div class="stats-grid">
                 <div class="stat-row" v-for="s in secondaryStats" :key="s.label">
                   <span class="s-label">{{ s.label }}</span>
-                  <span class="s-value">{{ s.value }}</span>
+                  <span class="s-value">
+                    {{ s.value }}
+                    <span v-if="s.capped" class="capped-badge" :title="`已达上限 ${s.capLabel}，溢出部分不再生效`">已封顶</span>
+                  </span>
                 </div>
               </div>
 
@@ -2369,7 +2372,7 @@
               <tr><td>战斗丹药</td><td>使用后持续 1-8 小时(按品质系数,实时倒计时)</td></tr>
               <tr><td>突破丹药</td><td>使用直接获得修为(按品质系数加成)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px;">解锁条件: 练气=聚灵丹/铁皮丹/培元丹/筑基丹, 筑基=破妄丹/凝元丹, 金丹=天元丹/化神丹, 化神=渡劫丹。</p>
+            <p class="help-text" style="margin-top: 4px;">解锁条件: 练气=聚灵丹/铁皮丹/培元丹/筑基丹, 筑基=凝元丹, 金丹=天元丹/化神丹, 化神=渡劫丹。</p>
           </div>
           <div class="help-section">
             <div class="help-title">洞府建筑</div>
@@ -2833,7 +2836,7 @@
 definePageMeta({ middleware: 'auth' })
 
 import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, getSkillSlotLimits, type RealmBonus } from '~/game/data';
-import { BREAKTHROUGH_PENALTIES, getBreakthroughRateAt } from '~/shared/balance';
+import { BREAKTHROUGH_PENALTIES, getBreakthroughRateAt, PLAYER_CAPS } from '~/shared/balance';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '~/game/skillData';
 import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_NAMES, SHOP_CATEGORY_COLORS, formatFund } from '~/game/sectData';
 import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
@@ -4025,16 +4028,38 @@ const secondaryStats = computed(() => {
   const peCritDmg = (pe.critDmg || 0) * 100;
   const peDodge = (pe.dodge || 0) * 100;
   const peLifesteal = (pe.lifesteal || 0) * 100;
+  // 战斗服务器对以下属性应用 PLAYER_CAPS 硬上限（见 server/api/battle/fight.post.ts buildPlayerStats）
+  // 面板显示必须与实际生效值一致，否则玩家会看到"100% 暴击却不暴击"
+  const rawCritRate  = (Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100 + ab.critRate * 100 + peCritRate;
+  const rawCritDmg   = (Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100 + ab.critDmg * 100 + peCritDmg;
+  const rawDodge     = (Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100 + ab.dodge * 100 + peDodge;
+  const rawLifesteal = (Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat + ab.lifesteal * 100 + peLifesteal;
+  const rawArmorPen  = xb.ARMOR_PEN + ab.armorPen * 100;
+  const rawAccuracy  = xb.ACCURACY + ab.accuracy;
+  const capCritRate  = PLAYER_CAPS.critRate * 100;
+  const capCritDmg   = PLAYER_CAPS.critDmg * 100;
+  const capDodge     = PLAYER_CAPS.dodge * 100;
+  const capLifesteal = PLAYER_CAPS.lifesteal * 100;
+  const capArmorPen  = PLAYER_CAPS.armorPen;
+  const capAccuracy  = PLAYER_CAPS.accuracy;
+  const fmtCap = (raw: number, cap: number, digits: number, suffix = '%') => {
+    const eff = Math.min(raw, cap);
+    return {
+      value: eff.toFixed(digits) + suffix,
+      capped: raw > cap,
+      capLabel: cap.toFixed(0) + suffix,
+    };
+  };
   return [
-    { label: '会心率', value: ((Number(c.crit_rate) * 100) + eb.CRIT_RATE + wb.CRIT_RATE_flat + rb.crit_rate * 100 + ab.critRate * 100 + peCritRate).toFixed(1) + '%' },
-    { label: '会心伤害', value: ((Number(c.crit_dmg) * 100) + eb.CRIT_DMG + wb.CRIT_DMG_flat + rb.crit_dmg * 100 + ab.critDmg * 100 + peCritDmg).toFixed(0) + '%' },
-    { label: '闪避率', value: ((Number(c.dodge) * 100) + (eb.DODGE || 0) + rb.dodge * 100 + ab.dodge * 100 + peDodge).toFixed(1) + '%' },
-    { label: '吸血', value: ((Number(c.lifesteal) * 100) + (eb.LIFESTEAL || 0) + wb.LIFESTEAL_flat + ab.lifesteal * 100 + peLifesteal).toFixed(1) + '%' },
-    { label: '神识', value: String((c.spirit || 0) + eb.SPIRIT + spiritBonus + ab.spirit) },
-    { label: '破甲', value: (xb.ARMOR_PEN + ab.armorPen * 100).toFixed(1) + '%' },
-    { label: '命中', value: (xb.ACCURACY + ab.accuracy).toFixed(1) + '%' },
-    { label: '灵气浓度', value: (xb.SPIRIT_DENSITY + ab.spiritDensity * 100).toFixed(1) + '%' },
-    { label: '福缘', value: (xb.LUCK + ab.luck * 100).toFixed(1) + '%' },
+    { label: '会心率',   ...fmtCap(rawCritRate,  capCritRate,  1) },
+    { label: '会心伤害', ...fmtCap(rawCritDmg,   capCritDmg,   0) },
+    { label: '闪避率',   ...fmtCap(rawDodge,     capDodge,     1) },
+    { label: '吸血',     ...fmtCap(rawLifesteal, capLifesteal, 1) },
+    { label: '神识', value: String((c.spirit || 0) + eb.SPIRIT + spiritBonus + ab.spirit), capped: false, capLabel: '' },
+    { label: '破甲',     ...fmtCap(rawArmorPen,  capArmorPen,  1) },
+    { label: '命中',     ...fmtCap(rawAccuracy,  capAccuracy,  1) },
+    { label: '灵气浓度', value: (xb.SPIRIT_DENSITY + ab.spiritDensity * 100).toFixed(1) + '%', capped: false, capLabel: '' },
+    { label: '福缘',     value: (xb.LUCK + ab.luck * 100).toFixed(1) + '%', capped: false, capLabel: '' },
   ];
 });
 
@@ -7240,6 +7265,20 @@ onUnmounted(() => {
   font-size: 18px;
   color: #d8ceb8;
   letter-spacing: 1px;
+}
+
+.capped-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #d4a85c;
+  background: rgba(212, 168, 92, 0.12);
+  border: 1px solid rgba(212, 168, 92, 0.4);
+  border-radius: 3px;
+  vertical-align: middle;
+  cursor: help;
 }
 
 .resist-bar-wrap {

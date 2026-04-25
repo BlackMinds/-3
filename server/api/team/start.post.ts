@@ -73,6 +73,7 @@ async function buildPlayerBattleStats(char: any): Promise<{
     else if (eq.primary_stat === 'HP') maxHp += primary
     else if (eq.primary_stat === 'SPD') spd += primary
     else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
+    else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
     else if (eq.primary_stat === 'SPIRIT') spirit += primary
 
     if (eq.weapon_type && WEAPON_BONUS[eq.weapon_type]) {
@@ -130,7 +131,6 @@ async function buildPlayerBattleStats(char: any): Promise<{
     if (buff.pill_id === 'atk_pill_1') atk = Math.floor(atk * (1 + 0.15 * qf))
     if (buff.pill_id === 'def_pill_1') def = Math.floor(def * (1 + 0.15 * qf))
     if (buff.pill_id === 'hp_pill_1') maxHp = Math.floor(maxHp * (1 + 0.20 * qf))
-    if (buff.pill_id === 'crit_pill_1') critRate += 0.08 * qf
     if (buff.pill_id === 'full_pill_1') {
       atk = Math.floor(atk * (1 + 0.10 * qf))
       def = Math.floor(def * (1 + 0.10 * qf))

@@ -156,7 +156,6 @@ const RECIPE_LABEL: Record<string, string> = {
   elite_atk_pill: '精铁攻击丹方',
   elite_def_pill: '精铁防御丹方',
   elite_hp_pill: '精铁气血丹方',
-  crit_pill_1: '精铁会心丹方',
   pill_advanced_gold_core: '金丹速成丹方',
 }
 

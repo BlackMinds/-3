@@ -177,7 +177,7 @@ export default defineEventHandler(async (event) => {
         const rarityIdx = rarity === 'gold' ? 4 : 5
         const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
         const slotIdx = rand(0, slots.length - 1)
-        const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT' }
+        const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
         const tier = rand(6, 9)
         const ps = primaryStats[slots[slotIdx]]
         const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * RARITY_STAT_MUL[rarityIdx]))
