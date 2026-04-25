@@ -116,11 +116,13 @@ export const useEventStore = defineStore('event', () => {
     if (pollTimer.value) return
     checkPending()
     loadBroadcasts()
+    // P4: 60s → 120s,后台标签页跳过,降低 Function 调用
     pollTimer.value = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
       checkPending()
       // 风云阁在面板关闭时也悄悄刷新，用于红点
       loadBroadcasts()
-    }, 60_000)
+    }, 120_000)
   }
 
   function stopPolling() {

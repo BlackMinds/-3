@@ -612,11 +612,18 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
 }
 
 // ===== 主战斗 API =====
+// batch_count: 单次请求连打 N 场（1-10）。共享一次锁/数据加载，每场独立结算事务，
+//   死亡或失败立即终止 batch。前端拿到 battles[] 依次播放，全部播完才发下一批。
+const BATCH_MAX = 10
+
 export default defineEventHandler(async (event) => {
   let lockedCharId: number | null = null
+  let totalLogsLen = 0
   try {
     const pool = getPool()
-    const { map_id, auto_sell, auto_sell_tier } = await readBody(event)
+    const body = await readBody(event)
+    const { map_id, auto_sell, auto_sell_tier } = body
+    const batchCount = Math.max(1, Math.min(BATCH_MAX, Number(body.batch_count) || 1))
     if (!map_id) return { code: 400, message: '缺少地图ID' }
 
     const mapData = ALL_MAPS[map_id]
@@ -632,37 +639,32 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '离线挂机中，请先结束离线' }
     }
 
-    // 战斗并发 & 频率限制
+    // 战斗并发 & 频率限制（按整批锁一次）
     const entry = battleLock.get(char.id) || {}
     const now = Date.now()
-    // 1) 上场战斗仍在进行（未超过 10s 超时视为僵尸锁）
-    if (entry.inProgressSince && now - entry.inProgressSince < MAX_BATTLE_DURATION_MS) {
+    if (entry.inProgressSince && now - entry.inProgressSince < MAX_BATTLE_DURATION_MS * batchCount) {
       return { code: 409, message: '上场战斗未结束，请稍候' }
     }
-    // 2) 冷却窗口内
     if (entry.cooldownUntil && now < entry.cooldownUntil) {
       return { code: 429, message: '战斗冷却中' }
     }
-    // 3) DB 持久化守卫：条件 UPDATE — 仅在 battle_end_at 为空或已过期时才抢占
-    //    保守预置 15s 窗口，战斗处理完后再更新为精确值（按 logs.length 秒）
-    //    跨进程、跨刷新、跨多实例都能生效
+    // DB 持久化守卫：批次保守预占 batchCount * 15s，最后再用精确总时长覆盖
+    const guardSeconds = String(batchCount * 15)
     const { rowCount: guardTaken } = await pool.query(
       `UPDATE characters
-       SET battle_end_at = NOW() + INTERVAL '15 seconds'
-       WHERE id = $1
+         SET battle_end_at = NOW() + ($1 || ' seconds')::INTERVAL
+       WHERE id = $2
          AND (battle_end_at IS NULL OR battle_end_at <= NOW())`,
-      [char.id]
+      [guardSeconds, char.id]
     )
     if (!guardTaken) {
       return { code: 409, message: '上场战斗未结束，请稍候' }
     }
-    // 4) 进入战斗，标记 in-progress
     battleLock.set(char.id, { inProgressSince: now })
     lockedCharId = char.id
 
-    // 读取装备、技能、buff、洞府
+    // 读取装备、技能、buff、洞府（batch 内共享一次）
     const { rows: equipRows } = await pool.query('SELECT * FROM character_equipment WHERE character_id = $1', [char.id])
-    // level 以 inventory 为唯一真相；character_skills.level 只是镜像
     const { rows: skillRows } = await pool.query(
       `SELECT cs.id, cs.character_id, cs.skill_id, cs.skill_type, cs.slot_index,
               cs.equipped, cs.created_at,
@@ -677,7 +679,6 @@ export default defineEventHandler(async (event) => {
     const { rows: buffRows } = await pool.query('SELECT * FROM character_buffs WHERE character_id = $1 AND (expire_time > NOW() OR remaining_fights > 0)', [char.id])
     const { rows: caveRows } = await pool.query('SELECT * FROM character_cave WHERE character_id = $1', [char.id])
 
-    // 读取宗门数据注入到char
     if (char.sect_id) {
       const { rows: sectRows } = await pool.query('SELECT level FROM sects WHERE id = $1', [char.sect_id])
       if (sectRows.length > 0) char._sectLevel = sectRows[0].level
@@ -685,13 +686,8 @@ export default defineEventHandler(async (event) => {
       char._sectSkills = sectSkillRows
     }
 
-    // 构建玩家属性
-    const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows)
-
-    // 构建装备技能信息
     const equippedSkills = buildEquippedSkillInfo(skillRows)
 
-    // 查询功法背包（用于掉落权重递减）
     const { rows: skillInvRows } = await pool.query(
       'SELECT skill_id, count FROM character_skill_inventory WHERE character_id = $1', [char.id]
     )
@@ -699,273 +695,256 @@ export default defineEventHandler(async (event) => {
     for (const row of skillInvRows) ownedSkillCounts[row.skill_id] = row.count
     for (const row of skillRows) ownedSkillCounts[row.skill_id] = (ownedSkillCounts[row.skill_id] || 0) + 1
 
-    // 生成怪物波次
-    const isBoss = mapData.boss && Math.random() < 0.01
-    const monsterList: { stats: BattlerStats; template: MonsterTemplate }[] = []
-
-    if (isBoss && mapData.boss) {
-      const template: MonsterTemplate = mapData.boss
-      monsterList.push({ stats: generateMonsterStats(template), template })
-    } else {
-      // T1/T2 前期顺度优化: 怪物数量 1-2 只; T3+ 维持 1-4 只
-      const waveSize = mapData.tier <= 2
-        ? 1 + Math.floor(Math.random() * 2)
-        : 1 + Math.floor(Math.random() * 4)
-      for (let i = 0; i < waveSize; i++) {
-        const m = mapData.monsters[rand(0, mapData.monsters.length - 1)]
-        const template: MonsterTemplate = m
-        monsterList.push({ stats: generateMonsterStats(template), template })
-      }
-    }
-
-    if (mapData.tier === 2) {
-      for (const it of monsterList) {
-        it.stats.atk = Math.floor(it.stats.atk * 0.80)
-        it.stats.maxHp = Math.floor(it.stats.maxHp * 0.90)
-        it.stats.hp = it.stats.maxHp
-      }
-    } else if (mapData.tier >= 3) {
-      for (const it of monsterList) {
-        it.stats.atk = Math.floor(it.stats.atk * 0.85)
-        it.stats.maxHp = Math.floor(it.stats.maxHp * 0.95)
-        it.stats.hp = it.stats.maxHp
-      }
-    }
-
-    // 执行战斗
-    const result = runWaveBattle(playerStats, monsterList, equippedSkills)
-
-    // 应用经验加成
-    const expMul = 1 + (expBonusPercent || 0) / 100
-    // 追赶机制：领先排行榜前 30 等级均值时按斜率削减经验（同时作用于境界修为和等级经验）
     const avgLevel = await getTopAvgLevel()
-    const catchUpMul = getCatchUpMultiplier(char.level || 1, avgLevel)
-    const totalExp = Math.floor(result.totalExp * expMul * catchUpMul)
-    // 灵石产出: T1-T3 地图 +20%（新手爽感期）
-    const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
-    const totalStone = Math.floor(result.totalStone * stoneTierBonus)
-    const levelExp = totalExp
 
-    // 战报提示：领先榜单时告知玩家本场经验受限（只在胜利且系数 < 1 时提示）
-    if (result.won && catchUpMul < 1.0 && result.totalExp > 0) {
-      const diff = Math.floor((char.level || 1) - avgLevel)
-      const pct = Math.round(catchUpMul * 100)
-      result.logs.push({
-        turn: 0,
-        text: `[追赶机制] 你已领先榜单前 30 平均等级 ${diff} 级，本场修为与经验获取 ${pct}%`,
-        type: 'system',
-        playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
-      })
-    }
+    const battles: any[] = []
+    let lastUpdatedChar: any = char
 
-    // 掉落生成
-    const luckMul = 1 + (luckPercent || 0) / 100
-    const allDrops: { type: string; data: any }[] = []
-    for (const killed of result.monstersKilled) {
-      const t = killed.template
-      const tier = mapData.tier
-      const ib = t.role === 'boss'
-      const equipDrop = generateEquipDrop(tier, ib, luckMul, t.element)
-      if (equipDrop) allDrops.push({ type: 'equipment', data: equipDrop })
-      const skillDrop = generateSkillDrop(tier, ib, luckMul, ownedSkillCounts)
-      if (skillDrop) {
-        allDrops.push({ type: 'skill', data: skillDrop })
-        ownedSkillCounts[skillDrop] = (ownedSkillCounts[skillDrop] || 0) + 1
+    // -------- batch 循环 --------
+    for (let bi = 0; bi < batchCount; bi++) {
+      // char 上次结算后字段已 Object.assign 回来，buildPlayerStats 用最新 level/realm 重算
+      const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows)
+
+      // 生成怪物波次
+      const isBoss = mapData.boss && Math.random() < 0.01
+      const monsterList: { stats: BattlerStats; template: MonsterTemplate }[] = []
+      if (isBoss && mapData.boss) {
+        const template: MonsterTemplate = mapData.boss
+        monsterList.push({ stats: generateMonsterStats(template), template })
+      } else {
+        const waveSize = mapData.tier <= 2
+          ? 1 + Math.floor(Math.random() * 2)
+          : 1 + Math.floor(Math.random() * 4)
+        for (let i = 0; i < waveSize; i++) {
+          const m = mapData.monsters[rand(0, mapData.monsters.length - 1)]
+          const template: MonsterTemplate = m
+          monsterList.push({ stats: generateMonsterStats(template), template })
+        }
       }
-      const herbDrop = generateHerbDrop(tier, t.element, ib, luckMul)
-      if (herbDrop) allDrops.push({ type: 'herb', data: herbDrop })
-      const stoneDrop = generateEnhanceStoneDrop(tier, ib, luckMul)
-      if (stoneDrop) allDrops.push({ type: 'stone', data: { stone_id: stoneDrop, tier } })
-    }
+      if (mapData.tier === 2) {
+        for (const it of monsterList) {
+          it.stats.atk = Math.floor(it.stats.atk * 0.80)
+          it.stats.maxHp = Math.floor(it.stats.maxHp * 0.90)
+          it.stats.hp = it.stats.maxHp
+        }
+      } else if (mapData.tier >= 3) {
+        for (const it of monsterList) {
+          it.stats.atk = Math.floor(it.stats.atk * 0.85)
+          it.stats.maxHp = Math.floor(it.stats.maxHp * 0.95)
+          it.stats.hp = it.stats.maxHp
+        }
+      }
 
-    // 存入数据库（主结算事务化：UPDATE 主属性 + 掉落 INSERT + 自动出售统一原子化）
-    const client = await pool.connect()
-    try {
-      await client.query('BEGIN')
+      const result = runWaveBattle(playerStats, monsterList, equippedSkills)
 
-      if (result.won && totalExp > 0) {
-        // 事务内 FOR UPDATE 取最新基线，避免覆盖并发写入（闭关/使用丹药/洞府领取）
-        const { rows: fresh } = await client.query(
-          'SELECT cultivation_exp, realm_tier, realm_stage, level_exp, level FROM characters WHERE id = $1 FOR UPDATE',
-          [char.id]
-        )
-        const baseline = fresh[0] || char
+      const expMul = 1 + (expBonusPercent || 0) / 100
+      const catchUpMul = getCatchUpMultiplier(char.level || 1, avgLevel)
+      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul)
+      const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
+      const totalStone = Math.floor(result.totalStone * stoneTierBonus)
+      const levelExp = totalExp
 
-        // v3.2: 累加 cultivation_exp (不再自动突破,由玩家手动点击"突破"按钮)
-        // applyCultivationExp 现在只做飞升末阶软封顶,不会改 tier/stage
-        // 写入瘦身: tier/stage 由突破接口负责, current_map 由前端 /game/update-character 接口负责,
-        // 这里都不再重复写,减少 characters 表 UPDATE 体积与 Neon page version 累积
-        const newExpTotal = Number(baseline.cultivation_exp || 0) + totalExp
-        const br = applyCultivationExp(newExpTotal, baseline.realm_tier || 1, baseline.realm_stage || 1)
-        await client.query(
-          `UPDATE characters SET cultivation_exp = $1, spirit_stone = spirit_stone + $2, level_exp = level_exp + $3, last_online = NOW() WHERE id = $4`,
-          [br.cultivation_exp, totalStone, levelExp, char.id]
-        )
+      if (result.won && catchUpMul < 1.0 && result.totalExp > 0) {
+        const diff = Math.floor((char.level || 1) - avgLevel)
+        const pct = Math.round(catchUpMul * 100)
+        result.logs.push({
+          turn: 0,
+          text: `[追赶机制] 你已领先榜单前 30 平均等级 ${diff} 级，本场修为与经验获取 ${pct}%`,
+          type: 'system',
+          playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
+        })
+      }
 
-        // 检查升级（统一使用 realm.ts 的工具，与前端公式一致）
-        const lvResult = applyLevelExp(Number(baseline.level_exp || 0) + levelExp, baseline.level || 1)
-        if (lvResult.levelUps > 0) {
-          result.logs.push({ turn: 0, text: `等级提升!你已升至【Lv.${lvResult.level}】`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-          await client.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
+      const luckMul = 1 + (luckPercent || 0) / 100
+      const allDrops: { type: string; data: any }[] = []
+      for (const killed of result.monstersKilled) {
+        const t = killed.template
+        const tier = mapData.tier
+        const ib = t.role === 'boss'
+        const equipDrop = generateEquipDrop(tier, ib, luckMul, t.element)
+        if (equipDrop) allDrops.push({ type: 'equipment', data: equipDrop })
+        const skillDrop = generateSkillDrop(tier, ib, luckMul, ownedSkillCounts)
+        if (skillDrop) {
+          allDrops.push({ type: 'skill', data: skillDrop })
+          ownedSkillCounts[skillDrop] = (ownedSkillCounts[skillDrop] || 0) + 1
+        }
+        const herbDrop = generateHerbDrop(tier, t.element, ib, luckMul)
+        if (herbDrop) allDrops.push({ type: 'herb', data: herbDrop })
+        const stoneDrop = generateEnhanceStoneDrop(tier, ib, luckMul)
+        if (stoneDrop) allDrops.push({ type: 'stone', data: { stone_id: stoneDrop, tier } })
+      }
+
+      // 单场结算事务（每场独立 BEGIN/COMMIT，失败不影响已完成场次）
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+
+        if (result.won && totalExp > 0) {
+          const { rows: fresh } = await client.query(
+            'SELECT cultivation_exp, realm_tier, realm_stage, level_exp, level FROM characters WHERE id = $1 FOR UPDATE',
+            [char.id]
+          )
+          const baseline = fresh[0] || char
+
+          const newExpTotal = Number(baseline.cultivation_exp || 0) + totalExp
+          const br = applyCultivationExp(newExpTotal, baseline.realm_tier || 1, baseline.realm_stage || 1)
+          await client.query(
+            `UPDATE characters SET cultivation_exp = $1, spirit_stone = spirit_stone + $2, level_exp = level_exp + $3, last_online = NOW() WHERE id = $4`,
+            [br.cultivation_exp, totalStone, levelExp, char.id]
+          )
+
+          const lvResult = applyLevelExp(Number(baseline.level_exp || 0) + levelExp, baseline.level || 1)
+          if (lvResult.levelUps > 0) {
+            result.logs.push({ turn: 0, text: `等级提升!你已升至【Lv.${lvResult.level}】`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+            await client.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
+          }
+
+          const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
+          const autoSellIdx = auto_sell ? RARITY_ORDER.indexOf(auto_sell) : -1
+          const autoSellTierLimit = Number(auto_sell_tier) || 0
+          const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 }
+          let autoSellIncome = 0
+
+          for (const drop of allDrops) {
+            if (drop.type === 'equipment') {
+              const d = drop.data
+              const itemIdx = RARITY_ORDER.indexOf(d.rarity)
+              const itemTier = d.tier || 1
+              if (autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
+                const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
+                autoSellIncome += price
+                result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+                continue
+              }
+              await client.query(
+                `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
+                [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
+              )
+              result.logs.push({ turn: 0, text: `掉落了【${d.name}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+            }
+            if (drop.type === 'skill') {
+              await client.query(
+                `INSERT INTO character_skill_inventory (character_id, skill_id, count)
+                 VALUES ($1, $2, 1)
+                 ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
+                [char.id, drop.data]
+              )
+              result.logs.push({ turn: 0, text: `掉落了功法!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+            }
+            if (drop.type === 'herb') {
+              const h = drop.data
+              await client.query(
+                `INSERT INTO character_materials (character_id, material_id, quality, count)
+                 VALUES ($1, $2, $3, $4)
+                 ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
+                [char.id, h.herb_id, h.quality, h.count, h.count]
+              )
+            }
+            if (drop.type === 'stone') {
+              const s = drop.data
+              await client.query(
+                `INSERT INTO character_pills (character_id, pill_id, count, quality_factor)
+                 VALUES ($1, $2, 1, 1.0)
+                 ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
+                [char.id, s.stone_id]
+              )
+              result.logs.push({ turn: 0, text: `掉落了【强化石·T${s.tier}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+            }
+          }
+
+          if (autoSellIncome > 0) {
+            await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [autoSellIncome, char.id])
+          }
+        } else if (!result.won) {
+          await client.query(
+            `UPDATE characters SET
+               cultivation_exp = GREATEST(0, cultivation_exp - FLOOR(cultivation_exp * 0.01)),
+               level_exp = GREATEST(0, level_exp - FLOOR(level_exp * 0.01)),
+               last_online = NOW()
+             WHERE id = $1`,
+            [char.id]
+          )
         }
 
-        // 自动出售判定
-        const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
-        const autoSellIdx = auto_sell ? RARITY_ORDER.indexOf(auto_sell) : -1
-        const autoSellTierLimit = Number(auto_sell_tier) || 0
-        const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 } // v3.4.2: -70%
-        let autoSellIncome = 0
+        await client.query('COMMIT')
+      } catch (settleErr) {
+        await client.query('ROLLBACK').catch(() => {})
+        throw settleErr
+      } finally {
+        client.release()
+      }
 
-        // 存掉落
+      if (result.won) {
+        await updateSectDailyTask(char.id, 'battle', 1)
+        await updateSectWeeklyTaskByCharId(char.id, 'weekly_battle', result.monstersKilled.length)
+        const hasElite = result.monstersKilled.some(m => m.template.role === 'boss')
+        if (hasElite) await updateSectDailyTask(char.id, 'elite', 1)
+
+        checkAchievements(char.id, 'battle_count', 1).catch(() => {})
+        if (hasElite) {
+          const bossCount = result.monstersKilled.filter(m => m.template.role === 'boss').length
+          checkAchievements(char.id, 'boss_kill', bossCount).catch(() => {})
+        }
+        checkAchievements(char.id, 'total_stone', totalStone).catch(() => {})
+        checkAchievements(char.id, 'total_exp', totalExp).catch(() => {})
         for (const drop of allDrops) {
           if (drop.type === 'equipment') {
-            const d = drop.data
-            const itemIdx = RARITY_ORDER.indexOf(d.rarity)
-            const itemTier = d.tier || 1
-            if (autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
-              const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
-              autoSellIncome += price
-              result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-              continue
-            }
-            await client.query(
-              `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
-              [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
-            )
-            result.logs.push({ turn: 0, text: `掉落了【${d.name}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+            const rarity = drop.data.rarity
+            if (rarity === 'green') checkAchievements(char.id, 'equip_green', 1).catch(() => {})
+            else if (rarity === 'blue') checkAchievements(char.id, 'equip_blue', 1).catch(() => {})
+            else if (rarity === 'purple') checkAchievements(char.id, 'equip_purple', 1).catch(() => {})
+            else if (rarity === 'gold') checkAchievements(char.id, 'equip_gold', 1).catch(() => {})
+            else if (rarity === 'red') checkAchievements(char.id, 'equip_red', 1).catch(() => {})
           }
           if (drop.type === 'skill') {
-            await client.query(
-              `INSERT INTO character_skill_inventory (character_id, skill_id, count)
-               VALUES ($1, $2, 1)
-               ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
-              [char.id, drop.data]
-            )
-            result.logs.push({ turn: 0, text: `掉落了功法!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-          }
-          if (drop.type === 'herb') {
-            const h = drop.data
-            await client.query(
-              `INSERT INTO character_materials (character_id, material_id, quality, count)
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
-              [char.id, h.herb_id, h.quality, h.count, h.count]
-            )
-          }
-          if (drop.type === 'stone') {
-            const s = drop.data
-            await client.query(
-              `INSERT INTO character_pills (character_id, pill_id, count, quality_factor)
-               VALUES ($1, $2, 1, 1.0)
-               ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
-              [char.id, s.stone_id]
-            )
-            result.logs.push({ turn: 0, text: `掉落了【强化石·T${s.tier}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+            checkAchievements(char.id, 'skill_pages', 1).catch(() => {})
           }
         }
 
-        // 自动出售收入入库
-        if (autoSellIncome > 0) {
-          await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [autoSellIncome, char.id])
-        }
-      } else if (!result.won) {
-        await client.query(
-          `UPDATE characters SET
-             cultivation_exp = GREATEST(0, cultivation_exp - FLOOR(cultivation_exp * 0.01)),
-             level_exp = GREATEST(0, level_exp - FLOOR(level_exp * 0.01)),
-             last_online = NOW()
-           WHERE id = $1`,
-          [char.id]
-        )
+        const bs = result.stats
+        if (bs?.elementAdvantageHit) checkAchievements(char.id, 'element_win', 1).catch(() => {})
+        if (bs?.lifestealFullRecovery) checkAchievements(char.id, 'lifesteal_full', 1).catch(() => {})
+        if (bs && bs.playerCritCount >= 5) checkAchievements(char.id, 'crit_storm', 1).catch(() => {})
+        if (bs && bs.playerHitsTaken >= 20) checkAchievements(char.id, 'tank_survive', 1).catch(() => {})
+        if (bs?.bossKilledByTurn3) checkAchievements(char.id, 'fast_boss_kill', 1).catch(() => {})
       }
 
-      await client.query('COMMIT')
-    } catch (settleErr) {
-      await client.query('ROLLBACK').catch(() => {})
-      throw settleErr
-    } finally {
-      client.release()
-    }
+      // 拉一次本场结算后的角色，作为下一场 buildPlayerStats 输入 + 末态返回
+      const { rows: updatedRows } = await pool.query('SELECT * FROM characters WHERE id = $1', [char.id])
+      lastUpdatedChar = updatedRows[0]
+      // 把 DB 字段 patch 回 char（保留临时挂载的 _sectLevel/_sectSkills，避免丢失）
+      Object.assign(char, lastUpdatedChar)
 
-    // 宗门任务进度
-    if (result.won) {
-      await updateSectDailyTask(char.id, 'battle', 1)
-      await updateSectWeeklyTaskByCharId(char.id, 'weekly_battle', result.monstersKilled.length)
-      const hasElite = result.monstersKilled.some(m => m.template.role === 'boss')
-      if (hasElite) await updateSectDailyTask(char.id, 'elite', 1)
-
-      // === 成就触发 ===
-      checkAchievements(char.id, 'battle_count', 1).catch(() => {})
-      if (hasElite) {
-        const bossCount = result.monstersKilled.filter(m => m.template.role === 'boss').length
-        checkAchievements(char.id, 'boss_kill', bossCount).catch(() => {})
+      // 等级成就（基于最新 level）
+      if (result.won) {
+        checkAchievements(char.id, 'char_level', char.level || 1).catch(() => {})
       }
-      checkAchievements(char.id, 'total_stone', totalStone).catch(() => {})
-      checkAchievements(char.id, 'total_exp', totalExp).catch(() => {})
-      for (const drop of allDrops) {
-        if (drop.type === 'equipment') {
-          const rarity = drop.data.rarity
-          if (rarity === 'green') checkAchievements(char.id, 'equip_green', 1).catch(() => {})
-          else if (rarity === 'blue') checkAchievements(char.id, 'equip_blue', 1).catch(() => {})
-          else if (rarity === 'purple') checkAchievements(char.id, 'equip_purple', 1).catch(() => {})
-          else if (rarity === 'gold') checkAchievements(char.id, 'equip_gold', 1).catch(() => {})
-          else if (rarity === 'red') checkAchievements(char.id, 'equip_red', 1).catch(() => {})
-        }
-        if (drop.type === 'skill') {
-          checkAchievements(char.id, 'skill_pages', 1).catch(() => {})
-        }
-      }
-      // 等级成就
-      const { rows: lvRows } = await pool.query('SELECT level FROM characters WHERE id = $1', [char.id])
-      const currentLevel = lvRows?.[0]?.level || 1
-      checkAchievements(char.id, 'char_level', currentLevel).catch(() => {})
 
-      // 战斗统计类成就（引擎累计，胜利时触发）
-      const bs = result.stats
-      if (bs?.elementAdvantageHit) checkAchievements(char.id, 'element_win', 1).catch(() => {})
-      if (bs?.lifestealFullRecovery) checkAchievements(char.id, 'lifesteal_full', 1).catch(() => {})
-      if (bs && bs.playerCritCount >= 5) checkAchievements(char.id, 'crit_storm', 1).catch(() => {})
-      if (bs && bs.playerHitsTaken >= 20) checkAchievements(char.id, 'tank_survive', 1).catch(() => {})
-      if (bs?.bossKilledByTurn3) checkAchievements(char.id, 'fast_boss_kill', 1).catch(() => {})
-    }
+      totalLogsLen += Array.isArray(result.logs) ? result.logs.length : 0
 
-    // DB 守卫更新为精确时长（与前端日志播放 1s/条联动，+1s 兜底首条立即 emit 的偏差）
-    const logsLen = Array.isArray(result.logs) ? result.logs.length : 0
-    await pool.query(
-      `UPDATE characters SET battle_end_at = NOW() + ($1 || ' seconds')::INTERVAL WHERE id = $2`,
-      [String(Math.max(1, logsLen + 1)), char.id]
-    )
+      const monsterNames = monsterList.map(m => m.stats.name)
+      const firstMonster = monsterList[0]
+      const monsterInfo = firstMonster ? {
+        name: firstMonster.stats.name,
+        element: firstMonster.template.element,
+        power: firstMonster.template.power,
+        maxHp: firstMonster.stats.maxHp,
+        atk: firstMonster.stats.atk,
+        def: firstMonster.stats.def,
+        spd: firstMonster.stats.spd,
+        crit_rate: firstMonster.stats.crit_rate,
+        crit_dmg: firstMonster.stats.crit_dmg,
+        dodge: firstMonster.stats.dodge,
+        lifesteal: firstMonster.stats.lifesteal,
+        armorPen: firstMonster.stats.armorPen || 0,
+        accuracy: firstMonster.stats.accuracy || 0,
+        resists: firstMonster.stats.resists || null,
+        role: firstMonster.template.role,
+        skills: buildMonsterSkillDescriptions(firstMonster.template),
+      } : null
 
-    // 返回最新角色数据
-    const { rows: updatedChar } = await pool.query('SELECT * FROM characters WHERE id = $1', [char.id])
-
-    const monsterNames = monsterList.map(m => m.stats.name)
-
-    // 构建第一个怪物的详细信息
-    const firstMonster = monsterList[0]
-    const monsterInfo = firstMonster ? {
-      name: firstMonster.stats.name,
-      element: firstMonster.template.element,
-      power: firstMonster.template.power,
-      maxHp: firstMonster.stats.maxHp,
-      atk: firstMonster.stats.atk,
-      def: firstMonster.stats.def,
-      spd: firstMonster.stats.spd,
-      crit_rate: firstMonster.stats.crit_rate,
-      crit_dmg: firstMonster.stats.crit_dmg,
-      dodge: firstMonster.stats.dodge,
-      lifesteal: firstMonster.stats.lifesteal,
-      armorPen: firstMonster.stats.armorPen || 0,
-      accuracy: firstMonster.stats.accuracy || 0,
-      resists: firstMonster.stats.resists || null,
-      role: firstMonster.template.role,
-      skills: buildMonsterSkillDescriptions(firstMonster.template),
-    } : null
-
-    return {
-      code: 200,
-      data: {
+      battles.push({
         won: result.won,
         expGained: totalExp,
         stoneGained: totalStone,
@@ -979,14 +958,28 @@ export default defineEventHandler(async (event) => {
           if (d.type === 'skill') return SKILL_MAP[d.data]?.name || d.data
           return ''
         }).filter(Boolean),
-        character: updatedChar[0],
+      })
+
+      if (!result.won) break
+    }
+
+    // 用整批总日志长度精确覆盖 battle_end_at（每条 1s + 1s 兜底）
+    await pool.query(
+      `UPDATE characters SET battle_end_at = NOW() + ($1 || ' seconds')::INTERVAL WHERE id = $2`,
+      [String(Math.max(1, totalLogsLen + 1)), char.id]
+    )
+
+    return {
+      code: 200,
+      data: {
+        battles,
+        character: lastUpdatedChar,
       },
     }
   } catch (error: any) {
     console.error('战斗失败:', error)
     return { code: 500, message: '服务器错误' }
   } finally {
-    // 不论成功或异常，都把 in-progress 锁释放为冷却状态，防止僵尸锁
     if (lockedCharId != null) {
       battleLock.set(lockedCharId, { cooldownUntil: Date.now() + BATTLE_COOLDOWN_MS })
     }

@@ -50,7 +50,10 @@ export const useGameStore = defineStore('game', () => {
   // 每次 stopBattle/changeMap 递增，executeFight 用来丢弃过期响应，避免并发请求污染状态
   const battleSession = ref(0)
 
-  const saveTimer = ref<number | null>(null)
+  // 批量战斗：单次请求拿回 N 场，依次播放完才发下一批，省 Function 调用与连接开销
+  const BATCH_COUNT = 10
+  const batchQueue = ref<any[]>([])
+
   const sessionDrops = ref<Record<string, number>>({})
   const equippedSkills = ref<any>(null)
   const battleFrenzyStacks = ref(0)
@@ -204,23 +207,28 @@ export const useGameStore = defineStore('game', () => {
     } else {
       scheduleFight()
     }
-    startAutoSave()
   }
 
   function stopBattle() {
     isBattling.value = false
     battleSession.value++
     lastStopAt.value = Date.now()
+    // 缩短守卫：批次剩余场次会被丢弃不再播放，不应阻挡新战斗。仅保留当前正在播放的剩余 + 冷却。
+    const currentRemainingMs = logQueue.value.length * LOG_INTERVAL_MS
+    const tighten = Date.now() + currentRemainingMs + 1500
+    if (tighten < expectedBattleEndAt.value) {
+      expectedBattleEndAt.value = tighten
+    }
     if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
     if (logTimer.value) { clearInterval(logTimer.value); logTimer.value = null }
     if (deathTimer.value) { clearInterval(deathTimer.value); deathTimer.value = null }
     logQueue.value = []
+    batchQueue.value = []
     pendingResult.value = null
     inFight.value = false
     // fetchInFlight 不清：让飞行中的请求自然返回时释放，期间 startBattle 被挡住避免并发
     currentMonsterInfo.value = null
     deathCooldown.value = 0
-    stopAutoSave()
     flushSave()
   }
 
@@ -240,6 +248,28 @@ export const useGameStore = defineStore('game', () => {
     scheduleFight()
   }
 
+  // 把单场战斗数据应用到本地播放状态（队列、怪物信息、HP 显示）
+  function applyBattleEntry(b: any) {
+    if (!character.value) return
+    waveMonsterNames.value = b.monsterNames || []
+    waveMonsterMaxHps.value = (b.monsterNames || []).map((_: string, i: number) => b.monstersMaxHp?.[i] ?? (b.monsterInfo?.maxHp ?? 0))
+    waveMonsterHps.value = [...waveMonsterMaxHps.value]
+    currentMonsterInfo.value = b.monsterInfo || null
+    displayPlayerHp.value = character.value.max_hp
+    displayPlayerMaxHp.value = character.value.max_hp
+
+    pendingResult.value = {
+      won: b.won,
+      expGained: b.expGained || 0,
+      spiritStoneGained: b.stoneGained || 0,
+      drops: b.drops || [],
+    }
+
+    logQueue.value = b.logs || []
+    inFight.value = true
+    drainLogQueue()
+  }
+
   async function executeFight() {
     if (!character.value || !currentMap.value) return
     inFight.value = true
@@ -257,12 +287,19 @@ export const useGameStore = defineStore('game', () => {
 
       const res: any = await fetchApi('/battle/fight', {
         method: 'POST',
-        body: { map_id: currentMapId.value, auto_sell: autoSell, auto_sell_tier: autoSellTier },
+        body: {
+          map_id: currentMapId.value,
+          auto_sell: autoSell,
+          auto_sell_tier: autoSellTier,
+          batch_count: BATCH_COUNT,
+        },
       })
-      // 后端已计算一场战斗 → 不论 session 是否过期，守卫都按本次 logs 时长设置，
+      // 后端已计算整批 → 不论 session 是否过期，守卫都按全批 logs 总时长设置，
       // 防止"开始→离开→立即开始"在请求返回后 expectedBattleEndAt 未被写入就绕过守卫
-      if (res?.code === 200 && Array.isArray(res.data?.logs)) {
-        expectedBattleEndAt.value = Date.now() + res.data.logs.length * LOG_INTERVAL_MS
+      const battles: any[] = res?.code === 200 && Array.isArray(res.data?.battles) ? res.data.battles : []
+      const totalLogsLen = battles.reduce((sum, b) => sum + (Array.isArray(b.logs) ? b.logs.length : 0), 0)
+      if (totalLogsLen > 0) {
+        expectedBattleEndAt.value = Date.now() + totalLogsLen * LOG_INTERVAL_MS
       }
       fetchInFlight.value = false
 
@@ -293,23 +330,16 @@ export const useGameStore = defineStore('game', () => {
         character.value = data.character
       }
 
-      waveMonsterNames.value = data.monsterNames || []
-      waveMonsterMaxHps.value = (data.monsterNames || []).map((_: string, i: number) => data.monstersMaxHp?.[i] ?? (data.monsterInfo?.maxHp ?? 0))
-      waveMonsterHps.value = [...waveMonsterMaxHps.value]
-      currentMonsterInfo.value = data.monsterInfo || null
-      displayPlayerHp.value = character.value!.max_hp
-      displayPlayerMaxHp.value = character.value!.max_hp
-
-      pendingResult.value = {
-        won: data.won,
-        expGained: data.expGained || 0,
-        spiritStoneGained: data.stoneGained || 0,
-        drops: data.drops || [],
+      if (battles.length === 0) {
+        // 兜底：返回 200 但 battles 空（不应发生）
+        inFight.value = false
+        battleTimer.value = window.setTimeout(() => scheduleFight(), 1500)
+        return
       }
 
-      logQueue.value = data.logs || []
-      expectedBattleEndAt.value = Date.now() + logQueue.value.length * LOG_INTERVAL_MS
-      drainLogQueue()
+      // 第一场立刻播；剩余排进 batchQueue，播完一场切下一场
+      batchQueue.value = battles.slice(1)
+      applyBattleEntry(battles[0])
     } catch {
       fetchInFlight.value = false
       inFight.value = false
@@ -373,8 +403,16 @@ export const useGameStore = defineStore('game', () => {
           if (dropName) sessionDrops.value[dropName] = (sessionDrops.value[dropName] || 0) + 1
         })
       }
-      scheduleFight()
+      // 优先消费当前批次剩余战斗，本地直接切下一场，不再发请求
+      if (isBattling.value && batchQueue.value.length > 0) {
+        const next = batchQueue.value.shift()
+        applyBattleEntry(next)
+      } else {
+        scheduleFight()
+      }
     } else {
+      // 失败：丢弃批次剩余（后端遇到失败已 break，理论上 batchQueue 已空）
+      batchQueue.value = []
       deathCooldown.value = 3
       battleFrenzyStacks.value = 0
       deathTimer.value = window.setInterval(() => {
@@ -435,22 +473,6 @@ export const useGameStore = defineStore('game', () => {
 
   function clearLogs() {
     battleLogs.value = []
-  }
-
-  function startAutoSave() {
-    stopAutoSave()
-    saveTimer.value = window.setInterval(() => {
-      if (character.value) {
-        fetchApi('/game/update-character', {
-          method: 'POST',
-          body: { current_map: currentMapId.value },
-        }).catch(() => {})
-      }
-    }, 30000)
-  }
-
-  function stopAutoSave() {
-    if (saveTimer.value) { clearInterval(saveTimer.value); saveTimer.value = null }
   }
 
   function flushSave() {

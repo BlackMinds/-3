@@ -728,13 +728,15 @@ function finishBattle(data: any) {
 }
 
 // ============ 轮询 ============
+// P3: 间隔从 3s/2.5s 拉到 8s/5s,且页面不可见时跳过(后台标签页不浪费 Function)
 function startLobbyPolling() {
   stopLobbyPolling()
   fetchRooms()
   fetchRealms()
   lobbyPollTimer = setInterval(() => {
+    if (typeof document !== 'undefined' && document.hidden) return
     if (teamStore.currentPanel === 'lobby') fetchRooms()
-  }, 3000)
+  }, 8000)
 }
 function stopLobbyPolling() {
   if (lobbyPollTimer) clearInterval(lobbyPollTimer)
@@ -744,6 +746,7 @@ function startRoomPolling() {
   stopRoomPolling()
   roomPollTimer = setInterval(async () => {
     if (!teamStore.currentRoom) return
+    if (typeof document !== 'undefined' && document.hidden) return
     try {
       const api = useApi()
       const res: any = await api(`/team/room/${teamStore.currentRoom.room_id}`)
@@ -783,7 +786,7 @@ function startRoomPolling() {
     } catch (e) {
       console.error(e)
     }
-  }, 2500)
+  }, 5000)
 }
 function stopRoomPolling() {
   if (roomPollTimer) clearInterval(roomPollTimer)
