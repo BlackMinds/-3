@@ -18,7 +18,6 @@
     { "file": "system-realm.json",      "description": "境界系统：练气→飞升，灵根，属性成长" },
     { "file": "system-map.json",        "description": "地图系统：20张地图，怪物配置，掉落表" },
     { "file": "system-combat.json",     "description": "战斗系统：文字log、伤害公式、离线战斗" },
-    { "file": "system-skill.json",      "description": "功法神通：主动/神通/被动技能体系" },
     { "file": "system-equipment.json",  "description": "法宝装备：8槽位，品质，强化" },
     { "file": "system-economy.json",    "description": "经济系统：灵石/仙玉/修为/功德" }
   ]
