@@ -179,19 +179,10 @@ export const useGameStore = defineStore('game', () => {
       addLog(0, '已在战斗中', 'system')
       return
     }
-    if (fetchInFlight.value) {
-      addLog(0, '上场战斗未结束，请稍候', 'system')
-      return
-    }
     const now = Date.now()
-    if (now < expectedBattleEndAt.value) {
-      addLog(0, '上场战斗未结束，请稍候', 'system')
-      return
-    }
     // 兜底：即便上次 fight 请求未真正发出（被 setTimeout 延迟后又被 stop 清掉），
     // 也至少拦 START_GUARD_MS，避免"开始→立刻离开→立刻开始"完全无守卫
     if (lastStartAt.value > 0 && now - lastStartAt.value < START_GUARD_MS) {
-      addLog(0, '上场战斗未结束，请稍候', 'system')
       return
     }
     lastStartAt.value = now
@@ -199,7 +190,8 @@ export const useGameStore = defineStore('game', () => {
     sessionDrops.value = {}
     addLog(0, `在【${currentMap.value.name}】开始历练…`, 'system')
     // 反复「开始/离开」节流：若距上次 stop 不到 1.5s（对齐 server BATTLE_COOLDOWN_MS），延迟首次 fight，防止通过快速切换把刷怪频率拉到冷却极限
-    const elapsed = Date.now() - lastStopAt.value
+    // fetchInFlight / expectedBattleEndAt 守卫由 scheduleFight 静默等待处理，不再 return + 打日志骚扰用户
+    const elapsed = now - lastStopAt.value
     const MANUAL_RESTART_COOLDOWN = 1500
     if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
     if (elapsed < MANUAL_RESTART_COOLDOWN) {
@@ -213,12 +205,8 @@ export const useGameStore = defineStore('game', () => {
     isBattling.value = false
     battleSession.value++
     lastStopAt.value = Date.now()
-    // 缩短守卫：批次剩余场次会被丢弃不再播放，不应阻挡新战斗。仅保留当前正在播放的剩余 + 冷却。
-    const currentRemainingMs = logQueue.value.length * LOG_INTERVAL_MS
-    const tighten = Date.now() + currentRemainingMs + 1500
-    if (tighten < expectedBattleEndAt.value) {
-      expectedBattleEndAt.value = tighten
-    }
+    // 不收紧 expectedBattleEndAt：服务端 battle_end_at 守卫（c147065 防多实例并发）只能自然过期，
+    // 客户端如果偷跑会撞 409；scheduleFight 会等到点再发请求，期间用户感知是"切图后稍等才开打"。
     if (battleTimer.value) { clearTimeout(battleTimer.value); battleTimer.value = null }
     if (logTimer.value) { clearInterval(logTimer.value); logTimer.value = null }
     if (deathTimer.value) { clearInterval(deathTimer.value); deathTimer.value = null }
@@ -229,14 +217,30 @@ export const useGameStore = defineStore('game', () => {
     // fetchInFlight 不清：让飞行中的请求自然返回时释放，期间 startBattle 被挡住避免并发
     currentMonsterInfo.value = null
     deathCooldown.value = 0
-    // 主动停战 = 放弃当前批次的剩余播放，告诉服务端清 battle_end_at，
-    // 否则切图/离开立即重开会被 DB 残留的批次守卫（最长 ~90s）拦成连续 409
-    flushSave(true)
+    // 注意: 不主动清服务端 battle_end_at —— 那是 c147065 防多实例并发战斗的唯一守卫，
+    // 擦除后会让上一批飞行中的 fight 与新 fight 在不同实例上同时执行（双倍奖励）。
+    // 切图/离开后的"上场战斗未结束"由 scheduleFight 内部静默等待 expectedBattleEndAt 处理。
+    flushSave()
   }
 
   function scheduleFight() {
     if (!isBattling.value || deathCooldown.value > 0) return
     if (logQueue.value.length > 0) return
+    // 上一批 fight 还在飞行（切图等场景）：等它返回再发，否则前端会出现并发 fetch，
+    // 服务端多实例下也可能两个 fight 同时执行（双倍奖励 / 数据竞争）
+    if (fetchInFlight.value) {
+      if (battleTimer.value) clearTimeout(battleTimer.value)
+      battleTimer.value = window.setTimeout(() => scheduleFight(), 500)
+      return
+    }
+    // 服务端 battle_end_at 守卫（c147065 防多实例并发）未到期：本地 setTimeout 排队，
+    // 不发请求避免 409 风暴。expectedBattleEndAt 由前端 1:1 跟随服务端 battle_end_at 设置
+    const now = Date.now()
+    if (now < expectedBattleEndAt.value) {
+      if (battleTimer.value) clearTimeout(battleTimer.value)
+      battleTimer.value = window.setTimeout(() => scheduleFight(), expectedBattleEndAt.value - now + 100)
+      return
+    }
     executeFight()
   }
 
@@ -300,8 +304,11 @@ export const useGameStore = defineStore('game', () => {
       // 防止"开始→离开→立即开始"在请求返回后 expectedBattleEndAt 未被写入就绕过守卫
       const battles: any[] = res?.code === 200 && Array.isArray(res.data?.battles) ? res.data.battles : []
       const totalLogsLen = battles.reduce((sum, b) => sum + (Array.isArray(b.logs) ? b.logs.length : 0), 0)
+      // 与服务端 battle_end_at 公式对齐：客户端真实墙钟 = (totalLogsLen - 场次数) 秒（每场首条立即播 + 场间无间隔）
+      // +1s buffer 让 scheduleFight 等到点发请求时服务端守卫确保已过期，避免撞 409
       if (totalLogsLen > 0) {
-        expectedBattleEndAt.value = Date.now() + totalLogsLen * LOG_INTERVAL_MS
+        const playbackSec = Math.max(1, totalLogsLen - battles.length + 1)
+        expectedBattleEndAt.value = Date.now() + playbackSec * LOG_INTERVAL_MS
       }
       fetchInFlight.value = false
 
@@ -477,13 +484,11 @@ export const useGameStore = defineStore('game', () => {
     battleLogs.value = []
   }
 
-  function flushSave(clearBattleEnd = false) {
+  function flushSave() {
     if (character.value) {
-      const body: any = { current_map: currentMapId.value }
-      if (clearBattleEnd) body.clear_battle_end = true
       fetchApi('/game/update-character', {
         method: 'POST',
-        body,
+        body: { current_map: currentMapId.value },
       }).catch(() => {})
     }
   }
