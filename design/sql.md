@@ -53,6 +53,25 @@ UPDATE characters SET sr_daily_bonus = 1,
   ON CONFLICT (character_id, skill_id) DO UPDATE
     SET count = character_skill_inventory.count + EXCLUDED.count;
 
+紫色功法
+  WITH picks AS (
+    SELECT (ARRAY[
+      'sword_storm','twin_flame','flurry_palm','spring_heal','blood_fury',
+      'wood_heal','mirror_water','crit_master','earth_fortitude','poison_body',
+      'fire_mastery','dot_amplifier','phantom_step','healing_spring'
+    ])[1 + floor(random() * 14)::int] AS skill_id
+    FROM generate_series(1, 1)        -- ← 这里就是数量
+  ),
+  agg AS (
+    SELECT skill_id, COUNT(*)::int AS cnt FROM picks GROUP BY skill_id
+  )
+  INSERT INTO character_skill_inventory (character_id, skill_id, count, level)
+  SELECT c.id, agg.skill_id, agg.cnt, 1
+  FROM characters c CROSS JOIN agg
+  WHERE c.name = '玩家名'
+  ON CONFLICT (character_id, skill_id) DO UPDATE
+    SET count = character_skill_inventory.count + EXCLUDED.count;
+
  SELECT cave_output_mul, COUNT(*) AS 玩家数
   FROM characters
   WHERE cave_output_mul > 1.0
