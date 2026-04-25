@@ -236,8 +236,8 @@
       {
         "id": "mirror_water", "name": "明镜止水", "rarity": "purple", "element": "water",
         "type": "buff", "multiplier": 0, "cd_turns": 9,
-        "buff": { "type": "reflect", "value": 0.30, "duration_turns": 3, "crit_up_value": 0.20 },
-        "description": "反弹30%伤害持续3回合，暴击率+20%",
+        "buff": { "type": "reflect", "value": 0.40, "duration_turns": 3, "crit_up_value": 0.20 },
+        "description": "反弹40%伤害持续3回合，暴击率+20%(单次反弹≤4倍攻击力)",
         "root_synergy": "水灵根：反弹→50%"
       },
       {

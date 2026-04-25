@@ -1029,10 +1029,11 @@ export function runWaveBattle(
             logs.push({ turn, text: `  【反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
           }
         }
-        // 玩家 buff：明镜止水（reflect）按 dmg 百分比反弹
+        // 玩家 buff：明镜止水（reflect）按 dmg 百分比反弹, 单次反弹 cap = 玩家 ATK × 4
         const reflectSum = sumPlayerBuff('reflect');
         if (reflectSum > 0 && dmg > 0) {
-          const rf = Math.floor(dmg * reflectSum);
+          const reflectCap = Math.floor(player.atk * 4);
+          const rf = Math.min(Math.floor(dmg * reflectSum), reflectCap);
           if (rf > 0) {
             sourceMonster.stats.hp -= rf;
             logs.push({ turn, text: `  【明镜反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
