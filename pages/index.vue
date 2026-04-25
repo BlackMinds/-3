@@ -2685,7 +2685,7 @@
               ① 输入对手道号即可挑战，每日 <b>{{ pkQuota.limit }}</b> 次
               ② 1v1 模式：HP×1.8 / 伤害×0.6 / DOT×0.5 / 暴伤-35%
               ③ 失败方扣除 <b>1%</b> 境界修为，每人单日最多被扣 10 次（超出免扣）
-              ④ 无奖励，纯论道
+              ④ 胜负计入斗法积分（同境界 +20/-10，跨境界加权），每日 12:00 前 10 名邮件发奖
             </p>
             <div class="pk-quota-row">
               今日剩余次数：<b :style="{ color: pkQuota.remaining > 0 ? '#88ff88' : '#ff6666' }">{{ pkQuota.remaining }} / {{ pkQuota.limit }}</b>
@@ -2715,6 +2715,12 @@
                   · {{ pkResult.winnerSide === 'a' ? pkResult.loserName : '你' }}损失修为 {{ pkResult.cultivationLoss }}
                 </span>
                 <span v-else-if="pkResult.winnerSide === 'b'" class="pk-loss-skip">· 今日已被扣 10 次，免扣</span>
+                <span
+                  v-if="pkResult.scoreGain"
+                  :class="['pk-score', pkResult.scoreGain > 0 ? 'pk-score-up' : 'pk-score-down']"
+                >
+                  · 斗法积分 {{ pkResult.scoreGain > 0 ? '+' : '' }}{{ pkResult.scoreGain }}
+                </span>
               </div>
               <div class="pk-log-list">
                 <div
@@ -10683,6 +10689,9 @@ onUnmounted(() => {
 .pk-foe-name { color: var(--gold-ink, #c9a85c); margin: 0 4px; }
 .pk-loss { font-weight: normal; font-size: 13px; color: #ffaa66; }
 .pk-loss-skip { font-weight: normal; font-size: 13px; color: var(--ink-faint); }
+.pk-score { font-weight: normal; font-size: 13px; margin-left: 4px; }
+.pk-score-up { color: #88ff88; }
+.pk-score-down { color: #ff8866; }
 .pk-log-list { font-size: 13px; color: #ccc; max-height: 320px; overflow-y: auto; padding: 8px; background: #050510; border-radius: 3px; line-height: 1.7; font-family: 'Consolas', 'Courier New', monospace; }
 .pk-log { padding: 1px 4px; }
 .pk-log-crit { color: #ffaa33; font-weight: bold; }
