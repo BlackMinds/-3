@@ -220,7 +220,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
       water: { name: '寒冰刺', multiplier: 1.6, cdTurns: 5, element: 'water', debuff: { type: 'freeze', chance: 0.20, duration: 1 }, description: '冰锥攻击' },
       wood:  { name: '缠绕荆棘', multiplier: 1.5, cdTurns: 5, element: 'wood', debuff: { type: 'root', chance: 0.30, duration: 2 }, description: '荆棘缠绕' },
       metal: { name: '破甲斩', multiplier: 1.8, cdTurns: 5, element: 'metal', debuff: { type: 'brittle', chance: 0.25, duration: 3, value: 0.20 }, description: '重斩破甲' },
-      earth: { name: '震地击', multiplier: 1.6, cdTurns: 5, element: 'earth', debuff: { type: 'stun', chance: 0.15, duration: 1 }, description: '震地攻击' },
+      earth: { name: '震地击', multiplier: 1.6, cdTurns: 5, element: 'earth', debuff: { type: 'brittle', chance: 0.20, duration: 3, value: 0.18 }, description: '震地+脆弱' },
     };
     if (strongSkills[elem]) skills.push(strongSkills[elem]);
   }
@@ -228,7 +228,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     skills.push({ name: '妖气封印', multiplier: 1.0, cdTurns: 7, element: null, debuff: { type: 'silence', chance: 0.30, duration: 2 }, description: '封印神通' });
   }
   if (tier >= 3 && !['dps', 'speed'].includes(role)) {
-    skills.push({ name: '狂猛劈砍', multiplier: 2.4, cdTurns: 5, element: null, debuff: { type: 'stun', chance: 0.15, duration: 1 }, description: '单体重击+眩晕' });
+    skills.push({ name: '狂猛劈砍', multiplier: 2.4, cdTurns: 5, element: null, debuff: { type: 'bleed', chance: 0.25, duration: 2 }, description: '单体重击+流血' });
   }
 
   // T4+ (v3.4: 控制率 -10pp; 2026-04-25: 移除单体多段连击系列, 替换为五行单段重击)
@@ -242,7 +242,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
       water: { name: '寒冰穿心', multiplier: 2.4, cdTurns: 6, element: 'water', debuff: { type: 'freeze', chance: 0.25, duration: 1 }, description: '单体穿心+冻结' },
       wood:  { name: '毒针洗髓', multiplier: 2.4, cdTurns: 6, element: 'wood',  debuff: { type: 'poison', chance: 0.35, duration: 3 }, description: '单体毒针+剧毒' },
       metal: { name: '断魂利刃', multiplier: 2.7, cdTurns: 6, element: 'metal', debuff: { type: 'bleed',  chance: 0.25, duration: 3 }, description: '单体重斩+流血' },
-      earth: { name: '山岳碎击', multiplier: 2.5, cdTurns: 6, element: 'earth', debuff: { type: 'stun',   chance: 0.20, duration: 1 }, description: '单体重击+眩晕' },
+      earth: { name: '山岳碎击', multiplier: 2.5, cdTurns: 6, element: 'earth', debuff: { type: 'bleed',  chance: 0.25, duration: 2 }, description: '单体重击+流血' },
     };
     if (t4HeavySkills[elem]) skills.push(t4HeavySkills[elem]);
   }
@@ -251,7 +251,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 5) {
     skills.push({ name: '狂暴', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'atk_up', value: 0.25, duration: 4 }, description: '攻击+25%' });
     skills.push({ name: '锁魂术', multiplier: 1.5, cdTurns: 7, element: null, debuff: { type: 'root', chance: 0.40, duration: 2 }, description: '束缚2回合' });
-    skills.push({ name: '雷电之怒', multiplier: 2.6, cdTurns: 7, element: 'metal', debuff: { type: 'stun', chance: 0.25, duration: 1 }, description: '单体雷击+眩晕' });
+    skills.push({ name: '雷电之怒', multiplier: 2.6, cdTurns: 7, element: 'metal', debuff: { type: 'bleed', chance: 0.30, duration: 2 }, description: '单体雷击+流血' });
   }
 
   // T6+ (v3.4)
@@ -273,13 +273,13 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   // T7+ (v3.4)
   if (tier >= 7) {
     skills.push({ name: '天雷制裁', multiplier: 2.8, cdTurns: 8, element: 'metal', debuff: { type: 'stun', chance: 0.30, duration: 2 }, description: '天雷眩晕' });
-    skills.push({ name: '天罚之击', multiplier: 3.8, cdTurns: 10, element: null, debuff: { type: 'stun', chance: 0.25, duration: 1 }, description: '单体重击+眩晕' });
+    skills.push({ name: '天罚之击', multiplier: 3.8, cdTurns: 10, element: null, debuff: { type: 'burn', chance: 0.30, duration: 3 }, description: '天罚重击+灼烧' });
     skills.push({ name: '天地造化', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.14, isHeal: true, description: '回复14%气血' });
   }
 
   // T8+ (v3.4)
   if (tier >= 8) {
-    skills.push({ name: '混沌一击', multiplier: 4.5, cdTurns: 10, element: null, debuff: { type: 'stun', chance: 0.30, duration: 2 }, description: '单体重击+眩晕' });
+    skills.push({ name: '混沌一击', multiplier: 4.5, cdTurns: 10, element: null, debuff: { type: 'poison', chance: 0.35, duration: 3 }, description: '混沌重击+剧毒' });
     skills.push({ name: '太古沉眠', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.16, isHeal: true, buff: { type: 'def_up', value: 0.40, duration: 4 }, description: '回复16%+防御' });
   }
 
@@ -291,7 +291,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     if (tier >= 4) skills.push({ name: '凶煞之气', multiplier: 0, cdTurns: 8, element: null, buff: { type: 'def_up', value: 0.30, duration: 4 }, description: '防御+30%' });
     if (tier >= 5) skills.push({ name: '王者重击', multiplier: 3.0, cdTurns: 7, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
     if (tier >= 6) skills.push({ name: '灭世怒吼', multiplier: 2.5, cdTurns: 9, element: null, debuff: { type: 'stun', chance: 0.35, duration: 2 }, description: '眩晕2回合' });
-    if (tier >= 7) skills.push({ name: '帝王斩', multiplier: 4.5, cdTurns: 10, element: null, debuff: { type: 'stun', chance: 0.25, duration: 1 }, description: '单体重击+眩晕' });
+    if (tier >= 7) skills.push({ name: '帝王斩', multiplier: 4.5, cdTurns: 10, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
   }
 
   return skills;
