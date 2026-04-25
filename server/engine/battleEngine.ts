@@ -355,13 +355,15 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
   const role = template.role;
   // v3.5: HP 整体 ×2 (配合玩家 HP ×2, 回合数翻倍)
+  // 2026-04-25: 神识系数 0.5%→0.1% 后玩家神通伤害 -41%, HP 全 tier ×0.9 缓解战斗时长
   const HP_SCALE_BY_TIER: Record<number, number> = {
-    1: 1.90, 2: 1.90, 3: 1.90, 4: 1.90,
-    5: 2.34, 6: 2.52, 7: 2.72, 8: 2.88,
+    1: 1.71, 2: 1.71, 3: 1.71, 4: 1.71,
+    5: 2.11, 6: 2.27, 7: 2.45, 8: 2.59,
   };
-  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.95;
+  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.86;
   // v3.4.1: ATK_SCALE 0.75 → 0.70 (-6.7%)
-  const ATK_SCALE = 0.70;
+  // 2026-04-25: ATK_SCALE 0.70 → 0.665 (-5%) 联动神识削弱, 让玩家累积受伤不至飙升
+  const ATK_SCALE = 0.665;
   const maxHp = Math.floor(power * r.hp * 10 * HP_SCALE);
 
   const monsterResists = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: 0.10 };
@@ -710,11 +712,17 @@ export function runWaveBattle(
     debuff: { type: DebuffType; chance: number; duration: number; value?: number },
     attackerAtk: number,
     turn: number,
+    inflictor?: { awakenState?: { debuffDurationBonus?: number } } | 'player',
   ): boolean {
     if (Math.random() >= debuff.chance) return false;
     // 控制类抗性降低持续时间
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type);
-    let duration = debuff.duration;
+    // 天师附灵：施加方延长减益持续回合
+    let durBonus = 0;
+    if (inflictor === 'player') durBonus = (player as any).awakenState?.debuffDurationBonus || 0;
+    else if (inflictor && typeof inflictor === 'object') durBonus = inflictor.awakenState?.debuffDurationBonus || 0;
+    let duration = debuff.duration + durBonus;
+    const tianshiTag = durBonus > 0 ? ` ✦天师+${durBonus}` : '';
     if (isCtrl) {
       const r = Math.min(0.7, target.resists?.ctrl || 0);
       if (r > 0 && Math.random() < r) {
@@ -725,7 +733,7 @@ export function runWaveBattle(
     // 冻结/眩晕/束缚合并到 frozenTurns
     if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
       target.frozenTurns = Math.max(target.frozenTurns, duration);
-      logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合`, type: 'normal', ...snap() });
+      logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tianshiTag}`, type: 'normal', ...snap() });
       return true;
     }
     // DOT/其他 debuff
@@ -748,7 +756,7 @@ export function runWaveBattle(
     else if (debuff.type === 'atk_down') text += ` (攻击-${((debuff.value || 0.15) * 100).toFixed(0)}%)`;
     else if (debuff.type === 'slow') text += ` (必定后攻)`;
     else if (debuff.type === 'silence') text += ` (无法使用神通)`;
-    logs.push({ turn, text: `  ${text}`, type: 'normal', ...snap() });
+    logs.push({ turn, text: `  ${text}${tianshiTag}`, type: 'normal', ...snap() });
     return true;
   }
 
@@ -867,17 +875,16 @@ export function runWaveBattle(
   function triggerAwakenOnHit(target: any, targetName: string, turn: number) {
     const st = player.awakenState;
     if (!st) return;
-    const durBonus = st.debuffDurationBonus || 0;
     if (st.burnOnHitChance > 0 && Math.random() < st.burnOnHitChance) {
-      const ok = tryApplyDebuff(target, targetName, { type: 'burn', chance: 1.0, duration: 2 + durBonus }, player.atk, turn);
+      const ok = tryApplyDebuff(target, targetName, { type: 'burn', chance: 1.0, duration: 2 }, player.atk, turn, 'player');
       if (ok) logs.push({ turn, text: `  ✦【焚魂】${targetName}被烈焰灼烧`, type: 'buff', ...snap() });
     }
     if (st.poisonOnHitChance > 0 && Math.random() < st.poisonOnHitChance) {
-      const ok = tryApplyDebuff(target, targetName, { type: 'poison', chance: 1.0, duration: 2 + durBonus }, player.atk, turn);
+      const ok = tryApplyDebuff(target, targetName, { type: 'poison', chance: 1.0, duration: 2 }, player.atk, turn, 'player');
       if (ok) logs.push({ turn, text: `  ✦【淬毒】${targetName}中毒`, type: 'buff', ...snap() });
     }
     if (st.bleedOnHitChance > 0 && Math.random() < st.bleedOnHitChance) {
-      const ok = tryApplyDebuff(target, targetName, { type: 'bleed', chance: 1.0, duration: 2 + durBonus }, player.atk, turn);
+      const ok = tryApplyDebuff(target, targetName, { type: 'bleed', chance: 1.0, duration: 2 }, player.atk, turn, 'player');
       if (ok) logs.push({ turn, text: `  ✦【裂魂】${targetName}流血不止`, type: 'buff', ...snap() });
     }
   }
@@ -1043,10 +1050,10 @@ export function runWaveBattle(
           }
         }
         if (pe?.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
-          tryApplyDebuff(sourceMonster, sourceMonster.stats.name, { type: 'poison', chance: 1, duration: 2 }, player.atk, turn);
+          tryApplyDebuff(sourceMonster, sourceMonster.stats.name, { type: 'poison', chance: 1, duration: 2 }, player.atk, turn, 'player');
         }
         if (pe?.burnOnHitTaken && Math.random() < pe.burnOnHitTaken) {
-          tryApplyDebuff(sourceMonster, sourceMonster.stats.name, { type: 'burn', chance: 1, duration: 2 }, player.atk, turn);
+          tryApplyDebuff(sourceMonster, sourceMonster.stats.name, { type: 'burn', chance: 1, duration: 2 }, player.atk, turn, 'player');
         }
         if (isCrit && pe?.reflectOnCrit && Math.random() < pe.reflectOnCrit) {
           const rfc = Math.floor(dmg * 0.5);
@@ -1250,7 +1257,7 @@ export function runWaveBattle(
       if (usedSkill.debuff && (usedSkill.isAoe || (usedSkill.targetCount && usedSkill.targetCount > 1))) {
         const debuffTargets = usedSkill.isAoe ? aliveMonsters : aliveMonsters.slice(0, usedSkill.targetCount || 1);
         for (const m of debuffTargets) {
-          tryApplyDebuff(m, m.stats.name, usedSkill.debuff as any, player.atk, turn);
+          tryApplyDebuff(m, m.stats.name, usedSkill.debuff as any, player.atk, turn, 'player');
         }
       }
     } else {
@@ -1311,7 +1318,7 @@ export function runWaveBattle(
               battleStats.elementAdvantageHit = true;
             }
             logs.push({ turn, text: `  第${hitsDone + 1}段 ${critText}对${curTarget.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
-            if (usedSkill.debuff) tryApplyDebuff(curTarget, curTarget.stats.name, usedSkill.debuff as any, player.atk, turn);
+            if (usedSkill.debuff) tryApplyDebuff(curTarget, curTarget.stats.name, usedSkill.debuff as any, player.atk, turn, 'player');
             // v1.2 附灵：命中触发 DOT
             triggerAwakenOnHit(curTarget, curTarget.stats.name, turn);
           } else {
@@ -1336,7 +1343,7 @@ export function runWaveBattle(
             } else {
               logs.push({ turn, text: `  ${critText}对${t.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
             }
-            if (usedSkill.debuff) tryApplyDebuff(t, t.stats.name, usedSkill.debuff as any, player.atk, turn);
+            if (usedSkill.debuff) tryApplyDebuff(t, t.stats.name, usedSkill.debuff as any, player.atk, turn, 'player');
             // v1.2 附灵：命中触发 DOT
             triggerAwakenOnHit(t, t.stats.name, turn);
           } else {
