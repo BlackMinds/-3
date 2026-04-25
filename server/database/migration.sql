@@ -881,3 +881,34 @@ CREATE TABLE IF NOT EXISTS pk_records (
 );
 CREATE INDEX IF NOT EXISTS idx_pk_attacker_day ON pk_records (attacker_id, fought_at);
 CREATE INDEX IF NOT EXISTS idx_pk_defender_day ON pk_records (defender_id, fought_at);
+
+-- ========================================
+-- 兑换码（CDKEY）系统
+-- ========================================
+-- code 直接做主键；attachments 复用邮件附件 JSON 格式（{type, itemId, quality, qty} 等）
+-- claims 表 UNIQUE(code, character_id) 保证每码每人只能领一次
+CREATE TABLE IF NOT EXISTS redeem_codes (
+  code VARCHAR(32) PRIMARY KEY,
+  attachments JSONB NOT NULL,
+  description VARCHAR(100) DEFAULT '',
+  expires_at TIMESTAMP DEFAULT NULL,
+  enabled BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS redeem_code_claims (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(32) NOT NULL REFERENCES redeem_codes(code) ON DELETE CASCADE,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (code, character_id)
+);
+CREATE INDEX IF NOT EXISTS idx_redeem_claims_char ON redeem_code_claims (character_id);
+
+-- 内置兑换码：附灵道具大礼包
+INSERT INTO redeem_codes (code, attachments, description) VALUES
+('XIANTU2026', '[
+  {"type":"material","itemId":"awaken_stone","quality":"blue","qty":10},
+  {"type":"material","itemId":"awaken_reroll","quality":"blue","qty":20}
+]'::jsonb, '附灵道具大礼包：附灵石×10 + 灵枢玉×20')
+ON CONFLICT (code) DO NOTHING;

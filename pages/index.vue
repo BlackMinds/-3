@@ -32,6 +32,7 @@
         <button class="drop-table-btn" @click="openAchievement">
           成就<span v-if="achClaimable > 0" class="ach-badge">{{ achClaimable }}</span>
         </button>
+        <button class="drop-table-btn" @click="showRedeemCode = true">兑换码</button>
         <button class="drop-table-btn" @click="showHelpDoc = true">帮助</button>
         <button class="drop-table-btn" @click="showSettings = true">设置</button>
         <button class="logout-btn" @click="handleLogout">离界</button>
@@ -2827,6 +2828,8 @@
 
     <!-- 天道造化：中奖弹窗 + 风云阁面板 -->
     <EventPopup />
+
+    <RedeemCodeModal :open="showRedeemCode" @close="showRedeemCode = false" @success="onRedeemSuccess" />
     <WorldBroadcastPanel />
 
     <!-- 站内邮件抽屉（宗门战/灵脉潮汐奖励通知） -->
@@ -2875,6 +2878,7 @@ const cultMsgType = ref('cult-success');
 const showMonsterTip = ref(false);
 const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
+const showRedeemCode = ref(false);
 const showHelpDoc = ref(false);
 const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'misc'>('basic');
 const showSettings = ref(false);
@@ -3106,6 +3110,11 @@ async function fetchAchievementData() {
   } finally {
     achLoading.value = false;
   }
+}
+
+async function onRedeemSuccess() {
+  try { await gameStore.loadGameData(); } catch { /* ignore */ }
+  showToast('兑换成功，奖励已发放至背包', 'success');
 }
 
 async function claimAch(achievementId: string) {

@@ -149,7 +149,7 @@ export async function claimMailAttachments(
   }
 }
 
-async function grantAttachment(client: PoolClient, characterId: number, att: MailAttachment): Promise<void> {
+export async function grantAttachment(client: PoolClient, characterId: number, att: MailAttachment): Promise<void> {
   switch (att.type) {
     case 'spirit_stone':
       await client.query(
