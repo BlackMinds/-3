@@ -303,7 +303,7 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   let maxHp = Number(char.max_hp)
   let spd = Number(char.spd)
   let critRate = Number(char.crit_rate || 0.05)
-  let critDmg = Number(char.crit_dmg || 1.5)
+  let critDmg = Number(char.crit_dmg || 1.0)
   let dodge = Number(char.dodge || 0)
   let lifesteal = Number(char.lifesteal || 0)
 
@@ -757,7 +757,8 @@ export default defineEventHandler(async (event) => {
 
       const expMul = 1 + (expBonusPercent || 0) / 100
       const catchUpMul = getCatchUpMultiplier(char.level || 1, avgLevel)
-      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul)
+      // v3.4.3: 历练经验整体 ×0.7（修为/等级双经验同步缩）
+      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul * 0.7)
       const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
       const totalStone = Math.floor(result.totalStone * stoneTierBonus)
       const levelExp = totalExp

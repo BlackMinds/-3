@@ -301,7 +301,8 @@ export default defineEventHandler(async (event) => {
 
     const rewardFactor = cfg.rewardMul * 1.5 // 1.5x 组队加成
     const totalBaseStone = Math.floor(avgMonsterPower * baseStoneUnit * rewardFactor)
-    const totalBaseExp = Math.floor(avgMonsterPower * baseExpUnit * 1.2) // 1.2x 组队加成；按贡献度分摊（与 stone 一致）
+    // v3.4.3: 秘境经验整体 ×0.7（1.2 → 0.84），修为/等级双经验同步缩
+    const totalBaseExp = Math.floor(avgMonsterPower * baseExpUnit * 0.84) // 0.84 = 1.2 × 0.7 组队加成；按贡献度分摊（与 stone 一致）
 
     // 失败只给 30%
     const rewardMul = result.won ? 1 : 0.3
