@@ -252,6 +252,9 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     skills.push({ name: '狂暴', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'atk_up', value: 0.25, duration: 4 }, description: '攻击+25%' });
     skills.push({ name: '锁魂术', multiplier: 0.90, cdTurns: 7, element: null, debuff: { type: 'root', chance: 0.40, duration: 2 }, description: '束缚2回合' });
     skills.push({ name: '雷电之怒', multiplier: 1.56, cdTurns: 7, element: 'metal', debuff: { type: 'bleed', chance: 0.30, duration: 2 }, description: '单体雷击+流血' });
+    skills.push({ name: '淬体回春', multiplier: 0, cdTurns: 12, element: null, healPercent: 0.10, isHeal: true, description: '回复10%气血' });
+    skills.push({ name: '灵气护盾', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'def_up', value: 0.20, duration: 3 }, description: '防御+20% 持续3回合' });
+    skills.push({ name: '灵气流转', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'regen', value: 0.03, duration: 4 }, description: '持续4回合每回合回复3%气血' });
   }
 
   // T6+
@@ -381,11 +384,12 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   // v3.5: HP 整体 ×2 (配合玩家 HP ×2, 回合数翻倍)
   // 2026-04-25: 神识系数 0.5%→0.1% 后玩家神通伤害 -41%, HP 全 tier ×0.9
   // v3.5 (功法削弱): 全 tier × 0.60 联动玩家 DPS 下降, 保持 TTK 基本不变
+  // 2026-04-26: T5+ 怪物血量 +5%（含秘境，秘境组队共用 generateMonsterStats）
   const HP_SCALE_BY_TIER: Record<number, number> = {
     1: 1.03, 2: 1.03, 3: 1.03, 4: 1.03,
-    5: 1.27, 6: 1.36, 7: 1.47, 8: 1.55,
+    5: 1.3335, 6: 1.428, 7: 1.5435, 8: 1.6275,
   };
-  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.52;
+  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.546;
   // v3.4.1: ATK_SCALE 0.75 → 0.70 (-6.7%)
   // 2026-04-25: ATK_SCALE 0.70 → 0.665 (-5%) 联动神识削弱, 让玩家累积受伤不至飙升
   const ATK_SCALE = 0.665;
