@@ -63,7 +63,7 @@ export function generateSecretRealmEquip(
   const slotIdx = rand(0, slots.length - 1)
   const primaryStats: Record<string, string> = {
     weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD',
-    treasure: 'ATK', ring: 'CRIT_RATE', pendant: 'SPIRIT',
+    treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT',
   }
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]
