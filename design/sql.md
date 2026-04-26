@@ -72,6 +72,10 @@ UPDATE characters SET sr_daily_bonus = 1,
   ON CONFLICT (character_id, skill_id) DO UPDATE
     SET count = character_skill_inventory.count + EXCLUDED.count;
 
+ -- 给某个角色加 140w 修为（不触发境界突破，只是数值累加）                                                                                                                                                                                                                                         
+  UPDATE characters                                                                                                                                                                        SET cultivation_exp = cultivation_exp+1400000
+  WHERE name = '玩家名'; 
+
  SELECT cave_output_mul, COUNT(*) AS 玩家数
   FROM characters
   WHERE cave_output_mul > 1.0
