@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS characters (
 
   -- 二级属性
   crit_rate DECIMAL(5,4) DEFAULT 0.0500,
-  crit_dmg DECIMAL(5,4) DEFAULT 1.5000,
+  crit_dmg DECIMAL(5,4) DEFAULT 1.0000,
   dodge DECIMAL(5,4) DEFAULT 0.0000,
   lifesteal DECIMAL(5,4) DEFAULT 0.0000,
   spirit INT DEFAULT 10,

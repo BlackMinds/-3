@@ -111,7 +111,7 @@ export function buildPlayer(build: PlayerBuild): PlayerStats {
 
   // ===== 基础属性(假设金灵根) =====
   let atk = 58, def = 30, maxHp = 500, spd = 20
-  let critRate = 0.05, critDmg = 1.5, dodge = 0, lifesteal = 0
+  let critRate = 0.05, critDmg = 1.0, dodge = 0, lifesteal = 0
   let armorPen = 0, accuracy = 0
   sources.base = { atk, def, maxHp, spd, critRate, critDmg }
 

@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
     let def = Number(char.def || 30)
     let maxHp = Number(char.max_hp || 500)
     let critRate = Number(char.crit_rate || 0.05)
-    let critDmg = Number(char.crit_dmg || 1.5)
+    let critDmg = Number(char.crit_dmg || 1.0)
 
     // 等级加成
     const lv = char.level || 1
