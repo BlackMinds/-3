@@ -81,3 +81,22 @@ UPDATE characters SET sr_daily_bonus = 1,
   WHERE cave_output_mul > 1.0
   GROUP BY cave_output_mul
   ORDER BY cave_output_mul;
+
+-- ============================================================
+-- 会心伤害基础值 150%/170% → 100% 重平衡 (2026-04-26)
+-- 业务代码不会 update crit_dmg, 创角时的值会一直留在 DB
+-- 改了 character/create.post.ts + migration.sql 后, 老角色还是旧值
+-- 跑下面的 SQL 把存量也压回 1.0
+-- ============================================================
+
+-- 先看一眼分布, 确认只有 1.5 / 1.7 两种基础值, 没被脏数据污染
+SELECT crit_dmg, COUNT(*) AS 玩家数
+  FROM characters
+  GROUP BY crit_dmg
+  ORDER BY crit_dmg;
+
+-- 普通灵根 (金/木/水/土): 1.5 → 1.0
+UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.5;
+
+-- 火灵根: 1.7 → 1.0 (统一去掉火属性的 +0.2 基础特色)
+UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.7;

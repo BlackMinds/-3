@@ -9,7 +9,7 @@ const ROOT_BONUS: Record<string, {
   metal: { max_hp: 500, hp: 500, atk: 58, def: 30, spd: 50, crit_rate: 0.05, crit_dmg: 1.00, resist_field: 'resist_metal' },
   wood:  { max_hp: 575, hp: 575, atk: 50, def: 30, spd: 50, crit_rate: 0.05, crit_dmg: 1.00, resist_field: 'resist_wood' },
   water: { max_hp: 500, hp: 500, atk: 50, def: 35, spd: 50, crit_rate: 0.05, crit_dmg: 1.00, resist_field: 'resist_water' },
-  fire:  { max_hp: 500, hp: 500, atk: 50, def: 30, spd: 50, crit_rate: 0.05, crit_dmg: 1.20, resist_field: 'resist_fire' },
+  fire:  { max_hp: 500, hp: 500, atk: 50, def: 30, spd: 50, crit_rate: 0.05, crit_dmg: 1.00, resist_field: 'resist_fire' },
   earth: { max_hp: 550, hp: 550, atk: 50, def: 33, spd: 50, crit_rate: 0.05, crit_dmg: 1.00, resist_field: 'resist_earth' },
 }
 
