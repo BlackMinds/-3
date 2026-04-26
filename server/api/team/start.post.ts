@@ -328,6 +328,9 @@ export default defineEventHandler(async (event) => {
 
       // ========== 生成装备/灵草/功法掉落（战斗胜利才给） ==========
       let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], skillPages: [] as string[], awakenStones: 0, rerollStones: 0, enhanceStones: 0 }
+      // 实际能拿奖励的人数（带人模式下，无次数队员不在分配名单，保底也按这个算）
+      // 之前用 allMembers.length 会让"3 人带 1 人"的场景按 4 件保底全砸给那 1 个有次数的人 → 装备暴增
+      const quotaCount = [...hasQuotaMap.values()].filter(v => v).length
       if (result.won) {
         // 聚合全队的功法背包（用于权重递减掉落）
         const allOwnedSkills: Record<string, number> = {}
@@ -342,7 +345,7 @@ export default defineEventHandler(async (event) => {
         drops = generateSecretRealmDrops(
           realm.dropTier, difficulty,
           result.killedMonsters.map(k => ({ element: k.element, isBoss: k.isBoss })),
-          allMembers.length,
+          quotaCount,
           allOwnedSkills,
         )
         // v3.4: S 评级团队奖励 — 额外送 1 件红装 (由 distributeEquipments 自动分给贡献第一)
