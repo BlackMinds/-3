@@ -1,8 +1,14 @@
 // 装备附灵系统：效果池定义 + 随机生成
-// 仅作用于 weapon / armor / pendant 三种槽位
+// 作用于 weapon / armor / pendant / ring 四种槽位
 // 蓝+ 品装备可附灵；数值按品质取档（blue/purple/gold/red）
+//
+// ring 池效果方向：主修功法增幅（与其他三槽通用 buff 互补）
+//   通用向（4条）：心法贯通 / 主修锋锐 / 主修破玄 / 主修噬灵
+//   属性匹配向（5条）：主修属性=金/木/水/火/土 时才触发
+//   机制向（3条）：紫电连华 / 心剑回响 / 灵戒裂魂
 
 export type AwakenRarity = 'blue' | 'purple' | 'gold' | 'red';
+export type AwakenElement = 'metal' | 'wood' | 'water' | 'fire' | 'earth';
 
 export interface AwakenTiers {
   blue: number;
@@ -14,9 +20,11 @@ export interface AwakenTiers {
 export interface AwakenDef {
   id: string;
   name: string;
-  slot: 'weapon' | 'armor' | 'pendant';
+  slot: 'weapon' | 'armor' | 'pendant' | 'ring';
   stat: string;
   tiers: AwakenTiers;
+  /** 主修属性匹配条件（仅 ring 池用）；当玩家主修功法元素与该字段匹配时才生效 */
+  requireElement?: AwakenElement;
   desc: (value: number, meta?: any) => string;
 }
 
@@ -159,11 +167,60 @@ const PENDANT_POOL: AwakenDef[] = [
     desc: (v) => `宗门贡献获得 +${(v * 100).toFixed(0)}%` },
 ];
 
+// ============ 灵戒（12 条 / 主修功法增幅向）============
+// 灵戒 1 件 cap：12 条择 1，不跨件叠加
+const RING_POOL: AwakenDef[] = [
+  // —— 通用向（4 条）：任意主修都生效 ——
+  { id: 'aw_main_amp', name: '心法贯通', slot: 'ring', stat: 'mainSkillMultBonus',
+    tiers: { blue: 0.08, purple: 0.13, gold: 0.20, red: 0.28 },
+    desc: (v) => `主修伤害倍率 +${(v * 100).toFixed(0)}%` },
+  { id: 'aw_main_crit', name: '主修锋锐', slot: 'ring', stat: 'mainSkillCritRate',
+    tiers: { blue: 0.04, purple: 0.07, gold: 0.10, red: 0.14 },
+    desc: (v) => `主修攻击额外暴击率 +${(v * 100).toFixed(0)}%` },
+  { id: 'aw_main_pierce', name: '主修破玄', slot: 'ring', stat: 'mainSkillArmorPen',
+    tiers: { blue: 0.06, purple: 0.10, gold: 0.15, red: 0.22 },
+    desc: (v) => `主修无视目标 ${(v * 100).toFixed(0)}% 防御` },
+  { id: 'aw_main_lifesteal', name: '主修噬灵', slot: 'ring', stat: 'mainSkillLifesteal',
+    tiers: { blue: 0.015, purple: 0.025, gold: 0.04, red: 0.06 },
+    desc: (v) => `主修命中回复 ${(v * 100).toFixed(1)}% 最大气血` },
+  // —— 属性匹配向（5 条）：主修元素匹配才触发 ——
+  { id: 'aw_metal_resonance', name: '金鸣戒', slot: 'ring', stat: 'mainSkillBleedAmp', requireElement: 'metal',
+    tiers: { blue: 0.20, purple: 0.35, gold: 0.50, red: 0.75 },
+    desc: (v) => `[主修=金] 主修施加流血每跳伤害 +${(v * 100).toFixed(0)}%` },
+  { id: 'aw_wood_resonance', name: '木灵戒', slot: 'ring', stat: 'mainSkillPoisonAmp', requireElement: 'wood',
+    tiers: { blue: 0.30, purple: 0.45, gold: 0.65, red: 0.85 },
+    desc: (v) => `[主修=木] 主修施加中毒每跳伤害 +${(v * 100).toFixed(0)}%` },
+  { id: 'aw_water_resonance', name: '水蕴戒', slot: 'ring', stat: 'mainSkillFreezeChance', requireElement: 'water',
+    tiers: { blue: 0.08, purple: 0.13, gold: 0.20, red: 0.28 },
+    desc: (v) => `[主修=水] 主修冻结概率 +${(v * 100).toFixed(0)}%` },
+  { id: 'aw_fire_resonance', name: '焚天戒', slot: 'ring', stat: 'mainSkillBurnDuration', requireElement: 'fire',
+    tiers: { blue: 1, purple: 1, gold: 2, red: 2 },
+    desc: (v) => `[主修=火] 主修灼烧持续 +${v} 回合` },
+  { id: 'aw_earth_resonance', name: '厚土戒', slot: 'ring', stat: 'mainSkillBrittleAmp', requireElement: 'earth',
+    tiers: { blue: 0.10, purple: 0.15, gold: 0.22, red: 0.30 },
+    desc: (v) => `[主修=土] 主修脆弱减防加深 +${(v * 100).toFixed(0)}%` },
+  // —— 机制向（3 条）：高阶 build 解锁 ——
+  { id: 'aw_main_chain', name: '紫电连华', slot: 'ring', stat: 'mainSkillChainChance',
+    tiers: { blue: 0.08, purple: 0.13, gold: 0.20, red: 0.28 },
+    desc: (v) => `主修 ${(v * 100).toFixed(0)}% 概率追击一次（60% 倍率，与兵器连击互斥取大）` },
+  { id: 'aw_main_cdcut', name: '心剑回响', slot: 'ring', stat: 'mainSkillCritCdCut',
+    tiers: { blue: 1, purple: 1, gold: 1, red: 1 },
+    desc: () => `主修暴击时所有神通 CD -1（每回合至多 1 次）` },
+  { id: 'aw_main_execute', name: '灵戒裂魂', slot: 'ring', stat: 'mainSkillExecute',
+    // value = 加成百分比，threshold 通过 meta 在 rollAwakenEffect 内按品质注入
+    tiers: { blue: 0.30, purple: 0.45, gold: 0.60, red: 0.85 },
+    desc: (v, m) => {
+      const thr = m?.threshold ?? 0.20;
+      return `主修对气血<${(thr * 100).toFixed(0)}% 目标伤害 +${(v * 100).toFixed(0)}%`;
+    } },
+];
+
 // 合集
 export const AWAKEN_POOLS: Record<string, AwakenDef[]> = {
   weapon: WEAPON_POOL,
   armor: ARMOR_POOL,
   pendant: PENDANT_POOL,
+  ring: RING_POOL,
 };
 
 // 按 id 查询（用于 UI 渲染）
@@ -178,8 +235,8 @@ const ELEM_NAME: Record<string, string> = {
 };
 const ELEMENTS: Array<keyof typeof ELEM_NAME> = ['fire', 'metal', 'water', 'wood', 'earth'];
 
-// 支持附灵的槽位
-export const AWAKEN_SLOTS = ['weapon', 'armor', 'pendant'];
+// 支持附灵的槽位（v1.3: 加入 ring 槽位 - 主修功法增幅）
+export const AWAKEN_SLOTS = ['weapon', 'armor', 'pendant', 'ring'];
 
 // 支持附灵的品质
 export const AWAKEN_RARITIES: AwakenRarity[] = ['blue', 'purple', 'gold', 'red'];
@@ -223,6 +280,17 @@ export function rollAwakenEffect(
     meta = { element: elem };
     finalStat = `${elem.toUpperCase()}_DMG_PCT`;
     finalName = `五行·${ELEM_NAME[elem]}`;
+  }
+  // 灵戒裂魂：阈值跟随品质，独立于 value（value 仅存伤害加成）
+  if (def.id === 'aw_main_execute') {
+    const thrByRarity: Record<AwakenRarity, number> = {
+      blue: 0.20, purple: 0.25, gold: 0.30, red: 0.35,
+    };
+    meta = { threshold: thrByRarity[rarity as AwakenRarity] };
+  }
+  // ring 池属性匹配向：把 requireElement 写入 meta 供战斗引擎判断
+  if (def.requireElement) {
+    meta = { ...(meta || {}), requireElement: def.requireElement };
   }
 
   return {

@@ -403,10 +403,11 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
     }
 
-    // v1.2 附灵聚合（仅 weapon/armor/pendant 槽位有效）
+    // v1.2 附灵聚合（weapon/armor/pendant + v1.3 ring 主修增幅）
     const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
     if (aw && aw.stat) {
       const v = Number(aw.value) || 0
+      const meta = aw.meta || null
       switch (aw.stat) {
         // 属性加成类（直接叠加到 BattlerStats）
         case 'lifesteal':          lifesteal += v; break
@@ -471,6 +472,40 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
         case 'vsBossBonus':        awaken.vsBossBonus = (awaken.vsBossBonus || 0) + v; break
         case 'vsEliteBonus':       awaken.vsEliteBonus = (awaken.vsEliteBonus || 0) + v; break
         case 'debuffDurationBonus':awaken.debuffDurationBonus = (awaken.debuffDurationBonus || 0) + v; break
+        // ===== v1.3 灵戒附灵·主修功法增幅 =====
+        // 通用向
+        case 'mainSkillMultBonus':  awaken.mainSkillMultBonus = (awaken.mainSkillMultBonus || 0) + v; break
+        case 'mainSkillCritRate':   awaken.mainSkillCritRate = (awaken.mainSkillCritRate || 0) + v; break
+        case 'mainSkillArmorPen':   awaken.mainSkillArmorPen = (awaken.mainSkillArmorPen || 0) + v; break
+        case 'mainSkillLifesteal':  awaken.mainSkillLifesteal = (awaken.mainSkillLifesteal || 0) + v; break
+        // 属性匹配向（运行时按 activeSkill.element 判断生效）
+        case 'mainSkillBleedAmp':
+          awaken.mainSkillBleedAmp = v
+          awaken.mainSkillBleedAmpElem = meta?.requireElement
+          break
+        case 'mainSkillPoisonAmp':
+          awaken.mainSkillPoisonAmp = v
+          awaken.mainSkillPoisonAmpElem = meta?.requireElement
+          break
+        case 'mainSkillFreezeChance':
+          awaken.mainSkillFreezeChance = v
+          awaken.mainSkillFreezeChanceElem = meta?.requireElement
+          break
+        case 'mainSkillBurnDuration':
+          awaken.mainSkillBurnDuration = v
+          awaken.mainSkillBurnDurationElem = meta?.requireElement
+          break
+        case 'mainSkillBrittleAmp':
+          awaken.mainSkillBrittleAmp = v
+          awaken.mainSkillBrittleAmpElem = meta?.requireElement
+          break
+        // 机制向
+        case 'mainSkillChainChance': awaken.mainSkillChainChance = (awaken.mainSkillChainChance || 0) + v; break
+        case 'mainSkillCritCdCut':   awaken.mainSkillCritCdCut = true; break
+        case 'mainSkillExecute':
+          awaken.mainSkillExecuteBonus = v
+          awaken.mainSkillExecuteThr = meta?.threshold ?? 0.20
+          break
       }
     }
   }

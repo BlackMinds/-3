@@ -31,7 +31,31 @@ export interface PlayerAwakenState {
   poisonOnHitTaken?: number;
   burnOnHitTaken?: number;
   reflectOnCrit?: number;
+  // ===== v1.3 灵戒附灵·主修功法增幅 =====
+  // 通用向：仅主修攻击生效（usedSkill === activeSkill）
+  mainSkillMultBonus?: number;       // 主修伤害倍率 +X%
+  mainSkillCritRate?: number;        // 主修攻击额外暴击率 +X%
+  mainSkillArmorPen?: number;        // 主修无视目标 X% 防御
+  mainSkillLifesteal?: number;       // 主修命中回 X% 最大气血
+  // 属性匹配向：仅主修元素匹配 requireElement 时生效
+  mainSkillBleedAmp?: number;        // 主修施加流血每跳伤害 +X%（金）
+  mainSkillBleedAmpElem?: AwakenElement;
+  mainSkillPoisonAmp?: number;       // 主修施加中毒每跳伤害 +X%（木）
+  mainSkillPoisonAmpElem?: AwakenElement;
+  mainSkillFreezeChance?: number;    // 主修冻结概率 +X%（水）
+  mainSkillFreezeChanceElem?: AwakenElement;
+  mainSkillBurnDuration?: number;    // 主修灼烧持续 +X 回合（火）
+  mainSkillBurnDurationElem?: AwakenElement;
+  mainSkillBrittleAmp?: number;      // 主修脆弱减防加深 +X%（土）
+  mainSkillBrittleAmpElem?: AwakenElement;
+  // 机制向
+  mainSkillChainChance?: number;     // 主修追击概率（与兵器 chainAttackChance 取大）
+  mainSkillCritCdCut?: boolean;      // 主修暴击时所有神通 CD-1（每回合至多 1 次）
+  mainSkillExecuteThr?: number;      // 残血阈值（0.20~0.35）
+  mainSkillExecuteBonus?: number;    // 残血伤害加成（0.30~0.85）
 }
+
+export type AwakenElement = 'metal' | 'wood' | 'water' | 'fire' | 'earth';
 
 export interface BattlerStats {
   name: string;
@@ -385,11 +409,12 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   // 2026-04-25: 神识系数 0.5%→0.1% 后玩家神通伤害 -41%, HP 全 tier ×0.9
   // v3.5 (功法削弱): 全 tier × 0.60 联动玩家 DPS 下降, 保持 TTK 基本不变
   // 2026-04-26: T5+ 怪物血量 +5%（含秘境，秘境组队共用 generateMonsterStats）
+  // 2026-04-26 (灵戒附灵): T6+ 再 +5% 抵消玩家主修流派峰值（T6 1.428→1.4994 / T7 1.5435→1.620675 / T8 1.6275→1.708875 / T9-T10 fallback 0.546→0.5733）
   const HP_SCALE_BY_TIER: Record<number, number> = {
     1: 1.03, 2: 1.03, 3: 1.03, 4: 1.03,
-    5: 1.3335, 6: 1.428, 7: 1.5435, 8: 1.6275,
+    5: 1.3335, 6: 1.4994, 7: 1.620675, 8: 1.708875,
   };
-  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.546;
+  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.5733;
   // v3.4.1: ATK_SCALE 0.75 → 0.70 (-6.7%)
   // 2026-04-25: ATK_SCALE 0.70 → 0.665 (-5%) 联动神识削弱, 让玩家累积受伤不至飙升
   const ATK_SCALE = 0.665;
@@ -444,7 +469,8 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
 export function calculateDamage(
   attacker: BattlerStats, defender: BattlerStats,
   skillMultiplier: number = 1.0, skillElement: string | null = null,
-  ignoreDef: number = 0, ignoreDodge: boolean = false
+  ignoreDef: number = 0, ignoreDodge: boolean = false,
+  isMainSkill: boolean = false,
 ): { damage: number; isCrit: boolean } {
   const useElement = skillElement || attacker.element;
   const elementMulti = getElementMultiplier(useElement, defender.element);
@@ -455,9 +481,11 @@ export function calculateDamage(
     resistFactor = 1.0 - Math.min(0.7, r);
   }
 
-  // v1.2 附灵破甲叠加
-  const awakenArmorPenPct = (attacker as any).awakenState?.armorPenPct || 0;
-  const totalArmorPen = ignoreDef + (attacker.armorPen || 0) / 100 + awakenArmorPenPct;
+  // v1.2 附灵破甲叠加 + v1.3 主修破玄叠加
+  const awakenState = (attacker as any).awakenState;
+  const awakenArmorPenPct = awakenState?.armorPenPct || 0;
+  const mainSkillArmorPen = (isMainSkill && awakenState?.mainSkillArmorPen) ? awakenState.mainSkillArmorPen : 0;
+  const totalArmorPen = ignoreDef + (attacker.armorPen || 0) / 100 + awakenArmorPenPct + mainSkillArmorPen;
   const effectiveDef = defender.def * Math.max(0, 1 - totalArmorPen);
   // v3.4: DEF 权重从 balance.ts 读 (0.8), 让防御更值钱
   const atkDefRatio = attacker.atk / (attacker.atk + effectiveDef * BATTLE_FORMULA.atkDefRatioDefWeight);
@@ -468,8 +496,7 @@ export function calculateDamage(
     elementDmgBonus = 1 + ed / 100;
   }
 
-  // v1.2 附灵条件型伤害加成
-  const awakenState = (attacker as any).awakenState;
+  // v1.2 附灵条件型伤害加成 + v1.3 主修裂魂
   let awakenDmgMul = 1.0;
   if (awakenState) {
     // 斩杀：目标 HP < 30%
@@ -487,12 +514,19 @@ export function calculateDamage(
     } else if ((defRole === 'tank' || defRole === 'dps') && awakenState.vsEliteBonus > 0) {
       awakenDmgMul *= 1 + awakenState.vsEliteBonus;
     }
+    // v1.3 灵戒裂魂：仅主修攻击 + 目标 HP < 阈值
+    if (isMainSkill && awakenState.mainSkillExecuteThr > 0 && defender.maxHp > 0 &&
+        defender.hp / defender.maxHp < awakenState.mainSkillExecuteThr) {
+      awakenDmgMul *= 1 + awakenState.mainSkillExecuteBonus;
+    }
   }
 
   let damage = attacker.atk * skillMultiplier * elementMulti * resistFactor * atkDefRatio * elementDmgBonus * awakenDmgMul;
 
   // v3 飘渺神行：上一次闪避后的攻击强制暴击（命中不被闪避才消费）
-  let isCrit = Math.random() < attacker.crit_rate;
+  // v1.3 主修锋锐：主修攻击额外暴击率
+  const mainSkillCritRate = (isMainSkill && awakenState?.mainSkillCritRate) ? awakenState.mainSkillCritRate : 0;
+  let isCrit = Math.random() < (attacker.crit_rate + mainSkillCritRate);
   if ((attacker as any).forceCritNext) {
     isCrit = true;
   }
@@ -702,6 +736,25 @@ export function runWaveBattle(
     vsBossBonus: aw.vsBossBonus || 0,
     vsEliteBonus: aw.vsEliteBonus || 0,
     debuffDurationBonus: aw.debuffDurationBonus || 0,
+    // v1.3 灵戒附灵·主修功法增幅
+    mainSkillMultBonus: aw.mainSkillMultBonus || 0,
+    mainSkillCritRate: aw.mainSkillCritRate || 0,
+    mainSkillArmorPen: aw.mainSkillArmorPen || 0,
+    mainSkillLifesteal: aw.mainSkillLifesteal || 0,
+    mainSkillBleedAmp: aw.mainSkillBleedAmp || 0,
+    mainSkillBleedAmpElem: aw.mainSkillBleedAmpElem,
+    mainSkillPoisonAmp: aw.mainSkillPoisonAmp || 0,
+    mainSkillPoisonAmpElem: aw.mainSkillPoisonAmpElem,
+    mainSkillFreezeChance: aw.mainSkillFreezeChance || 0,
+    mainSkillFreezeChanceElem: aw.mainSkillFreezeChanceElem,
+    mainSkillBurnDuration: aw.mainSkillBurnDuration || 0,
+    mainSkillBurnDurationElem: aw.mainSkillBurnDurationElem,
+    mainSkillBrittleAmp: aw.mainSkillBrittleAmp || 0,
+    mainSkillBrittleAmpElem: aw.mainSkillBrittleAmpElem,
+    mainSkillChainChance: aw.mainSkillChainChance || 0,
+    mainSkillCritCdCut: !!aw.mainSkillCritCdCut,
+    mainSkillExecuteThr: aw.mainSkillExecuteThr || 0,
+    mainSkillExecuteBonus: aw.mainSkillExecuteBonus || 0,
   };
   player.awakenTurnCounter = 0; // 用于 cleanseInterval 计数
   // 附灵与功法被动同类钩子：取最大值叠加到 passiveEffects（战斗循环读的是 pe.*）
@@ -743,14 +796,58 @@ export function runWaveBattle(
     turn: number,
     inflictor?: { awakenState?: { debuffDurationBonus?: number } } | 'player',
   ): boolean {
-    if (Math.random() >= debuff.chance) return false;
+    // v1.3 灵戒附灵·属性匹配向：仅当 inflictor === 'player' 且为主修攻击 + 主修元素匹配时增强 debuff
+    let effChance = debuff.chance;
+    let effDuration = debuff.duration;
+    let effValue = debuff.value;
+    let bleedAmpMul = 1.0;
+    let poisonAmpMul = 1.0;
+    let resonanceTag = '';
+    if (inflictor === 'player') {
+      const aState = (player as any).awakenState as PlayerAwakenState | undefined;
+      const mainElem = (player as any)._mainSkillElement as string | undefined;
+      if (aState && mainElem) {
+        // 火 + 灼烧 → 持续 +
+        if (debuff.type === 'burn' && mainElem === 'fire' &&
+            aState.mainSkillBurnDurationElem === 'fire' && aState.mainSkillBurnDuration) {
+          effDuration += aState.mainSkillBurnDuration;
+          resonanceTag = ` ✦焚天+${aState.mainSkillBurnDuration}`;
+        }
+        // 水 + 冻结/眩晕/束缚 → 概率 +
+        if ((debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') && mainElem === 'water' &&
+            aState.mainSkillFreezeChanceElem === 'water' && aState.mainSkillFreezeChance) {
+          effChance = Math.min(1, effChance + aState.mainSkillFreezeChance);
+          resonanceTag = ` ✦水蕴+${(aState.mainSkillFreezeChance * 100).toFixed(0)}%`;
+        }
+        // 土 + 脆弱 → value 加深
+        if (debuff.type === 'brittle' && mainElem === 'earth' &&
+            aState.mainSkillBrittleAmpElem === 'earth' && aState.mainSkillBrittleAmp) {
+          effValue = (effValue || 0.15) * (1 + aState.mainSkillBrittleAmp);
+          resonanceTag = ` ✦厚土+${(aState.mainSkillBrittleAmp * 100).toFixed(0)}%`;
+        }
+        // 金 + 流血 → 每跳伤害 +
+        if (debuff.type === 'bleed' && mainElem === 'metal' &&
+            aState.mainSkillBleedAmpElem === 'metal' && aState.mainSkillBleedAmp) {
+          bleedAmpMul = 1 + aState.mainSkillBleedAmp;
+          resonanceTag = ` ✦金鸣+${(aState.mainSkillBleedAmp * 100).toFixed(0)}%`;
+        }
+        // 木 + 中毒 → 每跳伤害 +
+        if (debuff.type === 'poison' && mainElem === 'wood' &&
+            aState.mainSkillPoisonAmpElem === 'wood' && aState.mainSkillPoisonAmp) {
+          poisonAmpMul = 1 + aState.mainSkillPoisonAmp;
+          resonanceTag = ` ✦木灵+${(aState.mainSkillPoisonAmp * 100).toFixed(0)}%`;
+        }
+      }
+    }
+
+    if (Math.random() >= effChance) return false;
     // 控制类抗性降低持续时间
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type);
     // 天师附灵：施加方延长减益持续回合
     let durBonus = 0;
     if (inflictor === 'player') durBonus = (player as any).awakenState?.debuffDurationBonus || 0;
     else if (inflictor && typeof inflictor === 'object') durBonus = inflictor.awakenState?.debuffDurationBonus || 0;
-    let duration = debuff.duration + durBonus;
+    let duration = effDuration + durBonus;
     const tianshiTag = durBonus > 0 ? ` ✦天师+${durBonus}` : '';
     if (isCtrl) {
       const r = Math.min(0.7, target.resists?.ctrl || 0);
@@ -762,7 +859,7 @@ export function runWaveBattle(
     // 冻结/眩晕/束缚合并到 frozenTurns
     if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
       target.frozenTurns = Math.max(target.frozenTurns, duration);
-      logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tianshiTag}`, type: 'normal', ...snap() });
+      logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tianshiTag}${resonanceTag}`, type: 'normal', ...snap() });
       return true;
     }
     // DOT/其他 debuff
@@ -773,19 +870,26 @@ export function runWaveBattle(
     if (isDotType && target !== player && (player as any).dotAmpPct) {
       dmg = Math.max(1, Math.floor(dmg * (1 + (player as any).dotAmpPct / 100)));
     }
+    // v1.3 主修元素附灵：流血/中毒每跳伤害放大
+    if (debuff.type === 'bleed' && bleedAmpMul > 1) {
+      dmg = Math.max(1, Math.floor(dmg * bleedAmpMul));
+    }
+    if (debuff.type === 'poison' && poisonAmpMul > 1) {
+      dmg = Math.max(1, Math.floor(dmg * poisonAmpMul));
+    }
     const exists = target.debuffs.find(d => d.type === debuff.type);
-    if (exists) { exists.remaining = duration; exists.value = debuff.value; exists.damagePerTurn = dmg; }
-    else target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: debuff.value });
+    if (exists) { exists.remaining = duration; exists.value = effValue; exists.damagePerTurn = dmg; }
+    else target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: effValue });
 
     let text = `${targetName}陷入${DEBUFF_NAMES[debuff.type]} ${duration} 回合`;
     if (debuff.type === 'poison') text += ` (每回合 ${dmg} 毒伤)`;
     else if (debuff.type === 'burn') text += ` (每回合 ${dmg} 火伤)`;
     else if (debuff.type === 'bleed') text += ` (每回合 ${dmg} 流血)`;
-    else if (debuff.type === 'brittle') text += ` (受伤+${((debuff.value || 0.15) * 100).toFixed(0)}%)`;
-    else if (debuff.type === 'atk_down') text += ` (攻击-${((debuff.value || 0.15) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'brittle') text += ` (受伤+${((effValue || 0.15) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'atk_down') text += ` (攻击-${((effValue || 0.15) * 100).toFixed(0)}%)`;
     else if (debuff.type === 'slow') text += ` (必定后攻)`;
     else if (debuff.type === 'silence') text += ` (无法使用神通)`;
-    logs.push({ turn, text: `  ${text}${tianshiTag}`, type: 'normal', ...snap() });
+    logs.push({ turn, text: `  ${text}${tianshiTag}${resonanceTag}`, type: 'normal', ...snap() });
     return true;
   }
 
@@ -1260,6 +1364,11 @@ export function runWaveBattle(
     }
     for (let i = 0; i < divineCds.length; i++) { if (divineCds[i] > 0) divineCds[i]--; }
 
+    // v1.3 灵戒附灵·主修判定：仅 active skill (主修) 触发 mainSkill* 钩子
+    const isMainSkill = (usedSkill === activeSkill);
+    // 设置当前主修元素到 player 上，供 tryApplyDebuff 检查（仅主修攻击期间有效）
+    (player as any)._mainSkillElement = isMainSkill ? activeSkill.element : null;
+
     let mul = usedSkill.multiplier;
     let rootMatched = false;
     if (usedSkill.element && player.spiritualRoot && usedSkill.element === player.spiritualRoot) {
@@ -1269,6 +1378,10 @@ export function runWaveBattle(
     // 神识加成神通伤害: 每点神识+0.1% (2026-04-25: 0.5%→0.1% — 神识 216 时旧 +108% 神通伤害过强)
     if (isDivine && player.spirit && player.spirit > 0) {
       mul *= 1 + player.spirit * 0.001;
+    }
+    // v1.3 心法贯通：主修伤害倍率 +X%
+    if (isMainSkill && player.awakenState?.mainSkillMultBonus) {
+      mul *= 1 + player.awakenState.mainSkillMultBonus;
     }
     // 玩家 buff：atk_up 通过 mul 放大（与 def_up 临时放大 def 对称，避免战意沸腾累积冲突）
     const atkUpSum = sumPlayerBuff('atk_up');
@@ -1302,6 +1415,8 @@ export function runWaveBattle(
           tryApplyDebuff(m, m.stats.name, usedSkill.debuff as any, player.atk, turn, 'player');
         }
       }
+      // v1.3 清理主修元素标记
+      (player as any)._mainSkillElement = null;
     } else {
       // 攻击技能
       let attackTargets: typeof aliveMonsters;
@@ -1324,6 +1439,11 @@ export function runWaveBattle(
         logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】(${skillLabel})`, type: isDivine ? 'crit' : 'normal', ...snap() });
       }
 
+      // v1.3 主修噬灵：主修命中即触发（与暴击无关），按最大气血百分比回复
+      const mainSkillLifestealRate = (isMainSkill && player.awakenState?.mainSkillLifesteal) ? player.awakenState.mainSkillLifesteal : 0;
+      // v1.3 心剑回响：主修暴击时所有神通 CD-1（每回合至多 1 次）
+      let critCdCutUsedThisTurn = false;
+
       // 对怪物造成伤害（应用脆弱、吸血汇总）
       const dealDamage = (target: typeof monsters[0], rawDmg: number) => {
         let dmg = rawDmg;
@@ -1342,7 +1462,29 @@ export function runWaveBattle(
             }
           }
         }
+        // v1.3 主修噬灵：按最大气血百分比回血
+        if (mainSkillLifestealRate > 0 && dmg > 0) {
+          const heal = Math.floor(player.maxHp * mainSkillLifestealRate);
+          const actualHeal = Math.min(heal, player.maxHp - player.hp);
+          if (actualHeal > 0) {
+            player.hp += actualHeal;
+            turnLifestealTotal += actualHeal;
+          }
+        }
         return dmg;
+      };
+      // v1.3 心剑回响：当主修暴击时调用
+      const tryCritCdCut = (isCrit: boolean) => {
+        if (!isCrit || !isMainSkill || critCdCutUsedThisTurn) return;
+        if (!player.awakenState?.mainSkillCritCdCut) return;
+        let cut = false;
+        for (let i = 0; i < divineCds.length; i++) {
+          if (divineCds[i] > 0) { divineCds[i] = Math.max(0, divineCds[i] - 1); cut = true; }
+        }
+        if (cut) {
+          critCdCutUsedThisTurn = true;
+          logs.push({ turn, text: '  ✦【心剑回响】主修暴击，所有神通 CD -1', type: 'buff', ...snap() });
+        }
       };
 
       if (hits > 1 && attackTargets.length === 1) {
@@ -1351,11 +1493,12 @@ export function runWaveBattle(
         while (hitsDone < hits) {
           const curTarget = monsters.find(m => m.alive && m.stats.hp > 0);
           if (!curTarget) break;
-          const dmgResult = calculateDamage(player, curTarget.stats, perHitMul, usedSkill.element, usedSkill.ignoreDef);
+          const dmgResult = calculateDamage(player, curTarget.stats, perHitMul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill);
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(curTarget, dmgResult.damage);
             const critText = dmgResult.isCrit ? '暴击!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
+            tryCritCdCut(dmgResult.isCrit);
             if (getElementMultiplier(usedSkill.element || player.element, curTarget.stats.element) > 1.0) {
               battleStats.elementAdvantageHit = true;
             }
@@ -1372,11 +1515,12 @@ export function runWaveBattle(
         // AOE/多目标/普通单体
         for (const t of attackTargets) {
           if (t.stats.hp <= 0) continue;
-          const dmgResult = calculateDamage(player, t.stats, mul, usedSkill.element, usedSkill.ignoreDef);
+          const dmgResult = calculateDamage(player, t.stats, mul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill);
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(t, dmgResult.damage);
             const critText = dmgResult.isCrit ? '暴击!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
+            tryCritCdCut(dmgResult.isCrit);
             if (getElementMultiplier(usedSkill.element || player.element, t.stats.element) > 1.0) {
               battleStats.elementAdvantageHit = true;
             }
@@ -1403,21 +1547,27 @@ export function runWaveBattle(
           applyPlayerBuff(usedSkill.buff as any, usedSkill.name, turn);
         }
 
-        // v1.2 附灵：连击（仅普攻，即 mul === activeSkill.multiplier 且无 hits>1）
+        // v1.2 附灵：连击（仅普攻=主修） + v1.3 灵戒紫电连华：与 chainAttackChance 取最大（防双发爆发）
         const awakenState = player.awakenState;
-        if (awakenState?.chainAttackChance > 0 && usedSkill === activeSkill && attackTargets.length > 0) {
-          if (Math.random() < awakenState.chainAttackChance) {
+        const baseChain = awakenState?.chainAttackChance || 0;
+        const ringChain = (isMainSkill && awakenState?.mainSkillChainChance) ? awakenState.mainSkillChainChance : 0;
+        const chainChance = Math.max(baseChain, ringChain);
+        if (chainChance > 0 && usedSkill === activeSkill && attackTargets.length > 0) {
+          if (Math.random() < chainChance) {
             const chainTarget = monsters.find(m => m.alive && m.stats.hp > 0);
             if (chainTarget) {
-              const dmgResult = calculateDamage(player, chainTarget.stats, mul * 0.6, usedSkill.element, usedSkill.ignoreDef);
+              const dmgResult = calculateDamage(player, chainTarget.stats, mul * 0.6, usedSkill.element, usedSkill.ignoreDef, false, false);
               if (dmgResult.damage > 0) {
                 const finalDmg = dealDamage(chainTarget, dmgResult.damage);
-                logs.push({ turn, text: `  ✦【连击】再次出手，对${chainTarget.stats.name}造成 ${finalDmg} 伤害`, type: 'buff', ...snap() });
+                const chainTag = ringChain > baseChain ? '紫电连华' : '连击';
+                logs.push({ turn, text: `  ✦【${chainTag}】再次出手，对${chainTarget.stats.name}造成 ${finalDmg} 伤害`, type: 'buff', ...snap() });
               }
             }
           }
         }
       }
+      // v1.3 攻击结束后清掉主修元素标记，防止后续怪物攻击或下一回合误命中
+      (player as any)._mainSkillElement = null;
 
       // 吸血汇总日志
       if (turnLifestealTotal > 0) {

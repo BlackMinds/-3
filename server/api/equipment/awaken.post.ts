@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
 
   const slot = eq.base_slot || eq.slot
   if (!canSlotAwaken(slot)) {
-    return { code: 400, message: '该槽位装备不支持附灵（仅兵器/法袍/灵佩）' }
+    return { code: 400, message: '该槽位装备不支持附灵（仅兵器/法袍/灵佩/灵戒）' }
   }
   if (!canRarityAwaken(eq.rarity)) {
     return { code: 400, message: '白/绿品装备无法附灵' }

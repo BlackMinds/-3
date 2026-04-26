@@ -4847,6 +4847,8 @@ const filteredSkillsForPicker = computed(() => {
 });
 
 function equipSkill(skill: Skill) {
+  const wasActive = pickerSlotType.value === 'active';
+  const oldElem = wasActive ? (equippedActive.value?.element || null) : null;
   if (pickerSlotType.value === 'active') {
     equippedActive.value = skill;
   } else if (pickerSlotType.value === 'divine') {
@@ -4856,9 +4858,24 @@ function equipSkill(skill: Skill) {
   }
   showSkillPicker.value = false;
   syncEquippedSkills();
+  // v1.3 主修切换时如灵戒附灵是属性匹配向，提示生效/失效状态
+  if (wasActive && oldElem !== skill.element) notifyRingResonanceChange(skill.element);
+}
+
+function notifyRingResonanceChange(newElem: string | null) {
+  const ring: any = getEquippedItem('ring');
+  if (!ring?.awaken_effect) return;
+  const aw: AwakenEffect = typeof ring.awaken_effect === 'string'
+    ? JSON.parse(ring.awaken_effect)
+    : ring.awaken_effect;
+  const reqElem = aw.meta?.requireElement as string | undefined;
+  if (!reqElem) return;
+  const matched = newElem === reqElem;
+  showToast(`灵戒附灵·${aw.name} ${matched ? '✓ 已生效' : '✗ 未生效（主修元素不匹配）'}`, matched ? 'success' : 'info');
 }
 
 function unequipSkill() {
+  const wasActive = pickerSlotType.value === 'active';
   if (pickerSlotType.value === 'active') {
     equippedActive.value = null;
   } else if (pickerSlotType.value === 'divine') {
@@ -4868,6 +4885,7 @@ function unequipSkill() {
   }
   showSkillPicker.value = false;
   syncEquippedSkills();
+  if (wasActive) notifyRingResonanceChange(null);
 }
 
 async function sellSkill(item: any) {
@@ -5721,7 +5739,15 @@ function getAwakenDisplay(eq: any): { name: string; desc: string } | null {
 
 function describeAwakenFromEquip(aw: AwakenEffect): string {
   // 对于五行·X meta 带 element，走主池 desc 会使用 meta
-  return describeAwakenEffect(aw);
+  let desc = describeAwakenEffect(aw);
+  // v1.3 灵戒属性匹配向：附加"当前是否生效"提示（基于已装备主修元素）
+  const reqElem = aw.meta?.requireElement as string | undefined;
+  if (reqElem) {
+    const mainElem = equippedActive.value?.element || null;
+    const matched = mainElem === reqElem;
+    desc += matched ? ' ✓已生效' : ' ✗未生效(主修元素不匹配)';
+  }
+  return desc;
 }
 
 function openAwakenDialog(eq: any) {

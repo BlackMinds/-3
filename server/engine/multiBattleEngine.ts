@@ -221,6 +221,25 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
       vsBossBonus: s.awaken?.vsBossBonus || 0,
       vsEliteBonus: s.awaken?.vsEliteBonus || 0,
       debuffDurationBonus: s.awaken?.debuffDurationBonus || 0,
+      // v1.3 灵戒附灵·主修功法增幅（PvP 数据透传，运行时钩子在 battleEngine 主流程生效）
+      mainSkillMultBonus: s.awaken?.mainSkillMultBonus || 0,
+      mainSkillCritRate: s.awaken?.mainSkillCritRate || 0,
+      mainSkillArmorPen: s.awaken?.mainSkillArmorPen || 0,
+      mainSkillLifesteal: s.awaken?.mainSkillLifesteal || 0,
+      mainSkillBleedAmp: s.awaken?.mainSkillBleedAmp || 0,
+      mainSkillBleedAmpElem: s.awaken?.mainSkillBleedAmpElem,
+      mainSkillPoisonAmp: s.awaken?.mainSkillPoisonAmp || 0,
+      mainSkillPoisonAmpElem: s.awaken?.mainSkillPoisonAmpElem,
+      mainSkillFreezeChance: s.awaken?.mainSkillFreezeChance || 0,
+      mainSkillFreezeChanceElem: s.awaken?.mainSkillFreezeChanceElem,
+      mainSkillBurnDuration: s.awaken?.mainSkillBurnDuration || 0,
+      mainSkillBurnDurationElem: s.awaken?.mainSkillBurnDurationElem,
+      mainSkillBrittleAmp: s.awaken?.mainSkillBrittleAmp || 0,
+      mainSkillBrittleAmpElem: s.awaken?.mainSkillBrittleAmpElem,
+      mainSkillChainChance: s.awaken?.mainSkillChainChance || 0,
+      mainSkillCritCdCut: !!s.awaken?.mainSkillCritCdCut,
+      mainSkillExecuteThr: s.awaken?.mainSkillExecuteThr || 0,
+      mainSkillExecuteBonus: s.awaken?.mainSkillExecuteBonus || 0,
     },
 
     alive: true,
@@ -261,6 +280,8 @@ function fighterToBattlerStats(f: PvpFighter): BattlerStats {
     elementDmg: f.elementDmg,
     spirit: f.spirit,
     awaken: f.awakenState,
+    awakenState: f.awakenState,                          // v1.3 calculateDamage 直接读 awakenState
+    _mainSkillElement: (f as any)._mainSkillElement,    // v1.3 主修元素标记透传
   } as any
 }
 
@@ -329,10 +350,47 @@ export function runPvpBattle(
     attackerAtk: number, turn: number,
     inflictor?: PvpFighter
   ): boolean {
-    if (Math.random() >= debuff.chance) return false
+    // v1.3 灵戒附灵·属性匹配向：仅 inflictor 在主修攻击 + 主修元素匹配时增强
+    let effChance = debuff.chance
+    let effDuration = debuff.duration
+    let effValue = debuff.value
+    let bleedAmpMul = 1.0
+    let poisonAmpMul = 1.0
+    let resonanceTag = ''
+    const aState = inflictor?.awakenState
+    const mainElem = (inflictor as any)?._mainSkillElement as string | undefined
+    if (aState && mainElem) {
+      if (debuff.type === 'burn' && mainElem === 'fire' &&
+          aState.mainSkillBurnDurationElem === 'fire' && aState.mainSkillBurnDuration) {
+        effDuration += aState.mainSkillBurnDuration
+        resonanceTag = ` ✦焚天+${aState.mainSkillBurnDuration}`
+      }
+      if ((debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') && mainElem === 'water' &&
+          aState.mainSkillFreezeChanceElem === 'water' && aState.mainSkillFreezeChance) {
+        effChance = Math.min(1, effChance + aState.mainSkillFreezeChance)
+        resonanceTag = ` ✦水蕴+${(aState.mainSkillFreezeChance * 100).toFixed(0)}%`
+      }
+      if (debuff.type === 'brittle' && mainElem === 'earth' &&
+          aState.mainSkillBrittleAmpElem === 'earth' && aState.mainSkillBrittleAmp) {
+        effValue = (effValue || 0.15) * (1 + aState.mainSkillBrittleAmp)
+        resonanceTag = ` ✦厚土+${(aState.mainSkillBrittleAmp * 100).toFixed(0)}%`
+      }
+      if (debuff.type === 'bleed' && mainElem === 'metal' &&
+          aState.mainSkillBleedAmpElem === 'metal' && aState.mainSkillBleedAmp) {
+        bleedAmpMul = 1 + aState.mainSkillBleedAmp
+        resonanceTag = ` ✦金鸣+${(aState.mainSkillBleedAmp * 100).toFixed(0)}%`
+      }
+      if (debuff.type === 'poison' && mainElem === 'wood' &&
+          aState.mainSkillPoisonAmpElem === 'wood' && aState.mainSkillPoisonAmp) {
+        poisonAmpMul = 1 + aState.mainSkillPoisonAmp
+        resonanceTag = ` ✦木灵+${(aState.mainSkillPoisonAmp * 100).toFixed(0)}%`
+      }
+    }
+
+    if (Math.random() >= effChance) return false
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type)
     const durBonus = inflictor?.awakenState?.debuffDurationBonus || 0
-    let duration = debuff.duration + durBonus
+    let duration = effDuration + durBonus
     const tianshiTag = durBonus > 0 ? ` ✦天师+${durBonus}` : ''
     if (isCtrl) {
       const r = Math.min(0.7, target.resists.ctrl || 0)
@@ -343,29 +401,31 @@ export function runPvpBattle(
     }
     if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
       target.frozenTurns = Math.max(target.frozenTurns, duration)
-      log({ turn, type: 'normal', text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tianshiTag}` })
+      log({ turn, type: 'normal', text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tianshiTag}${resonanceTag}` })
       return true
     }
     // PvP DOT 缩放
     const rawDot = calcDotDamage(debuff.type, target.maxHp, attackerAtk)
-    const dmg = Math.max(1, Math.floor(rawDot * balance.dotMultiplier))
+    let dmg = Math.max(1, Math.floor(rawDot * balance.dotMultiplier))
+    if (debuff.type === 'bleed' && bleedAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * bleedAmpMul))
+    if (debuff.type === 'poison' && poisonAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * poisonAmpMul))
     const exists = target.debuffs.find(d => d.type === debuff.type)
     if (exists) {
       exists.remaining = duration
-      exists.value = debuff.value
+      exists.value = effValue
       exists.damagePerTurn = dmg
     } else {
-      target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: debuff.value })
+      target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: effValue })
     }
     let text = `${targetName}陷入${DEBUFF_NAMES[debuff.type]} ${duration} 回合`
     if (debuff.type === 'poison') text += ` (每回合 ${dmg} 毒伤)`
     else if (debuff.type === 'burn') text += ` (每回合 ${dmg} 火伤)`
     else if (debuff.type === 'bleed') text += ` (每回合 ${dmg} 流血)`
-    else if (debuff.type === 'brittle') text += ` (受伤+${((debuff.value || 0.15) * 100).toFixed(0)}%)`
-    else if (debuff.type === 'atk_down') text += ` (攻击-${((debuff.value || 0.15) * 100).toFixed(0)}%)`
+    else if (debuff.type === 'brittle') text += ` (受伤+${((effValue || 0.15) * 100).toFixed(0)}%)`
+    else if (debuff.type === 'atk_down') text += ` (攻击-${((effValue || 0.15) * 100).toFixed(0)}%)`
     else if (debuff.type === 'slow') text += ` (必定后攻)`
     else if (debuff.type === 'silence') text += ` (无法使用神通)`
-    log({ turn, type: 'normal', text: `  ${text}${tianshiTag}` })
+    log({ turn, type: 'normal', text: `  ${text}${tianshiTag}${resonanceTag}` })
     return true
   }
 
@@ -567,6 +627,10 @@ export function runPvpBattle(
       if (attacker.divineCds[i] > 0) attacker.divineCds[i]--
     }
 
+    // v1.3 主修判定 + 主修元素标记
+    const isMainSkill = (usedSkill === attacker.activeSkill)
+    ;(attacker as any)._mainSkillElement = isMainSkill ? attacker.activeSkill.element : null
+
     let mul = usedSkill.multiplier
     let rootMatched = false
     if (usedSkill.element && attacker.spiritualRoot && usedSkill.element === attacker.spiritualRoot) {
@@ -575,6 +639,10 @@ export function runPvpBattle(
     }
     if (isDivine && attacker.spirit > 0) {
       mul *= 1 + attacker.spirit * 0.001
+    }
+    // v1.3 心法贯通：主修伤害倍率 +X%
+    if (isMainSkill && attacker.awakenState?.mainSkillMultBonus) {
+      mul *= 1 + attacker.awakenState.mainSkillMultBonus
     }
 
     const prefix = isDivine ? '神通发动！' : (rootMatched ? '灵根共鸣！' : '')
@@ -601,6 +669,7 @@ export function runPvpBattle(
           tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
         }
       }
+      ;(attacker as any)._mainSkillElement = null
       return
     }
 
@@ -630,6 +699,8 @@ export function runPvpBattle(
 
     // 注意：dealDamage 不在内部 push 吸血日志，由调用方在伤害日志后 push，
     // 避免出现"先吸血、后伤害"乃至跨回合错位的视觉问题
+    const mainSkillLifestealRate = (isMainSkill && attacker.awakenState?.mainSkillLifesteal) ? attacker.awakenState.mainSkillLifesteal : 0
+    let critCdCutUsedThisTurn = false
     const dealDamage = (t: PvpFighter, rawDmg: number, isCrit: boolean): { final: number; lifestealHeal: number } => {
       const final = applyIncomingDamage(t, rawDmg, isCrit)
       attacker.totalDmgDealt += final
@@ -641,7 +712,29 @@ export function runPvpBattle(
           attacker.hp += lifestealHeal
         }
       }
+      // v1.3 主修噬灵：按最大气血百分比回血（合并到 lifestealHeal 数字，外层日志保持单一）
+      if (mainSkillLifestealRate > 0 && final > 0 && attacker.hp > 0 && attacker.hp < attacker.maxHp) {
+        const heal = Math.floor(attacker.maxHp * mainSkillLifestealRate)
+        if (heal > 0) {
+          const actual = Math.min(heal, attacker.maxHp - attacker.hp)
+          attacker.hp += actual
+          lifestealHeal += actual
+        }
+      }
       return { final, lifestealHeal }
+    }
+    // v1.3 心剑回响：主修暴击时所有神通 CD-1（每回合至多 1 次）
+    const tryCritCdCut = (isCrit: boolean) => {
+      if (!isCrit || !isMainSkill || critCdCutUsedThisTurn) return
+      if (!attacker.awakenState?.mainSkillCritCdCut) return
+      let cut = false
+      for (let i = 0; i < attacker.divineCds.length; i++) {
+        if (attacker.divineCds[i] > 0) { attacker.divineCds[i] = Math.max(0, attacker.divineCds[i] - 1); cut = true }
+      }
+      if (cut) {
+        critCdCutUsedThisTurn = true
+        log({ turn, type: 'buff', text: `  ✦【心剑回响】${attacker.name} 主修暴击，所有神通 CD -1` })
+      }
     }
 
     if (hits > 1 && attackTargets.length === 1) {
@@ -649,11 +742,12 @@ export function runPvpBattle(
       for (let h = 0; h < hits; h++) {
         const liveTarget = attackTargets[0].alive ? attackTargets[0] : pickTarget(enemies)
         if (!liveTarget) break
-        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(liveTarget), perHitMul, usedSkill.element, usedSkill.ignoreDef)
+        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(liveTarget), perHitMul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill)
         if (dr.damage === 0) {
           log({ turn, type: 'dodge', text: `  第 ${h + 1} 段 被 ${liveTarget.name} 闪避` })
         } else {
           const { final, lifestealHeal } = dealDamage(liveTarget, dr.damage, dr.isCrit)
+          tryCritCdCut(dr.isCrit)
           const critText = dr.isCrit ? '暴击! ' : ''
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  第 ${h + 1} 段 ${critText}对 ${liveTarget.name} 造成 ${final} 伤害` })
           if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
@@ -667,12 +761,13 @@ export function runPvpBattle(
       // AoE / 多目标 / 单体
       for (const t of attackTargets) {
         if (!t.alive) continue
-        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), mul, usedSkill.element, usedSkill.ignoreDef)
+        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), mul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill)
         if (dr.damage === 0) {
           log({ turn, type: 'dodge', text: `  ${t.name} 闪避了 ${attacker.name} 的攻击` })
           continue
         }
         const { final, lifestealHeal } = dealDamage(t, dr.damage, dr.isCrit)
+        tryCritCdCut(dr.isCrit)
         const critText = dr.isCrit ? '暴击! ' : ''
         if (skillLabel) {
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  ${critText}对 ${t.name} 造成 ${final} 伤害` })
@@ -686,16 +781,20 @@ export function runPvpBattle(
         if (t.hp <= 0) t.alive = false
       }
 
-      // 连击（附灵）- 仅主修
+      // v1.2 连击 + v1.3 紫电连华 取大（防双发爆发，且不递归触发附灵）
       const st = attacker.awakenState
-      if (st?.chainAttackChance > 0 && usedSkill === attacker.activeSkill) {
-        if (Math.random() < st.chainAttackChance) {
+      const baseChain = st?.chainAttackChance || 0
+      const ringChain = (isMainSkill && st?.mainSkillChainChance) ? st.mainSkillChainChance : 0
+      const chainChance = Math.max(baseChain, ringChain)
+      if (chainChance > 0 && usedSkill === attacker.activeSkill) {
+        if (Math.random() < chainChance) {
           const chainT = pickTarget(enemies)
           if (chainT) {
-            const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(chainT), mul * 0.6, usedSkill.element, usedSkill.ignoreDef)
+            const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(chainT), mul * 0.6, usedSkill.element, usedSkill.ignoreDef, false, false)
             if (dr.damage > 0) {
               const { final, lifestealHeal } = dealDamage(chainT, dr.damage, dr.isCrit)
-              log({ turn, type: 'buff', text: `  ✦【连击】${attacker.name} 再次出手，对 ${chainT.name} 造成 ${final} 伤害` })
+              const chainTag = ringChain > baseChain ? '紫电连华' : '连击'
+              log({ turn, type: 'buff', text: `  ✦【${chainTag}】${attacker.name} 再次出手，对 ${chainT.name} 造成 ${final} 伤害` })
               if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
               if (chainT.hp <= 0) chainT.alive = false
             }
@@ -703,6 +802,8 @@ export function runPvpBattle(
         }
       }
     }
+    // v1.3 攻击结束后清掉主修元素标记
+    ;(attacker as any)._mainSkillElement = null
 
     // 击杀结算
     for (const t of attackTargets) {
