@@ -38,7 +38,7 @@ async function buildPlayerBattleStats(char: any): Promise<{
   let maxHp = Number(char.max_hp)
   let spd = Number(char.spd)
   let critRate = Number(char.crit_rate || 0.05)
-  let critDmg = Number(char.crit_dmg || 1.5)
+  let critDmg = Number(char.crit_dmg || 1.0)
   let dodge = Number(char.dodge || 0)
   let lifesteal = Number(char.lifesteal || 0)
 
