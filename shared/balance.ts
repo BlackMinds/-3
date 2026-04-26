@@ -19,7 +19,7 @@
 // 玩家 cap 设为怪物 cap × 1.5~2.0,保留极限 build 空间
 export const PLAYER_CAPS = {
   critRate: 0.75,   // 75%  (怪物 50%, 1.5x)
-  critDmg: 2.8,     // 280% (v3.4: 3.5→2.8, 消除"互秒" — 降暴击方差)
+  critDmg: 3.2,     // 320% (v3.5: 2.8→3.2, 极限 build 留更多空间)
   dodge: 0.45,      // 45%  (怪物 30%, 1.5x) — v3.0 从 40% 上调
   lifesteal: 0.25,  // 25%  (怪物 15%, 1.67x)
   armorPen: 60,     // 60   (怪物 30, 2.0x)
@@ -37,7 +37,7 @@ export const EQUIP_PRIMARY_BASE: Record<string, number> = {
   HP: 200,
   SPD: 15,
   CRIT_RATE: 0.8,  // v3.0: 从 1 降到 0.8, T10红+10 从 50% → 40%
-  CRIT_DMG: 2.0,   // 戒指主属性: T10红+10 = 2.0×10×2.5×2.0 = 100%, 顶配 150%→250% (cap 280%)
+  CRIT_DMG: 2.0,   // 戒指主属性: T10红+10 = 2.0×10×2.5×2.0 = 100%, 顶配 150%→250% (cap 320%)
   SPIRIT: 8,
 }
 
