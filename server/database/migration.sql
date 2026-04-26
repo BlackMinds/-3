@@ -866,8 +866,9 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS sr_bonus_expire_at TIMESTAMP DEF
 -- ========================================
 -- 斗法台 PvP 战斗记录
 -- ========================================
--- 玩家 vs 玩家 1v1 异步对战，每日 10 次主动挑战 / 10 次被扣修为上限
--- 失败方扣 1% 境界修为；战报存 JSONB
+-- 玩家 vs 玩家 1v1 异步对战，每日 10 次主动挑战 / 10 次败场扣分上限
+-- 胜负计入斗法积分，败方按境界差扣分；战报存 JSONB
+-- cultivation_loss 字段保留向后兼容（历史记录），新数据始终写 0
 CREATE TABLE IF NOT EXISTS pk_records (
   id BIGSERIAL PRIMARY KEY,
   attacker_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
@@ -1015,7 +1016,7 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS offline_snapshot JSONB DEFAULT N
 -- ============================================
 -- 斗法积分（2026-04-25）
 -- 斗法台 1v1 PvP 胜负积分，用于风云榜·斗法榜排序
--- 起始 1000；胜 +20 / 败 -10（floor 0）；败方与修为扣减共用 DAILY_LOSS_LIMIT
+-- 起始 1000；胜 +20 / 败 -10（floor 0，跨境界加权）；同一玩家单日败场超过 DAILY_LOSS_LIMIT 后不再扣分
 -- ============================================
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS arena_score INT NOT NULL DEFAULT 1000;
 CREATE INDEX IF NOT EXISTS idx_arena_rank ON characters (arena_score DESC);

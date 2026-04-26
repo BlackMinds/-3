@@ -2289,12 +2289,11 @@
             <table class="help-table"><tbody>
               <tr><td>每日次数</td><td>主动挑战上限 <b>10 次</b>/日(自然日,凌晨重置)</td></tr>
               <tr><td>战斗修正</td><td>HP×1.8 / 伤害×0.6 / DOT×0.5 / 暴伤-35%(与宗门战 1v1 同套)</td></tr>
-              <tr><td>失败惩罚</td><td>败方扣除 <b>1%</b> 境界修为</td></tr>
-              <tr><td>被扣保护</td><td>同一玩家单日最多被扣 10 次,超出免扣(战报照写)</td></tr>
               <tr><td>积分变化</td><td>胜方加分 / 败方扣分(初始 1000,跨境界加权,详见下表)</td></tr>
+              <tr><td>扣分保护</td><td>同一玩家单日最多被扣 <b>10 次</b>积分,超出免扣(战报照写)</td></tr>
               <tr><td>对手限制</td><td>不能挑战自己;无境界差/战力差限制(任何人都可挑战)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">弹窗顶部「⚔ 挑战 / 📜 战记」两个标签页:挑战页发起切磋并显示当场战报;战记页查看自己最近 20 场记录(含主动/被动场次,胜负、修为变化、详细战报可点击展开)。</p>
+            <p class="help-text" style="margin-top: 6px;">弹窗顶部「⚔ 挑战 / 📜 战记」两个标签页:挑战页发起切磋并显示当场战报;战记页查看自己最近 20 场记录(含主动/被动场次,胜负、详细战报可点击展开)。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">⚠ 战斗使用对方"装备 + 功法 + 等级"的实时快照,丹药效果不计入(避免不公平)。</p>
 
             <p class="help-text" style="margin-top: 10px;"><b>积分加权表</b>(按胜负双方境界差,鼓励逆袭、抑制躺平):</p>
@@ -2750,8 +2749,8 @@
             <p class="pk-rules">
               ① 输入对手道号即可挑战，每日 <b>{{ pkQuota.limit }}</b> 次
               ② 1v1 模式：HP×1.8 / 伤害×0.6 / DOT×0.5 / 暴伤-35%
-              ③ 失败方扣除 <b>1%</b> 境界修为，每人单日最多被扣 10 次（超出免扣）
-              ④ 胜负计入斗法积分（同境界 +20/-10，跨境界加权），每日 12:00 前 10 名邮件发奖
+              ③ 胜负计入斗法积分（同境界 +20/-10，跨境界加权），单日最多被扣 10 次积分（超出免扣）
+              ④ 每日 12:00 前 10 名邮件发奖
             </p>
             <div class="pk-quota-row">
               今日剩余次数：<b :style="{ color: pkQuota.remaining > 0 ? '#88ff88' : '#ff6666' }">{{ pkQuota.remaining }} / {{ pkQuota.limit }}</b>
@@ -2777,16 +2776,13 @@
               <div :class="['pk-verdict', pkResult.winnerSide === 'a' ? 'win' : 'lose']">
                 {{ pkResult.winnerSide === 'a' ? '🏆 你击败了' : '💀 你不敌' }}
                 <span class="pk-foe-name">{{ pkResult.winnerSide === 'a' ? pkResult.loserName : pkResult.winnerName }}</span>
-                <span v-if="pkResult.cultivationLoss > 0" class="pk-loss">
-                  · {{ pkResult.winnerSide === 'a' ? pkResult.loserName : '你' }}损失修为 {{ pkResult.cultivationLoss }}
-                </span>
-                <span v-else-if="pkResult.winnerSide === 'b'" class="pk-loss-skip">· 今日已被扣 10 次，免扣</span>
                 <span
                   v-if="pkResult.scoreGain"
                   :class="['pk-score', pkResult.scoreGain > 0 ? 'pk-score-up' : 'pk-score-down']"
                 >
                   · 斗法积分 {{ pkResult.scoreGain > 0 ? '+' : '' }}{{ pkResult.scoreGain }}
                 </span>
+                <span v-else-if="pkResult.winnerSide === 'b'" class="pk-loss-skip">· 今日已被扣 10 次积分，免扣</span>
               </div>
               <div class="pk-log-list">
                 <div
@@ -2812,8 +2808,6 @@
                   <span class="pk-history-result">{{ rec.myWon ? '🏆 胜' : '💀 负' }}</span>
                   <span class="pk-history-role">{{ rec.role === 'attacker' ? '主动挑战' : '被人挑战' }}</span>
                   <span class="pk-history-foe">{{ rec.foeName }}</span>
-                  <span v-if="rec.myLoss > 0" class="pk-history-loss">扣修为 {{ rec.myLoss }}</span>
-                  <span v-else-if="!rec.myWon" class="pk-history-loss-skip">免扣</span>
                   <span class="pk-history-time">{{ formatPkTime(rec.foughtAt) }}</span>
                   <span class="pk-history-arrow">{{ pkExpandedId === rec.id ? '▾' : '▸' }}</span>
                 </div>
@@ -3090,10 +3084,6 @@ async function doPkChallenge() {
       pkResult.value = res.data;
       pkQuota.value.remaining = res.data.remaining;
       pkQuota.value.used = pkQuota.value.limit - res.data.remaining;
-      // 失败方是自己且确实扣了修为，刷新角色数据
-      if (res.data.winnerSide === 'b' && res.data.cultivationLoss > 0) {
-        try { await (gameStore as any).loadGameData?.(); } catch { /* ignore */ }
-      }
     } else {
       showToast(res?.message || '挑战失败', 'error');
     }

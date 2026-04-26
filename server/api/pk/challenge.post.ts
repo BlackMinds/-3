@@ -5,7 +5,6 @@ import { arenaScoreOnWin, arenaScoreOnLoss } from '~/shared/arenaRanks'
 
 const DAILY_CHALLENGE_LIMIT = 10
 const DAILY_LOSS_LIMIT = 10
-const CULTIVATION_LOSS_PCT = 0.01
 
 function toInput(snap: CharacterSnapshot): PvpFighterInput {
   return {
@@ -76,37 +75,27 @@ export default defineEventHandler(async (event) => {
     const scoreGain = arenaScoreOnWin(winnerTier, loserTier)
     const scoreLossMax = arenaScoreOnLoss(loserTier, winnerTier)
 
-    // 6. 事务：锁 loser → 检查今日被扣次数 → 扣修为/扣分 → 胜方加分 → 写记录
+    // 6. 事务：锁 loser → 检查今日败场数 → 扣败方分 → 胜方加分 → 写记录
     const client = await pool.connect()
-    let cultivationLoss = 0
     let scoreLoss = 0
     try {
       await client.query('BEGIN')
-      // 锁 loser 并取当前修为
-      const { rows: lockRows } = await client.query(
-        'SELECT cultivation_exp FROM characters WHERE id = $1 FOR UPDATE',
+      // 锁 loser（仅占行锁，避免并发同时扣分越界）
+      await client.query(
+        'SELECT id FROM characters WHERE id = $1 FOR UPDATE',
         [loserId]
       )
-      const curExp = Number(lockRows[0]?.cultivation_exp || 0)
-      // 今日 loser 已被扣次数
+      // 今日 loser 已败场次（用来判断是否超出免扣保护）
       const { rows: lossCntRows } = await client.query(
         `SELECT COUNT(*)::int AS cnt FROM pk_records
          WHERE fought_at >= CURRENT_DATE
-           AND cultivation_loss > 0
            AND ((winner_side = 'a' AND defender_id = $1)
              OR (winner_side = 'b' AND attacker_id = $1))`,
         [loserId]
       )
       const todayLossCnt = lossCntRows[0].cnt
       if (todayLossCnt < DAILY_LOSS_LIMIT) {
-        cultivationLoss = Math.min(curExp, Math.floor(curExp * CULTIVATION_LOSS_PCT))
-        if (cultivationLoss > 0) {
-          await client.query(
-            'UPDATE characters SET cultivation_exp = cultivation_exp - $1 WHERE id = $2',
-            [cultivationLoss, loserId]
-          )
-        }
-        // 与修为扣减同步：超过 DAILY_LOSS_LIMIT 后败方不再掉分
+        // 单日败场超过 DAILY_LOSS_LIMIT 后不再掉分
         scoreLoss = scoreLossMax
         await client.query(
           'UPDATE characters SET arena_score = GREATEST(0, arena_score - $1) WHERE id = $2',
@@ -121,8 +110,8 @@ export default defineEventHandler(async (event) => {
       await client.query(
         `INSERT INTO pk_records
          (attacker_id, defender_id, attacker_name, defender_name, winner_side, cultivation_loss, battle_log)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
-        [me.id, foe.id, me.name, foe.name, winnerSide, cultivationLoss, JSON.stringify(result.logs)]
+         VALUES ($1, $2, $3, $4, $5, 0, $6::jsonb)`,
+        [me.id, foe.id, me.name, foe.name, winnerSide, JSON.stringify(result.logs)]
       )
       await client.query('COMMIT')
     } catch (e) {
@@ -138,7 +127,6 @@ export default defineEventHandler(async (event) => {
         winnerSide,                                  // 'a'=自己赢 / 'b'=对方赢
         winnerName: winnerSide === 'a' ? me.name : foe.name,
         loserName,
-        cultivationLoss,
         // 自己赢: +scoreGain; 自己输: -scoreLoss (受 DAILY_LOSS_LIMIT 影响, 0 = 今日已被打满次)
         scoreGain: winnerSide === 'a' ? scoreGain : -scoreLoss,
         battleLog: result.logs,
