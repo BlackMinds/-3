@@ -2649,6 +2649,25 @@
           <template v-else>
             <!-- 角色类榜单（境界/等级/灵石） -->
             <template v-if="rankingTab !== 'sect'">
+              <!-- 斗法榜：昨日 / 最近一次发奖榜单 top3 称号横幅 -->
+              <div v-if="rankingTab === 'arena' && arenaLatestWinners.length > 0" class="arena-winners-banner">
+                <div class="awb-head">
+                  <span class="awb-label">上次榜单 ({{ arenaLatestRewardDate }})</span>
+                </div>
+                <div class="awb-list">
+                  <div
+                    v-for="w in arenaLatestWinners"
+                    :key="w.rank"
+                    :class="['awb-row', { gold: w.rank === 1, silver: w.rank === 2, bronze: w.rank === 3 }]"
+                  >
+                    <span class="awb-medal">{{ w.rank === 1 ? '🥇' : w.rank === 2 ? '🥈' : '🥉' }}</span>
+                    <span class="awb-name">{{ w.name }}</span>
+                    <span v-if="w.rootName" class="awb-root" :style="{ color: rootColorMap[w.spiritualRoot] }">{{ w.rootName }}</span>
+                    <span class="awb-realm">{{ w.realmDisplay }}</span>
+                    <span v-if="w.title" class="awb-title">「{{ w.title }}」</span>
+                  </div>
+                </div>
+              </div>
               <div class="ranking-list">
                 <div
                   v-for="item in rankingList"
@@ -3092,6 +3111,8 @@ const rankingLoading = ref(false);
 const rankingList = ref<any[]>([]);
 const rankingSectList = ref<any[]>([]);
 const rankingMyRank = ref<number | null>(null);
+const arenaLatestWinners = ref<any[]>([]);
+const arenaLatestRewardDate = ref<string | null>(null);
 
 const rankingTabs = [
   { key: 'realm' as const, label: '境界榜' },
@@ -3135,6 +3156,13 @@ async function fetchRankingData() {
         rankingList.value = res.data.list || [];
       }
       rankingMyRank.value = res.data.myRank || null;
+      if (rankingTab.value === 'arena') {
+        arenaLatestWinners.value = res.data.latestWinners || [];
+        arenaLatestRewardDate.value = res.data.latestRewardDate || null;
+      } else {
+        arenaLatestWinners.value = [];
+        arenaLatestRewardDate.value = null;
+      }
     }
   } catch (e) {
     console.error('排行榜加载失败:', e);
@@ -11205,6 +11233,61 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid currentColor;
   border-radius: 3px;
+}
+
+.arena-winners-banner {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02));
+}
+.arena-winners-banner .awb-head {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-bottom: 4px;
+}
+.arena-winners-banner .awb-label {
+  color: var(--gold-ink);
+  letter-spacing: 1px;
+}
+.arena-winners-banner .awb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.arena-winners-banner .awb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.arena-winners-banner .awb-medal {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+.arena-winners-banner .awb-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+.arena-winners-banner .awb-row.gold .awb-name { color: #f4d35e; }
+.arena-winners-banner .awb-row.silver .awb-name { color: #d0d0d0; }
+.arena-winners-banner .awb-row.bronze .awb-name { color: #d49558; }
+.arena-winners-banner .awb-root {
+  font-size: 11px;
+  font-weight: 600;
+}
+.arena-winners-banner .awb-realm {
+  font-size: 11px;
+  color: var(--gold-ink);
+}
+.arena-winners-banner .awb-title {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--cinnabar-light);
+  font-style: italic;
 }
 
 .rank-sect {

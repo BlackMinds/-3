@@ -70,7 +70,38 @@ export default defineEventHandler(async (event) => {
       myRank = Number(countRows[0]?.cnt || 0) + 1
     }
 
-    return { code: 200, data: { list, myRank } }
+    // 最近一次斗法榜发奖日的获奖名单（top3 给金银铜称号）
+    // 复用 cron 写入 mails 的幂等记录（ref_type='arena_daily_reward', ref_id=YYYY-MM-DD）
+    // 从 mail.title 中正则解析"第 X 名"以避免 created_at 同秒的排序歧义
+    const { rows: winnerRows } = await pool.query(`
+      SELECT m.character_id, m.title AS mail_title, m.ref_id,
+             c.name, c.spiritual_root, c.realm_tier, c.realm_stage
+      FROM mails m
+      JOIN characters c ON c.id = m.character_id
+      WHERE m.ref_type = 'arena_daily_reward'
+        AND m.ref_id = (SELECT MAX(ref_id) FROM mails WHERE ref_type = 'arena_daily_reward')
+      LIMIT 10
+    `)
+    const titleByRank: Record<number, string> = { 1: '论道魁首', 2: '斗法翘楚', 3: '斗法翘楚' }
+    const latestWinners = winnerRows
+      .map((r: any) => {
+        const m = /第\s*(\d+)\s*名/.exec(String(r.mail_title || ''))
+        const rank = m ? Number(m[1]) : 99
+        return {
+          rank,
+          characterId: r.character_id,
+          name: r.name,
+          spiritualRoot: r.spiritual_root,
+          rootName: ROOT_NAMES[r.spiritual_root] || '',
+          realmDisplay: getRealmDisplay(r.realm_tier, r.realm_stage),
+          title: titleByRank[rank] || null,
+        }
+      })
+      .filter(w => w.rank <= 3)
+      .sort((a, b) => a.rank - b.rank)
+    const latestRewardDate = winnerRows[0]?.ref_id || null
+
+    return { code: 200, data: { list, myRank, latestWinners, latestRewardDate } }
   } catch (error) {
     console.error('斗法榜查询失败:', error)
     return { code: 500, message: '服务器错误' }
