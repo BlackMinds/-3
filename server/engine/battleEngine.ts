@@ -167,7 +167,7 @@ export interface MonsterSkillDef {
   cdTurns: number;
   element: string | null;
   debuff?: { type: DebuffType; chance: number; duration: number; value?: number };
-  buff?: { type: 'atk_up' | 'def_up'; value: number; duration: number };
+  buff?: { type: 'atk_up' | 'def_up' | 'regen'; value: number; duration: number };
   hitCount?: number;
   healPercent?: number;
   isHeal?: boolean;
@@ -268,6 +268,8 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 6) {
     skills.push({ name: '涅槃重生', multiplier: 0, cdTurns: 12, element: null, healPercent: 0.10, isHeal: true, buff: { type: 'def_up', value: 0.20, duration: 3 }, description: '回复10%气血+防御' });
     skills.push({ name: '噬魂剑气', multiplier: 1.92, cdTurns: 9, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
+    skills.push({ name: '灵元蕴养', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'regen', value: 0.04, duration: 4 }, description: '持续4回合每回合回复4%气血' });
+    skills.push({ name: '战意焚身', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'atk_up', value: 0.28, duration: 3 }, description: '攻击+28% 持续3回合' });
   }
 
   // T7+
@@ -275,12 +277,29 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     skills.push({ name: '天雷制裁', multiplier: 1.68, cdTurns: 8, element: 'metal', debuff: { type: 'stun', chance: 0.30, duration: 2 }, description: '天雷眩晕' });
     skills.push({ name: '天罚之击', multiplier: 2.28, cdTurns: 10, element: null, debuff: { type: 'burn', chance: 0.30, duration: 3 }, description: '天罚重击+灼烧' });
     skills.push({ name: '天地造化', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.14, isHeal: true, description: '回复14%气血' });
+    skills.push({ name: '九霄灵雨', multiplier: 0, cdTurns: 16, element: null, buff: { type: 'regen', value: 0.05, duration: 5 }, description: '持续5回合每回合回复5%气血' });
+    skills.push({ name: '金身护体', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'def_up', value: 0.35, duration: 4 }, description: '防御+35% 持续4回合' });
   }
 
   // T8+
   if (tier >= 8) {
     skills.push({ name: '混沌一击', multiplier: 2.70, cdTurns: 10, element: null, debuff: { type: 'poison', chance: 0.35, duration: 3 }, description: '混沌重击+剧毒' });
     skills.push({ name: '太古沉眠', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.16, isHeal: true, buff: { type: 'def_up', value: 0.40, duration: 4 }, description: '回复16%+防御' });
+    skills.push({ name: '破晓战吼', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'atk_up', value: 0.35, duration: 4 }, description: '攻击+35% 持续4回合' });
+    skills.push({ name: '九转还魂', multiplier: 0, cdTurns: 16, element: null, healPercent: 0.22, isHeal: true, description: '回复22%气血' });
+  }
+
+  // T9+
+  if (tier >= 9) {
+    skills.push({ name: '永恒之心', multiplier: 0, cdTurns: 18, element: null, buff: { type: 'regen', value: 0.06, duration: 5 }, description: '持续5回合每回合回复6%气血' });
+    skills.push({ name: '诛仙剑意', multiplier: 0, cdTurns: 14, element: null, buff: { type: 'atk_up', value: 0.40, duration: 4 }, description: '攻击+40% 持续4回合' });
+  }
+
+  // T10+
+  if (tier >= 10) {
+    skills.push({ name: '天道庇佑', multiplier: 0, cdTurns: 20, element: null, buff: { type: 'regen', value: 0.07, duration: 5 }, description: '持续5回合每回合回复7%气血' });
+    skills.push({ name: '鸿蒙圣体', multiplier: 0, cdTurns: 16, element: null, buff: { type: 'def_up', value: 0.50, duration: 5 }, description: '防御+50% 持续5回合' });
+    skills.push({ name: '万法归宗', multiplier: 0, cdTurns: 16, element: null, buff: { type: 'atk_up', value: 0.50, duration: 4 }, description: '攻击+50% 持续4回合' });
   }
 
   // Boss
@@ -292,6 +311,11 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     if (tier >= 5) skills.push({ name: '王者重击', multiplier: 1.80, cdTurns: 7, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
     if (tier >= 6) skills.push({ name: '灭世怒吼', multiplier: 1.50, cdTurns: 9, element: null, debuff: { type: 'stun', chance: 0.35, duration: 2 }, description: '眩晕2回合' });
     if (tier >= 7) skills.push({ name: '帝王斩', multiplier: 2.70, cdTurns: 10, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
+    if (tier >= 7) skills.push({ name: '帝王神威', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'atk_up', value: 0.35, duration: 4 }, description: '攻击+35% 持续4回合' });
+    if (tier >= 8) skills.push({ name: '破碎虚空', multiplier: 0, cdTurns: 14, element: null, buff: { type: 'regen', value: 0.05, duration: 4 }, description: '持续4回合每回合回复5%气血' });
+    if (tier >= 9) skills.push({ name: '界域吞噬', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'def_up', value: 0.40, duration: 4 }, description: '防御+40% 持续4回合' });
+    if (tier >= 10) skills.push({ name: '永生不灭', multiplier: 0, cdTurns: 18, element: null, buff: { type: 'regen', value: 0.08, duration: 5 }, description: '持续5回合每回合回复8%气血' });
+    if (tier >= 10) skills.push({ name: '天道之力', multiplier: 0, cdTurns: 14, element: null, buff: { type: 'atk_up', value: 0.60, duration: 4 }, description: '攻击+60% 持续4回合' });
   }
 
   return skills;
@@ -954,7 +978,16 @@ export function runWaveBattle(
         continue;
       }
       tickMonsterCds(m.skillState);
-      for (let bi = m.buffs.length - 1; bi >= 0; bi--) { m.buffs[bi].remaining--; if (m.buffs[bi].remaining <= 0) m.buffs.splice(bi, 1); }
+      for (let bi = m.buffs.length - 1; bi >= 0; bi--) {
+        const b = m.buffs[bi];
+        if (b.type === 'regen' && b.value && m.stats.hp < m.stats.maxHp) {
+          const heal = Math.max(1, Math.floor(m.stats.maxHp * b.value));
+          m.stats.hp = Math.min(m.stats.maxHp, m.stats.hp + heal);
+          logs.push({ turn, text: `  ${m.stats.name} 持续回复了 ${heal} 点气血`, type: 'buff', ...snap() });
+        }
+        b.remaining--;
+        if (b.remaining <= 0) m.buffs.splice(bi, 1);
+      }
 
       let mAtk = m.baseAtk;
       let mDef = m.baseDef;

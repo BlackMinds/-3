@@ -223,10 +223,28 @@ function tickDebuffs(unit: TeamPlayer | TeamMonster, logs: BattleLogEntry[], tur
   return tickDamage
 }
 
-function tickBuffs(unit: TeamPlayer | TeamMonster) {
+function tickBuffs(unit: TeamPlayer | TeamMonster, logs?: BattleLogEntry[], turn?: number, isPlayer?: boolean) {
   for (let i = unit.buffs.length - 1; i >= 0; i--) {
-    unit.buffs[i].remaining--
-    if (unit.buffs[i].remaining <= 0) unit.buffs.splice(i, 1)
+    const b = unit.buffs[i]
+    // regen: 每回合按 value(百分比) 回复 maxHp
+    if (b.type === 'regen' && b.value && unit.stats.hp > 0 && unit.stats.hp < unit.stats.maxHp) {
+      const heal = Math.max(1, Math.floor(unit.stats.maxHp * b.value))
+      unit.stats.hp = Math.min(unit.stats.maxHp, unit.stats.hp + heal)
+      if (logs && turn !== undefined) {
+        const name = isPlayer ? (unit as TeamPlayer).name : (unit as TeamMonster).stats.name
+        logs.push({
+          turn,
+          text: `${name} 持续回复了 ${heal} 气血`,
+          type: 'buff',
+          playerHp: isPlayer ? unit.stats.hp : 0,
+          playerMaxHp: isPlayer ? unit.stats.maxHp : 0,
+          monsterHp: !isPlayer ? unit.stats.hp : 0,
+          monsterMaxHp: !isPlayer ? unit.stats.maxHp : 0,
+        })
+      }
+    }
+    b.remaining--
+    if (b.remaining <= 0) unit.buffs.splice(i, 1)
   }
 }
 
@@ -337,7 +355,7 @@ export function runTeamBattle(
           logs.push({ turn: totalTurns, text: `${p.name} 因持续伤害倒下！`, type: 'death', playerHp: 0, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
         }
         // buff tick
-        tickBuffs(p)
+        tickBuffs(p, logs, totalTurns, true)
         refreshUnitStatsFromBuffs(p)
       }
       for (const m of monsters) {
@@ -348,7 +366,7 @@ export function runTeamBattle(
           killedMonsters.push({ name: m.stats.name, element: m.stats.element, isBoss: m.template.role === 'boss' })
           logs.push({ turn: totalTurns, text: `${m.stats.name} 因持续伤害倒下！`, type: 'kill', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
         }
-        tickBuffs(m)
+        tickBuffs(m, logs, totalTurns, false)
         refreshUnitStatsFromBuffs(m)
         tickMonsterCds(m.skillState)
       }
