@@ -44,14 +44,17 @@ export const SUB_STAT_POOL = [
   { stat: 'EARTH_DMG',      min: 1,  max: 4,   weight: 10 },
   // 好词条（v3.0 weight 5→10,神器概率 0.002% → ~0.7%）
   { stat: 'CRIT_RATE',      min: 1,  max: 3,   weight: 10 },
-  { stat: 'CRIT_DMG',       min: 2,  max: 8,   weight: 10 }, // v3.4: max 10→8 (-20%)
+  { stat: 'CRIT_DMG',       min: 1,  max: 6,   weight: 10 }, // v3.5: min 2→1, max 8→6 (再 -25%)
   { stat: 'LIFESTEAL',      min: 1,  max: 1,   weight: 10 }, // v3.4: max 2→1 (-50%)
   { stat: 'DODGE',          min: 1,  max: 1,   weight: 10 }, // v3.4: max 2→1 (-50%)
   { stat: 'ARMOR_PEN',      min: 1,  max: 5,   weight: 10 },
 ]
 
-// 固定值类副属性（会按 tier 缩放）
+// 固定值类副属性（会按 tier 高速缩放）
 export const SUB_STAT_FLAT = new Set(['ATK', 'DEF', 'HP', 'SPD', 'SPIRIT'])
+
+// 好词条（暴击/暴伤/吸血/闪避/破甲）— tier 浮动最低，防引擎 cap 撞顶
+export const SUB_STAT_GOOD = new Set(['CRIT_RATE', 'CRIT_DMG', 'LIFESTEAL', 'DODGE', 'ARMOR_PEN'])
 
 // 副属性数量按品质
 export const RARITY_SUB_COUNT: Record<string, number> = {
@@ -59,18 +62,25 @@ export const RARITY_SUB_COUNT: Record<string, number> = {
 }
 
 /**
+ * 副属性 tier 浮动系数（v3.5：让 t 级在副属性上真正分档）
+ *   FLAT     — +10%/tier，t10 = 1.9×（已有）
+ *   GOOD     — +4%/tier， t10 = 1.36×（暴击/暴伤/吸血/闪避/破甲，防引擎 cap 撞顶）
+ *   其余 PCT — +6%/tier， t10 = 1.54×（PCT/五行/命中/SPIRIT_DENSITY/LUCK）
+ */
+function getTierMul(stat: string, tier: number): number {
+  if (SUB_STAT_FLAT.has(stat)) return 1 + (tier - 1) * 0.10
+  if (SUB_STAT_GOOD.has(stat)) return 1 + (tier - 1) * 0.04
+  return 1 + (tier - 1) * 0.06
+}
+
+/**
  * 统一副属性数值生成
- * 百分比类（LIFESTEAL / DODGE / ARMOR_PEN / ACCURACY / CRIT_* / 五行 / SPIRIT_DENSITY / LUCK）
- * 不随 tier 缩放，防止后期单条直接超过怪物上限
  */
 export function rollSubStatValue(stat: string, min: number, max: number, rarityIdx: number, tier: number): number {
   const qualityMul = 1 + rarityIdx * 0.15
-  const tierMul = 1 + (tier - 1) * 0.1
+  const tierMul = getTierMul(stat, tier)
   const base = Math.floor(Math.random() * (max - min + 1)) + min
-  const scaled = SUB_STAT_FLAT.has(stat)
-    ? base * qualityMul * tierMul
-    : base * qualityMul
-  return Math.max(1, Math.floor(scaled))
+  return Math.max(1, Math.floor(base * qualityMul * tierMul))
 }
 
 /**
