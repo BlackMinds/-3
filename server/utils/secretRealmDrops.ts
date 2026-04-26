@@ -215,6 +215,10 @@ export function generateSecretRealmDrops(
   const regularDropRate = difficulty === 1 ? 0.35 : difficulty === 2 ? 0.5 : 0.65
   const bossExtraCount = difficulty === 1 ? 1 : difficulty === 2 ? 1 : 2
 
+  // 功法残页每场硬上限：普通 1 / 困难 2 / 噩梦 3
+  // 原来按怪逐个 roll，噩梦 7 波堆下来能爆 5-8 个，过量
+  const skillPageCap = difficulty === 1 ? 1 : difficulty === 2 ? 2 : 3
+
   for (const m of killedMonsters) {
     // 常规装备（任何怪物）
     if (Math.random() < regularDropRate) {
@@ -233,11 +237,13 @@ export function generateSecretRealmDrops(
     // 灵草
     const herb = generateSecretRealmHerb(dropTier, m.element, m.isBoss)
     if (herb) herbs.push(herb)
-    // 功法残页
-    const sp = generateSecretRealmSkillPage(dropTier, m.isBoss, ownedSkillCounts)
-    if (sp) {
-      skillPages.push(sp)
-      ownedSkillCounts[sp] = (ownedSkillCounts[sp] || 0) + 1
+    // 功法残页（受每场上限约束）
+    if (skillPages.length < skillPageCap) {
+      const sp = generateSecretRealmSkillPage(dropTier, m.isBoss, ownedSkillCounts)
+      if (sp) {
+        skillPages.push(sp)
+        ownedSkillCounts[sp] = (ownedSkillCounts[sp] || 0) + 1
+      }
     }
   }
 
