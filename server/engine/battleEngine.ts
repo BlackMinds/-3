@@ -512,7 +512,9 @@ export function tickMonsterCds(state: MonsterSkillState) {
 export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const power = template.power * randFloat(0.85, 1.15);
   // v2.0 方案 A: Boss role 保持原版平衡, 通过整体 power 压缩和装备品质提升让战斗更舒服
-  // healer：低攻、中血、中速；技能伤害是配角，主要靠群体回血/buff 影响战局
+  // healer：低攻、略脆、中速；技能伤害是配角，主要靠群体回血/buff 影响战局
+  // v3.6: hp 0.30→0.18 / def 0.25→0.15, 让 healer 比 dps 略脆（hp 90% / def 同），
+  //   配合 50% 抗控让"先杀 healer"成为可行策略而非被高 def/hp 反推
   // 注意：spd 字段已不用（怪物 spd 改按 tier 阶梯，见下方 SPD_BASE_BY_TIER），保留仅为回滚兜底
   const ratios: Record<string, { hp: number; atk: number; def: number; spd: number }> = {
     balanced: { hp: 0.30, atk: 0.30, def: 0.25, spd: 0.15 },
@@ -520,7 +522,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
     dps:      { hp: 0.20, atk: 0.45, def: 0.15, spd: 0.20 },
     speed:    { hp: 0.20, atk: 0.25, def: 0.15, spd: 0.40 },
     boss:     { hp: 0.35, atk: 0.30, def: 0.25, spd: 0.10 },
-    healer:   { hp: 0.30, atk: 0.15, def: 0.25, spd: 0.30 },
+    healer:   { hp: 0.18, atk: 0.15, def: 0.15, spd: 0.30 },
   };
   const r = ratios[template.role] || ratios.balanced;
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
