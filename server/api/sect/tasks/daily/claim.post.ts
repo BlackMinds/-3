@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
     // 发放贡献
     await pool.query(
-      'UPDATE sect_members SET contribution = contribution + $1, weekly_contribution = weekly_contribution + $2 WHERE character_id = $3',
+      'UPDATE sect_members SET contribution = contribution + $1, total_contribution = total_contribution + $1, weekly_contribution = weekly_contribution + $2 WHERE character_id = $3',
       [task.reward_contribution, task.reward_contribution, char.id]
     )
 

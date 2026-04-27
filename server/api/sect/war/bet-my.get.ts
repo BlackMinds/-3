@@ -11,11 +11,12 @@ export default defineEventHandler(async (event) => {
   if (seasonRows.length === 0) return { code: 200, message: 'ok', data: [] }
   const { rows } = await pool.query(
     `SELECT b.*, m.sect_a_id, m.sect_b_id, m.winner_sect_id, m.score_a, m.score_b,
-            sa.name AS sect_a_name, sb.name AS sect_b_name
+            COALESCE(sa.name, '已解散宗门') AS sect_a_name,
+            COALESCE(sb.name, '已解散宗门') AS sect_b_name
        FROM sect_war_bet b
        JOIN sect_war_match m ON b.match_id = m.id
-       JOIN sects sa ON m.sect_a_id = sa.id
-       JOIN sects sb ON m.sect_b_id = sb.id
+       LEFT JOIN sects sa ON m.sect_a_id = sa.id
+       LEFT JOIN sects sb ON m.sect_b_id = sb.id
       WHERE b.character_id = $1 AND m.season_id = $2
       ORDER BY b.placed_at DESC`,
     [char.id, seasonRows[0].id]

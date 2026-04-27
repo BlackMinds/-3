@@ -241,3 +241,55 @@
 **如果实战发现 T7-T10 玩家碾压**，备选方案：
 - T8-T10 boss `永恒之心 / 天道庇佑` 回复百分比 +1~2%
 - T9-T10 boss 血量 +5%（对齐 v3.4 T5+ 思路）
+
+---
+
+## 📋 v3.6 调整记录（2026-04-27）
+
+### 背景
+**问题**：v3.5 引入 `getTierMul` 三档浮动后，**实测 tier 分档体感仍然不明显**。根因是 `rollSubStatValue` 终值用 `Math.floor` 截断，而好词条（GOOD 类）池子的 base 范围太小：
+
+- `LIFESTEAL` / `DODGE` `min=1, max=1` — t10 倍率 1.36×，`floor(1 × 1.36) = 1`，**完全无差**
+- `CRIT_RATE` `min=1 max=3` — 高品下限被 floor 砍到 1，仍像 t1
+- `CRIT_DMG` / `ARMOR_PEN` / 五行 — 同样问题，下限被 floor 吃掉
+
+GOOD 类系数本来就低（+4%/tier），`floor` 让 tier 倍率几乎全失效。
+
+### 改动点
+
+#### 1. `Math.floor` → `Math.ceil`（`server/utils/equipment.ts:rollSubStatValue`）
+
+终值改为向上取整。LIFESTEAL/DODGE 的 t10 自然分档为 2（`ceil(1 × 1.36) = 2`），无需提高 max 撞 cap。
+
+#### 2. `SUB_STAT_POOL` 下限上调（`server/utils/equipment.ts`）
+
+| 词条 | min 调整 | max | 备注 |
+|---|---|---|---|
+| 五行 (METAL/WOOD/WATER/FIRE/EARTH_DMG) | 1 → **2** | 4 | 五条同步 |
+| CRIT_RATE | 1 → **2** | 3 | |
+| CRIT_DMG | 1 → **2** | 6 | v3.5 max 已砍到 6 |
+| ARMOR_PEN | 1 → **2** | 5 | |
+| LIFESTEAL | 1 (不动) | 1 | max=1 顶死，靠 ceil 分档 |
+| DODGE | 1 (不动) | 1 | 同上 |
+| 中档 PCT (ATK_PCT/DEF_PCT/HP_PCT/SPD_PCT/ACCURACY) | 不动 | — | base 范围本身已能配合 ceil 分档 |
+| 资源类 (SPIRIT_DENSITY/LUCK) | 不动 | — | 凑数词条不调 |
+
+### 战力影响（取 max 看 t1 vs t10，rarity=red 即 idx=4）
+
+`qualityMul = 1.6`（red），`tierMul`：FLAT 1.9 / GOOD 1.36 / PCT 1.54
+
+| 词条 | t1 ceil | t10 ceil | 提升 |
+|---|---|---|---|
+| LIFESTEAL (1) | `ceil(1 × 1.6 × 1.0) = 2` | `ceil(1 × 1.6 × 1.36) = 3` | +50% |
+| DODGE (1) | 2 | 3 | +50% |
+| CRIT_RATE (2~3) | 4~5 | `ceil(2~3 × 1.6 × 1.36)` = 5~7 | ✅ |
+| CRIT_DMG (2~6) | 4~10 | 5~14 | ✅ |
+| ARMOR_PEN (2~5) | 4~8 | 5~11 | ✅ |
+| 五行 (2~4) | 4~7 | `ceil(2~4 × 1.6 × 1.54)` = 5~10 | ✅ |
+| ATK_PCT (1~3) | 2~5 | `ceil(1~3 × 1.6 × 1.54)` = 3~8 | ✅ |
+
+### 副作用与备注
+
+1. **t1 装备数值小幅整体上调**（min=1→2 + ceil），但 t1 装备会被 t2~t3 快速替换，影响有限。
+2. **`upgrade-rarity.post.ts` 升品自动跟随**（调用 `rollSubStatValue` 时传装备自身的 tier），无需额外改。
+3. **怪物配套不动**：玩家小幅上升的副属性数值不会撞引擎 cap（暴击 80% / 暴伤 320% / 吸血 30% / 闪避 40%）。

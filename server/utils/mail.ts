@@ -167,6 +167,7 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
     case 'contribution':
       await client.query(
         `UPDATE sect_members SET contribution = contribution + $1,
+            total_contribution = total_contribution + $1,
             weekly_contribution = weekly_contribution + $1
           WHERE character_id = $2`,
         [att.amount, characterId]

@@ -37,17 +37,17 @@ export const SUB_STAT_POOL = [
   { stat: 'HP_PCT',         min: 1,  max: 4,   weight: 10 },
   { stat: 'SPD_PCT',        min: 1,  max: 2,   weight: 10 },
   { stat: 'ACCURACY',       min: 1,  max: 2,   weight: 10 }, // v3.4: max 3→2 (-33%)
-  { stat: 'METAL_DMG',      min: 1,  max: 4,   weight: 10 }, // v3.4: max 5→4 (-20%)
-  { stat: 'WOOD_DMG',       min: 1,  max: 4,   weight: 10 },
-  { stat: 'WATER_DMG',      min: 1,  max: 4,   weight: 10 },
-  { stat: 'FIRE_DMG',       min: 1,  max: 4,   weight: 10 },
-  { stat: 'EARTH_DMG',      min: 1,  max: 4,   weight: 10 },
+  { stat: 'METAL_DMG',      min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2（配合 ceil 让 tier 分档体感更明显）
+  { stat: 'WOOD_DMG',       min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2
+  { stat: 'WATER_DMG',      min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2
+  { stat: 'FIRE_DMG',       min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2
+  { stat: 'EARTH_DMG',      min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2
   // 好词条（v3.0 weight 5→10,神器概率 0.002% → ~0.7%）
-  { stat: 'CRIT_RATE',      min: 1,  max: 3,   weight: 10 },
-  { stat: 'CRIT_DMG',       min: 1,  max: 6,   weight: 10 }, // v3.5: min 2→1, max 8→6 (再 -25%)
-  { stat: 'LIFESTEAL',      min: 1,  max: 1,   weight: 10 }, // v3.4: max 2→1 (-50%)
-  { stat: 'DODGE',          min: 1,  max: 1,   weight: 10 }, // v3.4: max 2→1 (-50%)
-  { stat: 'ARMOR_PEN',      min: 1,  max: 5,   weight: 10 },
+  { stat: 'CRIT_RATE',      min: 2,  max: 3,   weight: 10 }, // v3.6: min 1→2
+  { stat: 'CRIT_DMG',       min: 2,  max: 6,   weight: 10 }, // v3.6: min 1→2（v3.5 max 8→6）
+  { stat: 'LIFESTEAL',      min: 1,  max: 1,   weight: 10 }, // max=1 顶死，靠 ceil 让 t10 自然分档为 2
+  { stat: 'DODGE',          min: 1,  max: 1,   weight: 10 }, // 同上
+  { stat: 'ARMOR_PEN',      min: 2,  max: 5,   weight: 10 }, // v3.6: min 1→2
 ]
 
 // 固定值类副属性（会按 tier 高速缩放）
@@ -75,12 +75,13 @@ function getTierMul(stat: string, tier: number): number {
 
 /**
  * 统一副属性数值生成
+ * v3.6: 终值改为 Math.ceil，让 GOOD 类（如 LIFESTEAL/DODGE max=1）的 tier 倍率不再被 floor 截断
  */
 export function rollSubStatValue(stat: string, min: number, max: number, rarityIdx: number, tier: number): number {
   const qualityMul = 1 + rarityIdx * 0.15
   const tierMul = getTierMul(stat, tier)
   const base = Math.floor(Math.random() * (max - min + 1)) + min
-  return Math.max(1, Math.floor(base * qualityMul * tierMul))
+  return Math.max(1, Math.ceil(base * qualityMul * tierMul))
 }
 
 /**

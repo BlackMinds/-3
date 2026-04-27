@@ -15,10 +15,10 @@ export default defineEventHandler(async (event) => {
 
     // 成员列表
     const { rows: members } = await pool.query(
-      `SELECT sm.character_id, sm.role, sm.contribution, sm.weekly_contribution, sm.joined_at,
+      `SELECT sm.character_id, sm.role, sm.contribution, sm.total_contribution, sm.weekly_contribution, sm.joined_at,
               c.name, c.level, c.realm_tier, c.realm_stage, c.last_online
        FROM sect_members sm JOIN characters c ON sm.character_id = c.id
-       WHERE sm.sect_id = $1 ORDER BY CASE sm.role WHEN 'leader' THEN 1 WHEN 'vice_leader' THEN 2 WHEN 'elder' THEN 3 WHEN 'inner' THEN 4 WHEN 'outer' THEN 5 END, sm.contribution DESC`,
+       WHERE sm.sect_id = $1 ORDER BY CASE sm.role WHEN 'leader' THEN 1 WHEN 'vice_leader' THEN 2 WHEN 'elder' THEN 3 WHEN 'inner' THEN 4 WHEN 'outer' THEN 5 END, sm.total_contribution DESC`,
       [sectId]
     )
 
@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
           role: membership.role,
           role_name: ROLE_NAMES[membership.role],
           contribution: membership.contribution,
+          total_contribution: membership.total_contribution,
           weekly_contribution: membership.weekly_contribution,
           daily_donated: membership.daily_donated,
         },

@@ -171,6 +171,7 @@ export async function applyEventEffects(
     await pool.query(
       `UPDATE sect_members
           SET contribution = contribution + $1,
+              total_contribution = total_contribution + $1,
               weekly_contribution = weekly_contribution + $1
         WHERE character_id = $2`,
       [reward.contribDelta, winner.id]

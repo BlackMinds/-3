@@ -293,6 +293,7 @@ CREATE TABLE IF NOT EXISTS sect_members (
   character_id INT NOT NULL UNIQUE REFERENCES characters(id),
   role VARCHAR(15) DEFAULT 'outer' CHECK (role IN ('leader','vice_leader','elder','inner','outer')),
   contribution BIGINT DEFAULT 0,
+  total_contribution BIGINT DEFAULT 0,
   weekly_contribution BIGINT DEFAULT 0,
   daily_donated BIGINT DEFAULT 0,
   last_sign_date DATE DEFAULT NULL,
@@ -1044,3 +1045,40 @@ ON CONFLICT (character_id, pill_id, quality_factor)
 DO UPDATE SET count = character_pills.count + EXCLUDED.count;
 
 DELETE FROM character_materials WHERE material_id IN ('awaken_stone', 'awaken_reroll');
+
+-- ============================================
+-- 宗门解散外键修复（2026-04-27）
+-- sect_war_match / spirit_vein_raid 中引用 sects(id) 的字段早期未配 ON DELETE，
+-- 导致宗主点【解散宗门】时若有任何宗战或灵脉对战记录就会因外键约束 500。
+-- 全部改为 ON DELETE SET NULL：保留历史记录，宗门字段在解散后置空，
+-- 配合查询的 LEFT JOIN 显示「已解散宗门」占位。
+-- 幂等：DROP CONSTRAINT IF EXISTS + ALTER COLUMN DROP NOT NULL 都可重复执行。
+-- ============================================
+ALTER TABLE sect_war_match ALTER COLUMN sect_a_id DROP NOT NULL;
+ALTER TABLE sect_war_match ALTER COLUMN sect_b_id DROP NOT NULL;
+ALTER TABLE sect_war_match DROP CONSTRAINT IF EXISTS sect_war_match_sect_a_id_fkey;
+ALTER TABLE sect_war_match DROP CONSTRAINT IF EXISTS sect_war_match_sect_b_id_fkey;
+ALTER TABLE sect_war_match DROP CONSTRAINT IF EXISTS sect_war_match_winner_sect_id_fkey;
+ALTER TABLE sect_war_match
+  ADD CONSTRAINT sect_war_match_sect_a_id_fkey
+  FOREIGN KEY (sect_a_id) REFERENCES sects(id) ON DELETE SET NULL;
+ALTER TABLE sect_war_match
+  ADD CONSTRAINT sect_war_match_sect_b_id_fkey
+  FOREIGN KEY (sect_b_id) REFERENCES sects(id) ON DELETE SET NULL;
+ALTER TABLE sect_war_match
+  ADD CONSTRAINT sect_war_match_winner_sect_id_fkey
+  FOREIGN KEY (winner_sect_id) REFERENCES sects(id) ON DELETE SET NULL;
+
+ALTER TABLE spirit_vein_raid ALTER COLUMN attacker_sect_id DROP NOT NULL;
+ALTER TABLE spirit_vein_raid DROP CONSTRAINT IF EXISTS spirit_vein_raid_attacker_sect_id_fkey;
+ALTER TABLE spirit_vein_raid DROP CONSTRAINT IF EXISTS spirit_vein_raid_defender_sect_id_fkey;
+ALTER TABLE spirit_vein_raid
+  ADD CONSTRAINT spirit_vein_raid_attacker_sect_id_fkey
+  FOREIGN KEY (attacker_sect_id) REFERENCES sects(id) ON DELETE SET NULL;
+ALTER TABLE spirit_vein_raid
+  ADD CONSTRAINT spirit_vein_raid_defender_sect_id_fkey
+  FOREIGN KEY (defender_sect_id) REFERENCES sects(id) ON DELETE SET NULL;
+
+-- 总贡献（累计获得，不会被消耗，用于职位任命资格判断）
+ALTER TABLE sect_members ADD COLUMN IF NOT EXISTS total_contribution BIGINT DEFAULT 0;
+UPDATE sect_members SET total_contribution = contribution WHERE total_contribution = 0 AND contribution > 0;

@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     const contribution = getSignInContribution(membership.sect_level, char.realm_tier || 0)
 
     await pool.query(
-      'UPDATE sect_members SET contribution = contribution + $1, weekly_contribution = weekly_contribution + $2, last_sign_date = $3 WHERE sect_id = $4 AND character_id = $5',
+      'UPDATE sect_members SET contribution = contribution + $1, total_contribution = total_contribution + $1, weekly_contribution = weekly_contribution + $2, last_sign_date = $3 WHERE sect_id = $4 AND character_id = $5',
       [contribution, contribution, today, membership.sect_id, char.id]
     )
 

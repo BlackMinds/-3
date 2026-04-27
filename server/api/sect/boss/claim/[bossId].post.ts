@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 
     // 发放奖励
     await pool.query(
-      'UPDATE sect_members SET contribution = contribution + $1, weekly_contribution = weekly_contribution + $2 WHERE character_id = $3',
+      'UPDATE sect_members SET contribution = contribution + $1, total_contribution = total_contribution + $1, weekly_contribution = weekly_contribution + $2 WHERE character_id = $3',
       [contribution, contribution, char.id]
     )
     await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [stoneReward, char.id])

@@ -22,10 +22,10 @@ export default defineEventHandler(async (event) => {
     )
     if (targetRows.length === 0) return { code: 400, message: '目标不在宗门内' }
 
-    // 检查贡献度要求
+    // 检查贡献度要求（按累计总贡献，不受消耗影响）
     const reqContrib = ROLE_CONTRIBUTION_REQ[role] || 0
-    if (Number(targetRows[0].contribution) < reqContrib) {
-      return { code: 400, message: `贡献度不足，需${reqContrib}` }
+    if (Number(targetRows[0].total_contribution) < reqContrib) {
+      return { code: 400, message: `累计贡献不足，需${reqContrib}` }
     }
 
     // 检查人数限制

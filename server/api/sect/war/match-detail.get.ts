@@ -6,10 +6,12 @@ export default defineEventHandler(async (event) => {
   if (!Number.isInteger(matchId) || matchId <= 0) return { code: 400, message: 'id 无效' }
   const pool = getPool()
   const { rows: matchRows } = await pool.query(
-    `SELECT m.*, sa.name AS sect_a_name, sb.name AS sect_b_name
+    `SELECT m.*,
+            COALESCE(sa.name, '已解散宗门') AS sect_a_name,
+            COALESCE(sb.name, '已解散宗门') AS sect_b_name
        FROM sect_war_match m
-       JOIN sects sa ON m.sect_a_id = sa.id
-       JOIN sects sb ON m.sect_b_id = sb.id
+       LEFT JOIN sects sa ON m.sect_a_id = sa.id
+       LEFT JOIN sects sb ON m.sect_b_id = sb.id
       WHERE m.id = $1`,
     [matchId]
   )

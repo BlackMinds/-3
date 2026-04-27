@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
 
     await client.query('UPDATE sects SET fund = fund + $1 WHERE id = $2', [actualAmount, membership.sect_id])
     await client.query(
-      'UPDATE sect_members SET contribution = contribution + $1, weekly_contribution = weekly_contribution + $2, daily_donated = daily_donated + $3 WHERE sect_id = $4 AND character_id = $5',
+      'UPDATE sect_members SET contribution = contribution + $1, total_contribution = total_contribution + $1, weekly_contribution = weekly_contribution + $2, daily_donated = daily_donated + $3 WHERE sect_id = $4 AND character_id = $5',
       [contribution, contribution, actualAmount, membership.sect_id, char.id]
     )
 

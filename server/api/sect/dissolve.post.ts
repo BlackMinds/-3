@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId, getMembership } from '~/server/utils/sect'
+import { currentSeasonNo } from '~/server/utils/sectWarOdds'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -10,6 +11,18 @@ export default defineEventHandler(async (event) => {
   if (!membership || membership.role !== 'leader') return { code: 403, message: '仅宗主可操作' }
 
   const sectId = membership.sect_id
+
+  // 已报名当前赛季：拒绝解散，避免 settle 阶段因宗门 NULL 跑不通
+  const seasonNo = currentSeasonNo()
+  const { rows: regRows } = await pool.query(
+    `SELECT 1 FROM sect_war_registration r
+     JOIN sect_war_season s ON r.season_id = s.id
+     WHERE s.season_no = $1 AND r.sect_id = $2 LIMIT 1`,
+    [seasonNo, sectId]
+  )
+  if (regRows.length > 0) {
+    return { code: 400, message: '本周宗战已报名，请先在【宗战 → 撤回阵容】后再解散' }
+  }
 
   const client = await pool.connect()
   try {
