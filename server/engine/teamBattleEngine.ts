@@ -686,14 +686,20 @@ function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: 
         const idx = m.skillState.skills.findIndex(s => s === skill)
         if (idx >= 0) m.skillState.cds[idx] = 1
       } else {
-        for (const t of needHeal.length > 0 ? needHeal : targets) {
+        const healTargets = needHeal.length > 0 ? needHeal : targets
+        let totalHealed = 0
+        for (const t of healTargets) {
+          const before = t.stats.hp
           const heal = Math.floor(t.stats.maxHp * skill.healPercent)
           t.stats.hp = Math.min(t.stats.maxHp, t.stats.hp + heal)
+          totalHealed += t.stats.hp - before
         }
-        const scope = (isHealer && skill.isAoe) ? '全队' : ''
+        const scope = (isHealer && skill.isAoe)
+          ? `全队回复 ${totalHealed} 气血（${healTargets.length} 目标）`
+          : `回复 ${totalHealed} 气血`
         logs.push({
           turn,
-          text: `${m.stats.name} 施展【${skill.name}】${scope}回复气血`,
+          text: `${m.stats.name} 施展【${skill.name}】${scope}`,
           type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: m.stats.hp, monsterMaxHp: m.stats.maxHp,
         })
       }

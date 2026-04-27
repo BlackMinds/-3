@@ -1276,14 +1276,20 @@ export function runWaveBattle(
             const idx = m.skillState.skills.findIndex(s => s === mSkill);
             if (idx >= 0) m.skillState.cds[idx] = 1;
           } else {
-            for (const t of needHeal.length > 0 ? needHeal : targets) {
+            const healTargets = needHeal.length > 0 ? needHeal : targets;
+            let totalHealed = 0;
+            for (const t of healTargets) {
+              const before = t.stats.hp;
               const heal = Math.floor(t.stats.maxHp * mSkill.healPercent);
               t.stats.hp = Math.min(t.stats.maxHp, t.stats.hp + heal);
+              totalHealed += t.stats.hp - before;
             }
-            const scopeText = (isHealer && mSkill.isAoe) ? '全队' : '';
+            const scopeText = (isHealer && mSkill.isAoe)
+              ? `全队回复 ${totalHealed} 点气血（${healTargets.length} 个目标）`
+              : `回复 ${totalHealed} 点气血`;
             logs.push({
               turn,
-              text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】，${scopeText}回复气血!`,
+              text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】，${scopeText}！`,
               type: 'buff',
               ...snap(),
             });
