@@ -3992,17 +3992,27 @@ function onSectSubTabChange(tab: string) {
 
 // 切换标签时自动刷新对应数据
 // P5: 把 cave/cultivate 需要的数据从 onMounted 移到这里，按需加载省 Function 调用
-// cultivate 用 30s 新鲜度阀（craft 完成后更新时间戳，避免短时间反复切回都重 fetch）
-let cultivateLoadedAt = 0;
-const CULTIVATE_FRESH_MS = 30_000;
+// pills 用 30s 新鲜度阀；character/cultivate 都依赖（character tab 右下角"道具"栏读 pillInventory）
+let pillsLoadedAt = 0;
+let cultivateExtraLoadedAt = 0;
+const FRESH_MS = 30_000;
+function loadPillsIfStale() {
+  if (Date.now() - pillsLoadedAt > FRESH_MS) {
+    pillsLoadedAt = Date.now();
+    loadPills();
+  }
+}
 watch(() => gameStore.activeTab, (tab) => {
   if (tab === 'sect') loadSectInfo();
   if (tab === 'cave') { gameStore.loadGameData(); loadCave(); loadPlots(); }
-  if (tab === 'character') { gameStore.loadGameData(); loadEquipList(); }
+  if (tab === 'character') { gameStore.loadGameData(); loadEquipList(); loadPillsIfStale(); }
   if (tab === 'skills') { gameStore.loadGameData(); loadSkillInventory(); }
-  if (tab === 'cultivate' && Date.now() - cultivateLoadedAt > CULTIVATE_FRESH_MS) {
-    cultivateLoadedAt = Date.now();
-    loadPills(); loadUnlockedRecipes(); loadHerbs();
+  if (tab === 'cultivate') {
+    loadPillsIfStale();
+    if (Date.now() - cultivateExtraLoadedAt > FRESH_MS) {
+      cultivateExtraLoadedAt = Date.now();
+      loadUnlockedRecipes(); loadHerbs();
+    }
   }
 });
 
@@ -4624,6 +4634,8 @@ onMounted(async () => {
   loadSettings();
   // 必须立即加载（影响战斗加成 / 弹窗 / 红点）
   loadBuffs();
+  // 道具栏挂在 character tab，pillInventory 影响道具显示；首屏加载一次让兑换码/邮件领取的道具可见
+  loadPillsIfStale();
   checkOfflineRewards();
   // 宗门加成在角色 Tab 面板要算进去（不阻塞首屏；只有已加入宗门才拉）
   if ((gameStore.character as any)?.sect_id) {
