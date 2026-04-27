@@ -2232,12 +2232,12 @@
           <div v-show="helpTab === 'battle'">
           <div class="help-section">
             <div class="help-title">等级系统</div>
-            <p class="help-text">等级上限 200 级,打怪获得等级经验自动升级。等级提供属性加成,按段递增:</p>
+            <p class="help-text">等级上限 300 级,打怪获得等级经验自动升级。等级提供属性加成,按段递增:</p>
             <table class="help-table"><tbody>
               <tr><td>1-50 级</td><td>每级: 气血+10 攻击+2 防御+1 身法+1</td></tr>
               <tr><td>51-100 级</td><td>每级: 气血+20 攻击+4 防御+2 身法+2</td></tr>
               <tr><td>101-150 级</td><td>每级: 气血+40 攻击+8 防御+4 身法+3</td></tr>
-              <tr><td>151-200 级</td><td>每级: 气血+80 攻击+15 防御+8 身法+5</td></tr>
+              <tr><td>151-300 级</td><td>每级: 气血+80 攻击+15 防御+8 身法+5</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">装备有等级需求,高阶装备需要对应等级才能穿戴。</p>
           </div>

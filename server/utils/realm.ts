@@ -29,7 +29,7 @@ export function getExpRequired(tier: number, stage: number): number {
  */
 // 等级所需经验（与前端 stores/game.ts levelExpRequired 保持一致）
 export function getLevelExpRequired(lv: number): number {
-  if (lv >= 200) return Infinity
+  if (lv >= 300) return Infinity
   if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
   if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
   if (lv <= 150) return Math.floor(180 * Math.pow(lv, 1.42))
@@ -46,7 +46,7 @@ export function applyLevelExp(
   let lv = Math.max(1, level || 1)
   let exp = Math.max(0, levelExp)
   let ups = 0
-  while (lv < 200) {
+  while (lv < 300) {
     const req = getLevelExpRequired(lv)
     if (exp < req) break
     exp -= req

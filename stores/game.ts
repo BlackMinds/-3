@@ -110,12 +110,12 @@ export const useGameStore = defineStore('game', () => {
     return Math.min(100, (character.value.cultivation_exp / expRequired.value) * 100)
   })
 
-  const charLevel = computed(() => Math.min(200, character.value?.level || 1))
+  const charLevel = computed(() => Math.min(300, character.value?.level || 1))
 
   const levelExpRequired = computed(() => {
     const lv = charLevel.value
-    if (lv >= 200) return Infinity
-    // 经验曲线整体降档: 前30级 -33%, 150+ 段指数从 1.5 降至 1.48 让 Lv.200 可达
+    if (lv >= 300) return Infinity
+    // 经验曲线整体降档: 前30级 -33%, 150+ 段指数从 1.5 降至 1.48
     if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
     if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
     if (lv <= 150) return Math.floor(180 * Math.pow(lv, 1.42))
@@ -123,7 +123,7 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const levelExpPercent = computed(() => {
-    if (!character.value || levelExpRequired.value === 0 || levelExpRequired.value === Infinity) return charLevel.value >= 200 ? 100 : 0
+    if (!character.value || levelExpRequired.value === 0 || levelExpRequired.value === Infinity) return charLevel.value >= 300 ? 100 : 0
     return Math.min(100, (character.value.level_exp / levelExpRequired.value) * 100)
   })
 
