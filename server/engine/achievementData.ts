@@ -27,9 +27,9 @@ export interface AchievementDef {
   title?: string;    // 解锁称号
 }
 
-// ========== 成就定义 (86个) ==========
+// ========== 成就定义 (87个) ==========
 export const ACHIEVEMENTS: AchievementDef[] = [
-  // ===== 道途·修炼 (15) =====
+  // ===== 道途·修炼 (16) =====
   { id: 'dao_01', name: '踏入仙途', desc: '创建角色', category: 'dao', type: 'threshold', target: 1, event: 'char_created', reward: { spirit_stone: 500 } },
   { id: 'dao_02', name: '初窥门径', desc: '达到练气九层', category: 'dao', type: 'threshold', target: 9, event: 'qi_stage', reward: { spirit_stone: 2000 } },
   { id: 'dao_03', name: '筑基成功', desc: '突破至筑基境界', category: 'dao', type: 'threshold', target: 2, event: 'realm_tier', reward: { spirit_stone: 5000, equip_box: 'normal', equip_box_count: 1 }, title: '筑基修士' },
@@ -45,6 +45,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'dao_13', name: '万法归一', desc: '等级达到200', category: 'dao', type: 'threshold', target: 200, event: 'char_level', reward: { spirit_stone: 500000, equip_box: 'legend', equip_box_count: 3 }, title: '万法宗师' },
   { id: 'dao_14', name: '闭关苦修', desc: '累计闭关修炼10次', category: 'dao', type: 'counter', target: 10, event: 'cultivate_count', reward: { spirit_stone: 5000 } },
   { id: 'dao_15', name: '日夜不辍', desc: '累计离线挂机100小时', category: 'dao', type: 'counter', target: 100, event: 'offline_hours', reward: { spirit_stone: 30000, skill_box: 'fine', skill_box_count: 1 }, title: '苦修者' },
+  { id: 'dao_16', name: '混元归一', desc: '等级达到300', category: 'dao', type: 'threshold', target: 300, event: 'char_level', reward: { spirit_stone: 2000000, equip_box: 'legend', equip_box_count: 5 }, title: '混元道祖' },
 
   // ===== 历练·战斗 (18) =====
   { id: 'bat_01', name: '初出茅庐', desc: '完成第1场战斗', category: 'battle', type: 'counter', target: 1, event: 'battle_count', reward: { spirit_stone: 100 } },
