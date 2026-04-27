@@ -1,4 +1,5 @@
 import { getPool } from '~/server/database/db'
+import { getExpRequired } from '~/server/utils/realm'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -14,7 +15,10 @@ export default defineEventHandler(async (event) => {
       return { code: 200, data: null, message: '未创建角色' }
     }
 
-    return { code: 200, data: rows[0] }
+    const row = rows[0]
+    row.cultivation_exp_required = getExpRequired(row.realm_tier || 1, row.realm_stage || 1)
+
+    return { code: 200, data: row }
   } catch (error) {
     console.error('获取游戏数据失败:', error)
     return { code: 500, message: '服务器错误' }
