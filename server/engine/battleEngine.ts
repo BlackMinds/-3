@@ -843,10 +843,11 @@ export function runWaveBattle(
     if (Math.random() >= effChance) return false;
     // 控制类抗性降低持续时间
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type);
-    // 天师附灵：施加方延长减益持续回合
+    // 天师附灵：施加方延长减益持续回合（不影响控制类）
     let durBonus = 0;
     if (inflictor === 'player') durBonus = (player as any).awakenState?.debuffDurationBonus || 0;
     else if (inflictor && typeof inflictor === 'object') durBonus = inflictor.awakenState?.debuffDurationBonus || 0;
+    if (isCtrl) durBonus = 0;
     let duration = effDuration + durBonus;
     const tianshiTag = durBonus > 0 ? ` ✦天师+${durBonus}` : '';
     if (isCtrl) {

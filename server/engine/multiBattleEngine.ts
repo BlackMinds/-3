@@ -389,7 +389,9 @@ export function runPvpBattle(
 
     if (Math.random() >= effChance) return false
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type)
-    const durBonus = inflictor?.awakenState?.debuffDurationBonus || 0
+    // 天师附灵：施加方延长减益持续回合（不影响控制类）
+    const rawDurBonus = inflictor?.awakenState?.debuffDurationBonus || 0
+    const durBonus = isCtrl ? 0 : rawDurBonus
     let duration = effDuration + durBonus
     const tianshiTag = durBonus > 0 ? ` ✦天师+${durBonus}` : ''
     if (isCtrl) {
