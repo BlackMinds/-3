@@ -3234,7 +3234,13 @@ async function fetchAchievementData() {
 }
 
 async function onRedeemSuccess() {
-  try { await gameStore.loadGameData(); } catch { /* ignore */ }
+  try {
+    await Promise.all([
+      gameStore.loadGameData(),
+      loadPills(),
+      loadHerbs(),
+    ]);
+  } catch { /* ignore */ }
   showToast('兑换成功，奖励已发放至背包', 'success');
 }
 
@@ -5934,7 +5940,8 @@ async function useVariant(recipe: PillRecipe, variant: any) {
       variant.count--;
       if (recipe.type === 'breakthrough' && recipe.expGain) {
         const gained = Math.floor(recipe.expGain * Number(variant.quality_factor));
-        gameStore.character!.cultivation_exp += gained;
+        // BIGINT 来自 PG 序列化为字符串,必须 Number() 转回再加,否则会字符串拼接
+        gameStore.character!.cultivation_exp = Number(gameStore.character!.cultivation_exp || 0) + gained;
         showToast(`使用成功! 获得 ${gained} 修为`, 'success');
       } else {
         showToast('使用成功! buff已生效', 'success');
