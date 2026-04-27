@@ -1020,3 +1020,26 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS offline_snapshot JSONB DEFAULT N
 -- ============================================
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS arena_score INT NOT NULL DEFAULT 1000;
 CREATE INDEX IF NOT EXISTS idx_arena_rank ON characters (arena_score DESC);
+
+-- ============================================
+-- 数据修复（2026-04-27）：兑换码 XIANTU2026 早期版本误把 awaken_stone/awaken_reroll
+-- 写到 character_materials（dd08027 → c9f3893 之间），那段窗口领过的玩家因为 claims
+-- 已记录无法重领，前端只读 character_pills 导致道具看不见。把孤儿数据迁回 pills 表。
+-- 幂等：DELETE 完后下次跑 INSERT SELECT 选不到行。
+-- character_materials 不会有任何合法的 awaken_stone/awaken_reroll 来源（仅灵草入库）。
+-- ============================================
+INSERT INTO character_pills (character_id, pill_id, quality_factor, count)
+SELECT character_id, 'awaken_stone', 1.0, count
+FROM character_materials
+WHERE material_id = 'awaken_stone'
+ON CONFLICT (character_id, pill_id, quality_factor)
+DO UPDATE SET count = character_pills.count + EXCLUDED.count;
+
+INSERT INTO character_pills (character_id, pill_id, quality_factor, count)
+SELECT character_id, 'awaken_reroll', 1.0, count
+FROM character_materials
+WHERE material_id = 'awaken_reroll'
+ON CONFLICT (character_id, pill_id, quality_factor)
+DO UPDATE SET count = character_pills.count + EXCLUDED.count;
+
+DELETE FROM character_materials WHERE material_id IN ('awaken_stone', 'awaken_reroll');
