@@ -225,18 +225,18 @@ function buildHealerSkillPool(tier: number, elem: string | null): MonsterSkillDe
     skills.push({ name: '灵力一击', multiplier: 0.55, cdTurns: 3, element: null, description: '灵力撞击' });
   }
 
-  // 群体回血（按 tier 阶梯）
-  if (tier >= 5) skills.push({ name: '春霖术', multiplier: 0, cdTurns: 5, element: null, healPercent: 0.10, isHeal: true, isAoe: true, description: '全队回复10%气血' });
-  if (tier >= 6) skills.push({ name: '甘霖普济', multiplier: 0, cdTurns: 6, element: null, healPercent: 0.13, isHeal: true, isAoe: true, description: '全队回复13%气血' });
-  if (tier >= 7) skills.push({ name: '苍生庇护', multiplier: 0, cdTurns: 7, element: null, healPercent: 0.16, isHeal: true, isAoe: true, description: '全队回复16%气血' });
-  if (tier >= 8) skills.push({ name: '九转续命', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.20, isHeal: true, isAoe: true, description: '全队回复20%气血' });
-  if (tier >= 9) skills.push({ name: '生灭轮回', multiplier: 0, cdTurns: 9, element: null, healPercent: 0.25, isHeal: true, isAoe: true, description: '全队回复25%气血' });
-  if (tier >= 10) skills.push({ name: '天道无量', multiplier: 0, cdTurns: 10, element: null, healPercent: 0.30, isHeal: true, isAoe: true, description: '全队回复30%气血' });
+  // 群体回血（按 tier 阶梯）— v3.6 healPercent ×0.6 削弱（旧 10/13/16/20/25/30）
+  if (tier >= 5) skills.push({ name: '春霖术', multiplier: 0, cdTurns: 5, element: null, healPercent: 0.06, isHeal: true, isAoe: true, description: '全队回复6%气血' });
+  if (tier >= 6) skills.push({ name: '甘霖普济', multiplier: 0, cdTurns: 6, element: null, healPercent: 0.08, isHeal: true, isAoe: true, description: '全队回复8%气血' });
+  if (tier >= 7) skills.push({ name: '苍生庇护', multiplier: 0, cdTurns: 7, element: null, healPercent: 0.10, isHeal: true, isAoe: true, description: '全队回复10%气血' });
+  if (tier >= 8) skills.push({ name: '九转续命', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.12, isHeal: true, isAoe: true, description: '全队回复12%气血' });
+  if (tier >= 9) skills.push({ name: '生灭轮回', multiplier: 0, cdTurns: 9, element: null, healPercent: 0.15, isHeal: true, isAoe: true, description: '全队回复15%气血' });
+  if (tier >= 10) skills.push({ name: '天道无量', multiplier: 0, cdTurns: 10, element: null, healPercent: 0.18, isHeal: true, isAoe: true, description: '全队回复18%气血' });
 
-  // 群体 regen（持续回复）
-  if (tier >= 5) skills.push({ name: '灵气流转', multiplier: 0, cdTurns: 8, element: null, buff: { type: 'regen', value: 0.04, duration: 4 }, isAoe: true, description: '全队每回合回复4%气血 持续4回合' });
-  if (tier >= 7) skills.push({ name: '九霄灵雨', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'regen', value: 0.06, duration: 5 }, isAoe: true, description: '全队每回合回复6%气血 持续5回合' });
-  if (tier >= 9) skills.push({ name: '永恒之心', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'regen', value: 0.08, duration: 5 }, isAoe: true, description: '全队每回合回复8%气血 持续5回合' });
+  // 群体 regen（持续回复）— v3.6 value ×0.65 削弱（旧 4/6/8）
+  if (tier >= 5) skills.push({ name: '灵气流转', multiplier: 0, cdTurns: 8, element: null, buff: { type: 'regen', value: 0.03, duration: 4 }, isAoe: true, description: '全队每回合回复3%气血 持续4回合' });
+  if (tier >= 7) skills.push({ name: '九霄灵雨', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'regen', value: 0.04, duration: 5 }, isAoe: true, description: '全队每回合回复4%气血 持续5回合' });
+  if (tier >= 9) skills.push({ name: '永恒之心', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'regen', value: 0.05, duration: 5 }, isAoe: true, description: '全队每回合回复5%气血 持续5回合' });
 
   // 群体 atk_up
   if (tier >= 5) skills.push({ name: '战意激扬', multiplier: 0, cdTurns: 7, element: null, buff: { type: 'atk_up', value: 0.20, duration: 3 }, isAoe: true, description: '全队攻击+20% 持续3回合' });
@@ -441,8 +441,9 @@ export function monsterChooseSkill(
   const teamMinHpRatio = options?.teamMinHpRatio ?? hpRatio;
   const isHealer = options?.isHealer || false;
 
-  // 1) 低血优先回血：自己 < 40%，或 healer 团队最低 < 60%
-  const healTriggerHp = isHealer ? 0.60 : 0.40;
+  // 1) 低血优先回血：自己 < 40%，或 healer 团队最低 < 40%
+  // v3.6 healer 阈值 60→40，避免还没死人就疯狂奶导致玩家无窗口击杀 healer
+  const healTriggerHp = 0.40;
   const triggerRatio = isHealer ? Math.min(hpRatio, teamMinHpRatio) : hpRatio;
   if (triggerRatio < healTriggerHp) {
     let bestHeal: { skill: MonsterSkillDef; index: number } | null = null;
