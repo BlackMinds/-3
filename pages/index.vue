@@ -2678,7 +2678,10 @@
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
                   <div class="rank-root" :style="{ color: rootColorMap[item.spiritualRoot] }">{{ item.rootName }}</div>
-                  <div class="rank-name">{{ item.name }}</div>
+                  <div class="rank-name">
+                    {{ item.name }}
+                    <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
+                  </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
                   <div class="rank-detail">
                     <span v-if="rankingTab === 'level'">Lv.{{ item.level }}</span>
@@ -11214,6 +11217,14 @@ onUnmounted(() => {
   white-space: nowrap;
   color: var(--ink-medium);
   font-weight: 600;
+}
+
+.rank-title {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--cinnabar-light);
+  font-style: italic;
+  font-weight: normal;
 }
 
 .rank-realm {

@@ -37,6 +37,7 @@ function formatCharRow(row: any, rank: number) {
     arenaRankName: arenaRank.name,
     arenaRankColor: arenaRank.color,
     sectName: row.sect_name || null,
+    title: row.title || null,
   }
 }
 
@@ -45,7 +46,7 @@ export default defineEventHandler(async (event) => {
     const pool = getPool()
     const { rows } = await pool.query(`
       SELECT c.id, c.name, c.spiritual_root, c.realm_tier, c.realm_stage,
-             c.level, c.arena_score,
+             c.level, c.arena_score, c.title,
              s.name AS sect_name
       FROM characters c
       LEFT JOIN sect_members sm ON sm.character_id = c.id

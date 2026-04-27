@@ -32,6 +32,7 @@ function formatCharRow(row: any, rank: number) {
     level: row.level || 1,
     spiritStone: row.spirit_stone,
     sectName: row.sect_name || null,
+    title: row.title || null,
   }
 }
 
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event) => {
     const pool = getPool()
     const { rows } = await pool.query(`
       SELECT c.id, c.name, c.spiritual_root, c.realm_tier, c.realm_stage,
-             c.cultivation_exp, c.level, c.level_exp, c.spirit_stone,
+             c.cultivation_exp, c.level, c.level_exp, c.spirit_stone, c.title,
              s.name AS sect_name
       FROM characters c
       LEFT JOIN sect_members sm ON sm.character_id = c.id
