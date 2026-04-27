@@ -2246,9 +2246,9 @@
             <p class="help-text">回合制自动战斗,每波 1-5 只怪同时出现。玩家每回合攻击血量最低的怪,所有存活怪每回合攻击玩家。主修功法每回合施展,神通按 CD 自动释放(优先级更高)。</p>
             <p class="help-text" style="margin-top: 4px;">10 种异常状态:</p>
             <table class="help-table"><tbody>
-              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×15%火伤</td></tr>
-              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受目标气血×3%毒伤</td></tr>
-              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×10%物伤</td></tr>
+              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×18%火伤</td></tr>
+              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受目标气血×4%毒伤</td></tr>
+              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×13%物伤</td></tr>
               <tr><td style="color: #5b8eaa;">冻结</td><td>无法行动(控制类,受控抗影响)</td></tr>
               <tr><td style="color: #c9a85c;">眩晕</td><td>无法行动(控制类,受控抗影响)</td></tr>
               <tr><td style="color: #5b8eaa;">减速</td><td>必定后攻</td></tr>
@@ -2262,6 +2262,34 @@
           <div class="help-section">
             <div class="help-title">怪物技能</div>
             <p class="help-text">怪物按地图 tier 拥有不同技能,tier 越高技能越多越强。Boss 额外拥有专属技能,气血低于 30% 时进入狂暴状态(攻击永久+30%)。</p>
+            <p class="help-text" style="margin-top: 6px; color: var(--gold-ink);"><b>v3.6 奶妈怪 (T5+ 必出):</b></p>
+            <p class="help-text" style="margin-top: 2px;">每场 T5+ 战斗 (2-4 只) 必有 1 只<b>奶妈怪</b> (元素称号: 赤焰巫祝/玄水道姑/青丘药师/金光司礼/厚土守巫…)。属性: HP 比同 power dps 怪略脆 (~90%)、攻击仅 1/3 dps、<b>自带 50% 控制抗性</b>。</p>
+            <p class="help-text" style="margin-top: 2px;">技能池:<b>群体回血</b> (春霖术 6%~天道无量 18%, T5+) + <b>群体 buff</b> (战意激扬攻击 +20%、灵光护体防御 +20%、灵气流转 regen 3%/turn) + <b>玩家 debuff</b> (妖气封印/镇魂咒/锁魂术)。HP &lt; 40% 才触发回血,玩家有窗口集火秒杀。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">DOT 流派 (持续伤害)</div>
+            <p class="help-text">三种 DOT 公式 (v3.6 上调 ~30%):</p>
+            <table class="help-table"><tbody>
+              <tr><td>灼烧 (火)</td><td>攻击力 × 18% / 回合</td></tr>
+              <tr><td>中毒 (木)</td><td>目标气血 × 4% / 回合</td></tr>
+              <tr><td>流血 (金)</td><td>攻击力 × 13% / 回合</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;"><b>DOT 加成链:</b>装备副属性「DOT伤害 +5~25%」 → 功法「万毒归一」+25% → 主修元素灵戒 (金鸣戒+流血/木灵戒+中毒/<b>焚天烬戒+灼烧</b>) → 神通基础 dot duration。多源叠加。</p>
+            <p class="help-text" style="margin-top: 4px;">紫色 DOT 神通: <b>毒液冲击</b> (3 段中毒)、<b>血雨腥风</b> (AOE 流血)、<b>焚天烈魂</b> (AOE 灼烧 + 自身 atk +20%)、剑雨纷飞、双焰斩、连环掌、九天玄火阵。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">反伤流派 (Reflect)</div>
+            <p class="help-text">受击时反弹一定比例伤害给攻击者。<b>反伤公式 (v3.6):</b>反弹量 = min(受击 × 反伤系数, 玩家攻击 × 6) + 玩家最大气血 × 8%。</p>
+            <p class="help-text" style="margin-top: 6px;"><b>反伤系数累加来源 (理论上限 ~95%):</b></p>
+            <table class="help-table"><tbody>
+              <tr><td>神通「明镜止水」</td><td>+32% (3 回合 buff, cd 9)</td></tr>
+              <tr><td>功法「荆棘之体」被动</td><td>+8% (常驻)</td></tr>
+              <tr><td>副属性「反伤倍率」</td><td>+3~15% / 条 (多件叠加)</td></tr>
+              <tr><td>armor 附灵「明镜甲」</td><td>+6~22% (常驻)</td></tr>
+              <tr><td>pendant 附灵「玄镜佩」</td><td>+5~18% (常驻)</td></tr>
+              <tr><td>armor 附灵「荆棘」</td><td>+15~50% (仅暴击触发)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">堆满需放弃 armor/pendant 其他附灵 (金刚/磐石/疾风/玄冥…), 是真流派 build。</p>
           </div>
           <div class="help-section">
             <div class="help-title">五行相克</div>
@@ -2398,8 +2426,9 @@
               <tr><td>枪</td><td>攻击+3%, 身法+12%, 吸血+3% (持久)</td></tr>
               <tr><td>扇</td><td>攻击+3%, 神识+20% (法术)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘等 15 种。装备有等级需求(T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195)。</p>
+            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘/<b style="color: var(--gold-ink);">DOT伤害</b>/<b style="color: var(--gold-ink);">反伤倍率</b>等 17 种。装备有等级需求(T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195)。</p>
             <p class="help-text" style="margin-top: 4px;">低阶图品质权重前期已上调,更易刷出蓝紫装。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);"><b>v3.6 新词条:</b><b>DOT伤害 +5~25%</b>(灼烧/中毒/流血总伤害放大,与功法被动「万毒归一」叠加)；<b>反伤倍率 +3~15%</b>(每件装备独立叠加到反伤系数)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备强化</div>
@@ -2446,7 +2475,7 @@
             <p class="help-text" style="margin-top: 4px;">不受上限影响: 五行抗性/控制抗性/暴击率/暴击伤害/闪避/吸血/免死/反弹/每回合回血/破甲/命中/CD 缩减等特殊效果仍可叠加。</p>
             <p class="help-text" style="margin-top: 6px;"><b>紫色被动 build 配合（T5-T6 掉落）：</b></p>
             <table class="help-table"><tbody>
-              <tr><td>万毒归一</td><td>DOT 流核心：你造成的灼烧/中毒/流血伤害+25%,附带攻击+6%/暴击率+3%。配合剑雨纷飞(流血)/双焰斩(灼烧)/连环掌(中毒)/九天玄火阵</td></tr>
+              <tr><td>万毒归一</td><td>DOT 流核心：你造成的灼烧/中毒/流血伤害+25%,附带攻击+6%/暴击率+3%。配合 v3.6 新神通<b>毒液冲击</b>(3 段中毒)/<b>血雨腥风</b>(AOE 流血)/<b>焚天烈魂</b>(AOE 灼烧+自身 atk_up) + 剑雨纷飞/双焰斩/连环掌/九天玄火阵 + 副属性<b>DOT伤害</b> + 元素灵戒(金鸣戒/木灵戒/<b>焚天烬戒</b>)</td></tr>
               <tr><td>飘渺神行</td><td>闪避反击流：闪避+8%、速度+8%，闪避后下次攻击必暴击。搭配速度装备/吸血神通形成"闪→暴→吸血"循环</td></tr>
               <tr><td>春风化雨</td><td>持久回血流：你受到的所有治疗(神通/被动 regen)+30%，自身每回合回血+1%，水/木抗+10%。搭配灵泉术/生生不息/天地归元</td></tr>
             </tbody></table>
