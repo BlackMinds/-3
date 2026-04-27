@@ -3,6 +3,9 @@
 import { getPool } from '~/server/database/db'
 import { getSecretRealm, getDailyCountByRealm } from '~/server/engine/secretRealmData'
 
+/** 每天前 N 次失败不扣次数（试错保护） */
+export const SR_DAILY_FAIL_PROTECT = 2
+
 /** 获取角色（按 user_id） */
 export async function getCharacterByUserId(userId: number): Promise<any | null> {
   const pool = getPool()
@@ -31,10 +34,11 @@ export async function ensureDailyReset(charId: number, char: any): Promise<any> 
   if (storedDate !== today) {
     const pool = getPool()
     await pool.query(
-      'UPDATE characters SET sr_daily_count = 0, sr_daily_date = $1 WHERE id = $2',
+      'UPDATE characters SET sr_daily_count = 0, sr_daily_fail = 0, sr_daily_date = $1 WHERE id = $2',
       [today, charId]
     )
     char.sr_daily_count = 0
+    char.sr_daily_fail = 0
     char.sr_daily_date = today
   }
   return char

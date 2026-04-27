@@ -457,6 +457,8 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
         case 'poisonOnHitTaken':   awaken.poisonOnHitTaken = Math.max(awaken.poisonOnHitTaken, v); break
         case 'burnOnHitTaken':     awaken.burnOnHitTaken = Math.max(awaken.burnOnHitTaken, v); break
         case 'reflectOnCrit':      awaken.reflectOnCrit = Math.max(awaken.reflectOnCrit, v); break
+        // v3.6 反伤流派附灵：直接叠加到 equipReflectPct 通道（与副属性 REFLECT_PCT 共用）
+        case 'reflectPct':         equipReflectPct += v; break
         // 运行时触发类（传递到 runWaveBattle）
         case 'burnOnHitChance':    awaken.burnOnHitChance = (awaken.burnOnHitChance || 0) + v; break
         case 'poisonOnHitChance':  awaken.poisonOnHitChance = (awaken.poisonOnHitChance || 0) + v; break

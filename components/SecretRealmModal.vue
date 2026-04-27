@@ -6,6 +6,9 @@
         <div class="sr-title">万界秘境</div>
         <div class="sr-header-info" v-if="teamStore.playerInfo">
           <span>今日次数 <b>{{ teamStore.playerInfo.sr_daily_count }}/{{ teamStore.playerInfo.sr_daily_max }}</b></span>
+          <span v-if="teamStore.playerInfo.sr_daily_fail_protect > 0" class="sr-fail-protect">
+            失败保护 <b>{{ Math.max(0, teamStore.playerInfo.sr_daily_fail_protect - teamStore.playerInfo.sr_daily_fail) }}/{{ teamStore.playerInfo.sr_daily_fail_protect }}</b>
+          </span>
           <span>秘境积分 <b>{{ teamStore.playerInfo.realm_points }}</b></span>
         </div>
         <button class="sr-close" @click="handleClose">×</button>
@@ -209,6 +212,7 @@
           <template v-else>
             <div class="rating-big">!</div>
             <div class="rating-sub">秘境失败（通过 {{ teamStore.battleResult.waves_cleared }}/{{ teamStore.battleResult.total_waves }} 波）</div>
+            <div v-if="anyFailProtected" class="rating-tip">本次失败受【试错保护】，不扣本日次数</div>
           </template>
         </div>
 
@@ -458,6 +462,11 @@ function hasDrops(r: any): boolean {
     || (r.awaken_items && (r.awaken_items.awaken_stone > 0 || r.awaken_items.awaken_reroll > 0))
     || (r.enhance_stones && r.enhance_stones.count > 0)
 }
+const anyFailProtected = computed(() => {
+  const rewards = teamStore.battleResult?.rewards
+  if (!Array.isArray(rewards)) return false
+  return rewards.some((r: any) => r && r.fail_protected)
+})
 const STAGE_NAMES = ['初期', '中期', '后期']
 function realmShort(tier: number, stage: number): string {
   const tierName = realmTierName(tier)
@@ -1067,6 +1076,8 @@ onUnmounted(() => {
 }
 .rating-big { font-size: 72px; font-weight: bold; margin-bottom: 8px; }
 .rating-sub { font-size: 16px; color: #9ea3ad; }
+.rating-tip { margin-top: 8px; font-size: 13px; color: #a3c972; }
+.sr-fail-protect b { color: #a3c972 !important; }
 .result-rating.r-S { border-color: #e8c58f; }
 .result-rating.r-S .rating-big { color: #e8c58f; text-shadow: 0 0 20px rgba(232,197,143,.6); }
 .result-rating.r-A { border-color: #a3c972; }

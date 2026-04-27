@@ -1,7 +1,7 @@
 // 查询秘境列表（含当前玩家解锁状态、每日剩余次数、积分）
 import { getPool } from '~/server/database/db'
 import { SECRET_REALMS } from '~/server/engine/secretRealmData'
-import { getCharacterByUserId, ensureDailyReset, getSrDailyMax } from '~/server/utils/team'
+import { getCharacterByUserId, ensureDailyReset, getSrDailyMax, SR_DAILY_FAIL_PROTECT } from '~/server/utils/team'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -55,6 +55,8 @@ export default defineEventHandler(async (event) => {
           realm_points: char.realm_points || 0,
           sr_daily_count: char.sr_daily_count || 0,
           sr_daily_max: getSrDailyMax(char),
+          sr_daily_fail: char.sr_daily_fail || 0,
+          sr_daily_fail_protect: SR_DAILY_FAIL_PROTECT,
         },
       },
     }

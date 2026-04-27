@@ -91,6 +91,10 @@ const ARMOR_POOL: AwakenDef[] = [
   { id: 'aw_thorns', name: '荆棘', slot: 'armor', stat: 'reflectOnCrit',
     tiers: { blue: 0.15, purple: 0.25, gold: 0.35, red: 0.50 },
     desc: (v) => `受暴击时 ${(v * 100).toFixed(0)}% 反弹伤害` },
+  // v3.6 反伤流派支持：armor 常驻反伤（与神通明镜止水叠加）
+  { id: 'aw_mirror_armor', name: '明镜甲', slot: 'armor', stat: 'reflectPct',
+    tiers: { blue: 0.06, purple: 0.10, gold: 0.15, red: 0.22 },
+    desc: (v) => `受击时常驻反弹 ${(v * 100).toFixed(0)}% 伤害` },
   { id: 'aw_venomshell', name: '毒刺甲', slot: 'armor', stat: 'poisonOnHitTaken',
     tiers: { blue: 0.10, purple: 0.15, gold: 0.20, red: 0.30 },
     desc: (v) => `受击时 ${(v * 100).toFixed(0)}% 概率使对方中毒` },
@@ -165,6 +169,10 @@ const PENDANT_POOL: AwakenDef[] = [
   { id: 'aw_sect_bonus', name: '弘愿', slot: 'pendant', stat: 'sectContribBonus',
     tiers: { blue: 0.05, purple: 0.08, gold: 0.12, red: 0.18 },
     desc: (v) => `宗门贡献获得 +${(v * 100).toFixed(0)}%` },
+  // v3.6 反伤流派支持：pendant 常驻反伤
+  { id: 'aw_mirror_pendant', name: '玄镜佩', slot: 'pendant', stat: 'reflectPct',
+    tiers: { blue: 0.05, purple: 0.08, gold: 0.12, red: 0.18 },
+    desc: (v) => `受击时常驻反弹 ${(v * 100).toFixed(0)}% 伤害` },
 ];
 
 // ============ 灵戒（12 条 / 主修功法增幅向）============

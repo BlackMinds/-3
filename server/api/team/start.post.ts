@@ -6,7 +6,7 @@ import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { getSecretRealm } from '~/server/engine/secretRealmData'
 import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/engine/teamBattleEngine'
-import { getCharacterByUserId, ensureDailyReset, getRoomDetail, getSrDailyMax } from '~/server/utils/team'
+import { getCharacterByUserId, ensureDailyReset, getRoomDetail, getSrDailyMax, SR_DAILY_FAIL_PROTECT } from '~/server/utils/team'
 import { generateSecretRealmDrops, generateSecretRealmEquip, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
@@ -429,6 +429,13 @@ export default defineEventHandler(async (event) => {
           continue
         }
 
+        // 试错保护：每天前 SR_DAILY_FAIL_PROTECT 次失败不扣次数（按玩家自身累计失败数判断）
+        const todayFail = Number(member?.sr_daily_fail || 0)
+        const isWin = result.won
+        const isFailProtected = !isWin && todayFail < SR_DAILY_FAIL_PROTECT
+        const countInc = isFailProtected ? 0 : 1
+        const failInc = isWin ? 0 : 1
+
         const stoneRatio = 0.4 + 0.6 * c.contribution
         const myStone = Math.floor(totalBaseStone * stoneRatio * rewardMul * ratingMul)
         // 经验与灵石对齐按贡献度分摊（原本不分摊 = 4 人各拿全额，整队总流出 4×，与 stone 语义不一致）
@@ -527,11 +534,12 @@ export default defineEventHandler(async (event) => {
              level_exp = $5,
              level = $6,
              realm_points = realm_points + $7,
-             sr_daily_count = sr_daily_count + 1,
+             sr_daily_count = sr_daily_count + $8,
+             sr_daily_fail = sr_daily_fail + $9,
              sr_daily_date = CURRENT_DATE,
              last_online = NOW()
-           WHERE id = $8`,
-          [myStone, br.cultivation_exp, br.realm_tier, br.realm_stage, newLevelExp, newLevel, myPoints, c.characterId]
+           WHERE id = $10`,
+          [myStone, br.cultivation_exp, br.realm_tier, br.realm_stage, newLevelExp, newLevel, myPoints, countInc, failInc, c.characterId]
         )
 
         rewards.push({
@@ -550,6 +558,7 @@ export default defineEventHandler(async (event) => {
           awaken_items: awakenItemShare,
           enhance_stones: stoneShare > 0 ? { tier: realm.dropTier, count: stoneShare } : null,
           level_up: newLevel > (member?.level || 1) ? newLevel : null,
+          fail_protected: isFailProtected,
         })
 
         // --- 成就触发（异步不阻塞） ---

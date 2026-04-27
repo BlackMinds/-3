@@ -82,6 +82,8 @@ export const useTeamStore = defineStore('team', () => {
     realm_points: 0,
     sr_daily_count: 0,
     sr_daily_max: 2,
+    sr_daily_fail: 0,
+    sr_daily_fail_protect: 2,
   })
   const battleResult = ref<any | null>(null)
   const battleHistory = ref<any[]>([])
