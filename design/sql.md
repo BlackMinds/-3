@@ -76,6 +76,12 @@ UPDATE characters SET sr_daily_bonus = 1,
   UPDATE characters                                                                                                                                                                        SET cultivation_exp = cultivation_exp+1400000
   WHERE name = '玩家名'; 
 
+  给角色加灵石
+    UPDATE 
+    characters            
+    SET spirit_stone = spirit_stone + 3000000                       
+  WHERE name = '你的角色名';
+
  SELECT cave_output_mul, COUNT(*) AS 玩家数
   FROM characters
   WHERE cave_output_mul > 1.0

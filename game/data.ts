@@ -390,13 +390,12 @@ export function getExpRequired(tier: number, stage: number): number {
 
 // ========== 根据角色境界获取可用地图 ==========
 export function getUnlockedMaps(tier: number, stage: number): MapData[] {
-  // 简化的解锁逻辑：tier匹配或低于当前tier的地图都解锁
   return MAPS.filter(m => {
-    if (m.tier < tier) return true;
-    if (m.tier === tier) {
-      // 同tier需要对应stage
-      if (m.tier <= 2) return true; // T1-T2只看tier
-      return true; // 简化：同tier全解锁
+    if (m.tier <= tier) return true;
+    // 飞升(tier 8)的高阶 stage 解锁 T9/T10：太乙金仙(4)→T9，大罗金仙(5)→T10
+    if (tier === 8) {
+      if (m.tier === 9 && stage >= 4) return true;
+      if (m.tier === 10 && stage >= 5) return true;
     }
     return false;
   });

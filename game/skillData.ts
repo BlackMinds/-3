@@ -85,7 +85,7 @@ export const ACTIVE_SKILLS: Skill[] = [
 export const DIVINE_SKILLS: Skill[] = [
   // 玄品
   { id: 'fire_rain', name: '天火术', type: 'divine', rarity: 'blue', element: 'fire', multiplier: 0.90, cdTurns: 5, description: '[群攻] 全体90%伤害,20%灼烧3回合', debuff: { type: 'burn', chance: 0.20, duration: 3 }, isAoe: true },
-  { id: 'frost_nova', name: '霜冻新星', type: 'divine', rarity: 'blue', element: 'water', multiplier: 0.85, cdTurns: 6, description: '[群攻] 全体85%伤害,50%冻结2回合', debuff: { type: 'freeze', chance: 0.50, duration: 2 }, isAoe: true },
+  { id: 'frost_nova', name: '霜冻新星', type: 'divine', rarity: 'blue', element: 'water', multiplier: 0.85, cdTurns: 7, description: '[群攻] 全体85%伤害,60%冻结2回合', debuff: { type: 'freeze', chance: 0.60, duration: 2 }, isAoe: true },
   { id: 'earth_shield', name: '厚土盾', type: 'divine', rarity: 'blue', element: 'earth', multiplier: 0, cdTurns: 7, description: '获得150%攻击的护盾,持续4回合', buff: { type: 'shield', duration: 4, value: 1.5 } },
   { id: 'quake_wave', name: '地裂波', type: 'divine', rarity: 'blue', element: 'earth', multiplier: 0.85, cdTurns: 6, description: '[群攻] 全体85%伤害,30%脆弱3回合', debuff: { type: 'brittle', chance: 0.30, duration: 3, value: 0.20 }, isAoe: true },
   { id: 'vine_prison', name: '万藤缚', type: 'divine', rarity: 'blue', element: 'wood', multiplier: 0.85, cdTurns: 7, description: '[群攻] 全体85%伤害,50%束缚2回合', debuff: { type: 'root', chance: 0.50, duration: 2 }, isAoe: true },
