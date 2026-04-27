@@ -249,10 +249,10 @@ function buildHealerSkillPool(tier: number, elem: string | null): MonsterSkillDe
   if (tier >= 9) skills.push({ name: '鸿蒙圣体', multiplier: 0, cdTurns: 11, element: null, buff: { type: 'def_up', value: 0.45, duration: 4 }, isAoe: true, description: '全队防御+45% 持续4回合' });
 
   // debuff 技能（攻击型，对玩家施加控制/降攻）
-  skills.push({ name: '妖气封印', multiplier: 0.50, cdTurns: 5, element: null, debuff: { type: 'silence', chance: 0.45, duration: 2 }, description: '封印玩家神通' });
+  skills.push({ name: '妖气封印', multiplier: 0.50, cdTurns: 5, element: null, debuff: { type: 'silence', chance: 0.30, duration: 1 }, description: '封印玩家神通' });
   if (tier >= 5) skills.push({ name: '镇魂咒', multiplier: 0.50, cdTurns: 6, element: null, debuff: { type: 'atk_down', chance: 0.50, duration: 3, value: 0.20 }, description: '玩家攻击-20%' });
   if (tier >= 6) skills.push({ name: '风蚀咒', multiplier: 0.50, cdTurns: 6, element: null, debuff: { type: 'brittle', chance: 0.45, duration: 3, value: 0.25 }, description: '玩家防御-25%' });
-  if (tier >= 7) skills.push({ name: '锁魂术', multiplier: 0.55, cdTurns: 7, element: null, debuff: { type: 'root', chance: 0.45, duration: 2 }, description: '束缚玩家2回合' });
+  if (tier >= 7) skills.push({ name: '锁魂术', multiplier: 0.55, cdTurns: 7, element: null, debuff: { type: 'root', chance: 0.30, duration: 1 }, description: '束缚玩家1回合' });
 
   return skills;
 }
@@ -281,7 +281,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   }
 
   if (tier >= 2) {
-    skills.push({ name: '蛮力撞击', multiplier: 0.96, cdTurns: 5, element: null, debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '猛烈撞击' });
+    skills.push({ name: '蛮力撞击', multiplier: 0.96, cdTurns: 5, element: null, debuff: { type: 'stun', chance: 0.14, duration: 1 }, description: '猛烈撞击' });
   }
   if (tier >= 2 && role === 'dps') {
     skills.push({ name: '巨齿啃咬', multiplier: 1.44, cdTurns: 4, element: null, debuff: { type: 'bleed', chance: 0.25, duration: 2 }, description: '单体重击+流血' });
@@ -294,8 +294,8 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 3 && elem) {
     const strongSkills: Record<string, MonsterSkillDef> = {
       fire:  { name: '烈焰吐息', multiplier: 1.08, cdTurns: 5, element: 'fire', debuff: { type: 'burn', chance: 0.30, duration: 3 }, description: '高温火息' },
-      water: { name: '寒冰刺', multiplier: 0.96, cdTurns: 5, element: 'water', debuff: { type: 'freeze', chance: 0.20, duration: 1 }, description: '冰锥攻击' },
-      wood:  { name: '缠绕荆棘', multiplier: 0.90, cdTurns: 5, element: 'wood', debuff: { type: 'root', chance: 0.30, duration: 2 }, description: '荆棘缠绕' },
+      water: { name: '寒冰刺', multiplier: 0.96, cdTurns: 5, element: 'water', debuff: { type: 'freeze', chance: 0.14, duration: 1 }, description: '冰锥攻击' },
+      wood:  { name: '缠绕荆棘', multiplier: 0.90, cdTurns: 5, element: 'wood', debuff: { type: 'root', chance: 0.20, duration: 1 }, description: '荆棘缠绕' },
       metal: { name: '破甲斩', multiplier: 1.08, cdTurns: 5, element: 'metal', debuff: { type: 'brittle', chance: 0.25, duration: 3, value: 0.20 }, description: '重斩破甲' },
       earth: { name: '震地击', multiplier: 0.96, cdTurns: 5, element: 'earth', debuff: { type: 'brittle', chance: 0.20, duration: 3, value: 0.18 }, description: '震地+脆弱' },
     };
@@ -307,12 +307,12 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
 
   // T4+
   if (tier >= 4) {
-    skills.push({ name: '咆哮震慑', multiplier: 1.08, cdTurns: 6, element: null, debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '威压咆哮' });
+    skills.push({ name: '咆哮震慑', multiplier: 1.08, cdTurns: 6, element: null, debuff: { type: 'stun', chance: 0.14, duration: 1 }, description: '威压咆哮' });
   }
   if (tier >= 4 && elem) {
     const t4HeavySkills: Record<string, MonsterSkillDef> = {
       fire:  { name: '焚天爆炎', multiplier: 1.56, cdTurns: 6, element: 'fire',  debuff: { type: 'burn',   chance: 0.30, duration: 3 }, description: '单体爆炎+灼烧' },
-      water: { name: '寒冰穿心', multiplier: 1.44, cdTurns: 6, element: 'water', debuff: { type: 'freeze', chance: 0.25, duration: 1 }, description: '单体穿心+冻结' },
+      water: { name: '寒冰穿心', multiplier: 1.44, cdTurns: 6, element: 'water', debuff: { type: 'freeze', chance: 0.18, duration: 1 }, description: '单体穿心+冻结' },
       wood:  { name: '毒针洗髓', multiplier: 1.44, cdTurns: 6, element: 'wood',  debuff: { type: 'poison', chance: 0.35, duration: 3 }, description: '单体毒针+剧毒' },
       metal: { name: '断魂利刃', multiplier: 1.62, cdTurns: 6, element: 'metal', debuff: { type: 'bleed',  chance: 0.25, duration: 3 }, description: '单体重斩+流血' },
       earth: { name: '山岳碎击', multiplier: 1.50, cdTurns: 6, element: 'earth', debuff: { type: 'bleed',  chance: 0.25, duration: 2 }, description: '单体重击+流血' },
@@ -329,10 +329,10 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 6 && elem) {
     const t6Skills: Record<string, MonsterSkillDef> = {
       fire:  { name: '焚天', multiplier: 1.38, cdTurns: 8, element: 'fire', debuff: { type: 'burn', chance: 0.50, duration: 3 }, description: '天火焚世' },
-      water: { name: '极寒领域', multiplier: 1.20, cdTurns: 8, element: 'water', debuff: { type: 'freeze', chance: 0.35, duration: 2 }, description: '极寒冰封' },
+      water: { name: '极寒领域', multiplier: 1.20, cdTurns: 8, element: 'water', debuff: { type: 'freeze', chance: 0.25, duration: 1 }, description: '极寒冰封' },
       wood:  { name: '万毒噬心', multiplier: 1.20, cdTurns: 8, element: 'wood', debuff: { type: 'poison', chance: 0.50, duration: 4 }, description: '剧毒入体' },
       metal: { name: '斩魂', multiplier: 1.68, cdTurns: 8, element: 'metal', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, description: '斩魂一击' },
-      earth: { name: '山崩地裂', multiplier: 1.32, cdTurns: 8, element: 'earth', debuff: { type: 'stun', chance: 0.25, duration: 2 }, description: '山崩天降' },
+      earth: { name: '山崩地裂', multiplier: 1.32, cdTurns: 8, element: 'earth', debuff: { type: 'stun', chance: 0.18, duration: 1 }, description: '山崩天降' },
     };
     if (t6Skills[elem]) skills.push(t6Skills[elem]);
   }
@@ -342,7 +342,7 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
 
   // T7+
   if (tier >= 7) {
-    skills.push({ name: '天雷制裁', multiplier: 1.68, cdTurns: 8, element: 'metal', debuff: { type: 'stun', chance: 0.30, duration: 2 }, description: '天雷眩晕' });
+    skills.push({ name: '天雷制裁', multiplier: 1.68, cdTurns: 8, element: 'metal', debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '天雷眩晕' });
     skills.push({ name: '天罚之击', multiplier: 2.28, cdTurns: 10, element: null, debuff: { type: 'burn', chance: 0.30, duration: 3 }, description: '天罚重击+灼烧' });
   }
 
@@ -355,10 +355,10 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (isBoss) {
     skills.push({ name: '首领之吼', multiplier: 0.72, cdTurns: 6, element: null, debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.15 }, description: '降攻15%' });
     if (tier >= 2) skills.push({ name: '首领恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.06, isHeal: true, description: '回复6%' });
-    if (tier >= 3) skills.push({ name: '威压震慑', multiplier: 1.20, cdTurns: 7, element: null, debuff: { type: 'stun', chance: 0.25, duration: 1 }, description: '眩晕1回合' });
+    if (tier >= 3) skills.push({ name: '威压震慑', multiplier: 1.20, cdTurns: 7, element: null, debuff: { type: 'stun', chance: 0.18, duration: 1 }, description: '眩晕1回合' });
     if (tier >= 4) skills.push({ name: '凶煞之气', multiplier: 0, cdTurns: 8, element: null, buff: { type: 'def_up', value: 0.30, duration: 4 }, description: '防御+30%' });
     if (tier >= 5) skills.push({ name: '王者重击', multiplier: 1.80, cdTurns: 7, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
-    if (tier >= 6) skills.push({ name: '灭世怒吼', multiplier: 1.50, cdTurns: 9, element: null, debuff: { type: 'stun', chance: 0.35, duration: 2 }, description: '眩晕2回合' });
+    if (tier >= 6) skills.push({ name: '灭世怒吼', multiplier: 1.50, cdTurns: 9, element: null, debuff: { type: 'stun', chance: 0.25, duration: 1 }, description: '眩晕1回合' });
     if (tier >= 7) skills.push({ name: '帝王斩', multiplier: 2.70, cdTurns: 10, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
     if (tier >= 7) skills.push({ name: '帝王神威', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'atk_up', value: 0.35, duration: 4 }, description: '攻击+35% 持续4回合' });
     if (tier >= 8) skills.push({ name: '破碎虚空', multiplier: 0, cdTurns: 14, element: null, buff: { type: 'regen', value: 0.05, duration: 4 }, description: '持续4回合每回合回复5%气血' });
@@ -388,17 +388,35 @@ const HEALER_NAMES_BY_ELEM: Record<string, string[]> = {
 };
 const HEALER_NAMES_NEUTRAL = ['通玄圣女', '太虚医者', '天衡司命'];
 
+// 按 tier 对齐 fight.post.ts 同 tier balanced 怪的 exp/stone 比例
+// 否则 healer 用固定比例会在 T5/T6 经验严重超发，T9/T10 又过低
+const HEALER_EXP_RATIO: Record<number, number> = {
+  1: 0.18, 2: 0.08, 3: 0.12, 4: 0.09,
+  5: 0.108, 6: 0.102, 7: 0.20, 8: 0.24, 9: 0.514, 10: 1.6,
+};
+const HEALER_STONE_MIN_RATIO: Record<number, number> = {
+  1: 0.08, 2: 0.022, 3: 0.047, 4: 0.027,
+  5: 0.028, 6: 0.033, 7: 0.10, 8: 0.25, 9: 0.179, 10: 0.889,
+};
+const HEALER_STONE_MAX_RATIO: Record<number, number> = {
+  1: 0.22, 2: 0.066, 3: 0.117, 4: 0.071,
+  5: 0.083, 6: 0.10, 7: 0.267, 8: 0.625, 9: 0.429, 10: 2.222,
+};
+
 export function makeHealerTemplate(tier: number, element: string | null, basePower: number): MonsterTemplate {
   const pool = element && HEALER_NAMES_BY_ELEM[element] ? HEALER_NAMES_BY_ELEM[element] : HEALER_NAMES_NEUTRAL;
   const name = pool[Math.floor(Math.random() * pool.length)];
+  const expR  = HEALER_EXP_RATIO[tier]       ?? 0.10;
+  const sMinR = HEALER_STONE_MIN_RATIO[tier] ?? 0.03;
+  const sMaxR = HEALER_STONE_MAX_RATIO[tier] ?? 0.10;
   return {
     name,
     power: basePower,
     element,
     role: 'healer',
-    exp: Math.floor(basePower * 0.6),
-    stone_min: Math.floor(basePower * 0.04),
-    stone_max: Math.floor(basePower * 0.12),
+    exp: Math.floor(basePower * expR),
+    stone_min: Math.floor(basePower * sMinR),
+    stone_max: Math.floor(basePower * sMaxR),
     drop_table: `common_t${tier}`,
   };
 }
@@ -494,6 +512,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const power = template.power * randFloat(0.85, 1.15);
   // v2.0 方案 A: Boss role 保持原版平衡, 通过整体 power 压缩和装备品质提升让战斗更舒服
   // healer：低攻、中血、中速；技能伤害是配角，主要靠群体回血/buff 影响战局
+  // 注意：spd 字段已不用（怪物 spd 改按 tier 阶梯，见下方 SPD_BASE_BY_TIER），保留仅为回滚兜底
   const ratios: Record<string, { hp: number; atk: number; def: number; spd: number }> = {
     balanced: { hp: 0.30, atk: 0.30, def: 0.25, spd: 0.15 },
     tank:     { hp: 0.40, atk: 0.15, def: 0.35, spd: 0.10 },
@@ -554,10 +573,29 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   ctrlResist = Math.min(0.70, ctrlResist);
   monsterResists.ctrl = ctrlResist;
 
+  // 2026-04-27: 怪物 spd 改按 tier 阶梯 + role 倍率，不再随 power 几何增长
+  // 让玩家正常装备能追上同 tier balanced/dps/boss/healer，speed 类怪保持先手设计意图
+  const SPD_BASE_BY_TIER: Record<number, number> = {
+    1: 30, 2: 60, 3: 120, 4: 200,
+    5: 350, 6: 500, 7: 700, 8: 1000,
+    9: 1300, 10: 1700,
+  };
+  const SPD_ROLE_MUL: Record<string, number> = {
+    balanced: 1.0,
+    tank:     0.7,
+    dps:      1.5,
+    speed:    2.5,
+    boss:     1.0,
+    healer:   1.5,
+  };
+  const spdBase = SPD_BASE_BY_TIER[tier] ?? SPD_BASE_BY_TIER[10];
+  const spdRoleMul = SPD_ROLE_MUL[role] ?? 1.0;
+  const spdValue = Math.floor(spdBase * spdRoleMul * randFloat(0.85, 1.15));
+
   return {
     name: template.name, maxHp, hp: maxHp,
     atk: Math.floor(power * r.atk * ATK_SCALE), def: Math.floor(power * r.def * 0.6),
-    spd: Math.floor(power * r.spd * 0.5),
+    spd: spdValue,
     crit_rate: Math.min(0.50, critRate), crit_dmg: Math.min(2.5, critDmg), // v3.4: 怪物暴伤 cap 3.0→2.5
     dodge: Math.min(0.30, dodge), lifesteal: Math.min(0.15, lifesteal),
     element: template.element, resists: monsterResists,
