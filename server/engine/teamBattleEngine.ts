@@ -8,6 +8,7 @@ import {
   initMonsterSkillState,
   monsterChooseSkill,
   tickMonsterCds,
+  makeHealerTemplate,
   type BattlerStats,
   type BattleLogEntry,
   type MonsterTemplate,
@@ -155,7 +156,12 @@ export function getTeamExpBonus(players: TeamPlayerInput[]): number {
 }
 
 // ========== 构建怪物波次 ==========
-function buildWaveMonsters(wave: SecretRealmWave, powerMul: number): TeamMonster[] {
+function buildWaveMonsters(
+  wave: SecretRealmWave,
+  powerMul: number,
+  realmDropTier: number,
+  realmElement: string | null,
+): TeamMonster[] {
   const result: TeamMonster[] = []
   for (let i = 0; i < wave.monsterCount; i++) {
     const tmpl = wave.monsterPool[i % wave.monsterPool.length]
@@ -173,6 +179,29 @@ function buildWaveMonsters(wave: SecretRealmWave, powerMul: number): TeamMonster
       frozenTurns: 0,
     })
   }
+
+  // T5+ 秘境（dropTier ≥ 5）非 boss wave 自动追加 1 只 healer
+  // boss wave 不加（boss 是孤狼挑战，多个 boss + healer 会卡死战斗）
+  if (realmDropTier >= 5 && !wave.isBoss) {
+    const avgPower = result.length > 0
+      ? Math.floor(result.reduce((s, m) => s + m.template.power, 0) / result.length)
+      : Math.floor((wave.monsterPool[0]?.power || 100) * powerMul)
+    // healer tier 跟随秘境 dropTier，让奶量与 wave 强度匹配
+    const healerTpl = makeHealerTemplate(realmDropTier, realmElement, avgPower)
+    const stats = generateMonsterStats(healerTpl)
+    result.push({
+      stats,
+      template: healerTpl,
+      baseAtk: stats.atk,
+      baseDef: stats.def,
+      alive: true,
+      skillState: initMonsterSkillState(healerTpl),
+      debuffs: [],
+      buffs: [],
+      frozenTurns: 0,
+    })
+  }
+
   return result
 }
 
@@ -324,7 +353,7 @@ export function runTeamBattle(
 
   for (let waveIdx = 0; waveIdx < cfg.waves.length; waveIdx++) {
     const wave = cfg.waves[waveIdx]
-    const monsters = buildWaveMonsters(wave, cfg.powerMul)
+    const monsters = buildWaveMonsters(wave, cfg.powerMul, realm.dropTier, realm.element)
     const monsterNames = monsters.map(m => m.stats.name).join('、')
     logs.push({
       turn: totalTurns,
@@ -414,7 +443,7 @@ export function runTeamBattle(
             logs.push({ turn: totalTurns, text: `${m.stats.name} 被控制，无法行动`, type: 'normal', playerHp: 0, playerMaxHp: 0, monsterHp: m.stats.hp, monsterMaxHp: m.stats.maxHp })
             continue
           }
-          monsterTurn(m, players, totalTurns, logs)
+          monsterTurn(m, players, totalTurns, logs, monsters)
         }
       }
 
@@ -618,7 +647,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
 }
 
 // ========== 怪物回合 ==========
-function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: BattleLogEntry[]) {
+function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: BattleLogEntry[], allMonsters?: TeamMonster[]) {
   const alivePlayers = players.filter(p => p.alive)
   if (alivePlayers.length === 0) return
 
@@ -636,34 +665,54 @@ function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: 
   }
 
   // 选技能
+  const isHealer = m.template.role === 'healer'
+  const aliveAllies = (allMonsters || [m]).filter(mm => mm.alive)
+  const teamMinHpRatio = isHealer
+    ? aliveAllies.reduce((min, mm) => Math.min(min, mm.stats.hp / mm.stats.maxHp), 1)
+    : undefined
   const skill: MonsterSkillDef | null = monsterChooseSkill(
-    m.skillState, m.stats.hp, m.stats.maxHp, m.template.role === 'boss'
+    m.skillState, m.stats.hp, m.stats.maxHp, m.template.role === 'boss',
+    { activeBuffTypes: m.buffs.map(b => b.type), teamMinHpRatio, isHealer },
   )
 
   // 治疗/buff 类技能（multiplier = 0）
   if (skill && skill.multiplier === 0) {
+    const targets = (isHealer && skill.isAoe) ? aliveAllies : [m]
+
     if (skill.healPercent) {
-      const heal = Math.floor(m.stats.maxHp * skill.healPercent)
-      m.stats.hp = Math.min(m.stats.maxHp, m.stats.hp + heal)
-      logs.push({
-        turn,
-        text: `${m.stats.name} 施展【${skill.name}】，回复 ${heal} 气血`,
-        type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: m.stats.hp, monsterMaxHp: m.stats.maxHp,
-      })
+      const needHeal = targets.filter(t => t.stats.hp < t.stats.maxHp)
+      if (needHeal.length === 0 && isHealer && skill.isAoe) {
+        // 全队满血，CD 退回 1 回合不浪费
+        const idx = m.skillState.skills.findIndex(s => s === skill)
+        if (idx >= 0) m.skillState.cds[idx] = 1
+      } else {
+        for (const t of needHeal.length > 0 ? needHeal : targets) {
+          const heal = Math.floor(t.stats.maxHp * skill.healPercent)
+          t.stats.hp = Math.min(t.stats.maxHp, t.stats.hp + heal)
+        }
+        const scope = (isHealer && skill.isAoe) ? '全队' : ''
+        logs.push({
+          turn,
+          text: `${m.stats.name} 施展【${skill.name}】${scope}回复气血`,
+          type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: m.stats.hp, monsterMaxHp: m.stats.maxHp,
+        })
+      }
     }
     if (skill.buff) {
-      // 合并同类 buff
-      const existing = m.buffs.find(b => b.type === skill.buff!.type)
-      if (existing) {
-        existing.remaining = skill.buff.duration
-        existing.value = skill.buff.value
-      } else {
-        m.buffs.push({ type: skill.buff.type as any, remaining: skill.buff.duration, value: skill.buff.value })
+      for (const t of targets) {
+        const existing = t.buffs.find(b => b.type === skill.buff!.type)
+        if (existing) {
+          existing.remaining = skill.buff.duration
+          existing.value = skill.buff.value
+        } else {
+          t.buffs.push({ type: skill.buff.type as any, remaining: skill.buff.duration, value: skill.buff.value })
+        }
+        refreshUnitStatsFromBuffs(t)
       }
-      refreshUnitStatsFromBuffs(m)
+      const scope = (isHealer && skill.isAoe) ? '全队' : ''
       logs.push({
         turn,
-        text: `${m.stats.name} 施展【${skill.name}】获得增益`,
+        text: `${m.stats.name} 施展【${skill.name}】${scope}获得增益`,
         type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: m.stats.hp, monsterMaxHp: m.stats.maxHp,
       })
     }

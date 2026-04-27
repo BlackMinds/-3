@@ -195,6 +195,8 @@ export interface MonsterSkillDef {
   hitCount?: number;
   healPercent?: number;
   isHeal?: boolean;
+  // healer 群体标记：true 时治疗/buff 作用于全场队友
+  isAoe?: boolean;
   description: string;
 }
 
@@ -205,11 +207,65 @@ export interface MonsterSkillState {
   bossEnrageTriggered: boolean;
 }
 
+// healer 技能池：纯治疗/buff/debuff，按 tier 阶梯化（heal/buff 标 isAoe，作用全场怪物）
+function buildHealerSkillPool(tier: number, elem: string | null): MonsterSkillDef[] {
+  const skills: MonsterSkillDef[] = [];
+
+  // 兜底元素攻击（healer 也得能动）
+  if (elem) {
+    const elemSkills: Record<string, MonsterSkillDef> = {
+      fire:  { name: '灵焰术', multiplier: 0.60, cdTurns: 3, element: 'fire',  debuff: { type: 'burn',   chance: 0.20, duration: 2 }, description: '灵焰灼伤' },
+      water: { name: '寒露术', multiplier: 0.55, cdTurns: 3, element: 'water', debuff: { type: 'slow',   chance: 0.25, duration: 2 }, description: '寒露减速' },
+      wood:  { name: '青藤刺', multiplier: 0.55, cdTurns: 3, element: 'wood',  debuff: { type: 'poison', chance: 0.30, duration: 2 }, description: '青藤施毒' },
+      metal: { name: '锐金针', multiplier: 0.60, cdTurns: 3, element: 'metal', debuff: { type: 'bleed',  chance: 0.20, duration: 2 }, description: '金针放血' },
+      earth: { name: '碎石击', multiplier: 0.55, cdTurns: 3, element: 'earth', debuff: { type: 'brittle', chance: 0.20, duration: 2, value: 0.15 }, description: '碎石脆甲' },
+    };
+    if (elemSkills[elem]) skills.push(elemSkills[elem]);
+  } else {
+    skills.push({ name: '灵力一击', multiplier: 0.55, cdTurns: 3, element: null, description: '灵力撞击' });
+  }
+
+  // 群体回血（按 tier 阶梯）
+  if (tier >= 5) skills.push({ name: '春霖术', multiplier: 0, cdTurns: 5, element: null, healPercent: 0.10, isHeal: true, isAoe: true, description: '全队回复10%气血' });
+  if (tier >= 6) skills.push({ name: '甘霖普济', multiplier: 0, cdTurns: 6, element: null, healPercent: 0.13, isHeal: true, isAoe: true, description: '全队回复13%气血' });
+  if (tier >= 7) skills.push({ name: '苍生庇护', multiplier: 0, cdTurns: 7, element: null, healPercent: 0.16, isHeal: true, isAoe: true, description: '全队回复16%气血' });
+  if (tier >= 8) skills.push({ name: '九转续命', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.20, isHeal: true, isAoe: true, description: '全队回复20%气血' });
+  if (tier >= 9) skills.push({ name: '生灭轮回', multiplier: 0, cdTurns: 9, element: null, healPercent: 0.25, isHeal: true, isAoe: true, description: '全队回复25%气血' });
+  if (tier >= 10) skills.push({ name: '天道无量', multiplier: 0, cdTurns: 10, element: null, healPercent: 0.30, isHeal: true, isAoe: true, description: '全队回复30%气血' });
+
+  // 群体 regen（持续回复）
+  if (tier >= 5) skills.push({ name: '灵气流转', multiplier: 0, cdTurns: 8, element: null, buff: { type: 'regen', value: 0.04, duration: 4 }, isAoe: true, description: '全队每回合回复4%气血 持续4回合' });
+  if (tier >= 7) skills.push({ name: '九霄灵雨', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'regen', value: 0.06, duration: 5 }, isAoe: true, description: '全队每回合回复6%气血 持续5回合' });
+  if (tier >= 9) skills.push({ name: '永恒之心', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'regen', value: 0.08, duration: 5 }, isAoe: true, description: '全队每回合回复8%气血 持续5回合' });
+
+  // 群体 atk_up
+  if (tier >= 5) skills.push({ name: '战意激扬', multiplier: 0, cdTurns: 7, element: null, buff: { type: 'atk_up', value: 0.20, duration: 3 }, isAoe: true, description: '全队攻击+20% 持续3回合' });
+  if (tier >= 7) skills.push({ name: '破晓战吼', multiplier: 0, cdTurns: 9, element: null, buff: { type: 'atk_up', value: 0.30, duration: 4 }, isAoe: true, description: '全队攻击+30% 持续4回合' });
+  if (tier >= 9) skills.push({ name: '万法归宗', multiplier: 0, cdTurns: 11, element: null, buff: { type: 'atk_up', value: 0.45, duration: 4 }, isAoe: true, description: '全队攻击+45% 持续4回合' });
+
+  // 群体 def_up
+  if (tier >= 5) skills.push({ name: '灵光护体', multiplier: 0, cdTurns: 7, element: null, buff: { type: 'def_up', value: 0.20, duration: 3 }, isAoe: true, description: '全队防御+20% 持续3回合' });
+  if (tier >= 7) skills.push({ name: '金身护体', multiplier: 0, cdTurns: 9, element: null, buff: { type: 'def_up', value: 0.30, duration: 4 }, isAoe: true, description: '全队防御+30% 持续4回合' });
+  if (tier >= 9) skills.push({ name: '鸿蒙圣体', multiplier: 0, cdTurns: 11, element: null, buff: { type: 'def_up', value: 0.45, duration: 4 }, isAoe: true, description: '全队防御+45% 持续4回合' });
+
+  // debuff 技能（攻击型，对玩家施加控制/降攻）
+  skills.push({ name: '妖气封印', multiplier: 0.50, cdTurns: 5, element: null, debuff: { type: 'silence', chance: 0.45, duration: 2 }, description: '封印玩家神通' });
+  if (tier >= 5) skills.push({ name: '镇魂咒', multiplier: 0.50, cdTurns: 6, element: null, debuff: { type: 'atk_down', chance: 0.50, duration: 3, value: 0.20 }, description: '玩家攻击-20%' });
+  if (tier >= 6) skills.push({ name: '风蚀咒', multiplier: 0.50, cdTurns: 6, element: null, debuff: { type: 'brittle', chance: 0.45, duration: 3, value: 0.25 }, description: '玩家防御-25%' });
+  if (tier >= 7) skills.push({ name: '锁魂术', multiplier: 0.55, cdTurns: 7, element: null, debuff: { type: 'root', chance: 0.45, duration: 2 }, description: '束缚玩家2回合' });
+
+  return skills;
+}
+
 export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDef[] {
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
   const elem = template.element;
   const isBoss = template.role === 'boss';
+  const isHealer = template.role === 'healer';
   const role = template.role;
+
+  if (isHealer) return buildHealerSkillPool(tier, elem);
+
   const skills: MonsterSkillDef[] = [];
 
   // T1+: 基础属性攻击 (v3.5: 攻击型 multiplier × 0.60, heal/buff 不动)
@@ -233,9 +289,6 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
   if (tier >= 2 && role === 'speed') {
     skills.push({ name: '影杀', multiplier: 1.20, cdTurns: 3, element: null, debuff: { type: 'slow', chance: 0.30, duration: 2 }, description: '突袭+减速' });
   }
-  if (tier >= 2 && (role === 'tank' || role === 'boss')) {
-    skills.push({ name: '吞噬灵气', multiplier: 0, cdTurns: 6, element: null, healPercent: 0.05, isHeal: true, description: '回复5%气血' });
-  }
 
   // T3+
   if (tier >= 3 && elem) {
@@ -248,16 +301,12 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     };
     if (strongSkills[elem]) skills.push(strongSkills[elem]);
   }
-  if (tier >= 3) {
-    skills.push({ name: '妖气封印', multiplier: 0.60, cdTurns: 7, element: null, debuff: { type: 'silence', chance: 0.30, duration: 2 }, description: '封印神通' });
-  }
   if (tier >= 3 && !['dps', 'speed'].includes(role)) {
     skills.push({ name: '狂猛劈砍', multiplier: 1.44, cdTurns: 5, element: null, debuff: { type: 'bleed', chance: 0.25, duration: 2 }, description: '单体重击+流血' });
   }
 
   // T4+
   if (tier >= 4) {
-    skills.push({ name: '妖力恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.08, isHeal: true, description: '回复8%气血' });
     skills.push({ name: '咆哮震慑', multiplier: 1.08, cdTurns: 6, element: null, debuff: { type: 'stun', chance: 0.20, duration: 1 }, description: '威压咆哮' });
   }
   if (tier >= 4 && elem) {
@@ -271,14 +320,9 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     if (t4HeavySkills[elem]) skills.push(t4HeavySkills[elem]);
   }
 
-  // T5+
+  // T5+ 攻击向（heal/buff 已剥离到 healer 怪身上）
   if (tier >= 5) {
-    skills.push({ name: '狂暴', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'atk_up', value: 0.25, duration: 4 }, description: '攻击+25%' });
-    skills.push({ name: '锁魂术', multiplier: 0.90, cdTurns: 7, element: null, debuff: { type: 'root', chance: 0.40, duration: 2 }, description: '束缚2回合' });
     skills.push({ name: '雷电之怒', multiplier: 1.56, cdTurns: 7, element: 'metal', debuff: { type: 'bleed', chance: 0.30, duration: 2 }, description: '单体雷击+流血' });
-    skills.push({ name: '淬体回春', multiplier: 0, cdTurns: 12, element: null, healPercent: 0.10, isHeal: true, description: '回复10%气血' });
-    skills.push({ name: '灵气护盾', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'def_up', value: 0.20, duration: 3 }, description: '防御+20% 持续3回合' });
-    skills.push({ name: '灵气流转', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'regen', value: 0.03, duration: 4 }, description: '持续4回合每回合回复3%气血' });
   }
 
   // T6+
@@ -293,43 +337,21 @@ export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDe
     if (t6Skills[elem]) skills.push(t6Skills[elem]);
   }
   if (tier >= 6) {
-    skills.push({ name: '涅槃重生', multiplier: 0, cdTurns: 12, element: null, healPercent: 0.10, isHeal: true, buff: { type: 'def_up', value: 0.20, duration: 3 }, description: '回复10%气血+防御' });
     skills.push({ name: '噬魂剑气', multiplier: 1.92, cdTurns: 9, element: null, debuff: { type: 'bleed', chance: 0.30, duration: 3 }, description: '单体重击+流血' });
-    skills.push({ name: '灵元蕴养', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'regen', value: 0.04, duration: 4 }, description: '持续4回合每回合回复4%气血' });
-    skills.push({ name: '战意焚身', multiplier: 0, cdTurns: 10, element: null, buff: { type: 'atk_up', value: 0.28, duration: 3 }, description: '攻击+28% 持续3回合' });
   }
 
   // T7+
   if (tier >= 7) {
     skills.push({ name: '天雷制裁', multiplier: 1.68, cdTurns: 8, element: 'metal', debuff: { type: 'stun', chance: 0.30, duration: 2 }, description: '天雷眩晕' });
     skills.push({ name: '天罚之击', multiplier: 2.28, cdTurns: 10, element: null, debuff: { type: 'burn', chance: 0.30, duration: 3 }, description: '天罚重击+灼烧' });
-    skills.push({ name: '天地造化', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.14, isHeal: true, description: '回复14%气血' });
-    skills.push({ name: '九霄灵雨', multiplier: 0, cdTurns: 16, element: null, buff: { type: 'regen', value: 0.05, duration: 5 }, description: '持续5回合每回合回复5%气血' });
-    skills.push({ name: '金身护体', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'def_up', value: 0.35, duration: 4 }, description: '防御+35% 持续4回合' });
   }
 
   // T8+
   if (tier >= 8) {
     skills.push({ name: '混沌一击', multiplier: 2.70, cdTurns: 10, element: null, debuff: { type: 'poison', chance: 0.35, duration: 3 }, description: '混沌重击+剧毒' });
-    skills.push({ name: '太古沉眠', multiplier: 0, cdTurns: 15, element: null, healPercent: 0.16, isHeal: true, buff: { type: 'def_up', value: 0.40, duration: 4 }, description: '回复16%+防御' });
-    skills.push({ name: '破晓战吼', multiplier: 0, cdTurns: 12, element: null, buff: { type: 'atk_up', value: 0.35, duration: 4 }, description: '攻击+35% 持续4回合' });
-    skills.push({ name: '九转还魂', multiplier: 0, cdTurns: 16, element: null, healPercent: 0.22, isHeal: true, description: '回复22%气血' });
   }
 
-  // T9+
-  if (tier >= 9) {
-    skills.push({ name: '永恒之心', multiplier: 0, cdTurns: 18, element: null, buff: { type: 'regen', value: 0.06, duration: 5 }, description: '持续5回合每回合回复6%气血' });
-    skills.push({ name: '诛仙剑意', multiplier: 0, cdTurns: 14, element: null, buff: { type: 'atk_up', value: 0.40, duration: 4 }, description: '攻击+40% 持续4回合' });
-  }
-
-  // T10+
-  if (tier >= 10) {
-    skills.push({ name: '天道庇佑', multiplier: 0, cdTurns: 20, element: null, buff: { type: 'regen', value: 0.07, duration: 5 }, description: '持续5回合每回合回复7%气血' });
-    skills.push({ name: '鸿蒙圣体', multiplier: 0, cdTurns: 16, element: null, buff: { type: 'def_up', value: 0.50, duration: 5 }, description: '防御+50% 持续5回合' });
-    skills.push({ name: '万法归宗', multiplier: 0, cdTurns: 16, element: null, buff: { type: 'atk_up', value: 0.50, duration: 4 }, description: '攻击+50% 持续4回合' });
-  }
-
-  // Boss
+  // Boss 单独保留 heal/buff（boss 是孤狼战，没有 healer 配合）
   if (isBoss) {
     skills.push({ name: '首领之吼', multiplier: 0.72, cdTurns: 6, element: null, debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.15 }, description: '降攻15%' });
     if (tier >= 2) skills.push({ name: '首领恢复', multiplier: 0, cdTurns: 8, element: null, healPercent: 0.06, isHeal: true, description: '回复6%' });
@@ -354,14 +376,57 @@ export function buildMonsterSkillDescriptions(template: MonsterTemplate): string
   return skills.map(s => `${s.name}: ${s.description}`);
 }
 
+// 生成奶妈 (healer) 怪物模板。T5+ 战斗自动注入一个奶妈
+// power: 跟参考怪物（同 wave 普通怪）保持同等战力区间，避免奶妈成为软柿子或暴打
+// element: 跟随 wave 主属性，保证元素表现一致
+const HEALER_NAMES_BY_ELEM: Record<string, string[]> = {
+  fire:  ['赤焰巫祝', '焰心圣女', '炎炉司祭'],
+  water: ['玄水道姑', '寒月司命', '幽泉医者'],
+  wood:  ['青丘药师', '木灵圣女', '回春仙子'],
+  metal: ['金光司礼', '玉婵巫女', '锐金灵媒'],
+  earth: ['厚土守巫', '地心司命', '玄土医者'],
+};
+const HEALER_NAMES_NEUTRAL = ['通玄圣女', '太虚医者', '天衡司命'];
+
+export function makeHealerTemplate(tier: number, element: string | null, basePower: number): MonsterTemplate {
+  const pool = element && HEALER_NAMES_BY_ELEM[element] ? HEALER_NAMES_BY_ELEM[element] : HEALER_NAMES_NEUTRAL;
+  const name = pool[Math.floor(Math.random() * pool.length)];
+  return {
+    name,
+    power: basePower,
+    element,
+    role: 'healer',
+    exp: Math.floor(basePower * 0.6),
+    stone_min: Math.floor(basePower * 0.04),
+    stone_max: Math.floor(basePower * 0.12),
+    drop_table: `common_t${tier}`,
+  };
+}
+
 export function initMonsterSkillState(template: MonsterTemplate): MonsterSkillState {
   const skills = buildMonsterSkillPool(template);
   return { skills, cds: skills.map(() => 0), berserkTriggered: false, bossEnrageTriggered: false };
 }
 
-export function monsterChooseSkill(state: MonsterSkillState, monsterHp: number, monsterMaxHp: number, isBoss: boolean): MonsterSkillDef | null {
+// 选技能：优先级顺序：低血回血 → buff（若身上没在生效）→ 攻击 → 兜底 buff
+// activeBuffTypes: 当前怪物身上已经存在的 buff 类型（避免反复叠相同 buff 浪费 CD）
+// healPriority: healer 在团队 HP% 低时的回血权重提升（默认 0.40 自身阈值，传 'team' 则按团队最低 hp 触发）
+export function monsterChooseSkill(
+  state: MonsterSkillState,
+  monsterHp: number,
+  monsterMaxHp: number,
+  isBoss: boolean,
+  options?: { activeBuffTypes?: string[]; teamMinHpRatio?: number; isHealer?: boolean }
+): MonsterSkillDef | null {
   const hpRatio = monsterHp / monsterMaxHp;
-  if (hpRatio < 0.40) {
+  const activeBuffTypes = options?.activeBuffTypes || [];
+  const teamMinHpRatio = options?.teamMinHpRatio ?? hpRatio;
+  const isHealer = options?.isHealer || false;
+
+  // 1) 低血优先回血：自己 < 40%，或 healer 团队最低 < 60%
+  const healTriggerHp = isHealer ? 0.60 : 0.40;
+  const triggerRatio = isHealer ? Math.min(hpRatio, teamMinHpRatio) : hpRatio;
+  if (triggerRatio < healTriggerHp) {
     let bestHeal: { skill: MonsterSkillDef; index: number } | null = null;
     for (let i = 0; i < state.skills.length; i++) {
       if (state.cds[i] <= 0 && state.skills[i].isHeal) {
@@ -372,17 +437,50 @@ export function monsterChooseSkill(state: MonsterSkillState, monsterHp: number, 
     }
     if (bestHeal) { state.cds[bestHeal.index] = bestHeal.skill.cdTurns; return bestHeal.skill; }
   }
-  let best: { skill: MonsterSkillDef; index: number } | null = null;
+
+  // 2) 分桶：attackable / buffOnly（multiplier=0 + 有 buff 的）
+  const attackable: { skill: MonsterSkillDef; index: number }[] = [];
+  const buffOnly: { skill: MonsterSkillDef; index: number }[] = [];
   for (let i = 0; i < state.skills.length; i++) {
-    if (state.cds[i] <= 0) {
-      const s = state.skills[i];
-      if (s.isHeal) continue;
-      if (!best || s.multiplier > best.skill.multiplier || (s.multiplier === best.skill.multiplier && s.cdTurns > best.skill.cdTurns)) {
-        best = { skill: s, index: i };
-      }
+    if (state.cds[i] > 0) continue;
+    const s = state.skills[i];
+    if (s.isHeal) continue;
+    if (s.multiplier > 0) {
+      attackable.push({ skill: s, index: i });
+    } else if (s.buff) {
+      // 跳过身上已经在生效的同类 buff，避免反复刷新浪费回合
+      if (!activeBuffTypes.includes(s.buff.type)) buffOnly.push({ skill: s, index: i });
     }
   }
-  if (best) { state.cds[best.index] = best.skill.cdTurns; return best.skill; }
+
+  // 3) buff 优先级：healer 50% 概率开 buff；其他怪 25%
+  const buffOpenRate = isHealer ? 0.50 : 0.25;
+  if (buffOnly.length > 0 && Math.random() < buffOpenRate) {
+    const pick = buffOnly[Math.floor(Math.random() * buffOnly.length)];
+    state.cds[pick.index] = pick.skill.cdTurns;
+    return pick.skill;
+  }
+
+  // 4) 攻击：选最大 multiplier
+  if (attackable.length > 0) {
+    let best = attackable[0];
+    for (const a of attackable) {
+      if (a.skill.multiplier > best.skill.multiplier ||
+          (a.skill.multiplier === best.skill.multiplier && a.skill.cdTurns > best.skill.cdTurns)) {
+        best = a;
+      }
+    }
+    state.cds[best.index] = best.skill.cdTurns;
+    return best.skill;
+  }
+
+  // 5) 兜底：实在没攻击就开 buff
+  if (buffOnly.length > 0) {
+    const pick = buffOnly[0];
+    state.cds[pick.index] = pick.skill.cdTurns;
+    return pick.skill;
+  }
+
   return null;
 }
 
@@ -395,12 +493,14 @@ export function tickMonsterCds(state: MonsterSkillState) {
 export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const power = template.power * randFloat(0.85, 1.15);
   // v2.0 方案 A: Boss role 保持原版平衡, 通过整体 power 压缩和装备品质提升让战斗更舒服
+  // healer：低攻、中血、中速；技能伤害是配角，主要靠群体回血/buff 影响战局
   const ratios: Record<string, { hp: number; atk: number; def: number; spd: number }> = {
     balanced: { hp: 0.30, atk: 0.30, def: 0.25, spd: 0.15 },
     tank:     { hp: 0.40, atk: 0.15, def: 0.35, spd: 0.10 },
     dps:      { hp: 0.20, atk: 0.45, def: 0.15, spd: 0.20 },
     speed:    { hp: 0.20, atk: 0.25, def: 0.15, spd: 0.40 },
     boss:     { hp: 0.35, atk: 0.30, def: 0.25, spd: 0.10 },
+    healer:   { hp: 0.30, atk: 0.15, def: 0.25, spd: 0.30 },
   };
   const r = ratios[template.role] || ratios.balanced;
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
@@ -450,6 +550,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
 
   let ctrlResist = 0.10 + tier * 0.03;
   if (role === 'boss') ctrlResist = 0.20 + tier * 0.05;
+  if (role === 'healer') ctrlResist = 0.50; // healer 自带 50% 抗控，避免被秒控干净
   ctrlResist = Math.min(0.70, ctrlResist);
   monsterResists.ctrl = ctrlResist;
 
@@ -1115,20 +1216,56 @@ export function runWaveBattle(
       m.stats.atk = mAtk;
       m.stats.def = mDef;
 
-      const mSkill = monsterChooseSkill(m.skillState, m.stats.hp, m.stats.maxHp, m.template.role === 'boss');
+      const isHealer = m.template.role === 'healer';
+      const aliveAllies = monsters.filter(mm => mm.alive);
+      const teamMinHpRatio = isHealer
+        ? aliveAllies.reduce((min, mm) => Math.min(min, mm.stats.hp / mm.stats.maxHp), 1)
+        : undefined;
+      const mSkill = monsterChooseSkill(
+        m.skillState, m.stats.hp, m.stats.maxHp, m.template.role === 'boss',
+        { activeBuffTypes: m.buffs.map(b => b.type), teamMinHpRatio, isHealer },
+      );
 
       if (mSkill && mSkill.multiplier === 0) {
+        // healer 的 heal/buff 自动作用全场存活怪物（isAoe 标记），普通怪只对自己
+        const targets = (isHealer && mSkill.isAoe) ? aliveAllies : [m];
+
         if (mSkill.healPercent) {
-          const heal = Math.floor(m.stats.maxHp * mSkill.healPercent);
-          m.stats.hp = Math.min(m.stats.maxHp, m.stats.hp + heal);
-          logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】，回复 ${heal} 点气血!`, type: 'buff', ...snap() });
+          // 群体回血：跳过满血的（不浪费）；若全队满血，CD 退回 1 回合
+          const needHeal = targets.filter(t => t.stats.hp < t.stats.maxHp);
+          if (needHeal.length === 0 && isHealer && mSkill.isAoe) {
+            const idx = m.skillState.skills.findIndex(s => s === mSkill);
+            if (idx >= 0) m.skillState.cds[idx] = 1;
+          } else {
+            for (const t of needHeal.length > 0 ? needHeal : targets) {
+              const heal = Math.floor(t.stats.maxHp * mSkill.healPercent);
+              t.stats.hp = Math.min(t.stats.maxHp, t.stats.hp + heal);
+            }
+            const scopeText = (isHealer && mSkill.isAoe) ? '全队' : '';
+            logs.push({
+              turn,
+              text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】，${scopeText}回复气血!`,
+              type: 'buff',
+              ...snap(),
+            });
+          }
         }
         if (mSkill.buff) {
-          const existBuff = m.buffs.find(b => b.type === mSkill.buff!.type);
-          if (existBuff) { existBuff.remaining = mSkill.buff.duration; existBuff.value = mSkill.buff.value; }
-          else m.buffs.push({ type: mSkill.buff.type as BuffType, remaining: mSkill.buff.duration, value: mSkill.buff.value });
-          if (mSkill.name === '狂暴') m.skillState.berserkTriggered = true;
-          if (!mSkill.healPercent) logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】！`, type: 'normal', ...snap() });
+          for (const t of targets) {
+            const existBuff = t.buffs.find(b => b.type === mSkill.buff!.type);
+            if (existBuff) { existBuff.remaining = mSkill.buff.duration; existBuff.value = mSkill.buff.value; }
+            else t.buffs.push({ type: mSkill.buff.type as BuffType, remaining: mSkill.buff.duration, value: mSkill.buff.value });
+            if (mSkill.name === '狂暴') t.skillState.berserkTriggered = true;
+          }
+          if (!mSkill.healPercent) {
+            const scopeText = (isHealer && mSkill.isAoe) ? '全队获得' : '获得';
+            logs.push({
+              turn,
+              text: `[第${turn}回合] ${m.stats.name}施展了【${mSkill.name}】！${scopeText}增益`,
+              type: 'normal',
+              ...snap(),
+            });
+          }
         }
         continue;
       }

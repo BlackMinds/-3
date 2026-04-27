@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { generateMonsterStats, buildEquippedSkillInfo, runWaveBattle, buildMonsterSkillDescriptions, type BattlerStats, type MonsterTemplate } from '~/server/engine/battleEngine'
+import { generateMonsterStats, buildEquippedSkillInfo, runWaveBattle, buildMonsterSkillDescriptions, makeHealerTemplate, type BattlerStats, type MonsterTemplate } from '~/server/engine/battleEngine'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { generateEquipName } from '~/server/engine/equipNameData'
@@ -765,13 +765,27 @@ export default defineEventHandler(async (event) => {
         const template: MonsterTemplate = mapData.boss
         monsterList.push({ stats: generateMonsterStats(template), template })
       } else {
-        const waveSize = mapData.tier <= 2
-          ? 1 + Math.floor(Math.random() * 2)
-          : 1 + Math.floor(Math.random() * 4)
-        for (let i = 0; i < waveSize; i++) {
+        // T1/T2: 1-2 只；T3/T4: 1-4 只；T5+: 2-4 只（其中必出 1 只 healer）
+        let waveSize: number
+        if (mapData.tier <= 2) waveSize = 1 + Math.floor(Math.random() * 2)
+        else if (mapData.tier <= 4) waveSize = 1 + Math.floor(Math.random() * 4)
+        else waveSize = 2 + Math.floor(Math.random() * 3)
+
+        const useHealer = mapData.tier >= 5
+        const normalCount = useHealer ? waveSize - 1 : waveSize
+        for (let i = 0; i < normalCount; i++) {
           const m = mapData.monsters[rand(0, mapData.monsters.length - 1)]
           const template: MonsterTemplate = m
           monsterList.push({ stats: generateMonsterStats(template), template })
+        }
+        if (useHealer) {
+          // healer 战力按本 wave 普通怪平均战力，元素跟随地图主属性
+          const avgPower = monsterList.length > 0
+            ? Math.floor(monsterList.reduce((s, it) => s + it.template.power, 0) / monsterList.length)
+            : (mapData.monsters[0]?.power || 100)
+          const elem = mapData.monsters[0]?.element ?? null
+          const healerTpl = makeHealerTemplate(mapData.tier, elem, avgPower)
+          monsterList.push({ stats: generateMonsterStats(healerTpl), template: healerTpl })
         }
       }
       if (mapData.tier === 2) {

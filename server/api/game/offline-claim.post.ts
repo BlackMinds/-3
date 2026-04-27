@@ -1,6 +1,6 @@
 import { getPool } from '~/server/database/db'
 import { ALL_MAPS } from '~/server/api/battle/fight.post'
-import { generateMonsterStats, runWaveBattle, type BattlerStats, type MonsterTemplate, type EquippedSkillInfo } from '~/server/engine/battleEngine'
+import { generateMonsterStats, runWaveBattle, makeHealerTemplate, type BattlerStats, type MonsterTemplate, type EquippedSkillInfo } from '~/server/engine/battleEngine'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
@@ -80,15 +80,27 @@ export default defineEventHandler(async (event) => {
     let cumulativeStoneRaw = 0
 
     for (let i = 0; i < simulateMin; i++) {
-      // 生成 wave（与 fight.post.ts 一致：T1/T2 1-2 只，T3+ 1-4 只，不出 BOSS）
-      const waveSize = mapData.tier <= 2
-        ? 1 + Math.floor(Math.random() * 2)
-        : 1 + Math.floor(Math.random() * 4)
+      // 生成 wave（与 fight.post.ts 一致：T1/T2 1-2 只，T3/T4 1-4 只，T5+ 2-4 只 + 必出 healer，不出 BOSS）
+      let waveSize: number
+      if (mapData.tier <= 2) waveSize = 1 + Math.floor(Math.random() * 2)
+      else if (mapData.tier <= 4) waveSize = 1 + Math.floor(Math.random() * 4)
+      else waveSize = 2 + Math.floor(Math.random() * 3)
+
+      const useHealer = mapData.tier >= 5
+      const normalCount = useHealer ? waveSize - 1 : waveSize
       const monsterList: { stats: BattlerStats; template: MonsterTemplate }[] = []
-      for (let j = 0; j < waveSize; j++) {
+      for (let j = 0; j < normalCount; j++) {
         const m = mapData.monsters[rand(0, mapData.monsters.length - 1)]
         const template: MonsterTemplate = m
         monsterList.push({ stats: generateMonsterStats(template), template })
+      }
+      if (useHealer) {
+        const avgPower = monsterList.length > 0
+          ? Math.floor(monsterList.reduce((s, it) => s + it.template.power, 0) / monsterList.length)
+          : (mapData.monsters[0]?.power || 100)
+        const elem = mapData.monsters[0]?.element ?? null
+        const healerTpl = makeHealerTemplate(mapData.tier, elem, avgPower)
+        monsterList.push({ stats: generateMonsterStats(healerTpl), template: healerTpl })
       }
 
       // T2 怪物削弱（与 fight.post.ts 同步）
