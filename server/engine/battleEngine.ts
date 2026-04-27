@@ -1,6 +1,6 @@
 // 后端完整战斗引擎 - 从前端 battleEngine.ts 移植
 import { Skill, SKILL_MAP, type DebuffType, type BuffType, type SkillDebuff, type SkillBuff, type PassiveEffect } from './skillData';
-import { BATTLE_FORMULA } from '~/shared/balance';
+import { BATTLE_FORMULA, DOT_FORMULA } from '~/shared/balance';
 
 // ========== 类型定义 ==========
 
@@ -46,6 +46,8 @@ export interface PlayerAwakenState {
   mainSkillFreezeChanceElem?: AwakenElement;
   mainSkillBurnDuration?: number;    // 主修灼烧持续 +X 回合（火）
   mainSkillBurnDurationElem?: AwakenElement;
+  mainSkillBurnAmp?: number;         // v3.6 主修施加灼烧每跳伤害 +X%（火）
+  mainSkillBurnAmpElem?: AwakenElement;
   mainSkillBrittleAmp?: number;      // 主修脆弱减防加深 +X%（土）
   mainSkillBrittleAmpElem?: AwakenElement;
   // 机制向
@@ -155,9 +157,10 @@ const DEBUFF_NAMES: Record<string, string> = {
 };
 
 function calcDotDamage(type: DebuffType, targetMaxHp: number, attackerAtk: number): number {
-  if (type === 'poison') return Math.max(1, Math.floor(targetMaxHp * 0.03));
-  if (type === 'burn') return Math.max(1, Math.floor(attackerAtk * 0.15));
-  if (type === 'bleed') return Math.max(1, Math.floor(attackerAtk * 0.10));
+  // 改读 balance.ts 常量，避免数值散落
+  if (type === 'poison') return Math.max(1, Math.floor(targetMaxHp * DOT_FORMULA.poisonPerTurnHpRatio));
+  if (type === 'burn') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio));
+  if (type === 'bleed') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.bleedPerTurnAtkRatio));
   return 0;
 }
 
@@ -859,6 +862,17 @@ export function runWaveBattle(
     (player as any).critAfterDodge = !!p.critAfterDodge;
     (player as any).healAmpPct = p.healAmpPct || 0;
   }
+  // v3.6 副属性 DOT_DMG_PCT / REFLECT_PCT 注入到 player（与功法被动叠加）
+  // playerStats.equipDotDmgPct/equipReflectPct 由 fight.post.ts buildPlayerStats 写入
+  const equipDotPct = (playerStats as any).equipDotDmgPct || 0;
+  const equipReflectPct = (playerStats as any).equipReflectPct || 0;
+  if (equipDotPct > 0) {
+    // dotAmpPct 单位是百分比（如 25 表示 +25%），副属性 0.05 = 5% 要乘 100
+    (player as any).dotAmpPct = ((player as any).dotAmpPct || 0) + equipDotPct * 100;
+  }
+  if (equipReflectPct > 0) {
+    (player as any).reflectPctBonus = ((player as any).reflectPctBonus || 0) + equipReflectPct;
+  }
 
   // v1.2 附灵运行时状态注入 + 与功法被动同位钩子 Max-Merge
   const aw = (playerStats as any).awaken || {};
@@ -891,6 +905,8 @@ export function runWaveBattle(
     mainSkillFreezeChanceElem: aw.mainSkillFreezeChanceElem,
     mainSkillBurnDuration: aw.mainSkillBurnDuration || 0,
     mainSkillBurnDurationElem: aw.mainSkillBurnDurationElem,
+    mainSkillBurnAmp: aw.mainSkillBurnAmp || 0,
+    mainSkillBurnAmpElem: aw.mainSkillBurnAmpElem,
     mainSkillBrittleAmp: aw.mainSkillBrittleAmp || 0,
     mainSkillBrittleAmpElem: aw.mainSkillBrittleAmpElem,
     mainSkillChainChance: aw.mainSkillChainChance || 0,
@@ -944,6 +960,7 @@ export function runWaveBattle(
     let effValue = debuff.value;
     let bleedAmpMul = 1.0;
     let poisonAmpMul = 1.0;
+    let burnAmpMul = 1.0;
     let resonanceTag = '';
     if (inflictor === 'player') {
       const aState = (player as any).awakenState as PlayerAwakenState | undefined;
@@ -954,6 +971,12 @@ export function runWaveBattle(
             aState.mainSkillBurnDurationElem === 'fire' && aState.mainSkillBurnDuration) {
           effDuration += aState.mainSkillBurnDuration;
           resonanceTag = ` ✦焚天+${aState.mainSkillBurnDuration}`;
+        }
+        // v3.6 火 + 灼烧 → 每跳伤害 +（焚天烬戒）
+        if (debuff.type === 'burn' && mainElem === 'fire' &&
+            aState.mainSkillBurnAmpElem === 'fire' && aState.mainSkillBurnAmp) {
+          burnAmpMul = 1 + aState.mainSkillBurnAmp;
+          resonanceTag += ` ✦焚烬+${(aState.mainSkillBurnAmp * 100).toFixed(0)}%`;
         }
         // 水 + 冻结/眩晕/束缚 → 概率 +
         if ((debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') && mainElem === 'water' &&
@@ -1019,6 +1042,10 @@ export function runWaveBattle(
     }
     if (debuff.type === 'poison' && poisonAmpMul > 1) {
       dmg = Math.max(1, Math.floor(dmg * poisonAmpMul));
+    }
+    // v3.6 主修元素附灵·火焚烬戒：灼烧每跳伤害放大
+    if (debuff.type === 'burn' && burnAmpMul > 1) {
+      dmg = Math.max(1, Math.floor(dmg * burnAmpMul));
     }
     const exists = target.debuffs.find(d => d.type === debuff.type);
     if (exists) { exists.remaining = duration; exists.value = effValue; exists.damagePerTurn = dmg; }
@@ -1363,14 +1390,15 @@ export function runWaveBattle(
             logs.push({ turn, text: `  【反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
           }
         }
-        // 玩家 buff：明镜止水（reflect）按 dmg 百分比反弹, 单次反弹 cap = 玩家 ATK × 4
-        // 附加底量: 玩家 maxHP × 5% 独立叠加 (不受 cap), 给反弹一个体面下限, 不受小怪低伤害挤压
-        // v3.5: 8% → 5%, 与 reflect value 0.40 → 0.24 联动削弱
-        const reflectSum = sumPlayerBuff('reflect');
+        // 玩家 buff：明镜止水（reflect）按 dmg 百分比反弹, 单次反弹 cap = 玩家 ATK × 6
+        // 附加底量: 玩家 maxHP × 8% 独立叠加 (不受 cap), 给反弹一个体面下限, 不受小怪低伤害挤压
+        // v3.6: cap atk×4→×6, hpBonus 5%→8%；让反伤 mid-tier boss 也能构成威胁
+        // 副属性 REFLECT_PCT 通过 player.reflectPctBonus 叠加到 reflectSum
+        const reflectSum = sumPlayerBuff('reflect') + ((player as any).reflectPctBonus || 0);
         if (reflectSum > 0 && dmg > 0) {
-          const reflectCap = Math.floor(player.atk * 4);
+          const reflectCap = Math.floor(player.atk * 6);
           const baseRf = Math.min(Math.floor(dmg * reflectSum), reflectCap);
-          const hpBonus = Math.floor(player.maxHp * 0.05);
+          const hpBonus = Math.floor(player.maxHp * 0.08);
           const rf = baseRf + hpBonus;
           if (rf > 0) {
             sourceMonster.stats.hp -= rf;

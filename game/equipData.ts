@@ -123,6 +123,9 @@ const SUB_STAT_POOL = [
   // 资源获取 (百分比, 数值 = 2~6)
   { stat: 'SPIRIT_DENSITY', name: '灵气浓度', range: [2, 6] },
   { stat: 'LUCK', name: '福缘', range: [2, 6] },
+  // v3.6 DOT/反伤流派支持词条
+  { stat: 'DOT_DMG_PCT', name: 'DOT伤害', range: [5, 25] },
+  { stat: 'REFLECT_PCT', name: '反伤倍率', range: [3, 15] },
 ];
 
 // 主属性基础值(从 shared/balance.ts 读取,避免数值散落)
@@ -254,6 +257,8 @@ export const STAT_NAMES: Record<string, string> = {
   LUCK: '福缘',
   DODGE: '闪避',
   LIFESTEAL: '吸血',
+  DOT_DMG_PCT: 'DOT伤害',
+  REFLECT_PCT: '反伤倍率',
 };
 
 // 哪些副属性是百分比 (显示时加 %)
@@ -264,6 +269,7 @@ export const PERCENT_STATS = new Set([
   'SPIRIT_DENSITY', 'LUCK',
   'DODGE', 'LIFESTEAL',
   'ATK_PCT', 'DEF_PCT', 'HP_PCT', 'SPD_PCT',
+  'DOT_DMG_PCT', 'REFLECT_PCT',
 ]);
 
 // 品质颜色

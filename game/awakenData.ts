@@ -196,6 +196,10 @@ const RING_POOL: AwakenDef[] = [
   { id: 'aw_fire_resonance', name: '焚天戒', slot: 'ring', stat: 'mainSkillBurnDuration', requireElement: 'fire',
     tiers: { blue: 1, purple: 1, gold: 2, red: 2 },
     desc: (v) => `[主修=火] 主修灼烧持续 +${v} 回合` },
+  // v3.6 火焰 DOT 流派支持：与焚天戒互为 2 选 1，玩家可选"持续"或"伤害"流
+  { id: 'aw_fire_burn_amp', name: '焚天烬戒', slot: 'ring', stat: 'mainSkillBurnAmp', requireElement: 'fire',
+    tiers: { blue: 0.20, purple: 0.35, gold: 0.50, red: 0.75 },
+    desc: (v) => `[主修=火] 主修施加灼烧每跳伤害 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_earth_resonance', name: '厚土戒', slot: 'ring', stat: 'mainSkillBrittleAmp', requireElement: 'earth',
     tiers: { blue: 0.10, purple: 0.15, gold: 0.22, red: 0.30 },
     desc: (v) => `[主修=土] 主修脆弱减防加深 +${(v * 100).toFixed(0)}%` },

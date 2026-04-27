@@ -353,6 +353,8 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
   // 装备副属性百分比（与武器类型百分比合并一次乘法）
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
+  // v3.6 DOT/反伤副属性累计（小数 0.05 = 5%）
+  let equipDotDmgPct = 0, equipReflectPct = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -401,6 +403,8 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
       else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
       else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
+      else if (sub.stat === 'DOT_DMG_PCT') equipDotDmgPct += sub.value / 100
+      else if (sub.stat === 'REFLECT_PCT') equipReflectPct += sub.value / 100
     }
 
     // v1.2 附灵聚合（weapon/armor/pendant + v1.3 ring 主修增幅）
@@ -494,6 +498,10 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
         case 'mainSkillBurnDuration':
           awaken.mainSkillBurnDuration = v
           awaken.mainSkillBurnDurationElem = meta?.requireElement
+          break
+        case 'mainSkillBurnAmp':
+          awaken.mainSkillBurnAmp = v
+          awaken.mainSkillBurnAmpElem = meta?.requireElement
           break
         case 'mainSkillBrittleAmp':
           awaken.mainSkillBrittleAmp = v
@@ -640,7 +648,10 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       armorPen: cappedArmorPen, accuracy: cappedAccuracy, elementDmg,
       spirit,
       awaken,
-    },
+      // v3.6 DOT/反伤副属性（小数 0.05 = 5%），由 battleEngine 读取并合并到 dotAmpPct/反伤计算
+      equipDotDmgPct,
+      equipReflectPct,
+    } as any,
     expBonusPercent: expBonusPercent + spiritDensity + awakenExpBonus * 100 + awakenSpiritDensityBonus * 100,
     luckPercent: luck + awakenLuckBonus * 100,
   }
