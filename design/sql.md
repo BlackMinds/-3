@@ -82,6 +82,16 @@ UPDATE characters SET sr_daily_bonus = 1,
     SET spirit_stone = spirit_stone + 3000000                       
   WHERE name = '你的角色名';
 
+  某个角色换灵根
+    UPDATE characters
+  SET spiritual_root = 'water',
+      resist_metal = 0,
+      resist_wood  = 0,
+      resist_water = 0.15,
+      resist_fire  = 0,
+      resist_earth = 0
+  WHERE name = '王总';
+
  SELECT cave_output_mul, COUNT(*) AS 玩家数
   FROM characters
   WHERE cave_output_mul > 1.0

@@ -58,7 +58,9 @@
 - 战意沸腾（叠层机制）
 - 道心通明（神通 CD-1）
 - **v3.6 DOT 公式**: 灼烧 ATK×18%/turn、中毒 maxHp×4%/turn、流血 ATK×13%/turn（旧 15%/3%/10%）
-- **v3.6 反伤公式**: 反弹量 = min(受击 × 反伤系数, 玩家 atk×6) + maxHp×8% 底线
+- **v3.7 反伤公式（统一池）**: 反弹量 = min(受击 × 反伤系数Σ, 玩家 atk×6) + maxHp×8% 底线
+  - 反伤系数Σ = 功法被动`reflectPercent`(荆棘之体) + 明镜止水 buff(reflect) + 装备 REFLECT_PCT 副属性 + 反伤附灵(明镜甲/玄镜佩)
+  - 三源全部汇入同一池（v3.6 之前各通道独立，荆棘之体不享受 cap+maxHp 底量）；PvE/PvP 引擎对齐
 - **v3.6 奶妈怪 (T5+ 必出)**: T5+ 战斗 (2-4 只) 必含 1 只 healer，HP/DEF 比同 power dps 略脆 (~90%/同)、攻击 1/3、自带 50% 抗控、HP&lt;40% 触发群体回血、群体 atk_up/def_up/regen buff、群体 debuff 玩家
 
 ### 1.8 功法系统 ✅ **(v1.2 调整)**
@@ -270,4 +272,17 @@ npm run dev
 - 新紫色神通 3 条: 毒液冲击 (3 段中毒) / 血雨腥风 (AOE 流血) / 焚天烈魂 (AOE 灼烧 + 自身 atk_up)
 - 「明镜止水」reflect value 0.24 → 0.32 (回到 v3.5 削之前 80%)
 - 反伤系数理论上限 ~95% (神通 + 被动 + 多源装备), 配合 cap×6 + 8% maxHp 底线，反伤流真正成型
+
+### 8.6 玩家神通削弱：霜冻新星
+- 蓝品群攻硬控偏强：60% 冻结 2 回合 是同梯度唯一一个 60% 硬控（万藤缚 50% / 地裂波 30% 脆弱 / 天火术 20% 灼烧）
+- 基础冻结概率 0.60 → 0.40，每级仍按 ×lvMul (每级 +15%) 缩放：Lv1 40% / Lv3 52% / Lv5 64% / Lv6 70%（封顶前）
+- 持续回合保持 2 回合，与万藤缚一致
+- 同步 `game/skillData.ts` + `server/engine/skillData.ts` 描述文案至 "40%冻结2回合"
+
+### 8.7 v3.7 反伤系统统一池修复
+- **背景**: v3.6 帮助文档承诺"反伤系数累加上限 ~95%"，但实现里**功法被动 reflectPercent**（荆棘之体）走独立通道（无 cap、无 maxHp 底量），与明镜止水 buff + 装备 REFLECT_PCT/反伤附灵 完全分开。导致纯荆棘流玩家中后期反伤无意义（截图：1021 受击仅反 130）
+- **修复**: PvE 引擎 `triggerRetaliate` 三源合并为同一 reflectSum：`pe.reflectPercent + sumPlayerBuff('reflect') + reflectPctBonus`，统一享受 atk×6 cap + maxHp×8% 底量；日志统一为【反伤】
+- **PvP 对齐**: `buildCharacterSnapshot` 补 REFLECT_PCT 副属性 + reflectPct 附灵聚合到 stats.equipReflectPct；`PvpFighter` 加 reflectPctBonus 字段；`multiBattleEngine.triggerRetaliate` 同步统一池公式
+- **数值影响**: 纯荆棘流玩家反伤 ~4-5x 提升（接 maxHp 8% 底量），但仍受 atk×6 cap 与原系数缩放约束，不会越级爆炸
+- 涉及：`server/engine/battleEngine.ts:1384`、`server/engine/multiBattleEngine.ts:108,212,535`、`server/utils/battleSnapshot.ts:138,186`、`pages/index.vue` 帮助文档
 
