@@ -10,7 +10,7 @@ import { getCharacterByUserId, ensureDailyReset, getRoomDetail, getSrDailyMax, S
 import { generateSecretRealmDrops, generateSecretRealmEquip, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
-import { WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
+import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -442,10 +442,21 @@ export default defineEventHandler(async (event) => {
         const myExp = Math.floor(totalBaseExp * stoneRatio * rewardMul * ratingMul * (1 + expTeamBonus))
         const myPoints = Math.floor(basePoints * stoneRatio)
 
-        // --- 保存装备到 character_equipment ---
+        // --- 保存装备到 character_equipment（背包满 → 按基础售价转灵石） ---
         const equipIds: number[] = []
         const equipList = playerEquips.get(c.characterId) || []
+        const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 }
+        const { rows: bagRows } = await client.query(
+          'SELECT COUNT(*)::int AS cnt FROM character_equipment WHERE character_id = $1 AND slot IS NULL',
+          [c.characterId]
+        )
+        let bagCount: number = bagRows[0]?.cnt || 0
+        let bagOverflowGain = 0
         for (const eq of equipList) {
+          if (bagCount >= EQUIP_BAG_LIMIT) {
+            bagOverflowGain += Math.floor((sellPrices[eq.rarity] || 10) * (eq.tier || 1))
+            continue
+          }
           const { rows: eqRows } = await client.query(
             `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)
@@ -453,6 +464,10 @@ export default defineEventHandler(async (event) => {
             [c.characterId, eq.name, eq.rarity, eq.primary_stat, eq.primary_value, eq.sub_stats, eq.set_id, eq.tier, eq.weapon_type, eq.base_slot, eq.req_level]
           )
           equipIds.push(eqRows[0].id)
+          bagCount++
+        }
+        if (bagOverflowGain > 0) {
+          await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [bagOverflowGain, c.characterId])
         }
 
         // --- 保存灵草到 character_materials ---

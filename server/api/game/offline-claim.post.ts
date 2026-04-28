@@ -3,7 +3,7 @@ import { ALL_MAPS } from '~/server/api/battle/fight.post'
 import { generateMonsterStats, runWaveBattle, makeHealerTemplate, type BattlerStats, type MonsterTemplate, type EquippedSkillInfo } from '~/server/engine/battleEngine'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
-import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE, EQUIP_BAG_LIMIT } from '~/shared/balance'
 import { rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
@@ -191,6 +191,14 @@ export default defineEventHandler(async (event) => {
     const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240 }
 
     const actualEquipCount = Math.min(equipCount, 25)
+    // 背包容量基线 + 满后转灵石返还（按基础售价）
+    const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 }
+    const { rows: bagCountRows } = await pool.query(
+      'SELECT COUNT(*)::int AS cnt FROM character_equipment WHERE character_id = $1 AND slot IS NULL',
+      [char.id]
+    )
+    let bagCount: number = bagCountRows[0]?.cnt || 0
+    let bagOverflowGain = 0
     for (let i = 0; i < actualEquipCount; i++) {
       const w = weights[mapData.tier] || weights[1]
       const total = w.reduce((a: number, b: number) => a + b, 0)
@@ -205,12 +213,21 @@ export default defineEventHandler(async (event) => {
       const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null
       // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率）
       const setKey = rollEquipSet(rarities[idx], 1.0)
+      // 背包满 → 转灵石返还
+      if (bagCount >= EQUIP_BAG_LIMIT) {
+        bagOverflowGain += Math.floor((sellPrices[rarities[idx]] || 10) * mapData.tier)
+        continue
+      }
       const equipName = generateEquipName(rarities[idx], slots[slotIdx], weaponType, mapData.tier, ps, null, '', setKey)
       await pool.query(
         `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
         [char.id, equipName, rarities[idx], ps, pv, JSON.stringify(subStats), setKey, mapData.tier, weaponType, slots[slotIdx], tierReqLevels[mapData.tier] || 1]
       )
+      bagCount++
+    }
+    if (bagOverflowGain > 0) {
+      await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [bagOverflowGain, char.id])
     }
 
     // 功法掉落

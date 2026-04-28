@@ -9,7 +9,7 @@ import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats } from '~/server/utils/equipment'
-import { EQUIP_PRIMARY_BASE, WEAPON_BONUS, PLAYER_CAPS } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
 // 战斗锁: 防止同一角色并发刷战斗
@@ -929,6 +929,13 @@ export default defineEventHandler(async (event) => {
           const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 }
           let autoSellIncome = 0
 
+          // 背包容量：本批掉落入库前先取一次基线，后续 INSERT 用本地计数累加避免每件再 SELECT
+          const { rows: bagCountRows } = await client.query(
+            'SELECT COUNT(*)::int AS cnt FROM character_equipment WHERE character_id = $1 AND slot IS NULL',
+            [char.id]
+          )
+          let bagCount: number = bagCountRows[0]?.cnt || 0
+
           for (const drop of allDrops) {
             if (drop.type === 'equipment') {
               const d = drop.data
@@ -943,11 +950,19 @@ export default defineEventHandler(async (event) => {
                 result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
                 continue
               }
+              // 背包满（含套装件）→ 转灵石返还
+              if (bagCount >= EQUIP_BAG_LIMIT) {
+                const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
+                autoSellIncome += price
+                result.logs.push({ turn: 0, text: `背包已满，自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+                continue
+              }
               await client.query(
                 `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
                 [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
               )
+              bagCount++
               result.logs.push({ turn: 0, text: `掉落了【${d.name}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
             }
             if (drop.type === 'skill') {

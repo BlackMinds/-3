@@ -352,6 +352,9 @@
           <!-- 装备背包 -->
           <div class="panel-title sub-title" style="margin-top: 16px;">
             装备背包 ({{ filteredBagList.length }}/{{ bagEquipList.length }})
+            <span class="bag-capacity" :class="{ 'bag-capacity-warn': bagEquipList.length >= EQUIP_BAG_LIMIT * 0.9, 'bag-capacity-full': bagEquipList.length >= EQUIP_BAG_LIMIT }">
+              · 容量 {{ bagEquipList.length }}/{{ EQUIP_BAG_LIMIT }}
+            </span>
           </div>
           <div class="bag-toolbar">
             <div class="bag-filters">
@@ -3057,7 +3060,7 @@
 definePageMeta({ middleware: 'auth' })
 
 import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, getSkillSlotLimits, type RealmBonus } from '~/game/data';
-import { BREAKTHROUGH_PENALTIES, BREAKTHROUGH_FAIL_BOOST_PER_STREAK, getBreakthroughRateAt, PLAYER_CAPS } from '~/shared/balance';
+import { BREAKTHROUGH_PENALTIES, BREAKTHROUGH_FAIL_BOOST_PER_STREAK, getBreakthroughRateAt, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '~/game/skillData';
 import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_NAMES, SHOP_CATEGORY_COLORS, formatFund } from '~/game/sectData';
 import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
@@ -7679,6 +7682,16 @@ onUnmounted(() => {
   font-size: 19px;
   margin-top: 16px;
 }
+
+/* 背包容量提示 */
+.bag-capacity {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-weight: normal;
+  margin-left: 4px;
+}
+.bag-capacity-warn { color: #ffaa33; }
+.bag-capacity-full { color: #c45c4a; font-weight: 600; }
 
 .char-info-card {
   background: rgba(40, 36, 30, 0.5);

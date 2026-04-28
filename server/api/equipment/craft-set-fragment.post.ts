@@ -3,7 +3,7 @@ import { getCharId, rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { EQUIP_SETS } from '~/server/engine/equipSetData'
-import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, EQUIP_BAG_LIMIT } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -19,6 +19,15 @@ export default defineEventHandler(async (event) => {
     )
     const totalFrags = fragRows.length > 0 ? Number(fragRows[0].count) : 0
     if (totalFrags < 5) return { code: 400, message: `套装碎片不足,需5个(当前${totalFrags})` }
+
+    // 背包容量校验：合成是玩家主动行为，满了直接拒绝（不扣碎片，让玩家先清背包）
+    const { rows: bagCountRows } = await pool.query(
+      'SELECT COUNT(*)::int AS cnt FROM character_equipment WHERE character_id = $1 AND slot IS NULL',
+      [charId]
+    )
+    if ((bagCountRows[0]?.cnt || 0) >= EQUIP_BAG_LIMIT) {
+      return { code: 400, message: `背包已满（${EQUIP_BAG_LIMIT}件），请先清理后再合成` }
+    }
 
     // 扣5个碎片
     await pool.query('UPDATE character_pills SET count = count - 5 WHERE id = $1', [fragRows[0].id])
