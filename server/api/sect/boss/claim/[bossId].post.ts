@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
         value: Math.floor(rand(s.min, s.max) * tier * 0.5 * (1 + rarityIdx * 0.15)),
       }))
 
-      const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
+      const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240 }
       const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
       equipName = generateEquipName(equipRarity, slots[slotIdx], weaponType, tier, ps, null, '宗门')
       await pool.query(

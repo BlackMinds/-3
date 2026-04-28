@@ -181,6 +181,29 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
     { name: '时间领主', power: 450000, element: 'water', exp: 720000, stone_min: 300000, stone_max: 800000, role: 'dps', drop_table: 'uncommon_t10' },
     { name: '创世之灵', power: 600000, element: null, exp: 960000, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t10' },
   ], boss: { name: '永恒之主', power: 1200000, element: null, exp: 4800000, stone_min: 5000000, stone_max: 10000000, role: 'boss', drop_table: 'boss_t10' } },
+  // ===== T11 地图（混元境界专属，曲线对 T10 跨度 ~3-4x）=====
+  // 经验/灵石继续按 ×0.4 / ×0.1 系数（与 T8+ 一致）
+  primal_chaos_sea: { tier: 11, monsters: [
+    { name: '鸿蒙巨鲲', power: 1200000, element: 'water', exp: 1440000, stone_min: 800000, stone_max: 2000000, role: 'balanced', drop_table: 'common_t11' },
+    { name: '本源龙神', power: 1600000, element: null, exp: 1920000, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t11' },
+    { name: '虚空圣使', power: 2200000, element: 'metal', exp: 2640000, stone_min: 2000000, stone_max: 5000000, role: 'dps', drop_table: 'uncommon_t11' },
+  ], boss: { name: '鸿蒙帝君', power: 4500000, element: null, exp: 12000000, stone_min: 10000000, stone_max: 25000000, role: 'boss', drop_table: 'boss_t11' } },
+  nine_heavens_court: { tier: 11, monsters: [
+    { name: '天庭元帅', power: 1500000, element: 'metal', exp: 1680000, stone_min: 800000, stone_max: 2000000, role: 'tank', drop_table: 'common_t11' },
+    { name: '星辰大将', power: 2000000, element: 'fire', exp: 2160000, stone_min: 1000000, stone_max: 2500000, role: 'dps', drop_table: 'uncommon_t11' },
+    { name: '雷霆君主', power: 2600000, element: 'metal', exp: 2880000, stone_min: 2500000, stone_max: 6000000, role: 'dps', drop_table: 'uncommon_t11' },
+  ], boss: { name: '九霄玉帝', power: 5500000, element: 'metal', exp: 14400000, stone_min: 12000000, stone_max: 30000000, role: 'boss', drop_table: 'boss_t11' } },
+  // ===== T12 地图（混元·太极+ 准入，毕业级）=====
+  eternal_void: { tier: 12, monsters: [
+    { name: '虚空泰坦', power: 4500000, element: null, exp: 4800000, stone_min: 4000000, stone_max: 10000000, role: 'tank', drop_table: 'common_t12' },
+    { name: '永恒刺客', power: 6000000, element: null, exp: 6400000, stone_min: 4000000, stone_max: 10000000, role: 'speed', drop_table: 'uncommon_t12' },
+    { name: '本源毁灭者', power: 8000000, element: 'fire', exp: 8800000, stone_min: 10000000, stone_max: 25000000, role: 'dps', drop_table: 'uncommon_t12' },
+  ], boss: { name: '虚空之主', power: 16000000, element: null, exp: 40000000, stone_min: 50000000, stone_max: 120000000, role: 'boss', drop_table: 'boss_t12' } },
+  genesis_realm: { tier: 12, monsters: [
+    { name: '创世守卫', power: 6000000, element: 'earth', exp: 6400000, stone_min: 6000000, stone_max: 15000000, role: 'tank', drop_table: 'common_t12' },
+    { name: '法则裁定者', power: 8500000, element: null, exp: 8800000, stone_min: 6000000, stone_max: 15000000, role: 'dps', drop_table: 'uncommon_t12' },
+    { name: '终焉先知', power: 12000000, element: null, exp: 12000000, stone_min: 15000000, stone_max: 35000000, role: 'dps', drop_table: 'uncommon_t12' },
+  ], boss: { name: '创世道祖', power: 25000000, element: null, exp: 60000000, stone_min: 80000000, stone_max: 200000000, role: 'boss', drop_table: 'boss_t12' } },
 }
 
 // ===== 副属性自动生成（统一走 server/utils/equipment.ts 的共享池）=====
@@ -221,7 +244,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]
   const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[idx]))
-  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
+  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240 }
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
   const subStats = generateSubStats(idx, tier)
   return {
@@ -272,6 +295,7 @@ function generateEnhanceStoneDrop(tier: number, isBoss: boolean, luckMul: number
   if (tier < 4) return null
   const base: Record<number, number> = {
     4: 0.020, 5: 0.018, 6: 0.015, 7: 0.012, 8: 0.010, 9: 0.008, 10: 0.006,
+    11: 0.004, 12: 0.003,
   }
   let rate = (base[tier] ?? 0) * luckMul
   if (isBoss) rate *= 4

@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
     } else if (def.allReward.type === 'gold_equip') {
       const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
       const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
-      const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195 }
+      const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240 }
       for (let i = 0; i < def.allReward.value; i++) {
         const slotIdx = rand(0, slots.length - 1)
         const slot = slots[slotIdx]

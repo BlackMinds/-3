@@ -25,6 +25,8 @@ export const ITEM_INFO: Record<string, ItemInfo> = {
   enhance_stone_t8:   { name: '强化石·T8',  description: '强化 T8 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
   enhance_stone_t9:   { name: '强化石·T9',  description: '强化 T9 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
   enhance_stone_t10:  { name: '强化石·T10', description: '强化 T10 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t11:  { name: '强化石·T11', description: '强化 T11 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t12:  { name: '强化石·T12', description: '强化 T12 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
   // —— 装备类 ——
   reroll_sub_stat:    { name: '装备鉴定符', description: '重新随机一件装备的所有副属性',         category: 'equip', needsTarget: 'equip' },
   equip_upgrade:      { name: '太古精魂',   description: '装备升品 紫→金 / 金→红',                 category: 'equip', needsTarget: 'equip' },
