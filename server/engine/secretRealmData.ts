@@ -44,13 +44,16 @@ export interface SecretRealmDef {
 }
 
 // ==================== 辅助：按 tier 调整战力 ====================
+// v3.4.5: 秘境经验密度归一 — 普通怪 ×0.15、BOSS ×0.6（旧 ×0.5/×2.0）
+// 配合 team/start.post.ts 的 ×0.84 组队系数,实际密度 0.126/0.504,
+// 比主图（0.10/0.40）高 26%,作为组队挑战奖励
 function monster(name: string, power: number, element: string | null, role: string, tier: number): MonsterTemplate {
   return {
     name,
     power,
     element,
     role,
-    exp: Math.floor(power * 0.5),
+    exp: Math.floor(power * 0.15),
     stone_min: Math.floor(power * 0.02),
     stone_max: Math.floor(power * 0.08),
     drop_table: `common_t${tier}`,
@@ -63,7 +66,7 @@ function boss(name: string, power: number, element: string | null, tier: number)
     power,
     element,
     role: 'boss',
-    exp: Math.floor(power * 2),
+    exp: Math.floor(power * 0.6),
     stone_min: Math.floor(power * 0.1),
     stone_max: Math.floor(power * 0.25),
     drop_table: `boss_t${tier}`,
