@@ -25,16 +25,17 @@ export default defineEventHandler(async (event) => {
   try {
     await client.query('BEGIN')
 
+    // 锁定装备（locked=TRUE）跳过批量出售
     const { rows } = useTierFilter
       ? await client.query(
           `SELECT id, rarity, tier, enhance_level FROM character_equipment
-           WHERE character_id = $1 AND slot IS NULL AND rarity = ANY($2) AND tier = $3
+           WHERE character_id = $1 AND slot IS NULL AND rarity = ANY($2) AND tier = $3 AND COALESCE(locked, FALSE) = FALSE
            FOR UPDATE`,
           [charId, allowed, tierNum]
         )
       : await client.query(
           `SELECT id, rarity, tier, enhance_level FROM character_equipment
-           WHERE character_id = $1 AND slot IS NULL AND rarity = ANY($2)
+           WHERE character_id = $1 AND slot IS NULL AND rarity = ANY($2) AND COALESCE(locked, FALSE) = FALSE
            FOR UPDATE`,
           [charId, allowed]
         )

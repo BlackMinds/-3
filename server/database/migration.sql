@@ -131,11 +131,13 @@ CREATE TABLE IF NOT EXISTS character_equipment (
   enhance_level INT DEFAULT 0,
   req_level INT DEFAULT 1,
   tier INT DEFAULT 1,
+  locked BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 增量迁移（兼容已有 character_equipment 表）
 ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS awaken_effect JSONB DEFAULT NULL;
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS locked BOOLEAN DEFAULT FALSE;
 
 -- ========================================
 -- 角色功法背包

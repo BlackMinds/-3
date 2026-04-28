@@ -107,9 +107,9 @@
           >
             开始历练
           </button>
-          <!-- 灰度发布：v2 新版离线挂机暂时只对 user_id=1（开发者测试账号）开放 -->
+          <!-- 灰度发布：v2 新版离线挂机暂时只对白名单 user_id（开发者 / 内测账号）开放 -->
           <button
-            v-if="!gameStore.isBattling && !isOffline && userStore.userId === 1"
+            v-if="!gameStore.isBattling && !isOffline && [1, 3].includes(userStore.userId)"
             class="ctrl-btn offline-start-btn"
             @click="startOffline"
           >
@@ -365,8 +365,58 @@
               <button :class="['filter-btn', { active: bagFilter === 'pendant' }]" @click="bagFilter = 'pendant'">灵佩</button>
               <select v-model="tierFilter" class="sell-select">
                 <option value="all">全部 T 级</option>
-                <option v-for="t in 10" :key="t" :value="t">T{{ t }}</option>
+                <option v-for="t in 12" :key="t" :value="t">T{{ t }}</option>
               </select>
+              <select v-model="rarityFilter" class="sell-select" title="按品质筛选">
+                <option value="all">全部品质</option>
+                <option value="white">凡器</option>
+                <option value="green">灵器</option>
+                <option value="blue">法器</option>
+                <option value="purple">灵宝</option>
+                <option value="gold">仙器</option>
+                <option value="red">太古</option>
+              </select>
+              <select v-model="setFilter" class="sell-select" title="按套装筛选">
+                <option value="all">全部套装</option>
+                <option value="none">无套装</option>
+                <option v-for="s in EQUIP_SETS" :key="s.setKey" :value="s.setKey">{{ s.name }}</option>
+              </select>
+              <select v-model="attrFilter" class="sell-select" title="按主属性或副属性筛选（含强化条目）">
+                <option value="all">全部属性</option>
+                <optgroup label="主属性">
+                  <option value="ATK">攻击 (ATK)</option>
+                  <option value="DEF">防御 (DEF)</option>
+                  <option value="HP">气血 (HP)</option>
+                  <option value="SPD">身法 (SPD)</option>
+                  <option value="CRIT_RATE">会心率</option>
+                  <option value="CRIT_DMG">会心伤害</option>
+                  <option value="SPIRIT">神识</option>
+                </optgroup>
+                <optgroup label="百分比副属性">
+                  <option value="ATK_PCT">攻击%</option>
+                  <option value="DEF_PCT">防御%</option>
+                  <option value="HP_PCT">气血%</option>
+                  <option value="SPD_PCT">身法%</option>
+                </optgroup>
+                <optgroup label="特殊副属性">
+                  <option value="LIFESTEAL">吸血</option>
+                  <option value="DODGE">闪避</option>
+                  <option value="ARMOR_PEN">破甲</option>
+                  <option value="ACCURACY">命中</option>
+                  <option value="LUCK">福缘</option>
+                  <option value="SPIRIT_DENSITY">灵气浓度</option>
+                  <option value="DOT_DMG_PCT">DOT伤害</option>
+                  <option value="REFLECT_PCT">反伤倍率</option>
+                </optgroup>
+                <optgroup label="五行强化">
+                  <option value="METAL_DMG">金系</option>
+                  <option value="WOOD_DMG">木系</option>
+                  <option value="WATER_DMG">水系</option>
+                  <option value="FIRE_DMG">火系</option>
+                  <option value="EARTH_DMG">土系</option>
+                </optgroup>
+              </select>
+              <button v-if="hasActiveAdvancedFilter" class="filter-btn filter-clear" @click="clearAdvancedFilters" title="清除所有高级筛选">✕ 清除</button>
             </div>
             <div class="bag-actions">
               <select v-model="sellRarity" class="sell-select">
@@ -387,11 +437,14 @@
                 v-for="eq in filteredBagList"
                 :key="eq.id"
                 class="bag-cell"
+                :class="{ 'bag-cell-locked': eq.locked }"
                 :style="{ borderColor: getEquipColor(eq) }"
                 @mouseenter="onBagHover($event, eq)"
                 @mouseleave="hoverEquip = null"
                 @click.stop="onBagClick($event, eq)"
+                @contextmenu.prevent="toggleEquipLock(eq)"
               >
+                <span v-if="eq.locked" class="bag-cell-lock" title="已锁定（右键解锁）">🔒</span>
                 <span class="bag-cell-tier">T{{ eq.tier || 1 }}</span>
                 <span class="bag-cell-name" :style="{ color: getEquipColor(eq) }">{{ eq.name }}</span>
                 <span class="bag-cell-rarity" :style="{ color: getEquipColor(eq) }">
@@ -1476,7 +1529,10 @@
             {{ clickedEquip.awaken_effect ? '洗练 ✦' : '附灵 ✦' }}
           </button>
           <button v-if="clickedEquip.slot" class="equip-action-btn-red" @click="quickUnequip(clickedEquip)">卸下</button>
-          <button v-if="!clickedEquip.slot" class="equip-action-btn-red" @click="quickSell(clickedEquip)">出售</button>
+          <button v-if="!clickedEquip.slot" class="equip-action-btn-red" @click="quickSell(clickedEquip)" :disabled="clickedEquip.locked" :title="clickedEquip.locked ? '装备已锁定，请先解锁' : ''">出售</button>
+          <button class="equip-action-btn-lock" @click="toggleEquipLock(clickedEquip)" :title="clickedEquip.locked ? '解锁后可被一键出售' : '锁定后一键出售跳过此装备'">
+            {{ clickedEquip.locked ? '🔓 解锁' : '🔒 锁定' }}
+          </button>
           <button class="equip-action-btn-close" @click="clickedEquip = null">关闭</button>
         </div>
       </div>
@@ -2996,7 +3052,7 @@ import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_N
 import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
 import { AWAKEN_POOLS, AWAKEN_DEF_MAP, canSlotAwaken, canRarityAwaken, describeAwakenEffect, type AwakenEffect } from '~/game/awakenData';
 import { EQUIP_SLOTS, STAT_NAMES, PERCENT_STATS, getRarityColor, getSlotName, getWeaponTypeDef, getEnhanceCost, getEnhanceSuccessRate, getEnhancedPrimaryValue, getEnhanceBonus, setForgeQualityBonus } from '~/game/equipData';
-import { EQUIP_SET_MAP, countEquippedSets, getActiveTier } from '~/game/equipSetData';
+import { EQUIP_SETS, EQUIP_SET_MAP, countEquippedSets, getActiveTier } from '~/game/equipSetData';
 import { PILL_RECIPES, getPillById, getRarityColor as getPillColor } from '~/game/pillData';
 import type { PillRecipe } from '~/game/pillData';
 import {
@@ -6379,6 +6435,10 @@ async function quickUnequip(eq: any) {
 }
 
 async function quickSell(eq: any) {
+  if (eq.locked) {
+    showToast('装备已锁定，请先解锁', 'info');
+    return;
+  }
   try {
     const res: any = await $fetch('/api/equipment/sell', { method: 'POST', body: { equip_id: eq.id }, headers: getAuthHeaders() });
     if (res.code === 200 && res.data) {
@@ -6390,6 +6450,31 @@ async function quickSell(eq: any) {
   } catch (err) {
     console.error('出售失败', err);
     showToast('出售失败', 'error');
+  }
+}
+
+// 切换装备锁定状态
+async function toggleEquipLock(eq: any) {
+  try {
+    const res: any = await $fetch('/api/equipment/toggle-lock', {
+      method: 'POST',
+      body: { equip_id: eq.id },
+      headers: getAuthHeaders(),
+    });
+    if (res.code === 200 && res.data) {
+      // 同步本地装备列表
+      const target = equipList.value.find(e => e.id === eq.id);
+      if (target) target.locked = res.data.locked;
+      if (clickedEquip.value && clickedEquip.value.id === eq.id) {
+        clickedEquip.value = { ...clickedEquip.value, locked: res.data.locked };
+      }
+      showToast(res.message || (res.data.locked ? '已锁定' : '已解锁'), 'success');
+    } else {
+      showToast(res.message || '操作失败', 'error');
+    }
+  } catch (err) {
+    console.error('切换锁定失败', err);
+    showToast('操作失败', 'error');
   }
 }
 
@@ -6425,8 +6510,23 @@ function parseSubs(subs: any): { stat: string; value: number }[] {
 const bagFilter = ref('all');
 const sellRarity = ref('white');
 const tierFilter = ref<'all' | number>('all');
+// 高级筛选：套装 / 属性 / 品质
+const setFilter = ref<'all' | 'none' | string>('all');
+const attrFilter = ref<'all' | string>('all');
+const rarityFilter = ref<'all' | string>('all');
 
 const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red'];
+
+// 是否启用了任意高级筛选（用于决定是否显示"清除"按钮）
+const hasActiveAdvancedFilter = computed(() =>
+  setFilter.value !== 'all' || attrFilter.value !== 'all' || rarityFilter.value !== 'all'
+);
+
+function clearAdvancedFilters() {
+  setFilter.value = 'all';
+  attrFilter.value = 'all';
+  rarityFilter.value = 'all';
+}
 
 const filteredBagList = computed(() => {
   let list = bagEquipList.value;
@@ -6441,6 +6541,24 @@ const filteredBagList = computed(() => {
   }
   if (tierFilter.value !== 'all') {
     list = list.filter(e => (e.tier || 1) === tierFilter.value);
+  }
+  if (rarityFilter.value !== 'all') {
+    list = list.filter(e => e.rarity === rarityFilter.value);
+  }
+  if (setFilter.value !== 'all') {
+    if (setFilter.value === 'none') {
+      list = list.filter(e => !e.set_id);
+    } else {
+      list = list.filter(e => e.set_id === setFilter.value);
+    }
+  }
+  if (attrFilter.value !== 'all') {
+    const want = attrFilter.value;
+    list = list.filter(e => {
+      if (e.primary_stat === want) return true;
+      const subs = parseSubs(e.sub_stats);
+      return Array.isArray(subs) && subs.some((s: any) => s?.stat === want);
+    });
   }
   return list;
 });
@@ -8151,6 +8269,16 @@ onUnmounted(() => {
   color: var(--gold-ink);
 }
 
+.filter-btn.filter-clear {
+  border-color: rgba(196, 92, 74, 0.5);
+  color: #c45c4a;
+}
+.filter-btn.filter-clear:hover {
+  border-color: #c45c4a;
+  background: rgba(196, 92, 74, 0.1);
+  color: #c45c4a;
+}
+
 .bag-actions {
   display: flex;
   gap: 8px;
@@ -8238,6 +8366,20 @@ onUnmounted(() => {
   padding: 1px 4px;
   border-radius: 2px;
   line-height: 1;
+}
+
+.bag-cell-lock {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 11px;
+  line-height: 1;
+  filter: drop-shadow(0 0 2px rgba(255, 211, 94, 0.6));
+}
+
+.bag-cell-locked {
+  border-color: #ffd35e !important;
+  box-shadow: 0 0 0 1px rgba(255, 211, 94, 0.3) inset;
 }
 
 .bag-cell-level {
@@ -8494,7 +8636,8 @@ onUnmounted(() => {
 .equip-action-btn-gold,
 .equip-action-btn-red,
 .equip-action-btn-close,
-.equip-action-btn-awaken {
+.equip-action-btn-awaken,
+.equip-action-btn-lock {
   flex: 1;
   min-width: 50px;
   padding: 5px 0;
@@ -8504,6 +8647,19 @@ onUnmounted(() => {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.equip-action-btn-lock {
+  border: 1px solid #ffd35e;
+  color: #ffd35e;
+}
+.equip-action-btn-lock:hover {
+  background: rgba(255, 211, 94, 0.1);
+}
+
+.equip-action-btn-red:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .equip-action-btn-awaken {
