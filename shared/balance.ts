@@ -111,6 +111,8 @@ export const REALM_BONUSES: Record<number, RealmBonus> = {
   6: { hp: 9200,  atk: 330,  def: 180,  spd: 120, hp_pct: 90,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.053,crit_dmg: 0.34, dodge: 0.027},
   7: { hp: 25000, atk: 830,  def: 470,  spd: 270, hp_pct: 138, atk_pct: 46,  def_pct: 39,  crit_rate: 0.067,crit_dmg: 0.45, dodge: 0.033},
   8: { hp: 64000, atk: 2000, def: 1170, spd: 670, hp_pct: 224, atk_pct: 70,  def_pct: 56,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.04 },
+  // tier 9 混元: 纯荣誉境界, 不给任何属性加成 (突破即境界名变化, 数值不再膨胀)
+  9: { hp: 0,     atk: 0,    def: 0,    spd: 0,   hp_pct: 0,   atk_pct: 0,   def_pct: 0,   crit_rate: 0,    crit_dmg: 0,    dodge: 0    },
 }
 
 export function getRealmStageMultiplier(stage: number): number {
@@ -190,10 +192,11 @@ export const BREAKTHROUGH_BIG_RATES: Record<number, number> = {
   5: 0.55,  // 化神 → 渡劫
   6: 0.45,  // 渡劫 → 大乘
   7: 0.35,  // 大乘 → 飞升
+  8: 0.20,  // 飞升 → 混元 (跨度极大,曲线显著陡峭)
 }
 
 // 跨小境界成功率 (stage++,不改 tier)
-// 前两个境界 100%,金丹起有失败概率,飞升最难
+// 前两个境界 100%,金丹起有失败概率,混元最难
 export const BREAKTHROUGH_STAGE_RATES: Record<number, number> = {
   1: 1.00,  // 练气
   2: 1.00,  // 筑基
@@ -203,7 +206,12 @@ export const BREAKTHROUGH_STAGE_RATES: Record<number, number> = {
   6: 0.80,  // 渡劫
   7: 0.75,  // 大乘
   8: 0.70,  // 飞升 (小境界5阶)
+  9: 0.60,  // 混元 (小境界5阶, 顶级难度)
 }
+
+// 突破失败保底：每连续失败 1 次，下次突破成功率 +N%（成功后清零）
+// 上限受 100% 限制，配合突破丹叠加但仍不超过 100%
+export const BREAKTHROUGH_FAIL_BOOST_PER_STREAK = 0.05
 
 // 突破失败扣除当前修为比例 (大小境界共用)
 export const BREAKTHROUGH_PENALTIES: Record<number, number> = {
@@ -215,11 +223,12 @@ export const BREAKTHROUGH_PENALTIES: Record<number, number> = {
   6: 0.50,  // 渡劫
   7: 0.65,  // 大乘
   8: 0.80,  // 飞升
+  9: 0.90,  // 混元 (失败几乎清空修为)
 }
 
 /** 给定 tier/stage/maxStage, 返回对应突破成功率 (0~1) */
 export function getBreakthroughRateAt(tier: number, stage: number, maxStage: number): number {
-  if (tier === 8 && stage >= maxStage) return 0 // 飞升末阶不可再突
+  if (tier === 9 && stage >= maxStage) return 0 // 混元末阶不可再突 (游戏顶点)
   if (stage < maxStage) return BREAKTHROUGH_STAGE_RATES[tier] ?? 1.0
   return BREAKTHROUGH_BIG_RATES[tier] ?? 0
 }

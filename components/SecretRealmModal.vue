@@ -472,6 +472,7 @@ function realmShort(tier: number, stage: number): string {
   const tierName = realmTierName(tier)
   if (tier === 1) return `练气${stage}层`
   if (tier === 8) return `飞升${stage}阶`
+  if (tier === 9) return `混元${stage}阶`
   return `${tierName}${STAGE_NAMES[(stage - 1) % 3] || ''}`
 }
 function formatNum(n: number): string {

@@ -16,6 +16,7 @@ export const useGameStore = defineStore('game', () => {
   const killCount = ref(0)
   const sessionExp = ref(0)
   const sessionStone = ref(0)
+  const battleStartTime = ref(0)
 
   // 战斗中血条状态
   const displayPlayerHp = ref(0)
@@ -115,11 +116,13 @@ export const useGameStore = defineStore('game', () => {
   const levelExpRequired = computed(() => {
     const lv = charLevel.value
     if (lv >= 300) return Infinity
-    // 经验曲线整体降档: 前30级 -33%, 150+ 段指数从 1.5 降至 1.48
+    // v3.4.4: lv>150 段拆为 151~200 / 201~300 两段过渡，让等级与境界修为曲线脱钩。
+    // 后端权威源在 server/utils/realm.ts:getLevelExpRequired，两处必须同步。
     if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
     if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
     if (lv <= 150) return Math.floor(180 * Math.pow(lv, 1.42))
-    return Math.floor(320 * Math.pow(lv, 1.48))
+    if (lv <= 200) return Math.floor(400 * Math.pow(lv, 1.55))
+    return Math.floor(1000 * Math.pow(lv, 1.65))
   })
 
   const levelExpPercent = computed(() => {
@@ -205,7 +208,12 @@ export const useGameStore = defineStore('game', () => {
     }
     lastStartAt.value = now
     isBattling.value = true
+    // 方案 A：每次开战（含切图内部 stop→start、登录恢复 auto-start）都视作新一轮历练，统计清零
+    killCount.value = 0
+    sessionExp.value = 0
+    sessionStone.value = 0
     sessionDrops.value = {}
+    battleStartTime.value = now
     addLog(0, `在【${currentMap.value.name}】开始历练…`, 'system')
     // 反复「开始/离开」节流：若距上次 stop 不到 1.5s（对齐 server BATTLE_COOLDOWN_MS），延迟首次 fight，防止通过快速切换把刷怪频率拉到冷却极限
     // fetchInFlight / expectedBattleEndAt 守卫由 scheduleFight 静默等待处理，不再 return + 打日志骚扰用户
@@ -485,6 +493,9 @@ export const useGameStore = defineStore('game', () => {
     rate: number
     lost?: number
     penalty?: number
+    failStreak?: number
+    failStreakBonusPct?: number
+    prevFailStreak?: number
     message: string
     character?: any
   } | null> {
@@ -535,7 +546,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     character, loaded, battleLogs, isBattling, currentMapId,
-    killCount, sessionExp, sessionStone, sessionDrops, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
+    killCount, sessionExp, sessionStone, sessionDrops, battleStartTime, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
     currentMonsterInfo, waveMonstersInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,

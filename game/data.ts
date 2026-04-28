@@ -11,10 +11,12 @@ export const REALM_TIERS: RealmTier[] = [
   { tier: 6, realm: '渡劫', stages: 3, base_power: 10000, power_multiplier: 100.0,breakthrough_type: 'tribulation', exp_multiplier: 3000 },
   { tier: 7, realm: '大乘', stages: 3, base_power: 25000, power_multiplier: 200.0,breakthrough_type: 'tribulation', exp_multiplier: 8000 },
   { tier: 8, realm: '飞升', stages: 5, base_power: 60000, power_multiplier: 300.0,breakthrough_type: 'tribulation', exp_multiplier: 15000 },
+  { tier: 9, realm: '混元', stages: 5, base_power: 180000,power_multiplier: 800.0,breakthrough_type: 'tribulation', exp_multiplier: 50000 },
 ];
 
 export const REALM_STAGE_NAMES: Record<number, string[]> = {
   8: ['散仙', '真仙', '金仙', '太乙金仙', '大罗金仙'],
+  9: ['合道', '证道', '太上', '太极', '无极'],
 };
 
 // ========== 灵根数据 ==========
@@ -321,6 +323,52 @@ export const MAPS: MapData[] = [
     ],
     boss: { id: 'eternal_one', name: '永恒之主', power: 1200000, element: null, exp: 12000000, spirit_stone_range: [50000000, 100000000], role: 'boss', drop_table: 'boss_t10' },
   },
+  // ===== T11 地图 =====（混元境界专属，曲线相对 T10 跨度 ~3-4x）
+  {
+    id: 'primal_chaos_sea', name: '鸿蒙之海', tier: 11,
+    realm_required: '混元·合道', recommended_power: 220,
+    element: 'water', description: '鸿蒙未分之海,孕育万道之始',
+    monsters: [
+      { id: 'chaos_leviathan', name: '鸿蒙巨鲲', power: 1200000, element: 'water', exp: 3600000, spirit_stone_range: [8000000, 20000000], role: 'balanced', drop_table: 'common_t11' },
+      { id: 'origin_dragon', name: '本源龙神', power: 1600000, element: null, exp: 4800000, spirit_stone_range: [8000000, 20000000], role: 'dps', drop_table: 'uncommon_t11' },
+      { id: 'void_seraph', name: '虚空圣使', power: 2200000, element: 'metal', exp: 6600000, spirit_stone_range: [20000000, 50000000], role: 'dps', drop_table: 'uncommon_t11' },
+    ],
+    boss: { id: 'primal_emperor', name: '鸿蒙帝君', power: 4500000, element: null, exp: 30000000, spirit_stone_range: [100000000, 250000000], role: 'boss', drop_table: 'boss_t11' },
+  },
+  {
+    id: 'nine_heavens_court', name: '九天玄宫', tier: 11,
+    realm_required: '混元·证道', recommended_power: 230,
+    element: 'metal', description: '九天之上,玄宫森严,执掌诸天秩序',
+    monsters: [
+      { id: 'celestial_marshal', name: '天庭元帅', power: 1500000, element: 'metal', exp: 4200000, spirit_stone_range: [8000000, 20000000], role: 'tank', drop_table: 'common_t11' },
+      { id: 'star_general', name: '星辰大将', power: 2000000, element: 'fire', exp: 5400000, spirit_stone_range: [10000000, 25000000], role: 'dps', drop_table: 'uncommon_t11' },
+      { id: 'thunder_sovereign', name: '雷霆君主', power: 2600000, element: 'metal', exp: 7200000, spirit_stone_range: [25000000, 60000000], role: 'dps', drop_table: 'uncommon_t11' },
+    ],
+    boss: { id: 'nine_heavens_lord', name: '九霄玉帝', power: 5500000, element: 'metal', exp: 36000000, spirit_stone_range: [120000000, 300000000], role: 'boss', drop_table: 'boss_t11' },
+  },
+  // ===== T12 地图 =====（混元·太极+ 准入，毕业级，曲线再 ×3）
+  {
+    id: 'eternal_void', name: '永恒虚空', tier: 12,
+    realm_required: '混元·太极', recommended_power: 250,
+    element: null, description: '诸界之外的永恒虚空,只有踏破极限者才能立足',
+    monsters: [
+      { id: 'void_titan', name: '虚空泰坦', power: 4500000, element: null, exp: 12000000, spirit_stone_range: [40000000, 100000000], role: 'tank', drop_table: 'common_t12' },
+      { id: 'eternal_assassin', name: '永恒刺客', power: 6000000, element: null, exp: 16000000, spirit_stone_range: [40000000, 100000000], role: 'speed', drop_table: 'uncommon_t12' },
+      { id: 'origin_destroyer', name: '本源毁灭者', power: 8000000, element: 'fire', exp: 22000000, spirit_stone_range: [100000000, 250000000], role: 'dps', drop_table: 'uncommon_t12' },
+    ],
+    boss: { id: 'void_sovereign', name: '虚空之主', power: 16000000, element: null, exp: 100000000, spirit_stone_range: [500000000, 1200000000], role: 'boss', drop_table: 'boss_t12' },
+  },
+  {
+    id: 'genesis_realm', name: '创世之境', tier: 12,
+    realm_required: '混元·无极', recommended_power: 260,
+    element: null, description: '万道之源,唯证无极者方可一窥究竟',
+    monsters: [
+      { id: 'genesis_guardian', name: '创世守卫', power: 6000000, element: 'earth', exp: 16000000, spirit_stone_range: [60000000, 150000000], role: 'tank', drop_table: 'common_t12' },
+      { id: 'rule_arbiter', name: '法则裁定者', power: 8500000, element: null, exp: 22000000, spirit_stone_range: [60000000, 150000000], role: 'dps', drop_table: 'uncommon_t12' },
+      { id: 'doom_prophet', name: '终焉先知', power: 12000000, element: null, exp: 30000000, spirit_stone_range: [150000000, 350000000], role: 'dps', drop_table: 'uncommon_t12' },
+    ],
+    boss: { id: 'genesis_god', name: '创世道祖', power: 25000000, element: null, exp: 150000000, spirit_stone_range: [800000000, 2000000000], role: 'boss', drop_table: 'boss_t12' },
+  },
 ];
 
 // ========== 初始技能 ==========
@@ -367,9 +415,9 @@ export function getSkillSlotLimits(realmTier: number): SkillSlotLimits {
 export function getRealmName(tier: number, stage: number): string {
   const t = REALM_TIERS.find(r => r.tier === tier);
   if (!t) return '未知';
-  if (tier === 8) {
-    const names = REALM_STAGE_NAMES[8];
-    return names[Math.min(stage - 1, names.length - 1)] || t.realm;
+  const stageNamesByTier = REALM_STAGE_NAMES[tier];
+  if (stageNamesByTier) {
+    return stageNamesByTier[Math.min(stage - 1, stageNamesByTier.length - 1)] || t.realm;
   }
   if (t.stages <= 3) {
     const stageNames = ['初期', '中期', '后期'];
@@ -396,6 +444,11 @@ export function getUnlockedMaps(tier: number, stage: number): MapData[] {
     if (tier === 8) {
       if (m.tier === 9 && stage >= 4) return true;
       if (m.tier === 10 && stage >= 5) return true;
+    }
+    // 混元(tier 9)的高阶 stage 解锁 T11/T12：合道(1)→T11，太极(4)→T12
+    if (tier === 9) {
+      if (m.tier === 11) return true;
+      if (m.tier === 12 && stage >= 4) return true;
     }
     return false;
   });

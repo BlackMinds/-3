@@ -3,16 +3,18 @@ import { getArenaRank } from '~/shared/arenaRanks'
 
 const REALM_NAMES: Record<number, string> = {
   1: '练气', 2: '筑基', 3: '金丹', 4: '元婴',
-  5: '化神', 6: '渡劫', 7: '大乘', 8: '飞升',
+  5: '化神', 6: '渡劫', 7: '大乘', 8: '飞升', 9: '混元',
 }
 const STAGE_NAMES_DEFAULT = ['初期', '中期', '后期']
 const STAGE_NAMES_QI = ['一层','二层','三层','四层','五层','六层','七层','八层','九层']
 const STAGE_NAMES_FLY = ['散仙', '真仙', '金仙', '太乙金仙', '大罗金仙']
+const STAGE_NAMES_HUNYUAN = ['合道', '证道', '太上', '太极', '无极']
 
 function getRealmDisplay(tier: number, stage: number): string {
   const realm = REALM_NAMES[tier] || '未知'
   if (tier === 1) return realm + (STAGE_NAMES_QI[stage - 1] || '')
   if (tier === 8) return STAGE_NAMES_FLY[stage - 1] || realm
+  if (tier === 9) return STAGE_NAMES_HUNYUAN[stage - 1] || realm
   return realm + (STAGE_NAMES_DEFAULT[stage - 1] || '')
 }
 

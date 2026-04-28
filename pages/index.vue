@@ -103,7 +103,7 @@
           <button
             v-if="!gameStore.isBattling && !isOffline"
             class="ctrl-btn start-btn"
-            @click="battleStartTime = Date.now(); gameStore.startBattle()"
+            @click="gameStore.startBattle()"
           >
             开始历练
           </button>
@@ -2036,6 +2036,7 @@
                 <span class="realm-rate-val success">
                   {{ Math.round(breakthroughEffectiveRate * 100) }}%
                   <span v-if="hasBreakthroughBoost" class="realm-boost-tag">含突破丹 +{{ breakthroughBoostPct }}%</span>
+                  <span v-if="hasBreakthroughFailStreakBonus" class="realm-boost-tag">连败 {{ breakthroughFailStreak }} 次 · 保底 +{{ breakthroughFailStreakBonusPct }}%</span>
                 </span>
               </div>
               <div class="realm-rate-row" v-if="breakthroughFailPenalty > 0">
@@ -2279,7 +2280,8 @@
           </div>
           <div class="help-section">
             <div class="help-title">反伤流派 (Reflect)</div>
-            <p class="help-text">受击时反弹一定比例伤害给攻击者。<b>反伤公式 (v3.6):</b>反弹量 = min(受击 × 反伤系数, 玩家攻击 × 6) + 玩家最大气血 × 8%。</p>
+            <p class="help-text">受击时反弹一定比例伤害给攻击者。<b>反伤公式 (v3.7 统一池):</b>反弹量 = min(受击 × 反伤系数Σ, 玩家攻击 × 6) + 玩家最大气血 × 8%。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);"><b>v3.7 修复:</b>所有来源汇入同一池（v3.6 之前荆棘之体被动是独立通道，无 cap、无 maxHp 底量；现已合并），PvE/PvP 一致。</p>
             <p class="help-text" style="margin-top: 6px;"><b>反伤系数累加来源 (理论上限 ~95%):</b></p>
             <table class="help-table"><tbody>
               <tr><td>神通「明镜止水」</td><td>+32% (3 回合 buff, cd 9)</td></tr>
@@ -2287,7 +2289,7 @@
               <tr><td>副属性「反伤倍率」</td><td>+3~15% / 条 (多件叠加)</td></tr>
               <tr><td>armor 附灵「明镜甲」</td><td>+6~22% (常驻)</td></tr>
               <tr><td>pendant 附灵「玄镜佩」</td><td>+5~18% (常驻)</td></tr>
-              <tr><td>armor 附灵「荆棘」</td><td>+15~50% (仅暴击触发)</td></tr>
+              <tr><td>armor 附灵「荆棘」</td><td>+15~50% (仅暴击触发，单独通道)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">堆满需放弃 armor/pendant 其他附灵 (金刚/磐石/疾风/玄冥…), 是真流派 build。</p>
           </div>
@@ -2979,7 +2981,7 @@
 definePageMeta({ middleware: 'auth' })
 
 import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, getSkillSlotLimits, type RealmBonus } from '~/game/data';
-import { BREAKTHROUGH_PENALTIES, getBreakthroughRateAt, PLAYER_CAPS } from '~/shared/balance';
+import { BREAKTHROUGH_PENALTIES, BREAKTHROUGH_FAIL_BOOST_PER_STREAK, getBreakthroughRateAt, PLAYER_CAPS } from '~/shared/balance';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '~/game/skillData';
 import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_NAMES, SHOP_CATEGORY_COLORS, formatFund } from '~/game/sectData';
 import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
@@ -3523,9 +3525,23 @@ const hasBreakthroughBoost = computed(() => {
   return breakthroughBoostPct.value > 0;
 });
 
+const breakthroughFailStreak = computed(() => {
+  return Math.max(0, Number((gameStore.character as any)?.breakthrough_fail_streak || 0));
+});
+
+const breakthroughFailStreakBonusPct = computed(() => {
+  return Math.round(breakthroughFailStreak.value * BREAKTHROUGH_FAIL_BOOST_PER_STREAK * 100);
+});
+
+const hasBreakthroughFailStreakBonus = computed(() => {
+  return breakthroughFailStreak.value > 0;
+});
+
 const breakthroughEffectiveRate = computed(() => {
   const base = breakthroughRate.value;
-  return hasBreakthroughBoost.value ? Math.min(1, base + breakthroughBoostPct.value / 100) : base;
+  const boost = hasBreakthroughBoost.value ? breakthroughBoostPct.value / 100 : 0;
+  const streak = breakthroughFailStreak.value * BREAKTHROUGH_FAIL_BOOST_PER_STREAK;
+  return Math.min(1, base + boost + streak);
 });
 
 const breakthroughFailPenalty = computed(() => {
@@ -3567,10 +3583,14 @@ async function doRealmBreakthrough() {
       return;
     }
     if (res.success) {
-      realmChallengeResult.value = `✨ 突破成功! 当前境界: ${gameStore.realmName}`;
+      const recovered = res.prevFailStreak && res.prevFailStreak > 0
+        ? ` (连败 ${res.prevFailStreak} 次保底已重置)` : '';
+      realmChallengeResult.value = `✨ 突破成功! 当前境界: ${gameStore.realmName}${recovered}`;
     } else {
       const penaltyPct = res.penalty ? Math.round(res.penalty * 100) : 0;
-      realmChallengeResult.value = `💥 突破失败! 成功率 ${Math.round(res.rate * 100)}%, 走火入魔损失 ${penaltyPct}% 修为 (-${formatNum(res.lost || 0)})`;
+      const nextBoost = res.failStreakBonusPct && res.failStreakBonusPct > 0
+        ? ` · 下次保底 +${res.failStreakBonusPct}%` : '';
+      realmChallengeResult.value = `💥 突破失败! 成功率 ${Math.round(res.rate * 100)}%, 走火入魔损失 ${penaltyPct}% 修为 (-${formatNum(res.lost || 0)})${nextBoost}`;
     }
   } finally {
     breakthroughPending.value = false;
@@ -3608,7 +3628,6 @@ async function onAvatarSelected(e: Event) {
 }
 const showStats = ref(false);
 const showSecretRealm = ref(false);
-const battleStartTime = ref(0);
 const nowTick = ref(Date.now());
 let nowTickTimer: number | null = null;
 watch(showStats, (v) => {
@@ -3635,14 +3654,14 @@ function showToast(msg: string, type: 'success' | 'error' | 'info' = 'info', dur
   toastTimer = window.setTimeout(() => { toastVisible.value = false; }, duration);
 }
 
-// 历练时间计算（nowTick 每秒响应式刷新）
+// 历练时间计算（nowTick 每秒响应式刷新；battleStartTime 由 store 在每次 startBattle 时重置）
 const battleMinutes = computed(() => {
-  if (!battleStartTime.value) return 0;
-  return (nowTick.value - battleStartTime.value) / 60000;
+  if (!gameStore.battleStartTime) return 0;
+  return (nowTick.value - gameStore.battleStartTime) / 60000;
 });
 
 const battleTimeStr = computed(() => {
-  const ms = nowTick.value - (battleStartTime.value || nowTick.value);
+  const ms = nowTick.value - (gameStore.battleStartTime || nowTick.value);
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
   const h = Math.floor(m / 60);

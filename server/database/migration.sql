@@ -1082,3 +1082,6 @@ ALTER TABLE spirit_vein_raid
 -- 总贡献（累计获得，不会被消耗，用于职位任命资格判断）
 ALTER TABLE sect_members ADD COLUMN IF NOT EXISTS total_contribution BIGINT DEFAULT 0;
 UPDATE sect_members SET total_contribution = contribution WHERE total_contribution = 0 AND contribution > 0;
+
+-- 境界突破保底（2026-04-28）：连续突破失败次数，每次 +5% 成功率，成功后清零
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS breakthrough_fail_streak SMALLINT NOT NULL DEFAULT 0;

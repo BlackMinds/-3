@@ -7,7 +7,7 @@
  *   (练气/筑基 100%;金丹起小境界也有失败概率,大境界整体偏低)
  * - 成功: 扣除本阶段所需修为,升级 stage 或 tier+1
  * - 失败: 扣除当前修为一定比例(BREAKTHROUGH_PENALTIES),境界不变
- * - 飞升末阶不能再突破
+ * - 混元末阶不能再突破
  */
 
 import { getPool } from '~/server/database/db'
@@ -17,6 +17,7 @@ import {
   getBreakthroughRate,
   getBreakthroughFailPenalty,
 } from '~/server/utils/realm'
+import { BREAKTHROUGH_FAIL_BOOST_PER_STREAK } from '~/shared/balance'
 import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
@@ -33,10 +34,10 @@ export default defineEventHandler(async (event) => {
     const stage = Math.max(1, char.realm_stage || 1)
     const exp = Math.max(0, Number(char.cultivation_exp || 0))
 
-    // 飞升末阶不能突
+    // 混元末阶不能突
     const t = REALM_TIERS.find(r => r.tier === tier)
     if (!t) return { code: 400, message: '境界数据异常' }
-    if (tier === 8 && stage >= t.stages) {
+    if (tier === 9 && stage >= t.stages) {
       return { code: 400, message: '已达巅峰,无法再突破' }
     }
 
@@ -46,11 +47,13 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '修为不足,继续修炼' }
     }
 
-    // 判定成功率 (突破丹激活 +N%, 上限 100%)
+    // 判定成功率 (突破丹 +N%、保底每连续失败 +5%, 上限 100%)
     const baseRate = getBreakthroughRate(tier, stage)
     const boostPct = Number(char.breakthrough_boost_pct || 0)
     const usedBoost = boostPct > 0
-    const rate = usedBoost ? Math.min(1, baseRate + boostPct / 100) : baseRate
+    const failStreak = Math.max(0, Number(char.breakthrough_fail_streak || 0))
+    const failStreakBonus = failStreak * BREAKTHROUGH_FAIL_BOOST_PER_STREAK
+    const rate = Math.min(1, baseRate + (usedBoost ? boostPct / 100 : 0) + failStreakBonus)
     const isCrossBigRealm = stage >= t.stages  // 跨大境界
     const rolled = Math.random()
     const success = rolled < rate
@@ -82,7 +85,7 @@ export default defineEventHandler(async (event) => {
         const realLost = Math.floor(curExp * penalty)
         const realNewExp = curExp - realLost
         await client.query(
-          'UPDATE characters SET cultivation_exp = $1, breakthrough_boost_pct = 0 WHERE id = $2',
+          'UPDATE characters SET cultivation_exp = $1, breakthrough_boost_pct = 0, breakthrough_fail_streak = breakthrough_fail_streak + 1 WHERE id = $2',
           [realNewExp, char.id]
         )
         await client.query('COMMIT')
@@ -94,6 +97,8 @@ export default defineEventHandler(async (event) => {
       }
 
       const { rows: updated } = await pool.query('SELECT * FROM characters WHERE id = $1', [char.id])
+      const newStreak = failStreak + 1
+      const nextStreakBonusPct = Math.round(newStreak * BREAKTHROUGH_FAIL_BOOST_PER_STREAK * 100)
       return {
         code: 200,
         data: {
@@ -102,10 +107,12 @@ export default defineEventHandler(async (event) => {
           baseRate,
           usedBoost,
           boostPct,
+          failStreak: newStreak,
+          failStreakBonusPct: nextStreakBonusPct,
           rolled,
           penalty,
           lost,
-          message: `突破失败! 成功率 ${Math.round(rate * 100)}%${usedBoost ? ` (含突破丹 +${boostPct}%)` : ''}, 走火入魔损失 ${Math.round(penalty * 100)}% 修为`,
+          message: `突破失败! 成功率 ${Math.round(rate * 100)}%${usedBoost ? ` (含突破丹 +${boostPct}%)` : ''}${failStreak > 0 ? ` (含保底 +${Math.round(failStreakBonus * 100)}%)` : ''}, 走火入魔损失 ${Math.round(penalty * 100)}% 修为 · 下次保底 +${nextStreakBonusPct}%`,
           character: updated[0],
         },
       }
@@ -147,7 +154,7 @@ export default defineEventHandler(async (event) => {
       }
 
       await client.query(
-        'UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, breakthrough_boost_pct = 0 WHERE id = $4',
+        'UPDATE characters SET cultivation_exp = $1, realm_tier = $2, realm_stage = $3, breakthrough_boost_pct = 0, breakthrough_fail_streak = 0 WHERE id = $4',
         [newExp, newTier, newStage, char.id]
       )
       await client.query('COMMIT')
@@ -174,6 +181,8 @@ export default defineEventHandler(async (event) => {
         baseRate,
         usedBoost,
         boostPct,
+        failStreak: 0,
+        prevFailStreak: failStreak,
         rolled,
         crossBigRealm: isCrossBigRealm,
         newTier,

@@ -68,6 +68,17 @@
       "breakthrough_type": "tribulation",
       "tribulation_difficulty": "immortal",
       "expected_days": "150+"
+    },
+    {
+      "tier": 9, "realm": "混元", "stages": 5,
+      "stage_names": ["合道", "证道", "太上", "太极", "无极"],
+      "base_power": 180000, "power_multiplier": 800.0,
+      "unlock_content": ["T11 鸿蒙之海/九天玄宫", "T12 永恒虚空/创世之境", "T11/T12 装备"],
+      "breakthrough_type": "tribulation",
+      "tribulation_difficulty": "supreme",
+      "expected_days": "300+",
+      "no_realm_bonus": true,
+      "note": "纯荣誉境界 — 大罗金仙之上的修为高度，不再提供属性加成，玩家在飞升·大罗金仙时已达数值上限；混元仅解锁 T11/T12 终极地图，让顶端玩家有继续刷的目标。"
     }
   ],
 
@@ -76,7 +87,8 @@
     "base_exp": 100,
     "tier_multipliers": {
       "练气": 1, "筑基": 10, "金丹": 50, "元婴": 200,
-      "化神": 800, "渡劫": 3000, "大乘": 10000, "飞升": 50000
+      "化神": 800, "渡劫": 3000, "大乘": 10000, "飞升": 50000,
+      "混元": 50000
     }
   },
 

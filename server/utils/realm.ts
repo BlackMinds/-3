@@ -13,6 +13,7 @@ export const REALM_TIERS = [
   { tier: 6, stages: 3,  exp_multiplier: 3000 },
   { tier: 7, stages: 3,  exp_multiplier: 8000 },
   { tier: 8, stages: 5,  exp_multiplier: 15000 },
+  { tier: 9, stages: 5,  exp_multiplier: 50000 },
 ] as const
 
 export function getExpRequired(tier: number, stage: number): number {
@@ -25,15 +26,19 @@ export function getExpRequired(tier: number, stage: number): number {
 /**
  * 累加修为,不自动突破(v3.2 改为手动突破)。
  * 修为可以累积超过当前境界所需,等待玩家点击"突破"按钮手动升级。
- * 飞升末阶(tier=8 stage=5)的修为软封顶,避免无限累加显示难看。
+ * 混元末阶(tier=9 stage=5)的修为软封顶,避免无限累加显示难看。
  */
 // 等级所需经验（与前端 stores/game.ts levelExpRequired 保持一致）
+// v3.4.4: lv>150 段拆为 151~200 / 201~300 两段过渡，与境界修为曲线脱钩；
+// 前期 (≤150) 完全不变，保护爽感期；累计 1→300 ≈ 9.7 亿（旧 1.5 亿）。
+// 衔接处 150→151 跳 4.3x、200→201 跳 4.3x（跨"飞升关口"语感合理）。
 export function getLevelExpRequired(lv: number): number {
   if (lv >= 300) return Infinity
   if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
   if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
   if (lv <= 150) return Math.floor(180 * Math.pow(lv, 1.42))
-  return Math.floor(320 * Math.pow(lv, 1.48))
+  if (lv <= 200) return Math.floor(400 * Math.pow(lv, 1.55))
+  return Math.floor(1000 * Math.pow(lv, 1.65))
 }
 
 /**
@@ -65,11 +70,11 @@ export function applyCultivationExp(
   const stage = Math.max(1, realmStage || 1)
   let exp = Math.max(0, cultivationExp)
 
-  // 飞升末阶软封顶: 修为不再超过当前阶段所需 (避免无限累加)
-  if (tier === 8) {
-    const t = REALM_TIERS.find(r => r.tier === 8)
+  // 混元末阶软封顶: 修为不再超过当前阶段所需 (避免无限累加)
+  if (tier === 9) {
+    const t = REALM_TIERS.find(r => r.tier === 9)
     if (t && stage >= t.stages) {
-      const req = getExpRequired(8, t.stages)
+      const req = getExpRequired(9, t.stages)
       exp = Math.min(exp, req)
     }
   }
