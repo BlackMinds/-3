@@ -219,6 +219,11 @@ export function resolve(bookId: string, stones: (string | null)[], opts: Resolve
   if (skill.debuff) {
     skill.debuff.chance = Math.min(1, skill.debuff.chance + chanceBonus + rootChanceBonus)
     skill.debuff.duration = skill.debuff.duration + durationBonus + rootDurationBonus
+    // 硬控类 debuff 持续封顶 3 回合（防止"全场 5+ 回合无法行动"）
+    const HARD_CTRL = new Set(['freeze', 'stun', 'silence', 'root'])
+    if (HARD_CTRL.has(skill.debuff.type)) {
+      skill.debuff.duration = Math.min(3, skill.debuff.duration)
+    }
   }
   if (skill.buff) {
     skill.buff.duration = skill.buff.duration + durationBonus + rootDurationBonus

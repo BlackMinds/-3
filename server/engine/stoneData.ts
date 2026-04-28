@@ -24,19 +24,19 @@ export const CORE_DMG_STONES: Stone[] = [
     id: 'core_thunder', name: '雷霆核心', type: 'core', rarity: 'purple', element: 'metal',
     description: '造成 250% 伤害，附眩晕（10% / 1回合）',
     effect: { baseMultiplier: 2.5, debuff: { type: 'stun', chance: 0.10, duration: 1 } },
-    forSkillTypes: ['active', 'divine'],
+    forSkillTypes: ['divine'],
   },
   {
     id: 'core_void_slash', name: '虚空核心', type: 'core', rarity: 'gold', element: null,
     description: '造成 400% 伤害，无视 20% 防御',
     effect: { baseMultiplier: 4.0, ignoreDef: 0.20 },
-    forSkillTypes: ['active', 'divine'],
+    forSkillTypes: ['divine'],
   },
   {
     id: 'core_chaos_sword', name: '混沌剑意', type: 'core', rarity: 'red', element: null,
     description: '造成 800% 伤害，无视 30% 防御',
     effect: { baseMultiplier: 8.0, ignoreDef: 0.30 },
-    forSkillTypes: ['active', 'divine'],
+    forSkillTypes: ['divine'],
   },
 ]
 
@@ -94,7 +94,7 @@ export const CORE_DEBUFF_STONES: Stone[] = [
     id: 'core_stun', name: '眩晕核心', type: 'core', rarity: 'purple', element: 'metal',
     description: '造成 250% 伤害，附眩晕（8% / 1回合）',
     effect: { baseMultiplier: 2.5, debuff: { type: 'stun', chance: 0.08, duration: 1 } },
-    forSkillTypes: ['active', 'divine'],
+    forSkillTypes: ['divine'],
   },
   {
     id: 'core_atk_debuff', name: '破灭核心', type: 'core', rarity: 'purple', element: 'wood',
@@ -110,8 +110,8 @@ export const CORE_DEBUFF_STONES: Stone[] = [
   },
   {
     id: 'core_timestop', name: '时停核心', type: 'core', rarity: 'red', element: null,
-    description: '必定冻结敌方 2 回合（不造成直接伤害）',
-    effect: { baseMultiplier: 0, debuff: { type: 'freeze', chance: 1.0, duration: 2 } },
+    description: '必定冻结敌方 2 回合（不造成直接伤害，单体）',
+    effect: { baseMultiplier: 0, debuff: { type: 'freeze', chance: 1.0, duration: 2 }, mutexTags: ['target'] },
     forSkillTypes: ['divine'],
   },
 ]
@@ -256,19 +256,19 @@ export const AMP_STONES: Stone[] = [
   { id: 'amp_duration_long', name: '长驻石', type: 'amp', rarity: 'purple', element: null,
     description: 'Buff/Debuff 持续 +2 回合', effect: { durationBonus: 2 } },
 
-  // 目标数（互斥：target 系列互斥，且与 multi_hit 互斥）
+  // 目标数（互斥：target 系列互斥，且与 multi_hit 互斥；仅限神通）
   { id: 'amp_target_2', name: '双目标石', type: 'amp', rarity: 'blue', element: null,
-    description: '目标 1→2', effect: { targetCountBonus: 1, mutexTags: ['target', 'multi_hit'] } },
+    description: '目标 1→2', effect: { targetCountBonus: 1, mutexTags: ['target', 'multi_hit'] }, forSkillTypes: ['divine'] },
   { id: 'amp_target_3', name: '三目标石', type: 'amp', rarity: 'purple', element: null,
-    description: '目标 1→3', effect: { targetCountBonus: 2, mutexTags: ['target', 'multi_hit'] } },
+    description: '目标 1→3', effect: { targetCountBonus: 2, mutexTags: ['target', 'multi_hit'] }, forSkillTypes: ['divine'] },
   { id: 'amp_target_all', name: '群攻石', type: 'amp', rarity: 'gold', element: null,
-    description: '目标 1→全体', effect: { isAoe: true, mutexTags: ['target', 'multi_hit'] } },
+    description: '目标 1→全体', effect: { isAoe: true, mutexTags: ['target', 'multi_hit'] }, forSkillTypes: ['divine'] },
 
-  // 多段（互斥：同上）
+  // 多段（互斥：同上；仅限神通）
   { id: 'amp_multi_hit_3', name: '三段石', type: 'amp', rarity: 'purple', element: null,
-    description: '单次→分 3 段', effect: { hitCountBonus: 3, mutexTags: ['multi_hit', 'target'] } },
+    description: '单次→分 3 段', effect: { hitCountBonus: 3, mutexTags: ['multi_hit', 'target'] }, forSkillTypes: ['divine'] },
   { id: 'amp_multi_hit_5', name: '五段石', type: 'amp', rarity: 'gold', element: null,
-    description: '单次→分 5 段', effect: { hitCountBonus: 5, mutexTags: ['multi_hit', 'target'] } },
+    description: '单次→分 5 段', effect: { hitCountBonus: 5, mutexTags: ['multi_hit', 'target'] }, forSkillTypes: ['divine'] },
 
   // CD
   { id: 'amp_cd_cut', name: '缩时石', type: 'amp', rarity: 'purple', element: null,
@@ -367,34 +367,44 @@ export const TRIGGER_STONES: Stone[] = [
 
 // ========== 质变石（Ultimate） ==========
 // 每本书最多 1 颗
+// 主修每回合自动施展（无 CD），所以爆发型/连锁型质变石只允许装神通书
 export const ULTIMATE_STONES: Stone[] = [
   { id: 'ult_lifesteal', name: '吸血石', type: 'ultimate', rarity: 'purple', element: null,
     description: '造成的伤害 30% 转为回血',
-    effect: { ultType: 'lifesteal', ultValue: 0.30 } },
+    effect: { ultType: 'lifesteal', ultValue: 0.30 },
+    forSkillTypes: ['divine'] },
   { id: 'ult_overflow_dmg', name: '溢出斩杀石', type: 'ultimate', rarity: 'gold', element: null,
     description: '目标死亡时溢出伤害打下一只',
-    effect: { ultType: 'overflow_dmg' } },
+    effect: { ultType: 'overflow_dmg' },
+    forSkillTypes: ['divine'] },
   { id: 'ult_overflow_heal', name: '溢出反伤石', type: 'ultimate', rarity: 'gold', element: null,
     description: '治疗溢出时对敌方造成等量伤害',
-    effect: { ultType: 'overflow_heal' } },
+    effect: { ultType: 'overflow_heal' },
+    forSkillTypes: ['active', 'divine'] },
   { id: 'ult_chain', name: '连锁石', type: 'ultimate', rarity: 'gold', element: null,
     description: '伤害技能对第二目标造成 60% 伤害',
-    effect: { ultType: 'chain', ultValue: 0.60 } },
+    effect: { ultType: 'chain', ultValue: 0.60 },
+    forSkillTypes: ['divine'] },
   { id: 'ult_heal_share', name: '分摊回血石', type: 'ultimate', rarity: 'purple', element: null,
     description: '回复技能同时治疗血量最低的第二人',
-    effect: { ultType: 'heal_share' } },
+    effect: { ultType: 'heal_share' },
+    forSkillTypes: ['active', 'divine'] },
   { id: 'ult_reflect', name: '荆棘之身石', type: 'ultimate', rarity: 'purple', element: null,
     description: '受击反弹 20% 伤害（永久）',
-    effect: { ultType: 'reflect', ultValue: 0.20 } },
+    effect: { ultType: 'reflect', ultValue: 0.20 },
+    forSkillTypes: ['active', 'divine', 'passive'] },
   { id: 'ult_dot_detonate', name: 'DOT 引爆石', type: 'ultimate', rarity: 'gold', element: null,
     description: '敌方 DOT 剩余层数 ×15% 作为直接伤害',
-    effect: { ultType: 'dot_detonate', ultValue: 0.15 } },
+    effect: { ultType: 'dot_detonate', ultValue: 0.15 },
+    forSkillTypes: ['divine'] },
   { id: 'ult_regen_to_atk', name: '生生不息之怒', type: 'ultimate', rarity: 'red', element: null,
     description: '每回合回血时同时 ATK+5%（最多 3 层）',
-    effect: { ultType: 'regen_to_atk', ultValue: 0.05 } },
+    effect: { ultType: 'regen_to_atk', ultValue: 0.05 },
+    forSkillTypes: ['active', 'divine', 'passive'] },
   { id: 'ult_true_damage', name: '真伤石', type: 'ultimate', rarity: 'red', element: null,
     description: '伤害无视所有防御和抗性，但倍率降为 70%',
-    effect: { ultType: 'true_damage', ultValue: 0.70 } },
+    effect: { ultType: 'true_damage', ultValue: 0.70 },
+    forSkillTypes: ['divine'] },
 ]
 
 // ========== 聚合 ==========
