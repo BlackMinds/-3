@@ -712,7 +712,8 @@ export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
     const body = await readBody(event)
-    const { map_id, auto_sell, auto_sell_tier } = body
+    const { map_id, auto_sell, auto_sell_tier, auto_sell_set_blacklist } = body
+    const setBlacklist: Set<string> = new Set(Array.isArray(auto_sell_set_blacklist) ? auto_sell_set_blacklist : [])
     const batchCount = Math.max(1, Math.min(BATCH_MAX, Number(body.batch_count) || 1))
     if (!map_id) return { code: 400, message: '缺少地图ID' }
 
@@ -933,7 +934,10 @@ export default defineEventHandler(async (event) => {
               const d = drop.data
               const itemIdx = RARITY_ORDER.indexOf(d.rarity)
               const itemTier = d.tier || 1
-              if (autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
+              // 自动出售默认跳过套装件（玩家不需要手动锁定每件套装；批量出售保留 locked 字段控制）
+              // 但若该套装在黑名单内（玩家明确不想要），则跟普通装备一样按品质/阶位规则判定
+              const isProtectedSet = !!d.set_id && !setBlacklist.has(d.set_id)
+              if (!isProtectedSet && autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
                 const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
                 autoSellIncome += price
                 result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })

@@ -2956,7 +2956,7 @@
           <!-- 自动出售 -->
           <div class="settings-section">
             <div class="settings-title">自动出售</div>
-            <p class="settings-desc">战斗掉落的装备同时满足品质和阶位条件时自动出售为灵石</p>
+            <p class="settings-desc">战斗掉落的装备同时满足品质和阶位条件时自动出售为灵石；套装件默认保留，可在右侧勾选不需要的套装一并自动出售</p>
             <div class="auto-sell-group">
               <div class="auto-sell-col">
                 <div class="auto-sell-subtitle">品质筛选</div>
@@ -2976,11 +2976,21 @@
                   </label>
                 </div>
               </div>
+              <div class="auto-sell-col">
+                <div class="auto-sell-subtitle">套装筛选（勾选 = 不要，会被自动卖）</div>
+                <div class="auto-sell-options">
+                  <label v-for="s in EQUIP_SETS" :key="s.setKey" class="auto-sell-label" :title="s.desc">
+                    <input type="checkbox" :value="s.setKey" v-model="autoSellSetBlacklist" @change="saveSettings" />
+                    <span style="color: #ffd35e;">{{ s.name }}</span>
+                  </label>
+                </div>
+              </div>
             </div>
             <p class="settings-hint">
               当前: {{ autoSellThreshold === 'none' ? '不自动出售' :
                 '自动出售 ' + autoSellOptions.find(o => o.value === autoSellThreshold)?.label +
-                (autoSellTier > 0 ? ' 且 T' + autoSellTier + '及以下阶位' : '（不限阶位）') + ' 的装备' }}
+                (autoSellTier > 0 ? ' 且 T' + autoSellTier + '及以下阶位' : '（不限阶位）') + ' 的装备' +
+                (autoSellSetBlacklist.length > 0 ? '；含不要的套装：' + autoSellSetBlacklist.map(k => EQUIP_SET_MAP[k]?.name).filter(Boolean).join('、') : '；保留全部套装') }}
             </p>
           </div>
 
@@ -3432,6 +3442,7 @@ const autoSellOptions = [
   { value: 'blue',   label: '法器(蓝)以下', color: '#0066FF' },
   { value: 'purple', label: '灵宝(紫)以下', color: '#9933FF' },
   { value: 'gold',   label: '仙器(金)以下', color: '#FFAA00' },
+  { value: 'red',    label: '太古(红)以下', color: '#FF3344' },
 ];
 const autoSellThreshold = ref('none');
 
@@ -3445,8 +3456,14 @@ const autoSellTierOptions = [
   { value: 6, label: 'T6及以下' },
   { value: 7, label: 'T7及以下' },
   { value: 8, label: 'T8及以下' },
+  { value: 9, label: 'T9及以下' },
+  { value: 10, label: 'T10及以下' },
+  { value: 11, label: 'T11及以下' },
+  { value: 12, label: 'T12及以下' },
 ];
 const autoSellTier = ref(0);
+// 套装黑名单：勾选 = 这些套装的装备件不保留，会跟普通装备一起被自动出售
+const autoSellSetBlacklist = ref<string[]>([]);
 
 // ===== 设置: 字体 & 战斗日志字体大小 =====
 const DEFAULT_FONT_FAMILY = "'Noto Serif SC', 'STSong', 'SimSun', serif";
@@ -3487,6 +3504,7 @@ function saveSettings() {
     customText: customTextColor.value,
     autoSell: autoSellThreshold.value,
     autoSellTier: autoSellTier.value,
+    autoSellSetBlacklist: autoSellSetBlacklist.value,
     uiFontFamily: uiFontFamily.value,
     battleLogFontSize: battleLogFontSize.value,
   };
@@ -3500,6 +3518,7 @@ function loadSettings() {
     const settings = JSON.parse(raw);
     autoSellThreshold.value = settings.autoSell || 'none';
     autoSellTier.value = settings.autoSellTier || 0;
+    autoSellSetBlacklist.value = Array.isArray(settings.autoSellSetBlacklist) ? settings.autoSellSetBlacklist : [];
     if (settings.uiFontFamily) {
       uiFontFamily.value = settings.uiFontFamily;
       document.documentElement.style.setProperty('--ui-font-family', uiFontFamily.value);

@@ -313,10 +313,12 @@ export const useGameStore = defineStore('game', () => {
     try {
       let autoSell = 'none'
       let autoSellTier = 0
+      let autoSellSetBlacklist: string[] = []
       try {
         const s = JSON.parse(localStorage.getItem('xiantu_settings') || '{}')
         autoSell = s.autoSell || 'none'
         autoSellTier = s.autoSellTier || 0
+        autoSellSetBlacklist = Array.isArray(s.autoSellSetBlacklist) ? s.autoSellSetBlacklist : []
       } catch {}
 
       const res: any = await fetchApi('/battle/fight', {
@@ -325,6 +327,7 @@ export const useGameStore = defineStore('game', () => {
           map_id: currentMapId.value,
           auto_sell: autoSell,
           auto_sell_tier: autoSellTier,
+          auto_sell_set_blacklist: autoSellSetBlacklist,
           batch_count: BATCH_COUNT,
         },
       })
