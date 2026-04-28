@@ -43,21 +43,45 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: `本周购买上限 ${item.weeklyLimit} 件（已购 ${bought}）` }
     }
 
-    // 扣秘境积分（带条件防并发）
-    const { rowCount: deducted } = await client.query(
-      'UPDATE characters SET realm_points = realm_points - $1 WHERE id = $2 AND realm_points >= $1',
-      [totalCost, char.id]
-    )
-    if (!deducted) {
-      await client.query('ROLLBACK')
-      return { code: 400, message: `秘境积分不足（需 ${totalCost}）` }
+    if (item.exchangeFrom) {
+      // 兑换型：扣源道具，不扣 realm_points
+      const required = item.exchangeFrom.qty * quantity
+      const { rows: srcRows } = await client.query(
+        `SELECT id FROM character_pills
+         WHERE character_id = $1 AND pill_id = $2 AND count >= $3
+         LIMIT 1 FOR UPDATE`,
+        [char.id, item.exchangeFrom.pillId, required]
+      )
+      if (srcRows.length === 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: `兑换所需道具不足（需 ${required} 个）` }
+      }
+      const { rowCount: consumed } = await client.query(
+        'UPDATE character_pills SET count = count - $1 WHERE id = $2 AND count >= $1',
+        [required, srcRows[0].id]
+      )
+      if (!consumed) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: `兑换所需道具不足（需 ${required} 个）` }
+      }
+      await client.query('DELETE FROM character_pills WHERE id = $1 AND count <= 0', [srcRows[0].id])
+    } else {
+      // 扣秘境积分（带条件防并发）
+      const { rowCount: deducted } = await client.query(
+        'UPDATE characters SET realm_points = realm_points - $1 WHERE id = $2 AND realm_points >= $1',
+        [totalCost, char.id]
+      )
+      if (!deducted) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: `秘境积分不足（需 ${totalCost}）` }
+      }
     }
 
-    // 记录购买
+    // 记录购买（兑换型 cost_points = 0）
     await client.query(
       `INSERT INTO realm_shop_purchases (character_id, item_key, quantity, cost_points, week_start)
        VALUES ($1, $2, $3, $4, $5)`,
-      [char.id, itemKey, quantity, totalCost, ws]
+      [char.id, itemKey, quantity, item.exchangeFrom ? 0 : totalCost, ws]
     )
 
     // 入库到 character_pills

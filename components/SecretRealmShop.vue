@@ -22,7 +22,11 @@
               🔒 需 {{ realmTierName(item.req_realm_tier) }} · Lv.{{ item.req_level }}
             </div>
             <div class="shop-item-foot">
-              <span class="shop-item-cost">🪙 {{ item.cost }}</span>
+              <span v-if="item.exchange_from" class="shop-item-cost shop-item-cost-exchange">
+                {{ pillName(item.exchange_from.pill_id) }} ×{{ item.exchange_from.qty }}
+                <span class="shop-item-owned">（拥有 {{ ownedPills[item.exchange_from.pill_id] || 0 }}）</span>
+              </span>
+              <span v-else class="shop-item-cost">🪙 {{ item.cost }}</span>
               <button class="shop-buy-btn"
                       :disabled="!canBuy(item) || buying === item.key"
                       @click="buy(item)">
@@ -52,6 +56,13 @@ interface ShopItem {
   req_realm_tier: number
   req_level: number
   unlocked: boolean
+  exchange_from?: { pill_id: string; qty: number }
+}
+
+// 兑换型条目源道具中文名（仅 UI 显示用）
+const PILL_NAME_MAP: Record<string, string> = {
+  awaken_stone: '附灵石',
+  awaken_reroll: '灵枢玉',
 }
 
 const loading = ref(true)
@@ -59,6 +70,7 @@ const buying = ref('')
 const realmPoints = ref(0)
 const boostPct = ref(0)
 const items = ref<ShopItem[]>([])
+const ownedPills = ref<Record<string, number>>({})
 
 const CATEGORY_ORDER = [
   { key: 'enhance_stone' as const, name: '🔨 强化石（T4-T10）' },
@@ -77,6 +89,10 @@ function realmTierName(t: number): string {
 function canBuy(item: ShopItem): boolean {
   if (!item.unlocked) return false
   if (item.bought >= item.weekly_limit) return false
+  if (item.exchange_from) {
+    const owned = ownedPills.value[item.exchange_from.pill_id] || 0
+    return owned >= item.exchange_from.qty
+  }
   if (realmPoints.value < item.cost) return false
   return true
 }
@@ -84,8 +100,17 @@ function canBuy(item: ShopItem): boolean {
 function buyLabel(item: ShopItem): string {
   if (!item.unlocked) return '未解锁'
   if (item.bought >= item.weekly_limit) return '已售罄'
+  if (item.exchange_from) {
+    const owned = ownedPills.value[item.exchange_from.pill_id] || 0
+    if (owned < item.exchange_from.qty) return '材料不足'
+    return '兑换'
+  }
   if (realmPoints.value < item.cost) return '积分不足'
   return '购买'
+}
+
+function pillName(id: string): string {
+  return PILL_NAME_MAP[id] || id
 }
 
 async function refresh() {
@@ -97,6 +122,7 @@ async function refresh() {
       realmPoints.value = res.data.realm_points
       boostPct.value = res.data.breakthrough_boost_pct || 0
       items.value = res.data.items
+      ownedPills.value = res.data.owned_pills || {}
     }
   } catch (e) {
     console.error('fetch shop list error:', e)
@@ -117,6 +143,11 @@ async function buy(item: ShopItem) {
     if (res.code === 200) {
       realmPoints.value = res.data.realm_points
       item.bought = res.data.bought
+      // 兑换型：本地扣减源道具库存（避免重新拉接口）
+      if (item.exchange_from) {
+        const id = item.exchange_from.pill_id
+        ownedPills.value[id] = Math.max(0, (ownedPills.value[id] || 0) - item.exchange_from.qty)
+      }
       emit('updated')
     } else {
       alert(res.message || '购买失败')
@@ -173,6 +204,8 @@ onMounted(refresh)
   margin-top: 4px;
 }
 .shop-item-cost { color: #e8c58f; font-size: 13px; font-weight: bold; }
+.shop-item-cost-exchange { color: #d8b4ff; }
+.shop-item-owned { color: #9ea3ad; font-weight: normal; font-size: 11px; margin-left: 2px; }
 .shop-buy-btn {
   background: #3a4a2e; color: #a3c972; border: 1px solid #5a7346;
   padding: 4px 14px; border-radius: 4px; cursor: pointer; font-size: 12px;

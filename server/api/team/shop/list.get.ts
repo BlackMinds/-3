@@ -24,6 +24,23 @@ export default defineEventHandler(async (event) => {
     const realmTier = Number(char.realm_tier || 1)
     const level = Number(char.level || 1)
 
+    // 收集所有兑换型条目所需的源道具 pill_id，一次查出库存返回前端做"道具不足"灰按钮判断
+    const exchangePillIds = Array.from(new Set(
+      REALM_SHOP_ITEMS.map(i => i.exchangeFrom?.pillId).filter((x): x is string => !!x)
+    ))
+    const ownedPills: Record<string, number> = {}
+    if (exchangePillIds.length > 0) {
+      const { rows: pillRows } = await pool.query(
+        `SELECT pill_id, COALESCE(SUM(count), 0)::int AS count
+         FROM character_pills
+         WHERE character_id = $1 AND pill_id = ANY($2::text[])
+         GROUP BY pill_id`,
+        [char.id, exchangePillIds]
+      )
+      for (const r of pillRows) ownedPills[r.pill_id] = Number(r.count)
+      for (const id of exchangePillIds) if (!(id in ownedPills)) ownedPills[id] = 0
+    }
+
     const items = REALM_SHOP_ITEMS.map(item => ({
       key: item.key,
       name: item.name,
@@ -35,6 +52,7 @@ export default defineEventHandler(async (event) => {
       req_realm_tier: item.reqRealmTier,
       req_level: item.reqLevel,
       unlocked: isRealmShopItemUnlocked(item, realmTier, level),
+      exchange_from: item.exchangeFrom ? { pill_id: item.exchangeFrom.pillId, qty: item.exchangeFrom.qty } : undefined,
     }))
 
     return {
@@ -44,6 +62,7 @@ export default defineEventHandler(async (event) => {
         breakthrough_boost_pct: Number(char.breakthrough_boost_pct || 0),
         week_start: ws,
         items,
+        owned_pills: ownedPills,
       },
     }
   } catch (error) {
