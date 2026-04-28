@@ -134,6 +134,8 @@ export async function buildCharacterSnapshot(
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
+  // v3.7 反伤流派 PvP 对齐：装备副属性 REFLECT_PCT + 附灵 reflectPct (明镜甲/玄镜佩) 汇入 equipReflectPct
+  let equipReflectPct = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -179,6 +181,13 @@ export async function buildCharacterSnapshot(
       else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
       else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
       else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
+      else if (sub.stat === 'REFLECT_PCT') equipReflectPct += sub.value / 100
+    }
+
+    // v3.7 反伤附灵：reflectPct (明镜甲/玄镜佩) 汇入同池
+    const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
+    if (aw && aw.stat === 'reflectPct') {
+      equipReflectPct += Number(aw.value) || 0
     }
   }
 
@@ -297,7 +306,9 @@ export async function buildCharacterSnapshot(
     spiritualRoot: char.spiritual_root,
     armorPen, accuracy, elementDmg,
     spirit,
-  }
+    // v3.7 反伤流派 PvP 对齐：透传给 multiBattleEngine.buildPvpFighter
+    equipReflectPct,
+  } as any
 
   // 战力综合评分（用于匹配/赔率）
   const powerScore = Math.floor(atk * 2 + def * 2 + maxHp * 0.3 + spd * 1.5 + spirit * 1 + critRate * 500 + critDmg * 200)

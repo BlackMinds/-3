@@ -1383,18 +1383,11 @@ export function runWaveBattle(
       };
       // 后置反伤/触发（在伤害日志之后展示）
       const triggerRetaliate = (dmg: number, isCrit: boolean, sourceMonster: typeof m) => {
-        if (pe?.reflectPercent && pe.reflectPercent > 0) {
-          const rf = Math.floor(dmg * pe.reflectPercent);
-          if (rf > 0) {
-            sourceMonster.stats.hp -= rf;
-            logs.push({ turn, text: `  【反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
-          }
-        }
-        // 玩家 buff：明镜止水（reflect）按 dmg 百分比反弹, 单次反弹 cap = 玩家 ATK × 6
-        // 附加底量: 玩家 maxHP × 8% 独立叠加 (不受 cap), 给反弹一个体面下限, 不受小怪低伤害挤压
-        // v3.6: cap atk×4→×6, hpBonus 5%→8%；让反伤 mid-tier boss 也能构成威胁
-        // 副属性 REFLECT_PCT 通过 player.reflectPctBonus 叠加到 reflectSum
-        const reflectSum = sumPlayerBuff('reflect') + ((player as any).reflectPctBonus || 0);
+        // v3.7: 统一反伤池 —— 功法被动(荆棘之体) + 明镜止水 buff + 装备 REFLECT_PCT 副属性 + 反伤附灵 全部叠加
+        // 单次反弹 cap = 玩家 ATK × 6, 附加底量 maxHP × 8%（不受 cap）
+        const reflectSum = (pe?.reflectPercent || 0)
+                         + sumPlayerBuff('reflect')
+                         + ((player as any).reflectPctBonus || 0);
         if (reflectSum > 0 && dmg > 0) {
           const reflectCap = Math.floor(player.atk * 6);
           const baseRf = Math.min(Math.floor(dmg * reflectSum), reflectCap);
@@ -1402,7 +1395,7 @@ export function runWaveBattle(
           const rf = baseRf + hpBonus;
           if (rf > 0) {
             sourceMonster.stats.hp -= rf;
-            logs.push({ turn, text: `  【明镜反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
+            logs.push({ turn, text: `  【反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', ...snap() });
           }
         }
         if (pe?.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {

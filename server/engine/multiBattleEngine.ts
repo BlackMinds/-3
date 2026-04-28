@@ -105,6 +105,9 @@ export interface PvpFighter {
   divineCds: number[]
   passiveEffects: EquippedSkillInfo['passiveEffects']
 
+  // v3.7 反伤副属性 + 附灵 reflectPct (与功法被动 reflectPercent + 明镜止水 buff 同池)
+  reflectPctBonus: number
+
   // 附灵运行时状态
   awakenState: any
 
@@ -204,6 +207,9 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
     divineSkills: eq.divineSkills || [],
     divineCds: (eq.divineSkills || []).map(() => 0),
     passiveEffects: pe,
+
+    // v3.7 反伤副属性 / 反伤附灵：buildCharacterSnapshot 已聚合到 stats.equipReflectPct
+    reflectPctBonus: Number((s as any).equipReflectPct) || 0,
 
     awakenState: {
       burnOnHitChance: s.awaken?.burnOnHitChance || 0,
@@ -529,23 +535,37 @@ export function runPvpBattle(
   }
 
   // === 反伤 / 被动触发（受伤后）===
+  // v3.7 与 PvE 主引擎对齐：统一反伤池
+  function sumReflectBuff(f: PvpFighter): number {
+    let s = 0
+    for (const b of f.buffs) {
+      if (b.type === 'reflect' && b.value) s += b.value
+    }
+    return s
+  }
   function triggerRetaliate(attacker: PvpFighter, victim: PvpFighter, dmg: number, isCrit: boolean, turn: number) {
     const pe = victim.passiveEffects
-    if (!pe) return
-    if (pe.reflectPercent && pe.reflectPercent > 0) {
-      const rf = Math.floor(dmg * pe.reflectPercent)
+    // 统一池：功法被动 reflectPercent + 明镜止水 buff + 装备 REFLECT_PCT/反伤附灵
+    const reflectSum = (pe?.reflectPercent || 0)
+                     + sumReflectBuff(victim)
+                     + (victim.reflectPctBonus || 0)
+    if (reflectSum > 0 && dmg > 0) {
+      const reflectCap = Math.floor(victim.atk * 6)
+      const baseRf = Math.min(Math.floor(dmg * reflectSum), reflectCap)
+      const hpBonus = Math.floor(victim.maxHp * 0.08)
+      const rf = baseRf + hpBonus
       if (rf > 0) {
         attacker.hp -= rf
         log({ turn, type: 'normal', text: `  【反伤】${victim.name} 反弹 ${rf} 点伤害给 ${attacker.name}` })
       }
     }
-    if (pe.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
+    if (pe?.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
       tryApplyDebuff(attacker, attacker.name, { type: 'poison', chance: 1, duration: 2 }, victim.atk, turn, victim)
     }
-    if (pe.burnOnHitTaken && Math.random() < pe.burnOnHitTaken) {
+    if (pe?.burnOnHitTaken && Math.random() < pe.burnOnHitTaken) {
       tryApplyDebuff(attacker, attacker.name, { type: 'burn', chance: 1, duration: 2 }, victim.atk, turn, victim)
     }
-    if (isCrit && pe.reflectOnCrit && Math.random() < pe.reflectOnCrit) {
+    if (isCrit && pe?.reflectOnCrit && Math.random() < pe.reflectOnCrit) {
       const rfc = Math.floor(dmg * 0.5)
       attacker.hp -= rfc
       log({ turn, type: 'normal', text: `  【暴击反弹】${attacker.name} 受到 ${rfc} 点反震` })
