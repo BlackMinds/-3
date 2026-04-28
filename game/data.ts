@@ -413,9 +413,10 @@ export function getSkillSlotLimits(realmTier: number): SkillSlotLimits {
 
 // ========== 境界名格式化 ==========
 export function getRealmName(tier: number, stage: number): string {
-  const t = REALM_TIERS.find(r => r.tier === tier);
-  if (!t) return '未知';
-  const stageNamesByTier = REALM_STAGE_NAMES[tier];
+  // 防御兜底: tier 越界 (如 SQL 误改到 10+) 时回退到最高境界末阶,而不是显示"未知"
+  const t = REALM_TIERS.find(r => r.tier === tier) || REALM_TIERS[REALM_TIERS.length - 1];
+  const effectiveTier = t.tier;
+  const stageNamesByTier = REALM_STAGE_NAMES[effectiveTier];
   if (stageNamesByTier) {
     return stageNamesByTier[Math.min(stage - 1, stageNamesByTier.length - 1)] || t.realm;
   }
@@ -447,6 +448,7 @@ export function getUnlockedMaps(tier: number, stage: number): MapData[] {
     }
     // 混元(tier 9)的高阶 stage 解锁 T11/T12：合道(1)→T11，太极(4)→T12
     if (tier === 9) {
+      if (m.tier === 10) return true; // 混元已超 T8 大罗，T10 应自然解锁
       if (m.tier === 11) return true;
       if (m.tier === 12 && stage >= 4) return true;
     }

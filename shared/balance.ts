@@ -120,8 +120,12 @@ export function getRealmStageMultiplier(stage: number): number {
 }
 
 export function getRealmBonusAtLevel(tier: number, stage: number): RealmBonus {
-  const base = REALM_BONUSES[tier] || REALM_BONUSES[1]
-  const mul = getRealmStageMultiplier(stage)
+  // 混元境界 (tier 9+): 沿用飞升·大罗金仙 (tier 8 stage 5) 的属性加成,不再增长
+  // —— 玩家上混元后保留飞升所有加成,但混元各阶不再额外膨胀属性
+  const t = tier >= 9 ? 8 : tier
+  const s = tier >= 9 ? 5 : stage
+  const base = REALM_BONUSES[t] || REALM_BONUSES[1]
+  const mul = getRealmStageMultiplier(s)
   return {
     hp: Math.floor(base.hp * mul),
     atk: Math.floor(base.atk * mul),
