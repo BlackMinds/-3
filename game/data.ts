@@ -319,7 +319,7 @@ export const MAPS: MapData[] = [
     monsters: [
       { id: 'eternal_guardian', name: '永恒守卫', power: 300000, element: 'metal', exp: 1200000, spirit_stone_range: [3000000, 8000000], role: 'balanced', drop_table: 'common_t10' },
       { id: 'time_lord', name: '时间领主', power: 450000, element: 'water', exp: 1800000, spirit_stone_range: [3000000, 8000000], role: 'dps', drop_table: 'uncommon_t10' },
-      { id: 'creation_god', name: '创世之灵', power: 600000, element: null, exp: 2400000, spirit_stone_range: [8000000, 20000000], role: 'dps', drop_table: 'uncommon_t10' },
+      { id: 'creation_god', name: '创世之灵', power: 500000, element: null, exp: 2400000, spirit_stone_range: [8000000, 20000000], role: 'dps', drop_table: 'uncommon_t10' },
     ],
     boss: { id: 'eternal_one', name: '永恒之主', power: 1200000, element: null, exp: 12000000, spirit_stone_range: [50000000, 100000000], role: 'boss', drop_table: 'boss_t10' },
   },
@@ -331,7 +331,7 @@ export const MAPS: MapData[] = [
     monsters: [
       { id: 'chaos_leviathan', name: '鸿蒙巨鲲', power: 1200000, element: 'water', exp: 3600000, spirit_stone_range: [8000000, 20000000], role: 'balanced', drop_table: 'common_t11' },
       { id: 'origin_dragon', name: '本源龙神', power: 1600000, element: null, exp: 4800000, spirit_stone_range: [8000000, 20000000], role: 'dps', drop_table: 'uncommon_t11' },
-      { id: 'void_seraph', name: '虚空圣使', power: 2200000, element: 'metal', exp: 6600000, spirit_stone_range: [20000000, 50000000], role: 'dps', drop_table: 'uncommon_t11' },
+      { id: 'void_seraph', name: '虚空圣使', power: 1850000, element: 'metal', exp: 6600000, spirit_stone_range: [20000000, 50000000], role: 'dps', drop_table: 'uncommon_t11' },
     ],
     boss: { id: 'primal_emperor', name: '鸿蒙帝君', power: 4500000, element: null, exp: 30000000, spirit_stone_range: [100000000, 250000000], role: 'boss', drop_table: 'boss_t11' },
   },
@@ -342,7 +342,7 @@ export const MAPS: MapData[] = [
     monsters: [
       { id: 'celestial_marshal', name: '天庭元帅', power: 1500000, element: 'metal', exp: 4200000, spirit_stone_range: [8000000, 20000000], role: 'tank', drop_table: 'common_t11' },
       { id: 'star_general', name: '星辰大将', power: 2000000, element: 'fire', exp: 5400000, spirit_stone_range: [10000000, 25000000], role: 'dps', drop_table: 'uncommon_t11' },
-      { id: 'thunder_sovereign', name: '雷霆君主', power: 2600000, element: 'metal', exp: 7200000, spirit_stone_range: [25000000, 60000000], role: 'dps', drop_table: 'uncommon_t11' },
+      { id: 'thunder_sovereign', name: '雷霆君主', power: 2200000, element: 'metal', exp: 7200000, spirit_stone_range: [25000000, 60000000], role: 'dps', drop_table: 'uncommon_t11' },
     ],
     boss: { id: 'nine_heavens_lord', name: '九霄玉帝', power: 5500000, element: 'metal', exp: 36000000, spirit_stone_range: [120000000, 300000000], role: 'boss', drop_table: 'boss_t11' },
   },
@@ -354,7 +354,7 @@ export const MAPS: MapData[] = [
     monsters: [
       { id: 'void_titan', name: '虚空泰坦', power: 4500000, element: null, exp: 12000000, spirit_stone_range: [40000000, 100000000], role: 'tank', drop_table: 'common_t12' },
       { id: 'eternal_assassin', name: '永恒刺客', power: 6000000, element: null, exp: 16000000, spirit_stone_range: [40000000, 100000000], role: 'speed', drop_table: 'uncommon_t12' },
-      { id: 'origin_destroyer', name: '本源毁灭者', power: 8000000, element: 'fire', exp: 22000000, spirit_stone_range: [100000000, 250000000], role: 'dps', drop_table: 'uncommon_t12' },
+      { id: 'origin_destroyer', name: '本源毁灭者', power: 6700000, element: 'fire', exp: 22000000, spirit_stone_range: [100000000, 250000000], role: 'dps', drop_table: 'uncommon_t12' },
     ],
     boss: { id: 'void_sovereign', name: '虚空之主', power: 16000000, element: null, exp: 100000000, spirit_stone_range: [500000000, 1200000000], role: 'boss', drop_table: 'boss_t12' },
   },
@@ -365,7 +365,7 @@ export const MAPS: MapData[] = [
     monsters: [
       { id: 'genesis_guardian', name: '创世守卫', power: 6000000, element: 'earth', exp: 16000000, spirit_stone_range: [60000000, 150000000], role: 'tank', drop_table: 'common_t12' },
       { id: 'rule_arbiter', name: '法则裁定者', power: 8500000, element: null, exp: 22000000, spirit_stone_range: [60000000, 150000000], role: 'dps', drop_table: 'uncommon_t12' },
-      { id: 'doom_prophet', name: '终焉先知', power: 12000000, element: null, exp: 30000000, spirit_stone_range: [150000000, 350000000], role: 'dps', drop_table: 'uncommon_t12' },
+      { id: 'doom_prophet', name: '终焉先知', power: 10000000, element: null, exp: 30000000, spirit_stone_range: [150000000, 350000000], role: 'dps', drop_table: 'uncommon_t12' },
     ],
     boss: { id: 'genesis_god', name: '创世道祖', power: 25000000, element: null, exp: 150000000, spirit_stone_range: [800000000, 2000000000], role: 'boss', drop_table: 'boss_t12' },
   },

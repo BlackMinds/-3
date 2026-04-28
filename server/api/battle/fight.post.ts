@@ -3,6 +3,7 @@ import { generateMonsterStats, buildEquippedSkillInfo, runWaveBattle, buildMonst
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { generateEquipName } from '~/server/engine/equipNameData'
+import { rollEquipSet } from '~/server/engine/equipSetData'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
@@ -179,30 +180,30 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
   eternal_peak: { tier: 10, monsters: [
     { name: '永恒守卫', power: 300000, element: 'metal', exp: 28800, stone_min: 300000, stone_max: 800000, role: 'balanced', drop_table: 'common_t10' },
     { name: '时间领主', power: 450000, element: 'water', exp: 43200, stone_min: 300000, stone_max: 800000, role: 'dps', drop_table: 'uncommon_t10' },
-    { name: '创世之灵', power: 600000, element: null, exp: 57600, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t10' },
+    { name: '创世之灵', power: 500000, element: null, exp: 57600, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t10' },
   ], boss: { name: '永恒之主', power: 1200000, element: null, exp: 672000, stone_min: 5000000, stone_max: 10000000, role: 'boss', drop_table: 'boss_t10' } },
   // ===== T11 地图（混元境界专属，曲线对 T10 跨度 ~3-4x）=====
   // 经验/灵石继续按 ×0.4 / ×0.1 系数（与 T8+ 一致）
   primal_chaos_sea: { tier: 11, monsters: [
     { name: '鸿蒙巨鲲', power: 1200000, element: 'water', exp: 129600, stone_min: 800000, stone_max: 2000000, role: 'balanced', drop_table: 'common_t11' },
     { name: '本源龙神', power: 1600000, element: null, exp: 172800, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t11' },
-    { name: '虚空圣使', power: 2200000, element: 'metal', exp: 237600, stone_min: 2000000, stone_max: 5000000, role: 'dps', drop_table: 'uncommon_t11' },
+    { name: '虚空圣使', power: 1850000, element: 'metal', exp: 237600, stone_min: 2000000, stone_max: 5000000, role: 'dps', drop_table: 'uncommon_t11' },
   ], boss: { name: '鸿蒙帝君', power: 4500000, element: null, exp: 2280000, stone_min: 10000000, stone_max: 25000000, role: 'boss', drop_table: 'boss_t11' } },
   nine_heavens_court: { tier: 11, monsters: [
     { name: '天庭元帅', power: 1500000, element: 'metal', exp: 151200, stone_min: 800000, stone_max: 2000000, role: 'tank', drop_table: 'common_t11' },
     { name: '星辰大将', power: 2000000, element: 'fire', exp: 194400, stone_min: 1000000, stone_max: 2500000, role: 'dps', drop_table: 'uncommon_t11' },
-    { name: '雷霆君主', power: 2600000, element: 'metal', exp: 259200, stone_min: 2500000, stone_max: 6000000, role: 'dps', drop_table: 'uncommon_t11' },
+    { name: '雷霆君主', power: 2200000, element: 'metal', exp: 259200, stone_min: 2500000, stone_max: 6000000, role: 'dps', drop_table: 'uncommon_t11' },
   ], boss: { name: '九霄玉帝', power: 5500000, element: 'metal', exp: 2736000, stone_min: 12000000, stone_max: 30000000, role: 'boss', drop_table: 'boss_t11' } },
   // ===== T12 地图（混元·太极+ 准入，毕业级）=====
   eternal_void: { tier: 12, monsters: [
     { name: '虚空泰坦', power: 4500000, element: null, exp: 480000, stone_min: 4000000, stone_max: 10000000, role: 'tank', drop_table: 'common_t12' },
     { name: '永恒刺客', power: 6000000, element: null, exp: 640000, stone_min: 4000000, stone_max: 10000000, role: 'speed', drop_table: 'uncommon_t12' },
-    { name: '本源毁灭者', power: 8000000, element: 'fire', exp: 880000, stone_min: 10000000, stone_max: 25000000, role: 'dps', drop_table: 'uncommon_t12' },
+    { name: '本源毁灭者', power: 6700000, element: 'fire', exp: 880000, stone_min: 10000000, stone_max: 25000000, role: 'dps', drop_table: 'uncommon_t12' },
   ], boss: { name: '虚空之主', power: 16000000, element: null, exp: 8000000, stone_min: 50000000, stone_max: 120000000, role: 'boss', drop_table: 'boss_t12' } },
   genesis_realm: { tier: 12, monsters: [
     { name: '创世守卫', power: 6000000, element: 'earth', exp: 640000, stone_min: 6000000, stone_max: 15000000, role: 'tank', drop_table: 'common_t12' },
     { name: '法则裁定者', power: 8500000, element: null, exp: 880000, stone_min: 6000000, stone_max: 15000000, role: 'dps', drop_table: 'uncommon_t12' },
-    { name: '终焉先知', power: 12000000, element: null, exp: 1200000, stone_min: 15000000, stone_max: 35000000, role: 'dps', drop_table: 'uncommon_t12' },
+    { name: '终焉先知', power: 10000000, element: null, exp: 1200000, stone_min: 15000000, stone_max: 35000000, role: 'dps', drop_table: 'uncommon_t12' },
   ], boss: { name: '创世道祖', power: 25000000, element: null, exp: 12000000, stone_min: 80000000, stone_max: 200000000, role: 'boss', drop_table: 'boss_t12' } },
 }
 
@@ -247,11 +248,13 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240 }
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
   const subStats = generateSubStats(idx, tier)
+  // 套装注入：白/绿不出套装；蓝~红按品质有概率获得套装碎片身份；boss luck ×1.5
+  const setKey = rollEquipSet(rarities[idx], isBoss ? 1.5 : 1.0)
   return {
-    name: generateEquipName(rarities[idx], slots[slotIdx], weaponType, tier, ps, monsterElement),
+    name: generateEquipName(rarities[idx], slots[slotIdx], weaponType, tier, ps, monsterElement, '', setKey),
     rarity: rarities[idx],
     primary_stat: ps, primary_value: pv, sub_stats: JSON.stringify(subStats),
-    set_id: null, tier, weapon_type: weaponType,
+    set_id: setKey, tier, weapon_type: weaponType,
     base_slot: slots[slotIdx], req_level: tierReqLevels[tier] || 1, enhance_level: 0,
   }
 }
