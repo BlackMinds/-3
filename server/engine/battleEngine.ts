@@ -392,18 +392,18 @@ const HEALER_NAMES_BY_ELEM: Record<string, string[]> = {
 const HEALER_NAMES_NEUTRAL = ['通玄圣女', '太虚医者', '天衡司命'];
 
 // 按 tier 对齐 fight.post.ts 同 tier balanced 怪的 exp/stone 比例
-// 否则 healer 用固定比例会在 T5/T6 经验严重超发，T9/T10 又过低
+// v3.4.5: T7-T12 同步归一到 0.10（与主图普通怪一致），并补 T11/T12 条目
 const HEALER_EXP_RATIO: Record<number, number> = {
   1: 0.18, 2: 0.08, 3: 0.12, 4: 0.09,
-  5: 0.108, 6: 0.102, 7: 0.20, 8: 0.24, 9: 0.514, 10: 1.6,
+  5: 0.108, 6: 0.102, 7: 0.10, 8: 0.10, 9: 0.10, 10: 0.10, 11: 0.10, 12: 0.10,
 };
 const HEALER_STONE_MIN_RATIO: Record<number, number> = {
   1: 0.08, 2: 0.022, 3: 0.047, 4: 0.027,
-  5: 0.028, 6: 0.033, 7: 0.10, 8: 0.25, 9: 0.179, 10: 0.889,
+  5: 0.028, 6: 0.033, 7: 0.10, 8: 0.25, 9: 0.179, 10: 0.889, 11: 0.5, 12: 0.6,
 };
 const HEALER_STONE_MAX_RATIO: Record<number, number> = {
   1: 0.22, 2: 0.066, 3: 0.117, 4: 0.071,
-  5: 0.083, 6: 0.10, 7: 0.267, 8: 0.625, 9: 0.429, 10: 2.222,
+  5: 0.083, 6: 0.10, 7: 0.267, 8: 0.625, 9: 0.429, 10: 2.222, 11: 1.5, 12: 1.5,
 };
 
 export function makeHealerTemplate(tier: number, element: string | null, basePower: number): MonsterTemplate {
