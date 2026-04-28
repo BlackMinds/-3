@@ -209,11 +209,11 @@ if crit: damage ×= crit_dmg
 
 克 ×1.3 / 被克 ×0.7 / 无关 ×1.0
 
-### DOT(保留)
+### DOT(v3.7)
 
-- poison: 3% maxHp / 回合
-- burn: 15% atk / 回合
-- bleed: 10% atk / 回合
+- poison: 5% maxHp / 回合
+- burn: 25% atk / 回合
+- bleed: 18% atk / 回合
 
 ---
 

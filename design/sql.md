@@ -92,11 +92,81 @@ UPDATE characters SET sr_daily_bonus = 1,
       resist_earth = 0
   WHERE name = '王总';
 
+绿色功法
+    WITH green(skill_id) AS (VALUES
+    ('wind_blade'),('vine_whip'),('ice_palm'),('flame_sword'),('quake_fist'),
+    ('body_refine'),('flame_body'),('water_flow'),('root_grip'),('metal_skin')
+  ),
+  green_arr AS (SELECT array_agg(skill_id) AS arr FROM green),
+  picks AS (
+    SELECT (arr)[1 + floor(random() * array_length(arr, 1))::int] AS skill_id
+    FROM green_arr, generate_series(1, 15)
+  ),
+  agg AS (SELECT skill_id, COUNT(*)::int AS qty FROM picks GROUP BY skill_id),
+  target AS (SELECT id AS character_id FROM characters WHERE name = '天生是怪人')
+  INSERT INTO character_skill_inventory (character_id, skill_id, count, level)
+  SELECT t.character_id, a.skill_id, a.qty, 1
+  FROM target t CROSS JOIN agg a
+  ON CONFLICT (character_id, skill_id)
+  DO UPDATE SET count = character_skill_inventory.count + EXCLUDED.count
+  RETURNING skill_id, count;
+
+金色功法 15
+  WITH gold(skill_id) AS (VALUES
+    ('metal_burst'),('quake_stomp'),('life_drain'),('inferno_burst'),
+    ('storm_blade'),('heaven_heal'),('water_mastery'),('battle_frenzy'),('heavenly_body')
+  ),
+  gold_arr AS (SELECT array_agg(skill_id) AS arr FROM gold),
+  picks AS (
+    SELECT (arr)[1 + floor(random() * array_length(arr, 1))::int] AS skill_id
+    FROM gold_arr, generate_series(1, 15)
+  ),
+  agg AS (SELECT skill_id, COUNT(*)::int AS qty FROM picks GROUP BY skill_id),
+  target AS (SELECT id AS character_id FROM characters WHERE name = '天生是怪人')
+  INSERT INTO character_skill_inventory (character_id, skill_id, count, level)
+  SELECT t.character_id, a.skill_id, a.qty, 1
+  FROM target t CROSS JOIN agg a
+  ON CONFLICT (character_id, skill_id)
+  DO UPDATE SET count = character_skill_inventory.count + EXCLUDED.count
+  RETURNING skill_id, count;
+
+  红色功法 15
+    WITH red(skill_id) AS (VALUES
+    ('time_stop'),('heavenly_wrath'),('dao_heart'),('five_elements_harmony')
+  ),
+  red_arr AS (SELECT array_agg(skill_id) AS arr FROM red),
+  picks AS (
+    SELECT (arr)[1 + floor(random() * array_length(arr, 1))::int] AS skill_id
+    FROM red_arr, generate_series(1, 15)
+  ),
+  agg AS (SELECT skill_id, COUNT(*)::int AS qty FROM picks GROUP BY skill_id),
+  target AS (SELECT id AS character_id FROM characters WHERE name = '天生是怪人')
+  INSERT INTO character_skill_inventory (character_id, skill_id, count, level)
+  SELECT t.character_id, a.skill_id, a.qty, 1
+  FROM target t CROSS JOIN agg a
+  ON CONFLICT (character_id, skill_id)
+  DO UPDATE SET count = character_skill_inventory.count + EXCLUDED.count
+  RETURNING skill_id, count;
+
+
+t10 强化石
+    INSERT INTO character_pills (character_id, pill_id, quality_factor, count)                                                                                                                                                                                                                        
+  SELECT id, 'enhance_stone_t10', 1.0, 50                                                                                                                                                                                FROM characters WHERE name = '乱跑的小喵'ON CONFLICT (character_id, pill_id, quality_factor)             
+  DO UPDATE SET count = character_pills.count + EXCLUDED.count
+  RETURNING character_id, count;
+
+玉 石
+  INSERT INTO character_pills (character_id, pill_id, quality_factor, count) SELECT id, 'awaken_reroll', 1.0, 10 FROM characters WHERE name = '天生是怪人'                                                                     
+  ON CONFLICT (character_id, pill_id, quality_factor)
+  DO UPDATE SET count = character_pills.count + EXCLUDED.count                                                                                                                                                                                                                                      
+  RETURNING character_id, count;     
+
  SELECT cave_output_mul, COUNT(*) AS 玩家数
   FROM characters
   WHERE cave_output_mul > 1.0
   GROUP BY cave_output_mul
   ORDER BY cave_output_mul;
+
 
 -- ============================================================
 -- 会心伤害基础值 150%/170% → 100% 重平衡 (2026-04-26)

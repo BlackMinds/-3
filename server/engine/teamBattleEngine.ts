@@ -20,6 +20,7 @@ import {
 import type { SecretRealmDef, SecretRealmDifficultyConfig, SecretRealmWave } from './secretRealmData'
 import { scaleMonsterTemplate } from './secretRealmData'
 import type { DebuffType, BuffType } from './skillData'
+import { DOT_FORMULA } from '~/shared/balance'
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -216,9 +217,11 @@ function applyDebuffDps(target: TeamPlayer | TeamMonster, debuff: { type: Debuff
     value: debuff.value,
   }
   // 持续伤害 debuff
-  if (debuff.type === 'burn') d.damagePerTurn = Math.floor(attackerAtk * 0.5 + defenderMaxHp * 0.03)
-  if (debuff.type === 'poison') d.damagePerTurn = Math.floor(attackerAtk * 0.4 + defenderMaxHp * 0.04)
-  if (debuff.type === 'bleed') d.damagePerTurn = Math.floor(attackerAtk * 0.6 + defenderMaxHp * 0.03)
+  // v3.7: 统一走 DOT_FORMULA，与 battleEngine / multiBattleEngine 保持一致
+  // （旧版 team 用混合公式 atk×0.4~0.6 + maxHp×0.03~0.04，已废弃）
+  if (debuff.type === 'burn') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio))
+  if (debuff.type === 'poison') d.damagePerTurn = Math.max(1, Math.floor(defenderMaxHp * DOT_FORMULA.poisonPerTurnHpRatio))
+  if (debuff.type === 'bleed') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.bleedPerTurnAtkRatio))
   // 冻结/眩晕：锁定行动回合
   if (debuff.type === 'freeze' || debuff.type === 'stun') {
     ;(target as any).frozenTurns = Math.max((target as any).frozenTurns || 0, debuff.duration)

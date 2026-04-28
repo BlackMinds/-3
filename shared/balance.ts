@@ -172,11 +172,11 @@ export const BATTLE_FORMULA = {
 } as const
 
 // DOT 伤害公式
-// v3.6: 整体上调约 30%，配合副属性 DOT_DMG_PCT 让 DOT 流派可玩
+// v3.7: 基础 DOT 再上调约 35%，让裸值 DOT 至少与 1 次普攻持平（3 回合总伤），不再依赖养成栈才"能用"
 export const DOT_FORMULA = {
-  poisonPerTurnHpRatio: 0.04,  // 0.03→0.04（+33%）每回合扣 4% maxHp
-  burnPerTurnAtkRatio: 0.18,   // 0.15→0.18（+20%）每回合扣 18% atk
-  bleedPerTurnAtkRatio: 0.13,  // 0.10→0.13（+30%）每回合扣 13% atk
+  poisonPerTurnHpRatio: 0.05,  // 0.04→0.05（+25%）每回合扣 5% maxHp
+  burnPerTurnAtkRatio: 0.25,   // 0.18→0.25（+39%）每回合扣 25% atk
+  bleedPerTurnAtkRatio: 0.18,  // 0.13→0.18（+38%）每回合扣 18% atk
 } as const
 
 // =====================================================================

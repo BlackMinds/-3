@@ -57,7 +57,10 @@
 - 不灭金身（免死保留 20% 血）
 - 战意沸腾（叠层机制）
 - 道心通明（神通 CD-1）
-- **v3.6 DOT 公式**: 灼烧 ATK×18%/turn、中毒 maxHp×4%/turn、流血 ATK×13%/turn（旧 15%/3%/10%）
+- **v3.7 DOT 公式**: 灼烧 ATK×25%/turn、中毒 maxHp×5%/turn、流血 ATK×18%/turn（v3.6: 18%/4%/13%；让裸值 DOT 3 回合总伤 ≈ 1 次普攻，不再依赖养成栈才"能用"）
+- **v3.7 DOT 三引擎归一**: battleEngine / multiBattleEngine / teamBattleEngine 全部走 `shared/balance.ts` 的 `DOT_FORMULA` 常量
+  - 旧版 multiBattleEngine 漏迭代停留在 v3.5（15%/3%/10%），现已对齐
+  - 旧版 teamBattleEngine（秘境组队）用混合公式 `atk×0.4~0.6 + maxHp×0.03~0.04`，比主战 DOT 高 4~6 倍，已废弃改为统一公式（注意：这会**显著降低秘境组队战的 DOT 输出**，需要后续单独跑秘境平衡测试）
 - **v3.7 反伤公式（统一池）**: 反弹量 = min(受击 × 反伤系数Σ, 玩家 atk×6) + maxHp×8% 底线
   - 反伤系数Σ = 功法被动`reflectPercent`(荆棘之体) + 明镜止水 buff(reflect) + 装备 REFLECT_PCT 副属性 + 反伤附灵(明镜甲/玄镜佩)
   - 三源全部汇入同一池（v3.6 之前各通道独立，荆棘之体不享受 cap+maxHp 底量）；PvE/PvP 引擎对齐
