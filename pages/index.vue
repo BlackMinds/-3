@@ -425,6 +425,7 @@
                 <option value="blue">法器及以下</option>
                 <option value="purple">灵宝及以下</option>
                 <option value="gold">仙器及以下</option>
+                <option value="red">太古及以下</option>
               </select>
               <button class="batch-sell-btn" @click="batchSell">一键出售</button>
               <button class="batch-sell-btn" @click="loadEquipList" title="刷新背包">刷新</button>

@@ -2,6 +2,7 @@
 // 复用 battle/fight.post.ts 的逻辑，但加入秘境特有的"品质权重上移 + Boss 保底"机制
 
 import { generateEquipName } from '../engine/equipNameData'
+import { rollEquipSet } from '../engine/equipSetData'
 import { rollSubStats } from './equipment'
 import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
 
@@ -69,17 +70,19 @@ export function generateSecretRealmEquip(
   const ps = primaryStats[slots[slotIdx]]
   const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[rarityIdx]))
   const tierReqLevels: Record<number, number> = {
-    1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195,
+    1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195, 11: 215, 12: 240,
   }
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
   const subStats = generateSubStats(rarityIdx, tier)
+  // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率），BOSS 掉落 ×1.5
+  const setKey = rollEquipSet(RARITIES[rarityIdx], isBoss ? 1.5 : 1.0)
   return {
-    name: generateEquipName(RARITIES[rarityIdx], slots[slotIdx], weaponType, tier, ps, monsterElement),
+    name: generateEquipName(RARITIES[rarityIdx], slots[slotIdx], weaponType, tier, ps, monsterElement, '', setKey),
     rarity: RARITIES[rarityIdx],
     primary_stat: ps,
     primary_value: pv,
     sub_stats: JSON.stringify(subStats),
-    set_id: null,
+    set_id: setKey,
     tier,
     weapon_type: weaponType,
     base_slot: slots[slotIdx],

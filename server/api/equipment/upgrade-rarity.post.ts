@@ -48,8 +48,8 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 更新装备名(保留原 weapon_type, 替换品质前缀)
-    const newName = generateEquipName(newRarity, eq.base_slot || 'weapon', eq.weapon_type, tier, eq.primary_stat, null, '升品')
+    // 更新装备名(保留原 weapon_type, 替换品质前缀；保留原 set_id，命中套装时仍带前缀)
+    const newName = generateEquipName(newRarity, eq.base_slot || 'weapon', eq.weapon_type, tier, eq.primary_stat, null, '升品', eq.set_id || null)
 
     await pool.query(
       'UPDATE character_equipment SET rarity = $1, primary_value = $2, sub_stats = $3, name = $4 WHERE id = $5',
