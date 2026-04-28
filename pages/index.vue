@@ -2221,13 +2221,16 @@
             <div class="help-title">顶部功能按钮</div>
             <table class="help-table"><tbody>
               <tr><td>掉落表</td><td>查看当前地图怪物的掉落概率和档次</td></tr>
+              <tr><td>坊市</td><td>玩家间灵石/道具交易（开发中）</td></tr>
               <tr><td>风云榜</td><td>境界/等级/灵石/斗法/宗门 5 种全服排行</td></tr>
               <tr><td>斗法台</td><td>1v1 自由 PvP,输入对手道号即可挑战(每日 10 次,胜负计积分)</td></tr>
               <tr><td>风云阁</td><td>全服传奇掉落/事件播报,红点提示新传奇</td></tr>
               <tr><td>成就</td><td>多维度成就追踪,领取奖励,佩戴称号</td></tr>
-              <tr><td>秘境</td><td>2-4 人组队副本,独占高品质奖励(开发中)</td></tr>
+              <tr><td>兑换码</td><td>输入官方/活动兑换码领取奖励</td></tr>
+              <tr><td>帮助</td><td>本帮助文档(基础/战斗/养成/PvP/秘境/其他)</td></tr>
               <tr><td>设置</td><td>背景主题/自动出售规则(按品质和阶位)</td></tr>
             </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">秘境组队副本入口在「宗门」标签页内,不在顶部按钮。</p>
           </div>
           </div>
           <div v-show="helpTab === 'battle'">
@@ -2299,12 +2302,8 @@
           </div>
           <div class="help-section">
             <div class="help-title">境界系统</div>
-            <p class="help-text">修为积满后手动突破。8 大境界: 练气(9层)→筑基→金丹→元婴→化神→渡劫→大乘→飞升(5阶)。突破后基础属性大幅提升,解锁更多地图。</p>
-            <p class="help-text" style="margin-top: 4px;">练气期采用线性快速突破曲线,新手可在首日突破到筑基。筑基及以后采用几何增长曲线,境界越高所需修为越多。</p>
-          </div>
-          <div class="help-section">
-            <div class="help-title">闭关修炼</div>
-            <p class="help-text">消耗 <b>100 × 境界Tier</b> 灵石/小时,获得 <b>80 × Tier × 小时 × (1 + 阶段 × 0.1)</b> 修为。可选 1~8 小时。境界越高闭关效率越高。</p>
+            <p class="help-text">修为积满后手动突破。9 大境界: 练气(9层)→筑基→金丹→元婴→化神→渡劫→大乘→飞升(5阶)→<b>混元(5阶)</b>。突破后基础属性大幅提升,解锁更多地图。</p>
+            <p class="help-text" style="margin-top: 4px;">练气期采用线性快速突破曲线,新手可在首日突破到筑基。筑基及以后采用几何增长曲线,境界越高所需修为越多。金丹起小境界也有失败概率,飞升以上失败会损失修为。</p>
           </div>
           <div class="help-section">
             <div class="help-title">离线挂机</div>
@@ -2428,13 +2427,13 @@
               <tr><td>枪</td><td>攻击+3%, 身法+12%, 吸血+3% (持久)</td></tr>
               <tr><td>扇</td><td>攻击+3%, 神识+20% (法术)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘/<b style="color: var(--gold-ink);">DOT伤害</b>/<b style="color: var(--gold-ink);">反伤倍率</b>等 17 种。装备有等级需求(T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195)。</p>
+            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘/<b style="color: var(--gold-ink);">DOT伤害</b>/<b style="color: var(--gold-ink);">反伤倍率</b>等 17 种。装备等级需求按 tier 阶梯: T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195, T11=Lv215, T12=Lv240。</p>
             <p class="help-text" style="margin-top: 4px;">低阶图品质权重前期已上调,更易刷出蓝紫装。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);"><b>v3.6 新词条:</b><b>DOT伤害 +5~25%</b>(灼烧/中毒/流血总伤害放大,与功法被动「万毒归一」叠加)；<b>反伤倍率 +3~15%</b>(每件装备独立叠加到反伤系数)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">装备强化</div>
-            <p class="help-text">消耗灵石强化已穿戴装备,最高 +10。每级主属性 +8%(满级 +80%)。</p>
+            <p class="help-text">消耗灵石强化已穿戴装备,最高 +10。每级主属性 +10%(满级 +100%)。</p>
             <table class="help-table"><tbody>
               <tr><td>+1 ~ +6</td><td>100% 必成</td></tr>
               <tr><td>+7</td><td>75%</td></tr>
@@ -3012,9 +3011,6 @@ const eventStore = useEventStore();
 const gameStore = useGameStore();
 
 const logContainer = ref<HTMLElement | null>(null);
-const cultivating = ref(false);
-const cultMsg = ref('');
-const cultMsgType = ref('cult-success');
 const showMonsterTip = ref(false);
 const hoveredMonsterIndex = ref(0);
 const displayedMonsterInfo = computed(() => {
@@ -4633,30 +4629,6 @@ function handleLogout() {
   gameStore.stopBattle();
   userStore.logout();
   navigateTo('/login');
-}
-
-async function doCultivate(hours: number) {
-  cultivating.value = true;
-  cultMsg.value = '';
-  try {
-    const res: any = await $fetch('/api/game/cultivate', { method: 'POST', body: { hours }, headers: getAuthHeaders() });
-    if (res.code === 200) {
-      cultMsg.value = res.message;
-      cultMsgType.value = 'cult-success';
-      // 刷新角色数据
-      if (res.data) {
-        gameStore.character = res.data;
-      }
-    } else {
-      cultMsg.value = res.message;
-      cultMsgType.value = 'cult-error';
-    }
-  } catch {
-    cultMsg.value = '修炼失败，请稍后再试';
-    cultMsgType.value = 'cult-error';
-  } finally {
-    cultivating.value = false;
-  }
 }
 
 // 日志自动滚动到底部
@@ -7817,144 +7789,6 @@ onUnmounted(() => {
   opacity: 0.6;
   transition: width 0.5s ease;
 }
-
-/* ========== 修炼面板 ========== */
-.cultivate-card {
-  background: rgba(40, 36, 30, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 6px;
-  padding: 24px 20px;
-  text-align: center;
-}
-
-.cult-orb {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 40% 35%, var(--rc), transparent 70%);
-  opacity: 0.5;
-  animation: cult-breathe 4s ease-in-out infinite;
-}
-
-@keyframes cult-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.06); opacity: 0.7; }
-}
-
-.cult-ring {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1px solid var(--rc);
-  opacity: 0.2;
-  animation: ring-spin 10s linear infinite;
-}
-
-.cult-char {
-  font-family: 'ZCOOL XiaoWei', serif;
-  font-size: 26px;
-  color: var(--rc);
-  text-shadow: 0 0 16px var(--rg);
-  position: relative;
-  z-index: 1;
-}
-
-.cult-desc {
-  font-size: 19px;
-  color: var(--ink-light);
-  letter-spacing: 2px;
-  margin: 0 0 6px 0;
-}
-
-.cult-realm {
-  font-size: 18px;
-  color: var(--jade);
-  letter-spacing: 2px;
-  margin: 0 0 16px 0;
-}
-
-.cult-exp-bar {
-  position: relative;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 9px;
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-
-.cult-exp-fill {
-  height: 100%;
-  background: linear-gradient(90deg, rgba(142, 202, 160, 0.3), rgba(142, 202, 160, 0.6));
-  border-radius: 9px;
-  transition: width 0.5s ease;
-}
-
-.cult-exp-text {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  color: var(--ink-light);
-  letter-spacing: 1px;
-}
-
-.cult-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.cult-btn {
-  padding: 12px 8px;
-  background: rgba(142, 202, 160, 0.06);
-  border: 1px solid rgba(142, 202, 160, 0.15);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.cult-btn:hover {
-  background: rgba(142, 202, 160, 0.12);
-  border-color: rgba(142, 202, 160, 0.30);
-}
-
-.cult-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.cult-hours {
-  font-family: 'Noto Serif SC', serif;
-  font-size: 14px;
-  color: var(--jade);
-  letter-spacing: 3px;
-}
-
-.cult-cost {
-  font-size: 15px;
-  color: var(--ink-light);
-  letter-spacing: 1px;
-}
-
-.cult-msg {
-  margin-top: 12px;
-  font-size: 18px;
-  letter-spacing: 1px;
-}
-
-.cult-success { color: var(--jade); }
-.cult-error { color: var(--cinnabar); }
 
 /* ========== 占位面板 ========== */
 .placeholder-panel {
@@ -12341,20 +12175,6 @@ onUnmounted(() => {
   .ch-power { font-size: 12px; }
   .s-label, .s-value { font-size: 13px; letter-spacing: 1px; }
   .stat-row { padding: 5px 8px; }
-
-  /* 修炼 */
-  .cultivate-card { padding: 14px 12px; }
-  .cult-orb { width: 60px; height: 60px; margin-bottom: 10px; }
-  .cult-char { font-size: 20px; }
-  .cult-desc { font-size: 14px; }
-  .cult-realm { font-size: 13px; margin-bottom: 12px; }
-  .cult-exp-bar { height: 14px; margin-bottom: 14px; }
-  .cult-exp-text { font-size: 11px; }
-  .cult-msg { font-size: 13px; }
-  .cult-options { gap: 8px; }
-  .cult-btn { padding: 9px 6px; }
-  .cult-hours { font-size: 13px; letter-spacing: 2px; }
-  .cult-cost { font-size: 12px; }
 
   /* 境界挑战 */
   .realm-current { font-size: 14px; }

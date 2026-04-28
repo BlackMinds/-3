@@ -56,7 +56,6 @@ src/
 | GET | /data | 获取完整角色数据 | 是 |
 | POST | /save-rewards | 保存战斗奖励 | 是 |
 | POST | /update-character | 更新角色状态(境界突破/升级) | 是 |
-| POST | /cultivate | 闭关修炼(消耗灵石获得修为) | 是 |
 | POST | /offline-start | 开始离线挂机 | 是 |
 | GET | /offline-status | 查询离线挂机状态和预估收益 | 是 |
 | POST | /offline-claim | 结束离线并领取收益 | 是 |

@@ -668,7 +668,6 @@ passiveList = [...normalPassives, ...sectSkills];
 | 现有接口 | 触发任务 | 更新方式 |
 |---------|---------|---------|
 | POST /api/battle/fight | 历练修行 / 击杀精英 | 战斗结束后+1 |
-| POST /api/game/cultivate | 闭关修炼 | 闭关成功后+1 |
 | POST /api/pill/craft | 炼丹贡献 | 炼丹后+1(无论成败) |
 | POST /api/equipment/sell | 装备回收 | 出售后+1 |
 | POST /api/equipment/enhance | 强化武装 | 强化后+1 |

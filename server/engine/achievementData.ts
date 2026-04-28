@@ -43,7 +43,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'dao_11', name: '修为精进', desc: '等级达到100', category: 'dao', type: 'threshold', target: 100, event: 'char_level', reward: { spirit_stone: 30000, equip_box: 'fine', equip_box_count: 1 } },
   { id: 'dao_12', name: '登峰造极', desc: '等级达到150', category: 'dao', type: 'threshold', target: 150, event: 'char_level', reward: { spirit_stone: 80000, equip_box: 'fine', equip_box_count: 2 } },
   { id: 'dao_13', name: '万法归一', desc: '等级达到200', category: 'dao', type: 'threshold', target: 200, event: 'char_level', reward: { spirit_stone: 500000, equip_box: 'legend', equip_box_count: 3 }, title: '万法宗师' },
-  { id: 'dao_14', name: '闭关苦修', desc: '累计闭关修炼10次', category: 'dao', type: 'counter', target: 10, event: 'cultivate_count', reward: { spirit_stone: 5000 } },
   { id: 'dao_15', name: '日夜不辍', desc: '累计离线挂机100小时', category: 'dao', type: 'counter', target: 100, event: 'offline_hours', reward: { spirit_stone: 30000, skill_box: 'fine', skill_box_count: 1 }, title: '苦修者' },
   { id: 'dao_16', name: '混元归一', desc: '等级达到300', category: 'dao', type: 'threshold', target: 300, event: 'char_level', reward: { spirit_stone: 2000000, equip_box: 'legend', equip_box_count: 5 }, title: '混元道祖' },
 

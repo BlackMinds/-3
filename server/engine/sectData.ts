@@ -166,7 +166,6 @@ export interface DailyTaskType {
 
 export const DAILY_TASK_TYPES: DailyTaskType[] = [
   { type: 'battle',   name: '历练修行', description: '完成N场战斗',       baseTarget: 10,  baseContribution: 500,  extraReward: { type: 'spirit_stone', value: 1000 } },
-  { type: 'cultivate',name: '闭关修炼', description: '闭关N次',           baseTarget: 2,   baseContribution: 600,  extraReward: { type: 'cultivation_exp', value: 500 } },
   { type: 'pill',     name: '炼丹贡献', description: '炼制N颗丹药',       baseTarget: 2,   baseContribution: 1000, extraReward: { type: 'pill', value: 1 } },
   { type: 'sell',     name: '装备回收', description: '出售N件装备',        baseTarget: 5,   baseContribution: 500,  extraReward: { type: 'spirit_stone', value: 2000 } },
   { type: 'enhance',  name: '强化武装', description: '强化装备N次',        baseTarget: 3,   baseContribution: 700,  extraReward: { type: 'spirit_stone', value: 1500 } },
