@@ -155,7 +155,7 @@ t10 强化石
   DO UPDATE SET count = character_pills.count + EXCLUDED.count
   RETURNING character_id, count;
 
-玉 石
+玉 石头
   INSERT INTO character_pills (character_id, pill_id, quality_factor, count) SELECT id, 'awaken_reroll', 1.0, 10 FROM characters WHERE name = '天生是怪人'                                                                     
   ON CONFLICT (character_id, pill_id, quality_factor)
   DO UPDATE SET count = character_pills.count + EXCLUDED.count                                                                                                                                                                                                                                      

@@ -100,10 +100,11 @@ export function generateEquipName(
 ): string {
   const parts: string[] = [];
 
-  // 0. 套装前缀（最显眼，放最前；命中套装时不再叠加品质前缀，避免名字过长）
+  // 0. 套装前缀（最显眼，放最前；命中套装时用【】包起来，与本体名拉开视觉边界
+  //    避免出现"叠浪金太极玉佩"这种前缀和本体粘连难辨的情况）
   let setPrefixed = false;
   if (setKey && EQUIP_SET_MAP[setKey]) {
-    parts.push(EQUIP_SET_MAP[setKey].prefix);
+    parts.push(`【${EQUIP_SET_MAP[setKey].prefix}】`);
     setPrefixed = true;
   }
 
