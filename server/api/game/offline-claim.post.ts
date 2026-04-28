@@ -6,6 +6,8 @@ import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
 import { rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
+import { generateEquipName } from '~/server/engine/equipNameData'
+import { rollEquipSet } from '~/server/engine/equipSetData'
 
 /**
  * 离线挂机结算 v2：基于开始离线时的快照真打 N 场
@@ -178,9 +180,7 @@ export default defineEventHandler(async (event) => {
 
     // 装备掉落
     const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
-    const slotNames = ['兵器', '法袍', '法冠', '步云靴', '法宝', '灵戒', '灵佩']
     const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
-    const rarityNames = ['凡器', '灵器', '法器', '灵宝', '仙器', '太古神器']
     const weights: Record<number, number[]> = {
       1: [60,30,9,1,0,0], 2: [40,35,18,6,1,0], 3: [20,35,25,15,4.5,0.5],
       4: [5,25,30,25,13,2], 5: [0,10,30,35,22,3], 6: [0,0,20,40,35,5],
@@ -202,12 +202,14 @@ export default defineEventHandler(async (event) => {
       const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[idx] || [0, 0]
       const subCount = rand(minSubs, maxSubs)
       const subStats = subCount > 0 ? rollSubStats(idx, mapData.tier, subCount) : []
+      const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null
+      // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率）
+      const setKey = rollEquipSet(rarities[idx], 1.0)
+      const equipName = generateEquipName(rarities[idx], slots[slotIdx], weaponType, mapData.tier, ps, null, '', setKey)
       await pool.query(
-        `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, weapon_type, base_slot, req_level, enhance_level)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)`,
-        [char.id, `${rarityNames[idx]}·${slotNames[slotIdx]}`, rarities[idx], ps, pv, JSON.stringify(subStats), mapData.tier,
-         slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null,
-         slots[slotIdx], tierReqLevels[mapData.tier] || 1]
+        `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
+        [char.id, equipName, rarities[idx], ps, pv, JSON.stringify(subStats), setKey, mapData.tier, weaponType, slots[slotIdx], tierReqLevels[mapData.tier] || 1]
       )
     }
 

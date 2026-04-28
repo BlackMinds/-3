@@ -1,5 +1,8 @@
 // 装备命名系统 — 按品质/槽位/武器类型生成多段式名称
-// 格式：[品质前缀] [元素/词缀] [本体名] [后缀]
+// 格式：[套装前缀·] [品质前缀] [元素/词缀] [本体名] [后缀]
+// 示例：周天·紫微青锋·锋锐 (设套)、玄冰·赤焰法袍 (设套+元素)、绝尘屠魔刀·破灭 (无套装)
+
+import { EQUIP_SET_MAP } from './equipSetData';
 
 // ===== 品质前缀(按6个品质) =====
 // 低品质用朴实词，高品质用华丽词
@@ -83,6 +86,7 @@ function getBodyName(slot: string, weaponType: string | null, tier: number): str
  * @param primaryStat - 主属性 (ATK/DEF/HP/SPD/CRIT_RATE/SPIRIT)
  * @param element - 元素属性(可选)
  * @param specialTag - 特殊标签(宗门/宝箱/Boss等,可选)
+ * @param setKey - 套装ID(可选, 装备 set_id 字段, 命中则在最前面加套装前缀)
  */
 export function generateEquipName(
   rarity: string,
@@ -91,14 +95,24 @@ export function generateEquipName(
   tier: number,
   primaryStat: string,
   element: string | null = null,
-  specialTag: string = ''
+  specialTag: string = '',
+  setKey: string | null = null
 ): string {
   const parts: string[] = [];
 
-  // 1. 品质前缀 (凡器/灵器不加,从法器开始)
-  const prefixPool = QUALITY_PREFIXES[rarity] || QUALITY_PREFIXES.white;
-  if (rarity !== 'white') {
-    parts.push(pickRandom(prefixPool));
+  // 0. 套装前缀（最显眼，放最前；命中套装时不再叠加品质前缀，避免名字过长）
+  let setPrefixed = false;
+  if (setKey && EQUIP_SET_MAP[setKey]) {
+    parts.push(EQUIP_SET_MAP[setKey].prefix);
+    setPrefixed = true;
+  }
+
+  // 1. 品质前缀 (凡器/灵器不加,从法器开始；带套装前缀时跳过避免冗长)
+  if (!setPrefixed) {
+    const prefixPool = QUALITY_PREFIXES[rarity] || QUALITY_PREFIXES.white;
+    if (rarity !== 'white') {
+      parts.push(pickRandom(prefixPool));
+    }
   }
 
   // 2. 元素词缀 (30%概率)

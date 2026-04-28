@@ -31,6 +31,17 @@
       ✦ 附灵·{{ awaken.name }}
       <span class="tooltip-awaken-desc">{{ awaken.desc }}</span>
     </div>
+    <div v-if="setInfo" class="tooltip-set-row">
+      ❖ {{ setInfo.name }}
+      <span v-if="setProgress > 0" class="tooltip-set-progress" :class="{ 'set-active': activeTier > 0 }">
+        （已穿戴 {{ setProgress }} 件{{ activeTier > 0 ? ` · ${activeTier} 件套激活` : '' }}）
+      </span>
+      <div class="tooltip-set-tiers">
+        <div v-for="t in setInfo.tiers" :key="t.count" class="tooltip-set-tier" :class="{ 'set-tier-active': setProgress >= t.count }">
+          <b>{{ t.count }} 件套</b> {{ t.desc }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -42,6 +53,7 @@ import {
   STAT_NAMES, PERCENT_STATS,
 } from '~/game/equipData'
 import { describeAwakenEffect, type AwakenEffect } from '~/game/awakenData'
+import { EQUIP_SET_MAP, getActiveTier } from '~/game/equipSetData'
 
 const props = defineProps<{
   equip: any
@@ -49,6 +61,8 @@ const props = defineProps<{
   charLevel?: number
   /** 是否显示"需要等级"行 */
   showReqLevel?: boolean
+  /** 已穿戴该 set_id 的装备件数（外部传入，用于进度/激活高亮）；未传则为 0 */
+  equippedSetCount?: number
 }>()
 
 const RARITY_NAMES: Record<string, string> = {
@@ -114,6 +128,15 @@ const awaken = computed<{ name: string; desc: string } | null>(() => {
   }
   return { name: eff.name, desc: describeAwakenEffect(eff) }
 })
+
+// 套装信息（命中 set_id 时展示套装详情）
+const setInfo = computed(() => {
+  const sid = props.equip?.set_id
+  if (!sid) return null
+  return EQUIP_SET_MAP[sid] || null
+})
+const setProgress = computed(() => props.equippedSetCount || 0)
+const activeTier = computed(() => getActiveTier(setProgress.value))
 </script>
 
 <style scoped>
@@ -166,5 +189,47 @@ const awaken = computed<{ name: string; desc: string } | null>(() => {
   color: rgba(255, 170, 0, 0.75);
   font-size: 12px;
   margin-top: 2px;
+}
+
+/* 套装信息行 */
+.tooltip-set-row {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(120, 200, 255, 0.4);
+  color: #78c8ff;
+  font-weight: 600;
+  font-size: 13px;
+}
+.tooltip-set-progress {
+  font-weight: normal;
+  font-size: 12px;
+  color: rgba(120, 200, 255, 0.7);
+  margin-left: 4px;
+}
+.tooltip-set-progress.set-active {
+  color: #ffd35e;
+  font-weight: 600;
+  text-shadow: 0 0 4px rgba(255, 211, 94, 0.5);
+}
+.tooltip-set-tiers {
+  margin-top: 4px;
+  font-weight: normal;
+}
+.tooltip-set-tier {
+  font-size: 12px;
+  color: rgba(120, 200, 255, 0.55);
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+.tooltip-set-tier b {
+  color: rgba(120, 200, 255, 0.8);
+  margin-right: 4px;
+}
+.tooltip-set-tier.set-tier-active {
+  color: #ffd35e;
+}
+.tooltip-set-tier.set-tier-active b {
+  color: #ffd35e;
+  text-shadow: 0 0 4px rgba(255, 211, 94, 0.5);
 }
 </style>

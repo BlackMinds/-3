@@ -312,6 +312,16 @@
             <!-- 右列: 装备 -->
             <div class="char-col-right">
               <div class="panel-title sub-title">法宝装备</div>
+              <!-- 套装激活面板：仅在有 ≥3 件激活时显示，激活档位常亮 -->
+              <div v-if="activeSetSummaries.length > 0" class="equip-set-panel">
+                <div v-for="s in activeSetSummaries" :key="s.setKey" class="equip-set-active">
+                  <div class="equip-set-header">
+                    <span class="equip-set-name">❖ {{ s.name }}</span>
+                    <span class="equip-set-tier">{{ s.count }} / 7 件 · {{ s.tier }}件套激活</span>
+                  </div>
+                  <div class="equip-set-effect">{{ s.activeDesc }}</div>
+                </div>
+              </div>
               <div class="equip-grid">
             <div
               v-for="slotDef in equipSlots"
@@ -334,7 +344,7 @@
               <div v-else class="equip-slot-empty">空</div>
               <!-- 悬浮提示 -->
               <div v-if="hoverSlotEquip && hoverSlotEquip === getEquippedItem(slotDef.slot)" class="slot-tooltip">
-                <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" />
+                <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" :equipped-set-count="hoverSlotEquip.set_id ? (equippedSetCounts[hoverSlotEquip.set_id] || 0) : 0" />
               </div>
             </div>
           </div>
@@ -2986,6 +2996,7 @@ import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_N
 import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
 import { AWAKEN_POOLS, AWAKEN_DEF_MAP, canSlotAwaken, canRarityAwaken, describeAwakenEffect, type AwakenEffect } from '~/game/awakenData';
 import { EQUIP_SLOTS, STAT_NAMES, PERCENT_STATS, getRarityColor, getSlotName, getWeaponTypeDef, getEnhanceCost, getEnhanceSuccessRate, getEnhancedPrimaryValue, getEnhanceBonus, setForgeQualityBonus } from '~/game/equipData';
+import { EQUIP_SET_MAP, countEquippedSets, getActiveTier } from '~/game/equipSetData';
 import { PILL_RECIPES, getPillById, getRarityColor as getPillColor } from '~/game/pillData';
 import type { PillRecipe } from '~/game/pillData';
 import {
@@ -6498,6 +6509,29 @@ watch(equipExtendedBonus, (b) => {
   });
 }, { deep: true, immediate: true });
 
+// 套装件数统计：仅统计已穿戴(slot 非空)的装备
+const equippedSetCounts = computed<Record<string, number>>(() => {
+  return countEquippedSets(equipList.value.filter(e => e.slot));
+});
+
+// 已激活套装列表（已穿戴 ≥3 件），按件数从多到少排序
+const activeSetSummaries = computed(() => {
+  const result: Array<{ setKey: string; name: string; count: number; tier: 0 | 3 | 5 | 7; activeDesc: string }> = [];
+  for (const [setKey, count] of Object.entries(equippedSetCounts.value)) {
+    if (count < 3) continue;
+    const set = EQUIP_SET_MAP[setKey];
+    if (!set) continue;
+    const tier = getActiveTier(count);
+    const activeTierData = set.tiers.find(t => t.count === tier);
+    result.push({
+      setKey, name: set.name, count, tier,
+      activeDesc: activeTierData?.desc || '',
+    });
+  }
+  result.sort((a, b) => b.count - a.count);
+  return result;
+});
+
 const bagEquipList = computed(() => equipList.value.filter(e => !e.slot));
 const bagForSlot = computed(() => {
   const slotDef = EQUIP_SLOTS.find(s => s.slot === currentPickSlot.value);
@@ -7484,6 +7518,7 @@ onUnmounted(() => {
 .log-system { color: var(--ink-light); font-style: italic; }
 .log-dot { color: #c45c4a; }
 .log-buff { color: #5b8eaa; }
+.log-set { color: #ffd35e; font-weight: 600; text-shadow: 0 0 4px rgba(255, 211, 94, 0.4); }
 
 .log-empty {
   text-align: center;
@@ -7831,6 +7866,42 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+}
+
+/* 套装激活面板 — 装备区域顶部，只显示已激活档位（常亮高亮）*/
+.equip-set-panel {
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.equip-set-active {
+  padding: 8px 10px;
+  background: linear-gradient(90deg, rgba(255, 211, 94, 0.10), rgba(120, 200, 255, 0.06));
+  border: 1px solid rgba(255, 211, 94, 0.45);
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(255, 211, 94, 0.15) inset;
+}
+.equip-set-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+.equip-set-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd35e;
+  text-shadow: 0 0 4px rgba(255, 211, 94, 0.4);
+}
+.equip-set-tier {
+  font-size: 11px;
+  color: rgba(255, 211, 94, 0.75);
+}
+.equip-set-effect {
+  font-size: 12px;
+  color: rgba(232, 204, 138, 0.85);
+  line-height: 1.4;
 }
 
 .equip-slot {

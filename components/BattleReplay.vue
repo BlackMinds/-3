@@ -378,6 +378,7 @@ function eventIcon(type: string, text: string): string {
   if (type === 'kill' || type === 'death') return '💀'
   if (type === 'crit') return '💥'
   if (type === 'dodge') return '💨'
+  if (type === 'set') return '❖'
   if (type === 'buff') {
     if (text.includes('回复')) return '💚'
     if (text.includes('吸血')) return '🩸'
@@ -531,6 +532,8 @@ function eventIcon(type: string, text: string): string {
 .event.dodge .event-text { color: #66ccff; font-style: italic; }
 .event.buff { background: rgba(199, 125, 219, 0.08); }
 .event.buff .event-text { color: #c77ddb; }
+.event.set { background: rgba(255, 211, 94, 0.1); }
+.event.set .event-text { color: #ffd35e; font-weight: 600; text-shadow: 0 0 4px rgba(255, 211, 94, 0.4); }
 
 .end-banner {
   padding: 14px; text-align: center; border-top: 1px solid #333;

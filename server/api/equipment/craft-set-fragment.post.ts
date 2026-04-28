@@ -2,6 +2,7 @@ import { getPool } from '~/server/database/db'
 import { getCharId, rollSubStats } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
+import { EQUIP_SETS } from '~/server/engine/equipSetData'
 import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
@@ -37,14 +38,23 @@ export default defineEventHandler(async (event) => {
 
     const tierReqLevels: Record<number, number> = { 1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195, 11: 215, 12: 240 }
     const weaponType = slot === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
-    const equipName = generateEquipName('gold', slot, weaponType, tier, ps, null, '宗门套装')
+
+    // 宗门套装碎片合成：从全部 7 套中随机抽一套（保底必出套装）
+    // 十三枪要求装备「枪」，若槽位非 weapon 或 weaponType 非 spear 则跳过
+    const eligibleSets = EQUIP_SETS.filter(s => {
+      const req = (s.tiers[0]?.hooks as any)?.weaponRequired
+      if (!req) return true
+      return slot === 'weapon' && weaponType === req
+    })
+    const setKey = eligibleSets[rand(0, eligibleSets.length - 1)].setKey
+    const equipName = generateEquipName('gold', slot, weaponType, tier, ps, null, '', setKey)
 
     await pool.query(
-      'INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, base_slot, weapon_type, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)',
-      [charId, equipName, 'gold', ps, pv, JSON.stringify(subs), tier, slot, weaponType, tierReqLevels[tier] || 1]
+      'INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, base_slot, weapon_type, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)',
+      [charId, equipName, 'gold', ps, pv, JSON.stringify(subs), setKey, tier, slot, weaponType, tierReqLevels[tier] || 1]
     )
 
-    return { code: 200, message: `合成成功! 获得【${equipName}】`, data: { equipName, tier, rarity: 'gold' } }
+    return { code: 200, message: `合成成功! 获得【${equipName}】`, data: { equipName, tier, rarity: 'gold', set_id: setKey } }
   } catch (error) {
     console.error('合成失败:', error)
     return { code: 500, message: '服务器错误' }

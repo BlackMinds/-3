@@ -1,6 +1,127 @@
 // 后端完整战斗引擎 - 从前端 battleEngine.ts 移植
 import { Skill, SKILL_MAP, type DebuffType, type BuffType, type SkillDebuff, type SkillBuff, type PassiveEffect } from './skillData';
 import { BATTLE_FORMULA, DOT_FORMULA } from '~/shared/balance';
+import { EQUIP_SET_MAP, getActiveTier } from './equipSetData';
+
+// 套装运行时效果（从已穿戴件数解析得到）
+export interface SetEffectsState {
+  // 1. refresh 刷新套
+  refreshChance: number;       // 释放主修/神通后概率重置 CD 最短的神通
+  refreshOpenCdReduce: number; // 战斗第 1 回合所有神通 CD -N（仅 7 件套）
+  // 2. multicast 多重施法套
+  multicastChance: number;     // 神通额外释放概率
+  multicastMul: number;        // 额外释放伤害倍率（占原伤害百分比）
+  multicastMaxPerTurn: number; // 每回合最多额外释放次数
+  // 3. fire_god 火神套
+  burnInstantMul: number;      // 施加灼烧时立即多结算 N-1 次（mul=2 → 立即 1 次额外，总共 2 次）
+  burnExtendIfStacked: number; // 已灼烧再施加时延长 +N 回合（仅 7 件套）
+  burnDurationCap: number;     // 持续 cap（默认 6）
+  // 4. venom 万毒套
+  poisonInstantMul: number;
+  poisonMaxStacks: number;     // 中毒可叠加层数（仅 7 件套）
+  // 5. blood_demon 血魔套
+  bleedInstantMul: number;
+  bleedLifestealIfBleeding: number; // 目标流血时玩家吸血 +X（仅 7 件套）
+  // 6. frost 极寒套
+  freezeChanceBonus: number;
+  dmgVsFrozen: number;
+  frozenCannotDodge: boolean;
+  // 7. thirteen_spear 十三枪
+  spearActive: boolean;        // 持枪时套装激活
+  spearArmorPen: number;
+  spearLifesteal: number;
+  spearStackPerHit: number;    // 每命中获得层数
+  spearStackDmgPerLevel: number;
+  spearMaxStacks: number;
+  spearGuaranteedCritOnMax: boolean; // 满 13 层时下一击必暴击（仅 7 件套）
+}
+
+export function buildSetEffects(equipSetCounts: Record<string, number> | undefined, weaponType: string | null): SetEffectsState {
+  const state: SetEffectsState = {
+    refreshChance: 0, refreshOpenCdReduce: 0,
+    multicastChance: 0, multicastMul: 0, multicastMaxPerTurn: 0,
+    burnInstantMul: 1, burnExtendIfStacked: 0, burnDurationCap: 99,
+    poisonInstantMul: 1, poisonMaxStacks: 1,
+    bleedInstantMul: 1, bleedLifestealIfBleeding: 0,
+    freezeChanceBonus: 0, dmgVsFrozen: 0, frozenCannotDodge: false,
+    spearActive: false, spearArmorPen: 0, spearLifesteal: 0,
+    spearStackPerHit: 0, spearStackDmgPerLevel: 0, spearMaxStacks: 0,
+    spearGuaranteedCritOnMax: false,
+  };
+  if (!equipSetCounts) return state;
+  for (const [setKey, count] of Object.entries(equipSetCounts)) {
+    const set = EQUIP_SET_MAP[setKey];
+    if (!set) continue;
+    const tier = getActiveTier(count);
+    if (tier === 0) continue;
+    const tierData = set.tiers.find(t => t.count === tier);
+    const hooks: any = tierData?.hooks || {};
+    switch (setKey) {
+      case 'refresh': {
+        state.refreshChance = hooks.onSkillCast?.resetShortestCd?.chance || 0;
+        state.refreshOpenCdReduce = hooks.onBattleStart?.allCdReduce || 0;
+        break;
+      }
+      case 'multicast': {
+        const ec = hooks.onSkillCast?.extraCast;
+        state.multicastChance = ec?.chance || 0;
+        state.multicastMul = ec?.mul || 0;
+        state.multicastMaxPerTurn = ec?.maxPerTurn || 0;
+        break;
+      }
+      case 'fire_god': {
+        state.burnInstantMul = hooks.onApplyBurn?.instantMul || 1;
+        state.burnExtendIfStacked = hooks.onApplyBurn?.extendIfStacked || 0;
+        state.burnDurationCap = hooks.onApplyBurn?.durationCap || 99;
+        break;
+      }
+      case 'venom': {
+        state.poisonInstantMul = hooks.onApplyPoison?.instantMul || 1;
+        state.poisonMaxStacks = hooks.onApplyPoison?.maxStacks || 1;
+        break;
+      }
+      case 'blood_demon': {
+        state.bleedInstantMul = hooks.onApplyBleed?.instantMul || 1;
+        state.bleedLifestealIfBleeding = hooks.conditional?.ifTargetBleeding?.LIFESTEAL_flat || 0;
+        break;
+      }
+      case 'frost': {
+        state.freezeChanceBonus = hooks.freezeChanceBonus || 0;
+        state.dmgVsFrozen = hooks.dmgVsFrozen || 0;
+        state.frozenCannotDodge = !!hooks.frozenCannotDodge;
+        break;
+      }
+      case 'thirteen_spear': {
+        if (hooks.weaponRequired === weaponType) {
+          state.spearActive = true;
+          state.spearArmorPen = hooks.armorPen || 0;
+          state.spearLifesteal = hooks.LIFESTEAL_flat || 0;
+          state.spearStackPerHit = hooks.stack?.perHit || 0;
+          state.spearStackDmgPerLevel = hooks.stack?.perStack || 0;
+          state.spearMaxStacks = hooks.stack?.max || 0;
+          state.spearGuaranteedCritOnMax = !!hooks.onMaxStack?.guaranteedCrit;
+        }
+        break;
+      }
+    }
+  }
+  return state;
+}
+
+// 把激活档位数返回供日志展示
+export function buildActiveSetTiers(equipSetCounts: Record<string, number> | undefined): Array<{ name: string; count: number; tier: number; desc: string }> {
+  const result: Array<{ name: string; count: number; tier: number; desc: string }> = [];
+  if (!equipSetCounts) return result;
+  for (const [setKey, count] of Object.entries(equipSetCounts)) {
+    const set = EQUIP_SET_MAP[setKey];
+    if (!set) continue;
+    const tier = getActiveTier(count);
+    if (tier === 0) continue;
+    const tierData = set.tiers.find(t => t.count === tier);
+    result.push({ name: set.name, count, tier, desc: tierData?.desc || '' });
+  }
+  return result;
+}
 
 // ========== 类型定义 ==========
 
@@ -83,7 +204,7 @@ export interface BattlerStats {
 export interface BattleLogEntry {
   turn: number;
   text: string;
-  type: 'normal' | 'crit' | 'kill' | 'death' | 'system' | 'buff' | 'loot';
+  type: 'normal' | 'crit' | 'kill' | 'death' | 'system' | 'buff' | 'loot' | 'set';
   playerHp?: number;
   playerMaxHp?: number;
   monsterHp?: number;
@@ -675,6 +796,10 @@ export function calculateDamage(
   if ((attacker as any).forceCritNext) {
     isCrit = true;
   }
+  // ❖ 十三枪 7 件套：满层时下一击必暴击
+  if ((attacker as any).guaranteedCritNext) {
+    isCrit = true;
+  }
 
   if (!ignoreDodge) {
     const effectiveDodge = Math.max(0, defender.dodge - (attacker.accuracy || 0) / 100);
@@ -685,6 +810,10 @@ export function calculateDamage(
   // 命中后才消费 forceCritNext 标记（避免被闪避也丢标记）
   if ((attacker as any).forceCritNext) {
     (attacker as any).forceCritNext = false;
+  }
+  // ❖ 十三枪满层标记：命中后消费一次
+  if ((attacker as any).guaranteedCritNext) {
+    (attacker as any).guaranteedCritNext = false;
   }
 
   damage = Math.max(1, Math.floor(damage));
@@ -931,6 +1060,29 @@ export function runWaveBattle(
   const activeSkill: SkillRefInfo = equippedSkills?.activeSkill || { name: '基础剑法', multiplier: 1.0, element: null };
   const cdReduction = equippedSkills?.passiveEffects?.skillCdReduction || 0;
   const divineCds: number[] = (equippedSkills?.divineSkills || []).map(() => 0);
+
+  // ===== 套装系统 =====
+  // 解析已穿戴套装件数 → setEffects 运行时状态
+  const playerWeaponType = (playerStats as any).weaponType || null;
+  const setEffects = buildSetEffects((playerStats as any).equipSetCounts, playerWeaponType);
+  player.setEffects = setEffects;
+  player.spearStacks = 0;          // 十三枪叠加层
+  player.guaranteedCritNext = false; // 满层标记
+  player.armorPen = (player.armorPen || 0) + setEffects.spearArmorPen;
+  player.lifesteal = Math.min(0.25, (player.lifesteal || 0) + setEffects.spearLifesteal);
+  // 战斗起始时打印已激活套装（金色高亮日志）
+  const activeSets = buildActiveSetTiers((playerStats as any).equipSetCounts);
+  for (const s of activeSets) {
+    logs.push({ turn: 0, text: `❖ 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
+    logs.push({ turn: 0, text: `  ${s.desc}`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
+  }
+  // 刷新套 7 件套：战斗第 1 回合所有神通 CD -1
+  if (setEffects.refreshOpenCdReduce > 0 && divineCds.length > 0) {
+    for (let i = 0; i < divineCds.length; i++) {
+      divineCds[i] = Math.max(0, divineCds[i] - setEffects.refreshOpenCdReduce);
+    }
+    logs.push({ turn: 0, text: `  ❖【刷新套】开局所有神通 CD -${setEffects.refreshOpenCdReduce}`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
+  }
   let reviveAvailable = equippedSkills?.passiveEffects?.reviveOnce || false;
   // 战意沸腾
   const atkPerKillPercent = (equippedSkills?.passiveEffects as any)?.atkPerKillPercent || 0;
@@ -1005,6 +1157,12 @@ export function runWaveBattle(
       }
     }
 
+    // ❖ 极寒套：玩家施加冰冻时概率 +X
+    if (inflictor === 'player' && debuff.type === 'freeze' && (player as any).setEffects?.freezeChanceBonus > 0) {
+      effChance = Math.min(1, effChance + (player as any).setEffects.freezeChanceBonus);
+      resonanceTag += ` ❖极寒+${((player as any).setEffects.freezeChanceBonus * 100).toFixed(0)}%`;
+    }
+
     if (Math.random() >= effChance) return false;
     // 控制类抗性降低持续时间
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type);
@@ -1060,6 +1218,31 @@ export function runWaveBattle(
     else if (debuff.type === 'slow') text += ` (必定后攻)`;
     else if (debuff.type === 'silence') text += ` (无法使用神通)`;
     logs.push({ turn, text: `  ${text}${tianshiTag}${resonanceTag}`, type: 'normal', ...snap() });
+
+    // ❖ 火神/万毒/血魔套：玩家施加 burn/poison/bleed 时立即多结算 (instantMul - 1) 次该跳伤害
+    // 每场每目标每种 debuff 每回合限触发 1 次（避免多段技能滚雪球）
+    if (inflictor === 'player' && isDotType && target !== player) {
+      const se = (player as any).setEffects as SetEffectsState | undefined;
+      if (se) {
+        let instantMul = 1;
+        let setName = '';
+        if (debuff.type === 'burn'   && se.burnInstantMul   > 1) { instantMul = se.burnInstantMul;   setName = '火神套'; }
+        if (debuff.type === 'poison' && se.poisonInstantMul > 1) { instantMul = se.poisonInstantMul; setName = '万毒套'; }
+        if (debuff.type === 'bleed'  && se.bleedInstantMul  > 1) { instantMul = se.bleedInstantMul;  setName = '血魔套'; }
+        if (instantMul > 1) {
+          // 用 _setInstantTriggered 防止同回合多次（不同段技能也算 1 次）
+          const t = target as any;
+          if (!t._setInstantTriggered) t._setInstantTriggered = {};
+          if (!t._setInstantTriggered[`${debuff.type}_${turn}`]) {
+            t._setInstantTriggered[`${debuff.type}_${turn}`] = true;
+            const extraTicks = instantMul - 1;
+            const totalDmg = dmg * extraTicks;
+            target.stats.hp = Math.max(0, target.stats.hp - totalDmg);
+            logs.push({ turn, text: `  ❖【${setName}】${DEBUFF_NAMES[debuff.type]}立即结算 ×${extraTicks}，对${targetName}造成 ${totalDmg} 伤害`, type: 'set', ...snap() });
+          }
+        }
+      }
+    }
     return true;
   }
 
@@ -1457,6 +1640,8 @@ export function runWaveBattle(
     if (aliveMonsters.length === 0) break;
 
     turnLifestealTotal = 0;
+    // ❖ 套装：每回合重置多重施法触发计数
+    (player as any)._multicastThisTurn = 0;
 
     // v1.2 附灵每回合开始：回春 + 洗髓
     runAwakenTurnStart(turn);
@@ -1651,13 +1836,28 @@ export function runWaveBattle(
       let critCdCutUsedThisTurn = false;
 
       // 对怪物造成伤害（应用脆弱、吸血汇总）
-      const dealDamage = (target: typeof monsters[0], rawDmg: number) => {
+      const dealDamage = (target: typeof monsters[0], rawDmg: number, opts?: { chained?: boolean }) => {
         let dmg = rawDmg;
         const brittle = getBrittleBonus(target);
         if (brittle > 0) dmg = Math.floor(dmg * (1 + brittle));
+        // ❖ 极寒套：目标处于冻结状态时伤害 +X
+        const setEffects = (player as any).setEffects as SetEffectsState | undefined;
+        if (setEffects && setEffects.dmgVsFrozen > 0 && target.frozenTurns > 0) {
+          dmg = Math.floor(dmg * (1 + setEffects.dmgVsFrozen));
+        }
+        // ❖ 十三枪：每层 +X 最终伤害（chained 段不再叠层但享受当前层数）
+        if (setEffects && setEffects.spearActive && (player as any).spearStacks > 0) {
+          dmg = Math.floor(dmg * (1 + (player as any).spearStacks * setEffects.spearStackDmgPerLevel));
+        }
         target.stats.hp -= dmg;
-        if (player.lifesteal > 0) {
-          const heal = Math.floor(dmg * player.lifesteal);
+        // 吸血基数（含血魔套：目标处于流血时 +X）
+        let lsRate = player.lifesteal;
+        const targetBleeding = target.debuffs?.some((d: any) => d.type === 'bleed' && d.remaining > 0);
+        if (setEffects && targetBleeding && setEffects.bleedLifestealIfBleeding > 0) {
+          lsRate = Math.min(0.25, lsRate + setEffects.bleedLifestealIfBleeding);
+        }
+        if (lsRate > 0) {
+          const heal = Math.floor(dmg * lsRate);
           const actualHeal = Math.min(heal, player.maxHp - player.hp);
           if (actualHeal > 0) {
             const before = player.hp;
@@ -1675,6 +1875,19 @@ export function runWaveBattle(
           if (actualHeal > 0) {
             player.hp += actualHeal;
             turnLifestealTotal += actualHeal;
+          }
+        }
+        // ❖ 十三枪：每次造成伤害后叠层（chained 不叠，避免链式翻倍）
+        if (setEffects && setEffects.spearActive && !opts?.chained) {
+          const before = (player as any).spearStacks || 0;
+          if (before < setEffects.spearMaxStacks) {
+            const next = Math.min(setEffects.spearMaxStacks, before + setEffects.spearStackPerHit);
+            (player as any).spearStacks = next;
+            // 满层：标记下一击必暴击（仅 7 件套）
+            if (next === setEffects.spearMaxStacks && setEffects.spearGuaranteedCritOnMax && before < setEffects.spearMaxStacks) {
+              (player as any).guaranteedCritNext = true;
+              logs.push({ turn, text: `  ❖【十三枪】满 ${setEffects.spearMaxStacks} 层！下一击必暴击`, type: 'set', ...snap() });
+            }
           }
         }
         return dmg;
@@ -1699,7 +1912,9 @@ export function runWaveBattle(
         while (hitsDone < hits) {
           const curTarget = monsters.find(m => m.alive && m.stats.hp > 0);
           if (!curTarget) break;
-          const dmgResult = calculateDamage(player, curTarget.stats, perHitMul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill);
+          // ❖ 极寒套 7 件套：冻结目标无法闪避
+          const ignoreDodgeFrost = !!(player.setEffects?.frozenCannotDodge && curTarget.frozenTurns > 0);
+          const dmgResult = calculateDamage(player, curTarget.stats, perHitMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill);
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(curTarget, dmgResult.damage);
             const critText = dmgResult.isCrit ? '暴击!' : '';
@@ -1721,7 +1936,9 @@ export function runWaveBattle(
         // AOE/多目标/普通单体
         for (const t of attackTargets) {
           if (t.stats.hp <= 0) continue;
-          const dmgResult = calculateDamage(player, t.stats, mul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill);
+          // ❖ 极寒套 7 件套：冻结目标无法闪避
+          const ignoreDodgeFrost = !!(player.setEffects?.frozenCannotDodge && t.frozenTurns > 0);
+          const dmgResult = calculateDamage(player, t.stats, mul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill);
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(t, dmgResult.damage);
             const critText = dmgResult.isCrit ? '暴击!' : '';
@@ -1772,6 +1989,41 @@ export function runWaveBattle(
           }
         }
       }
+
+      // ❖ 套装：刷新套 / 多重施法套（仅在攻击型神通/主修释放后触发；buff/治疗 mul=0 不触发）
+      const setEffects = (player as any).setEffects as SetEffectsState | undefined;
+      if (setEffects) {
+        // 刷新套：释放主修或神通后概率重置 CD 最短的神通
+        if (setEffects.refreshChance > 0 && Math.random() < setEffects.refreshChance) {
+          let minIdx = -1, minCd = Infinity;
+          for (let i = 0; i < divineCds.length; i++) {
+            if (divineCds[i] > 0 && divineCds[i] < minCd) { minCd = divineCds[i]; minIdx = i; }
+          }
+          if (minIdx >= 0) {
+            divineCds[minIdx] = 0;
+            const sk = (equippedSkills?.divineSkills || [])[minIdx];
+            logs.push({ turn, text: `  ❖【刷新套】神通【${sk?.name || '?'}】CD 重置`, type: 'set', ...snap() });
+          }
+        }
+        // 多重施法套：仅在神通释放后触发，对主目标再造成 multicastMul × 当前神通伤害
+        if (isDivine && setEffects.multicastChance > 0 && setEffects.multicastMaxPerTurn > 0) {
+          const triggered = (player as any)._multicastThisTurn || 0;
+          if (triggered < setEffects.multicastMaxPerTurn && Math.random() < setEffects.multicastChance) {
+            (player as any)._multicastThisTurn = triggered + 1;
+            const mcTarget = monsters.find(m => m.alive && m.stats.hp > 0);
+            if (mcTarget && mul > 0) {
+              const extraMul = mul * setEffects.multicastMul;
+              const dmgResult = calculateDamage(player, mcTarget.stats, extraMul, usedSkill.element, usedSkill.ignoreDef, false, false);
+              if (dmgResult.damage > 0) {
+                const finalDmg = dealDamage(mcTarget, dmgResult.damage, { chained: true });
+                const critText = dmgResult.isCrit ? '暴击!' : '';
+                logs.push({ turn, text: `  ❖【多重施法】${critText}追加【${usedSkill.name}】对${mcTarget.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.multicastMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
+              }
+            }
+          }
+        }
+      }
+
       // v1.3 攻击结束后清掉主修元素标记，防止后续怪物攻击或下一回合误命中
       (player as any)._mainSkillElement = null;
 

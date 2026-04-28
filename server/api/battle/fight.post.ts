@@ -229,10 +229,12 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   if (Math.random() >= rate) return null
   const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
   // T1-T2 品质权重上调（前期装备更新频繁带来爽感）
+  // T11/T12 顶级图：紫品起步、金/红主流，白绿全砍
   const weights: Record<number, number[]> = {
     1: [40,40,17,3,0,0], 2: [30,40,22,7,1,0], 3: [20,35,25,15,4.5,0.5],
     4: [5,25,30,25,13,2], 5: [0,10,30,35,22,3], 6: [0,0,20,40,35,5],
     7: [0,0,10,35,45,10], 8: [0,0,5,25,55,15], 9: [0,0,0,20,60,20], 10: [0,0,0,10,60,30],
+    11: [0,0,0,5,55,40], 12: [0,0,0,0,50,50],
   }
   const w = weights[tier] || weights[1]
   const total = w.reduce((a, b) => a + b, 0)
@@ -382,9 +384,18 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
   // v3.6 DOT/反伤副属性累计（小数 0.05 = 5%）
   let equipDotDmgPct = 0, equipReflectPct = 0
+  // 套装：聚合已穿戴件数（仅统计 slot 非空）+ 记录主武器类型（供十三枪等武器流套装判定）
+  const equipSetCounts: Record<string, number> = {}
+  let playerWeaponType: string | null = null
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
+    if (eq.set_id) {
+      equipSetCounts[eq.set_id] = (equipSetCounts[eq.set_id] || 0) + 1
+    }
+    if (eq.slot === 'weapon' && eq.weapon_type) {
+      playerWeaponType = eq.weapon_type
+    }
     const enhLv = eq.enhance_level || 0
     const primary = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
     if (eq.primary_stat === 'ATK') atk += primary
@@ -680,6 +691,10 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       // v3.6 DOT/反伤副属性（小数 0.05 = 5%），由 battleEngine 读取并合并到 dotAmpPct/反伤计算
       equipDotDmgPct,
       equipReflectPct,
+      // v1 套装：已穿戴件数 map（如 { fire_god: 5, refresh: 3 }），由 battleEngine 解析为 active set tiers
+      equipSetCounts,
+      // 主武器类型（sword/blade/spear/fan）— 武器流套装（如十三枪）按此判定
+      weaponType: playerWeaponType,
     } as any,
     expBonusPercent: expBonusPercent + spiritDensity + awakenExpBonus * 100 + awakenSpiritDensityBonus * 100,
     luckPercent: luck + awakenLuckBonus * 100,
