@@ -49,7 +49,7 @@ export const useGameStore = defineStore('game', () => {
   // 日志队列
   const logQueue = ref<BattleLogEntry[]>([])
   const logTimer = ref<number | null>(null)
-  const pendingResult = ref<{ won: boolean; expGained: number; spiritStoneGained: number; drops: any[] } | null>(null)
+  const pendingResult = ref<{ won: boolean; expGained: number; spiritStoneGained: number; autoSellGained: number; drops: any[] } | null>(null)
   // 每次 stopBattle/changeMap 递增，executeFight 用来丢弃过期响应，避免并发请求污染状态
   const battleSession = ref(0)
 
@@ -296,6 +296,7 @@ export const useGameStore = defineStore('game', () => {
       won: b.won,
       expGained: b.expGained || 0,
       spiritStoneGained: b.stoneGained || 0,
+      autoSellGained: b.autoSellGained || 0,
       drops: b.drops || [],
     }
 
@@ -456,7 +457,7 @@ export const useGameStore = defineStore('game', () => {
       killCount.value++
       if (battleFrenzyStacks.value < 10) battleFrenzyStacks.value++
       sessionExp.value += result.expGained
-      sessionStone.value += result.spiritStoneGained
+      sessionStone.value += result.spiritStoneGained + result.autoSellGained
 
       if (result.drops && Array.isArray(result.drops)) {
         result.drops.forEach((dropName: string) => {

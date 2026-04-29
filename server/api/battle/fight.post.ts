@@ -899,11 +899,14 @@ export default defineEventHandler(async (event) => {
       }
 
       // 单场结算事务（每场独立 BEGIN/COMMIT，失败不影响已完成场次）
+      // 装备实际入库的名字（不含自动出售/背包满转售的），返给前端 sessionDrops 用
+      const keptDropNames: string[] = []
+      let autoSellIncomeOut = 0
       const client = await pool.connect()
       try {
         await client.query('BEGIN')
 
-        if (result.won && totalExp > 0) {
+        if (result.won) {
           const { rows: fresh } = await client.query(
             'SELECT cultivation_exp, realm_tier, realm_stage, level_exp, level FROM characters WHERE id = $1 FOR UPDATE',
             [char.id]
@@ -963,6 +966,7 @@ export default defineEventHandler(async (event) => {
                 [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
               )
               bagCount++
+              keptDropNames.push(d.name)
               result.logs.push({ turn: 0, text: `掉落了【${d.name}】!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
             }
             if (drop.type === 'skill') {
@@ -998,6 +1002,7 @@ export default defineEventHandler(async (event) => {
           if (autoSellIncome > 0) {
             await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [autoSellIncome, char.id])
           }
+          autoSellIncomeOut = autoSellIncome
         } else if (!result.won) {
           await client.query(
             `UPDATE characters SET
@@ -1087,21 +1092,22 @@ export default defineEventHandler(async (event) => {
       // monsterInfo 保留为 monstersInfo[0] 的别名兜底旧前端
       const monsterInfo = monstersInfo[0] || null
 
+      // 装备只算实际入库的（自动出售/背包满转售的不进 sessionDrops，但灵石进 sessionStone）
+      const skillDropNames = allDrops
+        .filter(d => d.type === 'skill')
+        .map(d => SKILL_MAP[d.data]?.name || d.data)
       battles.push({
         won: result.won,
         expGained: totalExp,
         stoneGained: totalStone,
+        autoSellGained: autoSellIncomeOut,
         levelExpGained: levelExp,
         monsterNames,
         monstersMaxHp: monsterList.map(m => m.stats.maxHp),
         monsterInfo,
         monstersInfo,
         logs: result.logs,
-        drops: allDrops.map(d => {
-          if (d.type === 'equipment') return d.data.name
-          if (d.type === 'skill') return SKILL_MAP[d.data]?.name || d.data
-          return ''
-        }).filter(Boolean),
+        drops: [...keptDropNames, ...skillDropNames],
       })
 
       if (!result.won) break
