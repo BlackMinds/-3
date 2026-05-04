@@ -708,6 +708,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
     1: 30, 2: 60, 3: 120, 4: 200,
     5: 350, 6: 500, 7: 700, 8: 1000,
     9: 1300, 10: 1700,
+    11: 2000, 12: 2300, 13: 2600, 14: 2900, 15: 3200,
   };
   const SPD_ROLE_MUL: Record<string, number> = {
     balanced: 1.0,
@@ -733,9 +734,15 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   //   - T5+ 攻击 ×0.80（中后期玩家被怪压太狠，整体降攻）
   //   - T5+ 血量 ×1.10（中后期怪稍微肉一点，给玩家更多反应回合）
   //   - T11/T12 整体属性大幅缩（曲线平滑：跨 tier 倍率 ×5.13/×4.10 → 约 ×2.5）
+  // v3.7.2 新增 T13-T15:
+  //   - 沿用 T11/T12 的"整体大幅缩"思路，让 power 翻倍带来的 ATK 倍率维持 ~×2.5 跨 tier
+  //   - T13 ×0.18 / T14 ×0.10 / T15 ×0.06（同时作用于 HP/ATK/DEF）
   if (tier >= 5) { MONSTER_ATK_MUL *= 0.80; MONSTER_HP_MUL *= 1.10; }
   if (tier === 11) { MONSTER_HP_MUL *= 0.50; MONSTER_ATK_MUL *= 0.50; MONSTER_DEF_MUL *= 0.50; }
   if (tier === 12) { MONSTER_HP_MUL *= 0.30; MONSTER_ATK_MUL *= 0.30; MONSTER_DEF_MUL *= 0.30; }
+  if (tier === 13) { MONSTER_HP_MUL *= 0.18; MONSTER_ATK_MUL *= 0.18; MONSTER_DEF_MUL *= 0.18; }
+  if (tier === 14) { MONSTER_HP_MUL *= 0.10; MONSTER_ATK_MUL *= 0.10; MONSTER_DEF_MUL *= 0.10; }
+  if (tier === 15) { MONSTER_HP_MUL *= 0.06; MONSTER_ATK_MUL *= 0.06; MONSTER_DEF_MUL *= 0.06; }
 
   return {
     name: template.name,

@@ -23,12 +23,15 @@ const R_ATK: Record<string, number> = {
   balanced: 0.30, tank: 0.15, dps: 0.45, speed: 0.25, boss: 0.30, healer: 0.15,
 }
 
-// v3.7.1: 镜像 generateMonsterStats 里的 tier 调整
+// v3.7.1/v3.7.2: 镜像 generateMonsterStats 里的 tier 调整
 function getMonsterAtkMul(tier: number): number {
   let mul = 0.62
   if (tier >= 5) mul *= 0.80
   if (tier === 11) mul *= 0.50
   if (tier === 12) mul *= 0.30
+  if (tier === 13) mul *= 0.18
+  if (tier === 14) mul *= 0.10
+  if (tier === 15) mul *= 0.06
   return mul
 }
 
@@ -171,5 +174,5 @@ for (const d of bossAvgs) {
 
 console.log('\n注: power 实际有 ±15% 随机浮动，上面用期望值（×1.0）。')
 console.log('    各怪 ATK = power × r.atk(role) × 0.665 × MUL(tier)')
-console.log('    MUL(tier): T1-4=0.62, T5-10=0.50 (T5+ 攻击 ×0.80), T11=0.25, T12=0.15')
+console.log('    MUL(tier): T1-4=0.62, T5-10=0.50, T11=0.25, T12=0.15, T13=0.089, T14=0.050, T15=0.030')
 console.log('    role 系数: balanced/boss=0.30, dps=0.45, speed=0.25, tank/healer=0.15')

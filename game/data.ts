@@ -369,6 +369,75 @@ export const MAPS: MapData[] = [
     ],
     boss: { id: 'genesis_god', name: '创世道祖', power: 25000000, element: null, exp: 150000000, spirit_stone_range: [800000000, 2000000000], role: 'boss', drop_table: 'boss_t12' },
   },
+  // ===== T13 地图（道域）— power × ~2.5 跨 T12 =====
+  {
+    id: 'astral_dao_field', name: '天宇道场', tier: 13,
+    realm_required: 'T13 试炼', recommended_power: 280,
+    element: 'metal', description: '诸星辰为棋,演万道而成域,唯踏破极限者立于其间',
+    monsters: [
+      { id: 'star_arbiter', name: '星辰仲裁者', power: 13000000, element: 'metal', exp: 35000000, spirit_stone_range: [120000000, 300000000], role: 'tank', drop_table: 'common_t13' },
+      { id: 'astral_predator', name: '星海掠者', power: 18000000, element: 'water', exp: 50000000, spirit_stone_range: [150000000, 380000000], role: 'dps', drop_table: 'uncommon_t13' },
+      { id: 'cosmic_oracle', name: '宙环先知', power: 23000000, element: null, exp: 70000000, spirit_stone_range: [350000000, 800000000], role: 'dps', drop_table: 'uncommon_t13' },
+    ],
+    boss: { id: 'dao_field_lord', name: '天宇道君', power: 60000000, element: 'metal', exp: 380000000, spirit_stone_range: [2000000000, 5000000000], role: 'boss', drop_table: 'boss_t13' },
+  },
+  {
+    id: 'myriad_origin_void', name: '万源虚境', tier: 13,
+    realm_required: 'T13 试炼', recommended_power: 290,
+    element: null, description: '万物之源凝于此境,虚实相融,法则在此处皆为残卷',
+    monsters: [
+      { id: 'origin_warden', name: '万源守阙', power: 15000000, element: 'earth', exp: 38000000, spirit_stone_range: [120000000, 300000000], role: 'balanced', drop_table: 'common_t13' },
+      { id: 'origin_blade', name: '本源剑灵', power: 20000000, element: 'metal', exp: 55000000, spirit_stone_range: [150000000, 380000000], role: 'speed', drop_table: 'uncommon_t13' },
+      { id: 'origin_doom', name: '本源终焉', power: 26000000, element: 'fire', exp: 75000000, spirit_stone_range: [350000000, 800000000], role: 'dps', drop_table: 'uncommon_t13' },
+    ],
+    boss: { id: 'myriad_origin_lord', name: '万源道祖', power: 70000000, element: null, exp: 420000000, spirit_stone_range: [2500000000, 6000000000], role: 'boss', drop_table: 'boss_t13' },
+  },
+  // ===== T14 地图（法则）— power × ~3 跨 T13 =====
+  {
+    id: 'causality_sea', name: '因果律海', tier: 14,
+    realm_required: 'T14 试炼', recommended_power: 320,
+    element: 'water', description: '前因今果汇成无尽汪洋,踏入者一念万劫',
+    monsters: [
+      { id: 'karma_warden', name: '因果守律', power: 40000000, element: 'water', exp: 110000000, spirit_stone_range: [400000000, 1000000000], role: 'tank', drop_table: 'common_t14' },
+      { id: 'fate_assassin', name: '命运刺客', power: 55000000, element: null, exp: 160000000, spirit_stone_range: [500000000, 1300000000], role: 'speed', drop_table: 'uncommon_t14' },
+      { id: 'karma_judge', name: '因果裁决', power: 70000000, element: null, exp: 220000000, spirit_stone_range: [1200000000, 2800000000], role: 'dps', drop_table: 'uncommon_t14' },
+    ],
+    boss: { id: 'karma_emperor', name: '因果天尊', power: 180000000, element: 'water', exp: 1100000000, spirit_stone_range: [6000000000, 14000000000], role: 'boss', drop_table: 'boss_t14' },
+  },
+  {
+    id: 'spacetime_rift', name: '时空裂界', tier: 14,
+    realm_required: 'T14 试炼', recommended_power: 330,
+    element: null, description: '时之河断,空之裂裸,唯执一念可定乾坤',
+    monsters: [
+      { id: 'time_sentry', name: '时序哨卫', power: 45000000, element: 'metal', exp: 120000000, spirit_stone_range: [400000000, 1000000000], role: 'balanced', drop_table: 'common_t14' },
+      { id: 'space_wraith', name: '空裂幽影', power: 62000000, element: null, exp: 180000000, spirit_stone_range: [500000000, 1300000000], role: 'dps', drop_table: 'uncommon_t14' },
+      { id: 'rift_devourer', name: '裂界吞噬者', power: 78000000, element: 'fire', exp: 240000000, spirit_stone_range: [1200000000, 2800000000], role: 'dps', drop_table: 'uncommon_t14' },
+    ],
+    boss: { id: 'spacetime_lord', name: '时空之主', power: 220000000, element: null, exp: 1300000000, spirit_stone_range: [7000000000, 16000000000], role: 'boss', drop_table: 'boss_t14' },
+  },
+  // ===== T15 地图（道祖）— power × ~3 跨 T14, 终焉级 =====
+  {
+    id: 'genesis_dawn', name: '创世初辰', tier: 15,
+    realm_required: 'T15 试炼', recommended_power: 360,
+    element: null, description: '万物未生之时辰,道之初啼,唯证道者得入',
+    monsters: [
+      { id: 'dawn_keeper', name: '初辰守者', power: 130000000, element: 'fire', exp: 380000000, spirit_stone_range: [1500000000, 3500000000], role: 'tank', drop_table: 'common_t15' },
+      { id: 'genesis_seraph', name: '创世圣使', power: 170000000, element: 'metal', exp: 500000000, spirit_stone_range: [1800000000, 4500000000], role: 'dps', drop_table: 'uncommon_t15' },
+      { id: 'first_dao_avatar', name: '初道化形', power: 210000000, element: null, exp: 700000000, spirit_stone_range: [4000000000, 9000000000], role: 'dps', drop_table: 'uncommon_t15' },
+    ],
+    boss: { id: 'dawn_godhead', name: '初辰道神', power: 550000000, element: null, exp: 3500000000, spirit_stone_range: [20000000000, 45000000000], role: 'boss', drop_table: 'boss_t15' },
+  },
+  {
+    id: 'myriad_dao_end', name: '万道终焉', tier: 15,
+    realm_required: 'T15 试炼', recommended_power: 380,
+    element: null, description: '诸道尽头,纵证圣亦止于此,唯越终焉者得见无极',
+    monsters: [
+      { id: 'end_warden', name: '终焉守阙', power: 150000000, element: 'earth', exp: 420000000, spirit_stone_range: [1500000000, 3500000000], role: 'tank', drop_table: 'common_t15' },
+      { id: 'doom_blade', name: '终焉剑魄', power: 200000000, element: 'metal', exp: 560000000, spirit_stone_range: [1800000000, 4500000000], role: 'speed', drop_table: 'uncommon_t15' },
+      { id: 'apocalypse_caller', name: '末劫呼唤者', power: 260000000, element: 'fire', exp: 800000000, spirit_stone_range: [4000000000, 9000000000], role: 'dps', drop_table: 'uncommon_t15' },
+    ],
+    boss: { id: 'omega_dao_lord', name: '终焉道祖', power: 700000000, element: null, exp: 4500000000, spirit_stone_range: [30000000000, 70000000000], role: 'boss', drop_table: 'boss_t15' },
+  },
 ];
 
 // ========== 初始技能 ==========
@@ -438,22 +507,10 @@ export function getExpRequired(tier: number, stage: number): number {
 }
 
 // ========== 根据角色境界获取可用地图 ==========
-export function getUnlockedMaps(tier: number, stage: number): MapData[] {
-  return MAPS.filter(m => {
-    if (m.tier <= tier) return true;
-    // 飞升(tier 8)的高阶 stage 解锁 T9/T10：太乙金仙(4)→T9，大罗金仙(5)→T10
-    if (tier === 8) {
-      if (m.tier === 9 && stage >= 4) return true;
-      if (m.tier === 10 && stage >= 5) return true;
-    }
-    // 混元(tier 9)的高阶 stage 解锁 T11/T12：合道(1)→T11，太极(4)→T12
-    if (tier === 9) {
-      if (m.tier === 10) return true; // 混元已超 T8 大罗，T10 应自然解锁
-      if (m.tier === 11) return true;
-      if (m.tier === 12 && stage >= 4) return true;
-    }
-    return false;
-  });
+export function getUnlockedMaps(_tier: number, _stage: number): MapData[] {
+  // v3.7.2: 临时关闭地图解锁限制，所有玩家可以直接看到全部地图
+  // 旧解锁逻辑保留在 git 历史里，恢复直接 revert
+  return MAPS;
 }
 
 // ========== 数字格式化 ==========

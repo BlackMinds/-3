@@ -205,6 +205,39 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
     { name: '法则裁定者', power: 8500000, element: null, exp: 880000, stone_min: 6000000, stone_max: 15000000, role: 'dps', drop_table: 'uncommon_t12' },
     { name: '终焉先知', power: 10000000, element: null, exp: 1200000, stone_min: 15000000, stone_max: 35000000, role: 'dps', drop_table: 'uncommon_t12' },
   ], boss: { name: '创世道祖', power: 25000000, element: null, exp: 12000000, stone_min: 80000000, stone_max: 200000000, role: 'boss', drop_table: 'boss_t12' } },
+  // ===== T13 地图（道域）=====
+  astral_dao_field: { tier: 13, monsters: [
+    { name: '星辰仲裁者', power: 13000000, element: 'metal', exp: 14000000, stone_min: 12000000, stone_max: 30000000, role: 'tank', drop_table: 'common_t13' },
+    { name: '星海掠者', power: 18000000, element: 'water', exp: 20000000, stone_min: 15000000, stone_max: 38000000, role: 'dps', drop_table: 'uncommon_t13' },
+    { name: '宙环先知', power: 23000000, element: null, exp: 28000000, stone_min: 35000000, stone_max: 80000000, role: 'dps', drop_table: 'uncommon_t13' },
+  ], boss: { name: '天宇道君', power: 60000000, element: 'metal', exp: 152000000, stone_min: 200000000, stone_max: 500000000, role: 'boss', drop_table: 'boss_t13' } },
+  myriad_origin_void: { tier: 13, monsters: [
+    { name: '万源守阙', power: 15000000, element: 'earth', exp: 15200000, stone_min: 12000000, stone_max: 30000000, role: 'balanced', drop_table: 'common_t13' },
+    { name: '本源剑灵', power: 20000000, element: 'metal', exp: 22000000, stone_min: 15000000, stone_max: 38000000, role: 'speed', drop_table: 'uncommon_t13' },
+    { name: '本源终焉', power: 26000000, element: 'fire', exp: 30000000, stone_min: 35000000, stone_max: 80000000, role: 'dps', drop_table: 'uncommon_t13' },
+  ], boss: { name: '万源道祖', power: 70000000, element: null, exp: 168000000, stone_min: 250000000, stone_max: 600000000, role: 'boss', drop_table: 'boss_t13' } },
+  // ===== T14 地图（法则）=====
+  causality_sea: { tier: 14, monsters: [
+    { name: '因果守律', power: 40000000, element: 'water', exp: 44000000, stone_min: 40000000, stone_max: 100000000, role: 'tank', drop_table: 'common_t14' },
+    { name: '命运刺客', power: 55000000, element: null, exp: 64000000, stone_min: 50000000, stone_max: 130000000, role: 'speed', drop_table: 'uncommon_t14' },
+    { name: '因果裁决', power: 70000000, element: null, exp: 88000000, stone_min: 120000000, stone_max: 280000000, role: 'dps', drop_table: 'uncommon_t14' },
+  ], boss: { name: '因果天尊', power: 180000000, element: 'water', exp: 440000000, stone_min: 600000000, stone_max: 1400000000, role: 'boss', drop_table: 'boss_t14' } },
+  spacetime_rift: { tier: 14, monsters: [
+    { name: '时序哨卫', power: 45000000, element: 'metal', exp: 48000000, stone_min: 40000000, stone_max: 100000000, role: 'balanced', drop_table: 'common_t14' },
+    { name: '空裂幽影', power: 62000000, element: null, exp: 72000000, stone_min: 50000000, stone_max: 130000000, role: 'dps', drop_table: 'uncommon_t14' },
+    { name: '裂界吞噬者', power: 78000000, element: 'fire', exp: 96000000, stone_min: 120000000, stone_max: 280000000, role: 'dps', drop_table: 'uncommon_t14' },
+  ], boss: { name: '时空之主', power: 220000000, element: null, exp: 520000000, stone_min: 700000000, stone_max: 1600000000, role: 'boss', drop_table: 'boss_t14' } },
+  // ===== T15 地图（道祖）=====
+  genesis_dawn: { tier: 15, monsters: [
+    { name: '初辰守者', power: 130000000, element: 'fire', exp: 152000000, stone_min: 150000000, stone_max: 350000000, role: 'tank', drop_table: 'common_t15' },
+    { name: '创世圣使', power: 170000000, element: 'metal', exp: 200000000, stone_min: 180000000, stone_max: 450000000, role: 'dps', drop_table: 'uncommon_t15' },
+    { name: '初道化形', power: 210000000, element: null, exp: 280000000, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t15' },
+  ], boss: { name: '初辰道神', power: 550000000, element: null, exp: 1400000000, stone_min: 2000000000, stone_max: 4500000000, role: 'boss', drop_table: 'boss_t15' } },
+  myriad_dao_end: { tier: 15, monsters: [
+    { name: '终焉守阙', power: 150000000, element: 'earth', exp: 168000000, stone_min: 150000000, stone_max: 350000000, role: 'tank', drop_table: 'common_t15' },
+    { name: '终焉剑魄', power: 200000000, element: 'metal', exp: 224000000, stone_min: 180000000, stone_max: 450000000, role: 'speed', drop_table: 'uncommon_t15' },
+    { name: '末劫呼唤者', power: 260000000, element: 'fire', exp: 320000000, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t15' },
+  ], boss: { name: '终焉道祖', power: 700000000, element: null, exp: 1800000000, stone_min: 3000000000, stone_max: 7000000000, role: 'boss', drop_table: 'boss_t15' } },
 }
 
 // ===== 副属性自动生成（统一走 server/utils/equipment.ts 的共享池）=====
