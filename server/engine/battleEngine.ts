@@ -1378,7 +1378,7 @@ export function runWaveBattle(
             const extraTicks = instantMul - 1;
             const totalDmg = dmg * extraTicks;
             target.stats.hp = Math.max(0, target.stats.hp - totalDmg);
-            logs.push({ turn, text: `  ❖【${setName}】${DEBUFF_NAMES[debuff.type]}立即结算 ×${extraTicks}，对${targetName}造成 ${totalDmg} 伤害`, type: 'set', ...snap() });
+            logs.push({ turn, text: `  ❖【${setName}】${DEBUFF_NAMES[debuff.type]}立即额外结算 ${extraTicks} 跳，对${targetName}造成 ${totalDmg} 伤害`, type: 'set', ...snap() });
           }
         }
       }
