@@ -274,9 +274,19 @@ export function getActiveTier(count: number): 0 | 3 | 5 | 7 {
  * 设计：白/绿不出套装，蓝及以上品质有概率，越稀有越容易出
  * 出 boss/秘境时建议外层 luckMul ×1.5
  *
+ * 武器流派套装（hooks.weaponRequired = sword/blade/spear/fan）：
+ *   - 当生成的是武器槽（slot === 'weapon'）时，必须 weaponType 一致才允许
+ *     —— 避免出现"扇子带刀套"这种永远激活不了的幽灵套装
+ *   - 非武器槽不限制：玩家可以自行配合武器激活
+ *
  * @returns setKey 或 null
  */
-export function rollEquipSet(rarity: string, luckMul: number = 1.0): string | null {
+export function rollEquipSet(
+  rarity: string,
+  luckMul: number = 1.0,
+  slot?: string,
+  weaponType?: string | null,
+): string | null {
   // 套装爆率（按品质）
   const baseRate: Record<string, number> = {
     white: 0,
@@ -292,7 +302,12 @@ export function rollEquipSet(rarity: string, luckMul: number = 1.0): string | nu
   // 在该品质允许的池子里随机
   const rarityRank: Record<string, number> = { blue: 1, purple: 2, gold: 3, red: 4 }
   const myRank = rarityRank[rarity] || 0
-  const candidates = EQUIP_SETS.filter(s => (rarityRank[s.rarity] || 99) <= myRank)
+  const candidates = EQUIP_SETS.filter(s => {
+    if ((rarityRank[s.rarity] || 99) > myRank) return false
+    const reqWeapon = (s.tiers[0]?.hooks as any)?.weaponRequired
+    if (reqWeapon && slot === 'weapon' && reqWeapon !== weaponType) return false
+    return true
+  })
   if (candidates.length === 0) return null
   return candidates[Math.floor(Math.random() * candidates.length)].setKey
 }

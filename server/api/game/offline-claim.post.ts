@@ -211,7 +211,7 @@ export default defineEventHandler(async (event) => {
       const subStats = subCount > 0 ? rollSubStats(idx, mapData.tier, subCount) : []
       const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null
       // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率）
-      const setKey = rollEquipSet(rarities[idx], 1.0)
+      const setKey = rollEquipSet(rarities[idx], 1.0, slots[slotIdx], weaponType)
       // 背包满 → 转灵石返还
       if (bagCount >= EQUIP_BAG_LIMIT) {
         bagOverflowGain += Math.floor((EQUIP_SELL_PRICES[rarities[idx]] || 10) * mapData.tier)

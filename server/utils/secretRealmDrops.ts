@@ -75,7 +75,7 @@ export function generateSecretRealmEquip(
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
   const subStats = generateSubStats(rarityIdx, tier)
   // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率），BOSS 掉落 ×1.5
-  const setKey = rollEquipSet(RARITIES[rarityIdx], isBoss ? 1.5 : 1.0)
+  const setKey = rollEquipSet(RARITIES[rarityIdx], isBoss ? 1.5 : 1.0, slots[slotIdx], weaponType)
   return {
     name: generateEquipName(RARITIES[rarityIdx], slots[slotIdx], weaponType, tier, ps, monsterElement, '', setKey),
     rarity: RARITIES[rarityIdx],

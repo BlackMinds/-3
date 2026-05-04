@@ -284,7 +284,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
   const subStats = generateSubStats(idx, tier)
   // 套装注入：白/绿不出套装；蓝~红按品质有概率获得套装碎片身份；boss luck ×1.5
-  const setKey = rollEquipSet(rarities[idx], isBoss ? 1.5 : 1.0)
+  const setKey = rollEquipSet(rarities[idx], isBoss ? 1.5 : 1.0, slots[slotIdx], weaponType)
   return {
     name: generateEquipName(rarities[idx], slots[slotIdx], weaponType, tier, ps, monsterElement, '', setKey),
     rarity: rarities[idx],
