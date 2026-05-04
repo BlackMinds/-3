@@ -667,7 +667,11 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
 
   // 灵根共鸣 + 神识
   let mul = used.multiplier
-  if (used.element && p.stats.spiritualRoot && used.element === p.stats.spiritualRoot) mul *= 1.2
+  let rootMatched = false
+  if (used.element && p.stats.spiritualRoot && used.element === p.stats.spiritualRoot) {
+    mul *= 1.2
+    rootMatched = true
+  }
   if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.001
 
   // 治疗 / buff 技能
@@ -733,6 +737,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   const perHitMul = mul / hits
   const labelParts: string[] = []
   if (isDivine) labelParts.push('神通')
+  if (rootMatched) labelParts.push('灵根共鸣')
   if (used.isAoe || basicBackMain) labelParts.push('AOE')
   if (hits > 1) labelParts.push(`${hits}段`)
   const label = labelParts.length > 0 ? `（${labelParts.join('·')}）` : ''

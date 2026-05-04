@@ -785,7 +785,9 @@ export function runPvpBattle(
       mul *= 1 + attacker.awakenState.mainSkillMultBonus
     }
 
-    const prefix = isDivine ? '神通发动！' : (rootMatched ? '灵根共鸣！' : '')
+    const prefix = isDivine
+      ? (rootMatched ? '神通发动！ ✦灵根共鸣' : '神通发动！')
+      : (rootMatched ? '灵根共鸣！' : '')
 
     // 纯 buff/治疗技能（mul = 0）
     if (mul === 0) {

@@ -1970,7 +1970,9 @@ export function runWaveBattle(
         attackTargets = [target];
       }
 
-      const prefix = isDivine ? '神通发动！' : (rootMatched ? '灵根共鸣！' : (basicBackMain ? '本源·回归！' : ''));
+      const prefix = isDivine
+        ? (rootMatched ? '神通发动！ ✦灵根共鸣' : '神通发动！')
+        : (rootMatched ? '灵根共鸣！' : (basicBackMain ? '本源·回归！' : ''));
       const hits = usedSkill.hitCount || 1;
       const perHitMul = mul / hits;
       const targetLabel = (usedSkill.isAoe || basicBackMain) ? '全体' : (attackTargets.length > 1 ? `${attackTargets.length}目标` : '');
