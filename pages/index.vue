@@ -4694,10 +4694,29 @@ function dropQualityRange(tier: number): string {
 }
 
 function dropSkillRange(tier: number): string {
-  if (tier >= 7) return '天品+仙品(万剑归宗/天罚雷劫/时光凝滞/道心通明/不灭金身等)';
-  if (tier >= 5) return '地品(剑雨纷飞/双焰斩/连环掌/灵泉术/嗜血诀/破绽感知等)';
-  if (tier >= 3) return '玄品(天火术/霜冻新星/厚土盾/金钟罩/凌波微步等)';
-  return '灵品(风刃术/缠藤术/寒冰掌/烈焰剑诀/裂地拳/金刚体等)';
+  // 与 server 主掉落表保持一致（fight/secretRealmDrops/offline-claim/randomEvent）
+  const pools: Record<number, string[]> = {
+    1: ['wind_blade','vine_whip','ice_palm','flame_sword','quake_fist','body_refine','flame_body','water_flow','root_grip','metal_skin'],
+    3: ['fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell','swift_step','iron_skin','thorn_aura','flame_aura','earth_wall'],
+    5: ['sword_storm','twin_flame','flurry_palm','spring_heal','blood_fury','wood_heal','mirror_water','venom_burst','bleed_storm','burn_inferno','poison_mist','crit_master','earth_fortitude','poison_body','fire_mastery','dot_amplifier','phantom_step','healing_spring'],
+    7: ['metal_burst','quake_stomp','life_drain','inferno_burst','storm_blade','heaven_heal','water_mastery','battle_frenzy','heavenly_body','time_stop','heavenly_wrath','dao_heart','five_elements_harmony'],
+  };
+  const qualityName: Record<number, string> = { 1: '灵品', 3: '玄品', 5: '地品', 7: '天品+仙品' };
+  let key = 1;
+  if (tier >= 7) key = 7;
+  else if (tier >= 5) key = 5;
+  else if (tier >= 3) key = 3;
+  const pool = pools[key];
+  const groups: Record<'active' | 'divine' | 'passive', string[]> = { active: [], divine: [], passive: [] };
+  for (const id of pool) {
+    const s = ALL_SKILLS.find(x => x.id === id);
+    if (s) groups[s.type].push(s.name);
+  }
+  const parts: string[] = [];
+  if (groups.active.length) parts.push(`主修：${groups.active.join('/')}`);
+  if (groups.divine.length) parts.push(`神通：${groups.divine.join('/')}`);
+  if (groups.passive.length) parts.push(`被动：${groups.passive.join('/')}`);
+  return `${qualityName[key]} — ${parts.join('；')}`;
 }
 
 function dropHerbInfo(map: any): string {
