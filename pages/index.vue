@@ -401,7 +401,7 @@
                   type="button"
                   class="sell-select attr-picker-btn"
                   :class="{ 'has-selection': attrFilter.length > 0 }"
-                  :title="attrFilter.length > 0 ? attrFilter.map(v => ATTR_LABEL_MAP[v] || v).join('、') : '按主属性或副属性筛选（多选 OR）'"
+                  :title="attrFilter.length > 0 ? attrFilter.map(v => ATTR_LABEL_MAP[v] || v).join('、') : '按主属性或副属性筛选（多选 AND，需全部命中）'"
                   @click.stop="attrPickerOpen = !attrPickerOpen"
                 >
                   {{ attrFilterButtonText }}
@@ -409,7 +409,7 @@
                 </button>
                 <div v-if="attrPickerOpen" class="attr-picker-panel" @click.stop>
                   <div class="attr-picker-head">
-                    <span class="attr-picker-hint">多选 · 命中任一即显示</span>
+                    <span class="attr-picker-hint">多选 · 需全部命中才显示</span>
                     <button type="button" class="attr-picker-clear" :disabled="attrFilter.length === 0" @click="clearAttrFilter">清空</button>
                   </div>
                   <div v-for="g in ATTR_FILTER_GROUPS" :key="g.label" class="attr-picker-group">
@@ -6751,11 +6751,13 @@ const filteredBagList = computed(() => {
     }
   }
   if (attrFilter.value.length > 0) {
-    const wantSet = new Set(attrFilter.value);
+    const wants = attrFilter.value;
     list = list.filter(e => {
-      if (e.primary_stat && wantSet.has(e.primary_stat)) return true;
       const subs = parseSubs(e.sub_stats);
-      return Array.isArray(subs) && subs.some((s: any) => s?.stat && wantSet.has(s.stat));
+      const subStats = Array.isArray(subs)
+        ? subs.map((s: any) => s?.stat).filter(Boolean)
+        : [];
+      return wants.every(a => e.primary_stat === a || subStats.includes(a));
     });
   }
   return list;

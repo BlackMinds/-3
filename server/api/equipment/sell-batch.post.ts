@@ -87,16 +87,18 @@ export default defineEventHandler(async (event) => {
                  FOR UPDATE`
     const { rows } = await client.query(sql, params)
 
-    // 内存里再做 attr 过滤（主属性 / 副属性命中，多选取并集）
+    // 内存里再做 attr 过滤（主属性 / 副属性命中，多选需全部命中）
     let filteredRows = rows
     if (useAttr) {
       filteredRows = rows.filter(eq => {
-        if (eq.primary_stat && attrSet.has(eq.primary_stat)) return true
         let subs: any = eq.sub_stats
         if (typeof subs === 'string') {
           try { subs = JSON.parse(subs) } catch { subs = [] }
         }
-        return Array.isArray(subs) && subs.some((s: any) => s?.stat && attrSet.has(s.stat))
+        const subStats: string[] = Array.isArray(subs)
+          ? subs.map((s: any) => s?.stat).filter((v: any) => typeof v === 'string')
+          : []
+        return attrList.every(a => eq.primary_stat === a || subStats.includes(a))
       })
     }
 
