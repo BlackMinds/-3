@@ -725,10 +725,16 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   //   玩家攻击 ×0.44 → 怪物 HP ×0.44 / DEF ×0.44（守恒玩家秒怪 TTK 与"实际伤害"）
   //   玩家防御 ×0.66 / 血量 ×0.57 (均值 0.62) → 怪物 ATK ×0.62（守恒怪物威胁）
   //   玩家身法 ×0.96 → 怪物 SPD ×0.96（基本不变，加法池下身法乘子链最短）
-  const MONSTER_HP_MUL  = 0.44;
-  const MONSTER_ATK_MUL = 0.62;
-  const MONSTER_DEF_MUL = 0.44;
+  let MONSTER_HP_MUL  = 0.44;
+  let MONSTER_ATK_MUL = 0.62;
+  let MONSTER_DEF_MUL = 0.44;
   const MONSTER_SPD_MUL = 0.96;
+  // v3.7.1 二次微调：
+  //   - T5+ 攻击 ×0.80（中后期玩家被怪压太狠，整体降攻）
+  //   - T11/T12 整体属性大幅缩（曲线平滑：跨 tier 倍率 ×5.13/×4.10 → 约 ×2.5）
+  if (tier >= 5) MONSTER_ATK_MUL *= 0.80;
+  if (tier === 11) { MONSTER_HP_MUL *= 0.50; MONSTER_ATK_MUL *= 0.50; MONSTER_DEF_MUL *= 0.50; }
+  if (tier === 12) { MONSTER_HP_MUL *= 0.30; MONSTER_ATK_MUL *= 0.30; MONSTER_DEF_MUL *= 0.30; }
 
   return {
     name: template.name,
