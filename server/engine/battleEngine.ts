@@ -36,7 +36,8 @@ export interface SetEffectsState {
   spearGuaranteedCritOnMax: boolean; // 满 13 层时下一击必暴击（仅 7 件套）
   // 8. basic_back 回归基本功套
   basicBackActive: boolean;    // 任意 ≥3 件激活
-  basicBackMul: number;        // 主修 AOE 倍率（0.6 / 1.2 / 2.0）
+  basicBackMul: number;        // 主修 AOE 倍率（多于 1 个目标时使用）
+  basicBackMulSingle: number;  // 单体战倍率（仅 7 件套使用，未配置则与 basicBackMul 同值）
   basicBackBanDivine: boolean; // 禁神通
   basicBackDebuffMul: number;  // 主修 debuff 概率倍率（默认 1.0；7 件 = 1.5）
   // 9. sword_immortal 剑仙套（持「剑」激活）
@@ -70,7 +71,7 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
     spearActive: false, spearArmorPen: 0, spearLifesteal: 0,
     spearStackPerHit: 0, spearStackDmgPerLevel: 0, spearMaxStacks: 0,
     spearGuaranteedCritOnMax: false,
-    basicBackActive: false, basicBackMul: 0, basicBackBanDivine: false, basicBackDebuffMul: 1,
+    basicBackActive: false, basicBackMul: 0, basicBackMulSingle: 0, basicBackBanDivine: false, basicBackDebuffMul: 1,
     swordActive: false, swordAtkPct: 0, swordDefPct: 0, swordCritRateFlat: 0,
     swordQiHits: 0, swordQiMul: 0,
     bladeActive: false, bladeBaseCritRate: 0, bladeBaseCritDmg: 0,
@@ -137,6 +138,8 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
         if (bb) {
           state.basicBackActive = true;
           state.basicBackMul = bb.mainAoeMul || 0;
+          // 单体倍率未配置时与多目标一致（兼容 3/5 件套）
+          state.basicBackMulSingle = bb.mainAoeMulSingle ?? bb.mainAoeMul ?? 0;
           state.basicBackBanDivine = !!bb.banDivine;
           state.basicBackDebuffMul = bb.debuffChanceMul || 1;
         }
@@ -1944,10 +1947,13 @@ export function runWaveBattle(
       (player as any)._mainSkillElement = null;
     } else {
       // 攻击技能
-      // ❖ 回归基本功套：主修攻击强制 AOE，倍率 ×basicBackMul（仅主修，不影响神通——神通已被禁用）
+      // ❖ 回归基本功套：主修攻击强制 AOE（仅主修，不影响神通——神通已被禁用）
+      // 7 件套额外区分单体战 / 多目标战：多目标时 ×basicBackMul（清场强势），单体时 ×basicBackMulSingle（反向流派代价）
       const basicBackMain = isMainSkill && setEffects.basicBackActive && setEffects.basicBackMul > 0;
       if (basicBackMain) {
-        mul = mul * setEffects.basicBackMul;
+        const aliveCount = aliveMonsters.length;
+        const bbMul = aliveCount > 1 ? setEffects.basicBackMul : setEffects.basicBackMulSingle;
+        mul = mul * bbMul;
       }
       let attackTargets: typeof aliveMonsters;
       if (usedSkill.isAoe || basicBackMain) {
@@ -1975,7 +1981,7 @@ export function runWaveBattle(
       let critCdCutUsedThisTurn = false;
 
       // 对怪物造成伤害（应用脆弱、吸血汇总）
-      const dealDamage = (target: typeof monsters[0], rawDmg: number, opts?: { chained?: boolean }) => {
+      const dealDamage = (target: typeof monsters[0], rawDmg: number, opts?: { chained?: boolean; isCrit?: boolean }) => {
         let dmg = rawDmg;
         const brittle = getBrittleBonus(target);
         if (brittle > 0) dmg = Math.floor(dmg * (1 + brittle));
@@ -1984,8 +1990,8 @@ export function runWaveBattle(
         if (setEffects && setEffects.dmgVsFrozen > 0 && target.frozenTurns > 0) {
           dmg = Math.floor(dmg * (1 + setEffects.dmgVsFrozen));
         }
-        // ❖ 十三枪：每层 +X 最终伤害（chained 段不再叠层但享受当前层数）
-        if (setEffects && setEffects.spearActive && (player as any).spearStacks > 0) {
+        // ❖ 十三枪：每层 +X 最终伤害（仅非 chained 主攻段享受；剑气/多重/天机额外段不享受）
+        if (setEffects && setEffects.spearActive && !opts?.chained && (player as any).spearStacks > 0) {
           dmg = Math.floor(dmg * (1 + (player as any).spearStacks * setEffects.spearStackDmgPerLevel));
         }
         target.stats.hp -= dmg;
@@ -2016,14 +2022,19 @@ export function runWaveBattle(
             turnLifestealTotal += actualHeal;
           }
         }
-        // ❖ 十三枪：每次造成伤害后叠层（chained 不叠，避免链式翻倍）
+        // ❖ 十三枪：任何主攻伤害 +1 层；满 13 层时设必暴击；满层暴击触发后清零（爽点节奏）
+        // chained 段（剑气/多重/天机）不叠也不清
         if (setEffects && setEffects.spearActive && !opts?.chained) {
           const before = (player as any).spearStacks || 0;
-          if (before < setEffects.spearMaxStacks) {
+          // 满层时若本击是暴击 → 视为爆发触发 → 清零（含必暴击与自然暴击）
+          if (before >= setEffects.spearMaxStacks && opts?.isCrit) {
+            (player as any).spearStacks = 0;
+            logs.push({ turn, text: `  ❖【十三枪】满 ${before} 层暴击爆发，层数清零`, type: 'set', ...snap() });
+          } else if (before < setEffects.spearMaxStacks) {
             const next = Math.min(setEffects.spearMaxStacks, before + setEffects.spearStackPerHit);
             (player as any).spearStacks = next;
-            // 满层：标记下一击必暴击（仅 7 件套）
-            if (next === setEffects.spearMaxStacks && setEffects.spearGuaranteedCritOnMax && before < setEffects.spearMaxStacks) {
+            // 刚刚到满：标记下一击必暴击（仅 7 件套）
+            if (next === setEffects.spearMaxStacks && setEffects.spearGuaranteedCritOnMax) {
               (player as any).guaranteedCritNext = true;
               logs.push({ turn, text: `  ❖【十三枪】满 ${setEffects.spearMaxStacks} 层！下一击必暴击`, type: 'set', ...snap() });
             }
@@ -2099,7 +2110,7 @@ export function runWaveBattle(
           const ignoreDodgeFrost = !!(player.setEffects?.frozenCannotDodge && curTarget.frozenTurns > 0);
           const dmgResult = calculateDamage(player, curTarget.stats, perHitMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill);
           if (dmgResult.damage > 0) {
-            const finalDmg = dealDamage(curTarget, dmgResult.damage);
+            const finalDmg = dealDamage(curTarget, dmgResult.damage, { isCrit: dmgResult.isCrit });
             const critText = dmgResult.isCrit ? '暴击!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
             tryCritCdCut(dmgResult.isCrit);
@@ -2116,6 +2127,8 @@ export function runWaveBattle(
           }
           hitsDone++;
         }
+        // ❖ 剑仙套：多段单体技能结束后追加一次剑气（与单段/AOE 分支行为对齐）
+        triggerSwordQi(target);
       } else {
         // AOE/多目标/普通单体
         for (const t of attackTargets) {
@@ -2124,7 +2137,7 @@ export function runWaveBattle(
           const ignoreDodgeFrost = !!(player.setEffects?.frozenCannotDodge && t.frozenTurns > 0);
           const dmgResult = calculateDamage(player, t.stats, mul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill);
           if (dmgResult.damage > 0) {
-            const finalDmg = dealDamage(t, dmgResult.damage);
+            const finalDmg = dealDamage(t, dmgResult.damage, { isCrit: dmgResult.isCrit });
             const critText = dmgResult.isCrit ? '暴击!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
             tryCritCdCut(dmgResult.isCrit);
@@ -2166,7 +2179,7 @@ export function runWaveBattle(
             if (chainTarget) {
               const dmgResult = calculateDamage(player, chainTarget.stats, mul * 0.6, usedSkill.element, usedSkill.ignoreDef, false, false);
               if (dmgResult.damage > 0) {
-                const finalDmg = dealDamage(chainTarget, dmgResult.damage);
+                const finalDmg = dealDamage(chainTarget, dmgResult.damage, { isCrit: dmgResult.isCrit });
                 const chainTag = ringChain > baseChain ? '紫电连华' : '连击';
                 logs.push({ turn, text: `  ✦【${chainTag}】再次出手，对${chainTarget.stats.name}造成 ${finalDmg} 伤害`, type: 'buff', ...snap() });
               }
