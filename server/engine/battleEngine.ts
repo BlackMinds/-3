@@ -800,8 +800,11 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   //   玩家攻击 ×0.44 → 怪物 HP ×0.44 / DEF ×0.44（守恒玩家秒怪 TTK 与"实际伤害"）
   //   玩家防御 ×0.66 / 血量 ×0.57 (均值 0.62) → 怪物 ATK ×0.62（守恒怪物威胁）
   //   玩家身法 ×0.96 → 怪物 SPD ×0.96（基本不变，加法池下身法乘子链最短）
-  let MONSTER_HP_MUL  = 0.44;
-  let MONSTER_ATK_MUL = 0.62;
+  // v3.8 (2026-05-05): 怪物血量 ×2 / 攻击 ×0.6 — 让战斗回合数翻倍，给长战 BD（DOT/吸血/回血/斩杀）
+  //   更大发挥窗口；攻击守恒玩家承伤（实测 sim ATK×0.60 让 T1-T7 承伤 0.93~1.07× baseline）。
+  //   见 test/sim-hp2x-atk065.ts 验证脚本与 design/numerical-balance.md v3.8。
+  let MONSTER_HP_MUL  = 0.88;  // v3.8: 0.44 × 2
+  let MONSTER_ATK_MUL = 0.372; // v3.8: 0.62 × 0.6
   let MONSTER_DEF_MUL = 0.44;
   const MONSTER_SPD_MUL = 0.96;
   // v3.7.1 二次微调：
