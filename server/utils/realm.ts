@@ -29,11 +29,11 @@ export function getExpRequired(tier: number, stage: number): number {
  * 混元末阶(tier=9 stage=5)的修为软封顶,避免无限累加显示难看。
  */
 // 等级所需经验（与前端 stores/game.ts levelExpRequired 保持一致）
-// v3.4.4: lv>150 段拆为 151~200 / 201~300 两段过渡，与境界修为曲线脱钩；
-// 前期 (≤150) 完全不变，保护爽感期；累计 1→300 ≈ 9.7 亿（旧 1.5 亿）。
+// v3.4.4: lv>150 段拆为 151~200 / 201~399 两段过渡，与境界修为曲线脱钩；
+// 前期 (≤150) 完全不变，保护爽感期；累计 1→400 ≈ 25.5 亿（v3.7.1 上限 300→400）。
 // 衔接处 150→151 跳 4.3x、200→201 跳 4.3x（跨"飞升关口"语感合理）。
 export function getLevelExpRequired(lv: number): number {
-  if (lv >= 300) return Infinity
+  if (lv >= 400) return Infinity
   if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
   if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
   if (lv <= 150) return Math.floor(180 * Math.pow(lv, 1.42))
@@ -51,7 +51,7 @@ export function applyLevelExp(
   let lv = Math.max(1, level || 1)
   let exp = Math.max(0, levelExp)
   let ups = 0
-  while (lv < 300) {
+  while (lv < 400) {
     const req = getLevelExpRequired(lv)
     if (exp < req) break
     exp -= req

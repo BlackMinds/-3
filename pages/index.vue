@@ -2348,12 +2348,12 @@
           <div v-show="helpTab === 'battle'">
           <div class="help-section">
             <div class="help-title">等级系统</div>
-            <p class="help-text">等级上限 300 级,打怪获得等级经验自动升级。等级提供属性加成,按段递增:</p>
+            <p class="help-text">等级上限 400 级,打怪获得等级经验自动升级。等级提供属性加成,按段递增:</p>
             <table class="help-table"><tbody>
-              <tr><td>1-50 级</td><td>每级: 气血+10 攻击+2 防御+1 身法+1</td></tr>
-              <tr><td>51-100 级</td><td>每级: 气血+20 攻击+4 防御+2 身法+2</td></tr>
-              <tr><td>101-150 级</td><td>每级: 气血+40 攻击+8 防御+4 身法+3</td></tr>
-              <tr><td>151-300 级</td><td>每级: 气血+80 攻击+15 防御+8 身法+5</td></tr>
+              <tr><td>1-50 级</td><td>每级: 气血+5 攻击+2 防御+1 身法+1</td></tr>
+              <tr><td>51-100 级</td><td>每级: 气血+10 攻击+4 防御+2 身法+2</td></tr>
+              <tr><td>101-150 级</td><td>每级: 气血+20 攻击+8 防御+4 身法+3</td></tr>
+              <tr><td>151-400 级</td><td>每级: 气血+40 攻击+15 防御+8 身法+5</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">装备有等级需求,高阶装备需要对应等级才能穿戴。</p>
           </div>
@@ -2399,7 +2399,7 @@
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);"><b>v3.7 修复:</b>所有来源汇入同一池（v3.6 之前荆棘之体被动是独立通道，无 cap、无 maxHp 底量；现已合并），PvE/PvP 一致。</p>
             <p class="help-text" style="margin-top: 6px;"><b>反伤系数累加来源 (理论上限 ~95%):</b></p>
             <table class="help-table"><tbody>
-              <tr><td>神通「明镜止水」</td><td>+32% (3 回合 buff, cd 9)</td></tr>
+              <tr><td>神通「明镜止水」</td><td>+32% (5 回合 buff, cd 9)</td></tr>
               <tr><td>功法「荆棘之体」被动</td><td>+8% (常驻)</td></tr>
               <tr><td>副属性「反伤倍率」</td><td>+3~15% / 条 (多件叠加)</td></tr>
               <tr><td>armor 附灵「明镜甲」</td><td>+6~22% (常驻)</td></tr>

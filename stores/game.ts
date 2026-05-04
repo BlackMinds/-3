@@ -111,12 +111,12 @@ export const useGameStore = defineStore('game', () => {
     return Math.min(100, (character.value.cultivation_exp / expRequired.value) * 100)
   })
 
-  const charLevel = computed(() => Math.min(300, character.value?.level || 1))
+  const charLevel = computed(() => Math.min(400, character.value?.level || 1))
 
   const levelExpRequired = computed(() => {
     const lv = charLevel.value
-    if (lv >= 300) return Infinity
-    // v3.4.4: lv>150 段拆为 151~200 / 201~300 两段过渡，让等级与境界修为曲线脱钩。
+    if (lv >= 400) return Infinity
+    // v3.4.4: lv>150 段拆为 151~200 / 201~399 两段过渡，让等级与境界修为曲线脱钩。
     // 后端权威源在 server/utils/realm.ts:getLevelExpRequired，两处必须同步。
     if (lv <= 30) return Math.floor(60 * Math.pow(lv, 1.25))
     if (lv <= 80) return Math.floor(100 * Math.pow(lv, 1.35))
@@ -126,7 +126,7 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const levelExpPercent = computed(() => {
-    if (!character.value || levelExpRequired.value === 0 || levelExpRequired.value === Infinity) return charLevel.value >= 300 ? 100 : 0
+    if (!character.value || levelExpRequired.value === 0 || levelExpRequired.value === Infinity) return charLevel.value >= 400 ? 100 : 0
     return Math.min(100, (character.value.level_exp / levelExpRequired.value) * 100)
   })
 

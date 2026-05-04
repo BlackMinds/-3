@@ -45,6 +45,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'dao_13', name: '万法归一', desc: '等级达到200', category: 'dao', type: 'threshold', target: 200, event: 'char_level', reward: { spirit_stone: 500000, equip_box: 'legend', equip_box_count: 3 }, title: '万法宗师' },
   { id: 'dao_15', name: '日夜不辍', desc: '累计离线挂机100小时', category: 'dao', type: 'counter', target: 100, event: 'offline_hours', reward: { spirit_stone: 30000, skill_box: 'fine', skill_box_count: 1 }, title: '苦修者' },
   { id: 'dao_16', name: '混元归一', desc: '等级达到300', category: 'dao', type: 'threshold', target: 300, event: 'char_level', reward: { spirit_stone: 2000000, equip_box: 'legend', equip_box_count: 5 }, title: '混元道祖' },
+  { id: 'dao_17', name: '道果圆满', desc: '等级达到400', category: 'dao', type: 'threshold', target: 400, event: 'char_level', reward: { spirit_stone: 5000000, equip_box: 'legend', equip_box_count: 8 }, title: '道果至尊' },
 
   // ===== 历练·战斗 (18) =====
   { id: 'bat_01', name: '初出茅庐', desc: '完成第1场战斗', category: 'battle', type: 'counter', target: 1, event: 'battle_count', reward: { spirit_stone: 100 } },

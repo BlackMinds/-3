@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg'
 import { getPool } from '~/server/database/db'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
@@ -34,62 +35,70 @@ export default defineEventHandler(async (event) => {
     return { code: 400, message: '灵草参数错误' }
   }
 
-  const { rows: charRows } = await pool.query(
-    'SELECT id FROM characters WHERE user_id = $1',
-    [userId]
-  )
-  if (charRows.length === 0) return { code: 400, message: '角色不存在' }
-  const charId = charRows[0].id
-
-  // 校验高级丹方是否已解锁
-  const recipe = getPillById(pill_id)
-  if (recipe?.requireUnlock) {
-    const { rows: unlockRows } = await pool.query(
-      'SELECT id FROM character_unlocked_recipes WHERE character_id = $1 AND pill_id = $2',
-      [charId, pill_id]
-    )
-    if (unlockRows.length === 0) {
-      return { code: 400, message: '该丹方尚未解锁,请先在宗门商店购买' }
-    }
-  }
-
-  // 计算品质系数（纯内存）
-  let totalCount = 0
-  let totalWeight = 0
-  for (const h of herbs_used) {
-    const mul = QUALITY_MUL[h.quality] || 1.0
-    totalCount += h.count
-    totalWeight += mul * h.count
-  }
-  const rawFactor = totalCount > 0 ? totalWeight / totalCount : 1.0
-
-  // 火候裁决
-  const firePos = typeof fire_position === 'number' ? Math.max(0, Math.min(100, fire_position)) : 50
-  const fireTier = resolveFireTier(firePos)
-  const fireMul = FIRE_MULTIPLIER[fireTier]
-  const qualityFactor = Math.round(rawFactor * fireMul * 100) / 100
-
-  // 灵石消耗按原始品质系数调整(火候不影响灵石消耗)
-  const actualCost = Math.floor(cost * rawFactor)
-
-  // 成功裁决（提前 roll，事务内统一落库）
-  let success: boolean
-  if (fireTier === 'explode') {
-    success = false
-  } else {
-    success = Math.random() < success_rate
-  }
-
-  // 真火档有 15% 概率产双份
-  let yieldCount = 1
-  let trueFireBonus = false
-  if (success && fireTier === 'true' && Math.random() < 0.15) {
-    yieldCount = 2
-    trueFireBonus = true
-  }
-
-  const client = await pool.connect()
+  // 单独捕获取连接超时,避免冒泡成 500 导致前端显示"网络错误"
+  let client: PoolClient
   try {
+    client = await pool.connect()
+  } catch (e) {
+    console.error('炼丹取连接失败:', e)
+    return { code: 503, message: '服务器繁忙,请稍后再试' }
+  }
+
+  try {
+    // 角色 + 丹方校验（与事务共用 client,避免重复抢连接）
+    const { rows: charRows } = await client.query(
+      'SELECT id FROM characters WHERE user_id = $1',
+      [userId]
+    )
+    if (charRows.length === 0) return { code: 400, message: '角色不存在' }
+    const charId = charRows[0].id
+
+    const recipe = getPillById(pill_id)
+    if (recipe?.requireUnlock) {
+      const { rows: unlockRows } = await client.query(
+        'SELECT id FROM character_unlocked_recipes WHERE character_id = $1 AND pill_id = $2',
+        [charId, pill_id]
+      )
+      if (unlockRows.length === 0) {
+        return { code: 400, message: '该丹方尚未解锁,请先在宗门商店购买' }
+      }
+    }
+
+    // 计算品质系数（纯内存）
+    let totalCount = 0
+    let totalWeight = 0
+    for (const h of herbs_used) {
+      const mul = QUALITY_MUL[h.quality] || 1.0
+      totalCount += h.count
+      totalWeight += mul * h.count
+    }
+    const rawFactor = totalCount > 0 ? totalWeight / totalCount : 1.0
+
+    // 火候裁决
+    const firePos = typeof fire_position === 'number' ? Math.max(0, Math.min(100, fire_position)) : 50
+    const fireTier = resolveFireTier(firePos)
+    const fireMul = FIRE_MULTIPLIER[fireTier]
+    const qualityFactor = Math.round(rawFactor * fireMul * 100) / 100
+
+    // 灵石消耗按原始品质系数调整(火候不影响灵石消耗)
+    const actualCost = Math.floor(cost * rawFactor)
+
+    // 成功裁决（提前 roll，事务内统一落库）
+    let success: boolean
+    if (fireTier === 'explode') {
+      success = false
+    } else {
+      success = Math.random() < success_rate
+    }
+
+    // 真火档有 15% 概率产双份
+    let yieldCount = 1
+    let trueFireBonus = false
+    if (success && fireTier === 'true' && Math.random() < 0.15) {
+      yieldCount = 2
+      trueFireBonus = true
+    }
+
     await client.query('BEGIN')
 
     // 条件扣灵石：WHERE spirit_stone >= $1 防止扣负
@@ -124,6 +133,18 @@ export default defineEventHandler(async (event) => {
       )
     }
 
+    // streak 也并入事务,省一次连接 + 保持原子
+    let streakHit10 = false
+    if (success) {
+      const { rows: streakRows } = await client.query(
+        'UPDATE characters SET pill_craft_streak = pill_craft_streak + 1 WHERE id = $1 RETURNING pill_craft_streak',
+        [charId]
+      )
+      streakHit10 = Number(streakRows[0]?.pill_craft_streak || 0) >= 10
+    } else {
+      await client.query('UPDATE characters SET pill_craft_streak = 0 WHERE id = $1', [charId])
+    }
+
     // 取更新后的灵石余额（供前端显示）
     const { rows: updated } = await client.query(
       'SELECT spirit_stone FROM characters WHERE id = $1',
@@ -132,28 +153,23 @@ export default defineEventHandler(async (event) => {
 
     await client.query('COMMIT')
 
-    // 旁路（任务/成就）事务外触发
-    await updateSectDailyTask(charId, 'pill', 1)
-    await updateSectWeeklyTaskByCharId(charId, 'weekly_pill', 1)
+    // 旁路（任务/成就）—— 并发执行,任一失败不影响主流程
+    const sideEffects: Promise<unknown>[] = [
+      updateSectDailyTask(charId, 'pill', 1),
+      updateSectWeeklyTaskByCharId(charId, 'weekly_pill', 1),
+    ]
     if (success) {
-      checkAchievements(charId, 'craft_success', 1).catch(() => {})
-      // 极品丹师：qualityFactor >= 2.0 视为金色品质系数（对应 QUALITY_MUL.gold）
+      sideEffects.push(checkAchievements(charId, 'craft_success', 1))
       if (qualityFactor >= 2.0) {
-        checkAchievements(charId, 'craft_gold_quality', 1).catch(() => {})
+        sideEffects.push(checkAchievements(charId, 'craft_gold_quality', 1))
       }
-      // 绝不浪费：连续成功累加，达到 10 触发一次
-      const { rows: streakRows } = await pool.query(
-        'UPDATE characters SET pill_craft_streak = pill_craft_streak + 1 WHERE id = $1 RETURNING pill_craft_streak',
-        [charId]
-      )
-      const streak = Number(streakRows[0]?.pill_craft_streak || 0)
-      if (streak >= 10) {
-        checkAchievements(charId, 'craft_streak', 1).catch(() => {})
+      if (streakHit10) {
+        sideEffects.push(checkAchievements(charId, 'craft_streak', 1))
       }
     } else {
-      checkAchievements(charId, 'craft_fail', 1).catch(() => {})
-      await pool.query('UPDATE characters SET pill_craft_streak = 0 WHERE id = $1', [charId])
+      sideEffects.push(checkAchievements(charId, 'craft_fail', 1))
     }
+    await Promise.allSettled(sideEffects)
 
     return {
       code: 200,

@@ -91,7 +91,7 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'spring_heal', name: '灵泉术', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 7, description: '回复120%攻击力气血,每回合回1.5% 3回合', buff: { type: 'regen', duration: 3, valuePercent: 0.015 }, healAtkRatio: 1.2 },
   { id: 'blood_fury', name: '嗜血诀', type: 'divine', rarity: 'purple', element: null, multiplier: 0, cdTurns: 8, description: '攻击+21% 4回合', buff: { type: 'atk_up', duration: 4, value: 0.21 } },
   { id: 'wood_heal', name: '生生不息', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 0, cdTurns: 8, description: '每回合回2.4%气血,持续4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.024 } },
-  { id: 'mirror_water', name: '明镜止水', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 9, description: '反弹32%伤害+8%最大气血 3回合(基础反弹≤6倍攻击力)', buff: { type: 'reflect', duration: 3, value: 0.32 } },
+  { id: 'mirror_water', name: '明镜止水', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 9, description: '反弹32%伤害+8%最大气血 5回合(基础反弹≤6倍攻击力)', buff: { type: 'reflect', duration: 5, value: 0.32 } },
   // v3.6 DOT 流派紫色神通（3 条）
   { id: 'venom_burst', name: '毒液冲击', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 1.85, cdTurns: 7, description: '[3段] 单体3×62%伤害,每段50%中毒4回合', debuff: { type: 'poison', chance: 0.50, duration: 4 }, hitCount: 3 },
   { id: 'bleed_storm', name: '血雨腥风', type: 'divine', rarity: 'purple', element: 'metal', multiplier: 1.55, cdTurns: 7, description: '[群攻] 全体155%伤害,40%流血3回合', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, isAoe: true },
