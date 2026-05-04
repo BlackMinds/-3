@@ -8,6 +8,7 @@ import { rollSubStats, EQUIP_SELL_PRICES } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { rollEquipSet } from '~/server/engine/equipSetData'
+import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
 /**
  * 离线挂机结算 v2：基于开始离线时的快照真打 N 场
@@ -21,7 +22,10 @@ import { rollEquipSet } from '~/server/engine/equipSetData'
  * - 装备/功法/灵草掉落数量 = 总击杀 × 现有比例
  */
 
-const REPRESENTATIVE_BATTLES_PER_MIN = 12 // 每场代表战折算 12 次实际战斗（保持原产出曲线）
+// 每场代表战折算 N 次实际战斗的产出。
+// v3.x 旧值 12 偏高（实测在线 1 分钟约 5–7 场），叠加缩放修复后 12 仍会比在线超发约 2x，
+// 调到 6 让离线 1 分钟产出贴近在线 1 分钟的真实节奏。
+const REPRESENTATIVE_BATTLES_PER_MIN = 6
 const MAX_OFFLINE_MIN = 600 // 上限 10 小时
 const MIN_OFFLINE_MIN = 10  // 至少挂机 10 分钟才能结算
 const LOSS_STREAK_LIMIT = 5
@@ -71,6 +75,18 @@ export default defineEventHandler(async (event) => {
     const equippedSkills: EquippedSkillInfo = snapshot.equippedSkills
     const expBonusPercent = Number(snapshot.expBonusPercent || 0)
     const luckPercent = Number(snapshot.luckPercent || 0)
+    const charLevelForCatchUp = Number(snapshot.charLevel || char.level || 1)
+
+    // 与在线版完全对齐的缩放系数（fight.post.ts:925-944）
+    // - expMul / catchUpMul / 0.7 → 经验与等级经验
+    // - stoneTierBonus（T≤3 = 1.2）→ 灵石（在线灵石不吃 luck）
+    // - luckMul → 装备/功法/灵草掉落概率
+    const avgLevel = await getTopAvgLevel()
+    const catchUpMul = getCatchUpMultiplier(charLevelForCatchUp, avgLevel)
+    const expMul = 1 + expBonusPercent / 100
+    const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
+    const luckMul = 1 + luckPercent / 100
+    const expScaledPerBattle = expMul * catchUpMul * 0.7
 
     // === 真打 N 场 ===
     let wins = 0
@@ -78,8 +94,8 @@ export default defineEventHandler(async (event) => {
     let lossStreak = 0
     let battlesRun = 0
     let cumulativeKilled = 0
-    let cumulativeExpRaw = 0
-    let cumulativeStoneRaw = 0
+    let cumulativeExpScaled = 0
+    let cumulativeStoneScaled = 0
 
     for (let i = 0; i < simulateMin; i++) {
       // 生成 wave（与 fight.post.ts 一致：T1/T2 1-2 只，T3/T4 1-4 只，T5+ 2-4 只 + 必出 healer，不出 BOSS）
@@ -126,8 +142,9 @@ export default defineEventHandler(async (event) => {
         wins++
         lossStreak = 0
         cumulativeKilled += result.monstersKilled.length
-        cumulativeExpRaw += result.totalExp
-        cumulativeStoneRaw += result.totalStone
+        // 在循环内就把缩放系数算进去，与在线"每场 floor(...)"语义对齐
+        cumulativeExpScaled += result.totalExp * expScaledPerBattle
+        cumulativeStoneScaled += result.totalStone * stoneTierBonus
       } else {
         losses++
         lossStreak++
@@ -135,14 +152,13 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // === 收益折算：每场代表战 × 12 实际战斗 × efficiency × (1 + expBonus%) × (1 + luck%) ===
-    const expMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY * (1 + expBonusPercent / 100)
-    const stoneMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY * (1 + luckPercent / 100)
-    const dropMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY
+    // === 收益折算：每场代表战 × 12 实际战斗 × efficiency ===
+    // expBonus / luck / catchUp / ×0.7 / stoneTierBonus 均已在循环内逐场算入，这里只做代表战外推
+    const battleMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY
 
-    const totalKills = Math.floor(cumulativeKilled * dropMultiplier)
-    const expGained = Math.floor(cumulativeExpRaw * expMultiplier)
-    const stoneGained = Math.floor(cumulativeStoneRaw * stoneMultiplier)
+    const totalKills = Math.floor(cumulativeKilled * battleMultiplier)
+    const expGained = Math.floor(cumulativeExpScaled * battleMultiplier)
+    const stoneGained = Math.floor(cumulativeStoneScaled * battleMultiplier)
     const levelExpGained = expGained
 
     // 累加 cultivation_exp 并扣除突破
@@ -173,10 +189,11 @@ export default defineEventHandler(async (event) => {
       await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
     }
 
-    // === 装备/功法/灵草掉落（按总击杀 × 比例） ===
-    const equipCount = Math.floor(totalKills * 0.08)
-    const skillCount = Math.floor(totalKills * 0.02)
-    const herbCount = Math.floor(totalKills * 0.10)
+    // === 装备/功法/灵草掉落（按总击杀 × 比例 × luckMul） ===
+    // 在线版每只怪 Math.random() < rate × luckMul 决定掉落，离线用期望值外推时同样乘 luckMul 保持等价
+    const equipCount = Math.floor(totalKills * 0.08 * luckMul)
+    const skillCount = Math.floor(totalKills * 0.02 * luckMul)
+    const herbCount = Math.floor(totalKills * 0.10 * luckMul)
 
     // 装备掉落
     const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']

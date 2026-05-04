@@ -1,7 +1,8 @@
-  UPDATE characters
+UPDATE characters                                               
   SET sr_daily_count = 0,
-      sr_daily_date = CURRENT_DATE
-  WHERE user_id = (SELECT id FROM users WHERE username = 'xy102768');  加秘境次数
+      sr_daily_fail  = 0,
+      sr_daily_date  = CURRENT_DATE
+  WHERE name = '乱跑的小喵'; 加秘境次数
 
   SELECT id, name, level, level_exp, realm_tier, realm_stage
   FROM characters
