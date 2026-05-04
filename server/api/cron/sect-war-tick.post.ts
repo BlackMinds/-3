@@ -38,9 +38,17 @@ export default defineEventHandler(async (event) => {
   }
 
   // 阶段推进
-  if (stage === 'betting' && season.status === 'registering') {
-    const res = await generateMatches(season.id)
-    actions.push(`generateMatches: ${res.matchesCreated} matches, ${res.byes} byes`)
+  // 兜底匹配：只要进入 betting 阶段且本届还没有任何对阵，就执行匹配
+  // （比单纯依赖 status === 'registering' 更鲁棒，避免被其它接口越权写状态卡死）
+  if (stage === 'betting') {
+    const { rows: [{ cnt }] } = await pool.query(
+      'SELECT COUNT(*)::int AS cnt FROM sect_war_match WHERE season_id = $1',
+      [season.id]
+    )
+    if (cnt === 0) {
+      const res = await generateMatches(season.id)
+      actions.push(`generateMatches: ${res.matchesCreated} matches, ${res.byes} byes`)
+    }
   }
 
   if (stage === 'fighting' && (season.status === 'betting' || season.status === 'registering')) {
