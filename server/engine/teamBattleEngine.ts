@@ -9,6 +9,8 @@ import {
   monsterChooseSkill,
   tickMonsterCds,
   makeHealerTemplate,
+  buildSetEffects,
+  buildActiveSetTiers,
   type BattlerStats,
   type BattleLogEntry,
   type MonsterTemplate,
@@ -16,11 +18,12 @@ import {
   type SkillRefInfo,
   type MonsterSkillDef,
   type MonsterSkillState,
+  type SetEffectsState,
 } from './battleEngine'
 import type { SecretRealmDef, SecretRealmDifficultyConfig, SecretRealmWave } from './secretRealmData'
 import { scaleMonsterTemplate } from './secretRealmData'
 import type { DebuffType, BuffType } from './skillData'
-import { DOT_FORMULA } from '~/shared/balance'
+import { DOT_FORMULA, PLAYER_CAPS } from '~/shared/balance'
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -54,6 +57,16 @@ interface TeamPlayer {
   debuffs: ActiveDebuff[]
   buffs: ActiveBuff[]
   frozenTurns: number
+  // v1 套装运行时状态
+  setEffects: SetEffectsState
+  spearStacks: number
+  guaranteedCritNext: boolean
+  _multicastThisTurn: number
+  _setInstantTriggered: Record<string, boolean>
+  // 刀狂套叠加状态
+  _bladeAddedRate: number
+  _bladeAddedDmg: number
+  _bladeStackCount: number
   // 统计
   damageDealt: number
   healingDone: number
@@ -70,6 +83,7 @@ interface TeamMonster {
   debuffs: ActiveDebuff[]
   buffs: ActiveBuff[]
   frozenTurns: number
+  _setInstantTriggered: Record<string, boolean>
 }
 
 export interface TeamBattleReward {
@@ -178,6 +192,7 @@ function buildWaveMonsters(
       debuffs: [],
       buffs: [],
       frozenTurns: 0,
+      _setInstantTriggered: {},
     })
   }
 
@@ -200,6 +215,7 @@ function buildWaveMonsters(
       debuffs: [],
       buffs: [],
       frozenTurns: 0,
+      _setInstantTriggered: {},
     })
   }
 
@@ -207,9 +223,25 @@ function buildWaveMonsters(
 }
 
 // ========== Debuff / Buff 辅助 ==========
-function applyDebuffDps(target: TeamPlayer | TeamMonster, debuff: { type: DebuffType; chance: number; duration: number; value?: number }, attackerAtk: number, defenderMaxHp: number) {
-  // 命中判定
-  if (Math.random() >= debuff.chance) return false
+function applyDebuffDps(
+  target: TeamPlayer | TeamMonster,
+  debuff: { type: DebuffType; chance: number; duration: number; value?: number },
+  attackerAtk: number,
+  defenderMaxHp: number,
+  opts?: { inflictor?: TeamPlayer; turn?: number; logs?: BattleLogEntry[]; targetName?: string },
+): boolean {
+  // ❖ 极寒套：施加方装备时，冰冻/眩晕命中率 +X
+  let effChance = debuff.chance
+  const inflictor = opts?.inflictor
+  if (inflictor && (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') &&
+      inflictor.setEffects?.freezeChanceBonus > 0) {
+    effChance = Math.min(1, effChance + inflictor.setEffects.freezeChanceBonus)
+  }
+  // ❖ 回归基本功 7 件套：施加方主修攻击触发 debuff 概率 ×1.5（该套禁神通，所以玩家施加必然来自主修）
+  if (inflictor && inflictor.setEffects?.basicBackDebuffMul > 1) {
+    effChance = Math.min(1, effChance * inflictor.setEffects.basicBackDebuffMul)
+  }
+  if (Math.random() >= effChance) return false
   const d: ActiveDebuff = {
     type: debuff.type,
     remaining: debuff.duration,
@@ -218,7 +250,6 @@ function applyDebuffDps(target: TeamPlayer | TeamMonster, debuff: { type: Debuff
   }
   // 持续伤害 debuff
   // v3.7: 统一走 DOT_FORMULA，与 battleEngine / multiBattleEngine 保持一致
-  // （旧版 team 用混合公式 atk×0.4~0.6 + maxHp×0.03~0.04，已废弃）
   if (debuff.type === 'burn') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio))
   if (debuff.type === 'poison') d.damagePerTurn = Math.max(1, Math.floor(defenderMaxHp * DOT_FORMULA.poisonPerTurnHpRatio))
   if (debuff.type === 'bleed') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.bleedPerTurnAtkRatio))
@@ -227,6 +258,39 @@ function applyDebuffDps(target: TeamPlayer | TeamMonster, debuff: { type: Debuff
     ;(target as any).frozenTurns = Math.max((target as any).frozenTurns || 0, debuff.duration)
   }
   target.debuffs.push(d)
+
+  // ❖ 火神/万毒/血魔套：施加 burn/poison/bleed 时立即多结算 (instantMul - 1) 次
+  // 每场每目标每种 debuff 每回合限触发 1 次（避免多段技能滚雪球）
+  const isDotType = debuff.type === 'burn' || debuff.type === 'poison' || debuff.type === 'bleed'
+  if (inflictor && isDotType && d.damagePerTurn > 0 && opts?.turn !== undefined) {
+    const se = inflictor.setEffects
+    let instantMul = 1
+    let setName = ''
+    if (debuff.type === 'burn'   && se.burnInstantMul   > 1) { instantMul = se.burnInstantMul;   setName = '火神套' }
+    if (debuff.type === 'poison' && se.poisonInstantMul > 1) { instantMul = se.poisonInstantMul; setName = '万毒套' }
+    if (debuff.type === 'bleed'  && se.bleedInstantMul  > 1) { instantMul = se.bleedInstantMul;  setName = '血魔套' }
+    if (instantMul > 1) {
+      const triggered = (target as any)._setInstantTriggered as Record<string, boolean>
+      const key = `${debuff.type}_${opts.turn}`
+      if (!triggered[key]) {
+        triggered[key] = true
+        const extraTicks = instantMul - 1
+        const totalDmg = d.damagePerTurn * extraTicks
+        target.stats.hp = Math.max(0, target.stats.hp - totalDmg)
+        if (opts.logs) {
+          const tName = opts.targetName || target.stats.name
+          const typeName = debuff.type === 'burn' ? '灼烧' : debuff.type === 'poison' ? '中毒' : '流血'
+          opts.logs.push({
+            turn: opts.turn,
+            text: `  ❖【${setName}】${typeName}立即结算 ×${extraTicks}，对${tName}造成 ${totalDmg} 伤害`,
+            type: 'buff',
+            playerHp: 0, playerMaxHp: 0,
+            monsterHp: Math.max(0, target.stats.hp), monsterMaxHp: target.stats.maxHp,
+          })
+        }
+      }
+    }
+  }
   return true
 }
 
@@ -326,6 +390,27 @@ export function runTeamBattle(
       baseStats.dodge = (baseStats.dodge || 0) + (pe.dodge || 0)
       baseStats.lifesteal = (baseStats.lifesteal || 0) + (pe.lifesteal || 0)
     }
+    // v1 套装：根据 stats 上的 equipSetCounts/weaponType 解析运行时效果
+    const sx: any = p.stats as any
+    const setEffects = buildSetEffects(sx.equipSetCounts, sx.weaponType || null)
+    // 十三枪静态加成（破甲 / 吸血）应用到 baseStats 上
+    baseStats.armorPen = (baseStats.armorPen || 0) + setEffects.spearArmorPen
+    baseStats.lifesteal = Math.min(0.25, (baseStats.lifesteal || 0) + setEffects.spearLifesteal)
+    // 剑仙套静态加成（持「剑」激活）
+    if (setEffects.swordActive) {
+      baseStats.atk = Math.floor(baseStats.atk * (1 + setEffects.swordAtkPct))
+      baseStats.def = Math.floor(baseStats.def * (1 + setEffects.swordDefPct))
+      baseStats.crit_rate = Math.min(PLAYER_CAPS.critRate, baseStats.crit_rate + setEffects.swordCritRateFlat)
+    }
+    // 刀狂套静态加成（持「刀」激活）
+    if (setEffects.bladeActive) {
+      baseStats.crit_rate = Math.min(PLAYER_CAPS.critRate, baseStats.crit_rate + setEffects.bladeBaseCritRate)
+      baseStats.crit_dmg = Math.min(PLAYER_CAPS.critDmg, baseStats.crit_dmg + setEffects.bladeBaseCritDmg)
+    }
+    // 天机套静态加成（持「扇」激活）
+    if (setEffects.fanActive && setEffects.fanSpiritPct > 0) {
+      baseStats.spirit = Math.floor((baseStats.spirit || 0) * (1 + setEffects.fanSpiritPct))
+    }
     return {
       characterId: p.characterId,
       name: p.name,
@@ -339,6 +424,14 @@ export function runTeamBattle(
       debuffs: [],
       buffs: [],
       frozenTurns: 0,
+      setEffects,
+      spearStacks: 0,
+      guaranteedCritNext: false,
+      _multicastThisTurn: 0,
+      _setInstantTriggered: {},
+      _bladeAddedRate: 0,
+      _bladeAddedDmg: 0,
+      _bladeStackCount: 0,
       damageDealt: 0,
       healingDone: 0,
       damageTaken: 0,
@@ -350,6 +443,21 @@ export function runTeamBattle(
   for (const p of players) teamBuffCtx.apply(p)
   for (const bd of teamBuffCtx.buffs) {
     logs.push({ turn: 0, text: `[队伍增益] ${bd}`, type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+  }
+
+  // v1 套装：开局展示每位队员激活的套装 + 应用刷新套 7 件 CD-1
+  for (const p of players) {
+    const sx: any = (p.stats as any)
+    const setCounts = sx.equipSetCounts || {}
+    const activeSets = buildActiveSetTiers(setCounts)
+    for (const s of activeSets) {
+      logs.push({ turn: 0, text: `❖ ${p.name} 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)`, type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+    }
+    const reduce = p.setEffects.refreshOpenCdReduce
+    if (reduce > 0 && p.divineCds.length > 0) {
+      for (let i = 0; i < p.divineCds.length; i++) p.divineCds[i] = Math.max(0, p.divineCds[i] - reduce)
+      logs.push({ turn: 0, text: `  ❖【刷新套】${p.name} 开局所有神通 CD -${reduce}`, type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
+    }
   }
 
   logs.push({
@@ -536,10 +644,13 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   const aliveMonsters = monsters.filter(m => m.alive)
   if (aliveMonsters.length === 0) return
 
-  // 选技能
+  // ❖ 套装：本回合多重施法触发计数清零
+  p._multicastThisTurn = 0
+
+  // 选技能（回归基本功套禁神通）
   let used: SkillRefInfo
   let isDivine = false
-  const divines = p.equippedSkills?.divineSkills || []
+  const divines = p.setEffects.basicBackBanDivine ? [] : (p.equippedSkills?.divineSkills || [])
   const cdReduction = p.equippedSkills?.passiveEffects?.skillCdReduction || 0
   let divineIdx = -1
   for (let i = 0; i < divines.length; i++) {
@@ -596,14 +707,20 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     }
     // AOE debuff（如时光凝滞）
     if (used.debuff && used.isAoe) {
-      for (const m of aliveMonsters) applyDebuffDps(m, used.debuff, p.stats.atk, m.stats.maxHp)
+      for (const m of aliveMonsters) applyDebuffDps(m, used.debuff, p.stats.atk, m.stats.maxHp, { inflictor: p, turn, logs })
     }
     return
   }
 
   // 攻击技能
+  // ❖ 回归基本功套：主修攻击强制 AOE，倍率 ×basicBackMul
+  const isMainSkill = !isDivine
+  const basicBackMain = isMainSkill && p.setEffects.basicBackActive && p.setEffects.basicBackMul > 0
+  if (basicBackMain) {
+    mul = mul * p.setEffects.basicBackMul
+  }
   let targets: TeamMonster[]
-  if (used.isAoe) {
+  if (used.isAoe || basicBackMain) {
     targets = aliveMonsters
   } else if (used.targetCount && used.targetCount > 1) {
     const sorted = [...aliveMonsters].sort((a, b) => a.stats.hp - b.stats.hp)
@@ -616,9 +733,90 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   const perHitMul = mul / hits
   const labelParts: string[] = []
   if (isDivine) labelParts.push('神通')
-  if (used.isAoe) labelParts.push('AOE')
+  if (used.isAoe || basicBackMain) labelParts.push('AOE')
   if (hits > 1) labelParts.push(`${hits}段`)
   const label = labelParts.length > 0 ? `（${labelParts.join('·')}）` : ''
+
+  // 套装伤害结算 helper（接 dmgVsFrozen / spearStacks 加成 / 血魔吸血 / 十三枪加层）
+  const se = p.setEffects
+  const applySetDamage = (t: TeamMonster, rawDmg: number, isCrit: boolean, opts?: { chained?: boolean }): { final: number; lifestealHeal: number } => {
+    let dmg = rawDmg
+    if (se.dmgVsFrozen > 0 && t.frozenTurns > 0) dmg = Math.floor(dmg * (1 + se.dmgVsFrozen))
+    if (se.spearActive && p.spearStacks > 0) {
+      dmg = Math.floor(dmg * (1 + p.spearStacks * se.spearStackDmgPerLevel))
+    }
+    t.stats.hp -= dmg
+
+    const targetBleeding = t.debuffs.some(d => d.type === 'bleed')
+    let lsRate = p.stats.lifesteal || 0
+    if (targetBleeding && se.bleedLifestealIfBleeding > 0) {
+      lsRate = Math.min(0.25, lsRate + se.bleedLifestealIfBleeding)
+    }
+    let lifestealHeal = 0
+    if (lsRate > 0 && p.stats.hp > 0 && p.stats.hp < p.stats.maxHp) {
+      const heal = Math.floor(dmg * lsRate)
+      if (heal > 0) {
+        lifestealHeal = Math.min(heal, p.stats.maxHp - p.stats.hp)
+        p.stats.hp += lifestealHeal
+      }
+    }
+
+    if (se.spearActive && !opts?.chained && p.spearStacks < se.spearMaxStacks) {
+      const before = p.spearStacks
+      const next = Math.min(se.spearMaxStacks, before + se.spearStackPerHit)
+      p.spearStacks = next
+      if (next === se.spearMaxStacks && se.spearGuaranteedCritOnMax && before < se.spearMaxStacks) {
+        p.guaranteedCritNext = true
+        logs.push({ turn, text: `  ❖【十三枪】${p.name} 满 ${se.spearMaxStacks} 层！下一击必暴击`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
+      }
+    }
+    return { final: dmg, lifestealHeal }
+  }
+
+  // ❖ 刀狂套：每次主攻命中后判定（暴击清零叠加；非暴击叠加 +1 层，cap 截断）
+  const triggerBladeStack = (isCrit: boolean) => {
+    if (!se.bladeActive) return
+    if (isCrit) {
+      if (p._bladeStackCount > 0) {
+        p.stats.crit_rate = Math.max(0, p.stats.crit_rate - p._bladeAddedRate)
+        p.stats.crit_dmg = Math.max(1, p.stats.crit_dmg - p._bladeAddedDmg)
+        const cnt = p._bladeStackCount
+        p._bladeAddedRate = 0; p._bladeAddedDmg = 0; p._bladeStackCount = 0
+        logs.push({ turn, text: `  ❖【刀狂套】${p.name} 暴击触发，叠加层 ×${cnt} 清零`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+      }
+    } else {
+      const newRate = Math.min(PLAYER_CAPS.critRate, p.stats.crit_rate + se.bladeStackCritRate)
+      const newDmg = Math.min(PLAYER_CAPS.critDmg, p.stats.crit_dmg + se.bladeStackCritDmg)
+      const addedRate = newRate - p.stats.crit_rate
+      const addedDmg = newDmg - p.stats.crit_dmg
+      if (addedRate > 0 || addedDmg > 0) {
+        p.stats.crit_rate = newRate
+        p.stats.crit_dmg = newDmg
+        p._bladeAddedRate += addedRate
+        p._bladeAddedDmg += addedDmg
+        p._bladeStackCount++
+      }
+    }
+  }
+  // ❖ 剑仙套：每次主攻动作触发 N 次剑气（chained）
+  const triggerSwordQi = (mainTarget: TeamMonster) => {
+    if (!se.swordActive || se.swordQiHits <= 0) return
+    for (let i = 0; i < se.swordQiHits; i++) {
+      let t = mainTarget.alive && mainTarget.stats.hp > 0 ? mainTarget : aliveMonsters.find(m => m.alive && m.stats.hp > 0)
+      if (!t) return
+      const ignoreDodgeQi = !!(se.frozenCannotDodge && t.frozenTurns > 0)
+      const dr = calculateDamage(p.stats, t.stats, se.swordQiMul, used.element, used.ignoreDef, ignoreDodgeQi)
+      if (dr.damage > 0) {
+        const { final } = applySetDamage(t, dr.damage, dr.isCrit, { chained: true })
+        const critText = dr.isCrit ? '暴击!' : ''
+        logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${se.swordQiHits}】${critText}对 ${t.stats.name} 造成 ${final} 伤害 (${(se.swordQiMul * 100).toFixed(0)}%)`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
+        if (t.stats.hp <= 0) {
+          t.alive = false
+          killedMonsters.push({ name: t.stats.name, element: t.stats.element, isBoss: t.template.role === 'boss' })
+        }
+      }
+    }
+  }
 
   for (const t of targets) {
     if (t.stats.hp <= 0) continue
@@ -628,17 +826,19 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     let dodgedHits = 0
     for (let h = 0; h < hits; h++) {
       if (t.stats.hp <= 0) break
-      const r = calculateDamage(p.stats, t.stats, perHitMul, used.element, used.ignoreDef)
+      const ignoreDodgeFrost = !!(se.frozenCannotDodge && t.frozenTurns > 0)
+      const r = calculateDamage(p.stats, t.stats, perHitMul, used.element, used.ignoreDef, ignoreDodgeFrost)
+      // ❖ 十三枪满层标记：本击必暴击（消耗后清零）
+      if (p.guaranteedCritNext) {
+        r.isCrit = true
+        p.guaranteedCritNext = false
+      }
       if (r.damage > 0) {
-        t.stats.hp -= r.damage
-        totalDmg += r.damage
+        const { final, lifestealHeal } = applySetDamage(t, r.damage, r.isCrit)
+        totalDmg += final
         if (r.isCrit) critFlag = true
-        if (p.stats.lifesteal && p.stats.lifesteal > 0 && p.stats.hp < p.stats.maxHp) {
-          const ls = Math.floor(r.damage * p.stats.lifesteal)
-          const before = p.stats.hp
-          p.stats.hp = Math.min(p.stats.maxHp, p.stats.hp + ls)
-          totalHeal += p.stats.hp - before
-        }
+        totalHeal += lifestealHeal
+        triggerBladeStack(r.isCrit)
       } else {
         dodgedHits++
       }
@@ -668,12 +868,75 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     }
     // 附加 debuff
     if (used.debuff && t.alive && t.stats.hp > 0) {
-      applyDebuffDps(t, used.debuff, p.stats.atk, t.stats.maxHp)
+      applyDebuffDps(t, used.debuff, p.stats.atk, t.stats.maxHp, { inflictor: p, turn, logs })
     }
     if (t.stats.hp <= 0) {
       t.alive = false
       killedMonsters.push({ name: t.stats.name, element: t.stats.element, isBoss: t.template.role === 'boss' })
       logs.push({ turn, text: `${p.name} 击杀了 ${t.stats.name}！`, type: 'kill', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+    }
+  }
+
+  // ❖ 套装：刷新套 / 多重施法套（攻击型神通/主修释放后）
+  // 刷新套：释放主修或神通后概率重置 CD 最短的神通
+  if (se.refreshChance > 0 && Math.random() < se.refreshChance) {
+    let minIdx = -1, minCd = Infinity
+    for (let i = 0; i < p.divineCds.length; i++) {
+      if (p.divineCds[i] > 0 && p.divineCds[i] < minCd) { minCd = p.divineCds[i]; minIdx = i }
+    }
+    if (minIdx >= 0) {
+      p.divineCds[minIdx] = 0
+      const sk = (p.equippedSkills?.divineSkills || [])[minIdx]
+      logs.push({ turn, text: `  ❖【刷新套】${p.name} 神通【${sk?.name || '?'}】CD 重置`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+    }
+  }
+  // 多重施法套：单体神通追加一个新目标（不是再次释放神通，所以不结算 buff/debuff）
+  const isSingleTarget = isDivine && !used.isAoe && (!used.targetCount || used.targetCount <= 1)
+  if (isSingleTarget && se.multicastChance > 0 && se.multicastMaxPerTurn > 0 && mul > 0) {
+    if (p._multicastThisTurn < se.multicastMaxPerTurn && Math.random() < se.multicastChance) {
+      const extraTarget = monsters
+        .filter(m => m.alive && m.stats.hp > 0 && !targets.includes(m))
+        .sort((a, b) => a.stats.hp - b.stats.hp)[0]
+      if (extraTarget) {
+        p._multicastThisTurn++
+        const extraMul = mul * se.multicastMul
+        const r = calculateDamage(p.stats, extraTarget.stats, extraMul, used.element, used.ignoreDef)
+        if (r.damage > 0) {
+          const { final } = applySetDamage(extraTarget, r.damage, r.isCrit, { chained: true })
+          p.damageDealt += final
+          const critText = r.isCrit ? '暴击!' : ''
+          logs.push({ turn, text: `  ❖【多重施法】${critText}【${used.name}】波及 ${extraTarget.stats.name} 造成 ${final} 伤害 (${(se.multicastMul * 100).toFixed(0)}%)`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, extraTarget.stats.hp), monsterMaxHp: extraTarget.stats.maxHp })
+          if (extraTarget.stats.hp <= 0) {
+            extraTarget.alive = false
+            killedMonsters.push({ name: extraTarget.stats.name, element: extraTarget.stats.element, isBoss: extraTarget.template.role === 'boss' })
+            logs.push({ turn, text: `${p.name} 击杀了 ${extraTarget.stats.name}！`, type: 'kill', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+          }
+        }
+      }
+    }
+  }
+  // ❖ 剑仙套：每次主攻动作触发 N 次剑气（按主目标）
+  triggerSwordQi(targets[0])
+  // ❖ 天机套：神通释放后追加 N 次额外段（chained）
+  if (isDivine && se.fanActive && se.fanExtraCasts > 0 && se.fanExtraMul > 0 && mul > 0) {
+    for (let i = 0; i < se.fanExtraCasts; i++) {
+      let t = targets[0]?.alive && targets[0].stats.hp > 0
+        ? targets[0]
+        : monsters.find(m => m.alive && m.stats.hp > 0)
+      if (!t) break
+      const ignoreDodgeFrost = !!(se.frozenCannotDodge && t.frozenTurns > 0)
+      const fanMul = mul * se.fanExtraMul
+      const r = calculateDamage(p.stats, t.stats, fanMul, used.element, used.ignoreDef, ignoreDodgeFrost)
+      if (r.damage > 0) {
+        const { final } = applySetDamage(t, r.damage, r.isCrit, { chained: true })
+        p.damageDealt += final
+        const critText = r.isCrit ? '暴击!' : ''
+        logs.push({ turn, text: `  ❖【天机·额外段 ${i + 1}/${se.fanExtraCasts}】${critText}【${used.name}】对 ${t.stats.name} 造成 ${final} 伤害 (${(se.fanExtraMul * 100).toFixed(0)}%)`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
+        if (t.stats.hp <= 0) {
+          t.alive = false
+          killedMonsters.push({ name: t.stats.name, element: t.stats.element, isBoss: t.template.role === 'boss' })
+        }
+      }
     }
   }
 }

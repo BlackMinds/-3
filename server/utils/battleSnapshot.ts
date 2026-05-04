@@ -14,6 +14,7 @@ import { getPool } from '~/server/database/db'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo } from '~/server/engine/battleEngine'
+import { aggregateEquipmentSetInfo } from '~/server/engine/equipSetData'
 import { WEAPON_BONUS } from '~/shared/balance'
 
 export interface SnapshotOptions {
@@ -319,6 +320,8 @@ export async function buildCharacterSnapshot(
     spirit,
     // v3.7 反伤流派 PvP 对齐：透传给 multiBattleEngine.buildPvpFighter
     equipReflectPct,
+    // v1 套装：已穿戴件数 + 主武器类型，buildPvpFighter 调用 buildSetEffects 解析
+    ...aggregateEquipmentSetInfo(equipRows),
     // v3.7 加法池：flat 段总和 + 非功法 % 之和（小数, 0.10=10%）
     // buildPvpFighter 把功法 % 加进同池后一次乘
     _flatAtk, _flatDef, _flatHp, _flatSpd,

@@ -49,14 +49,14 @@ export const EQUIP_SETS: EquipSet[] = [
     setKey: 'multicast',
     name: '多重施法套',
     prefix: '叠浪',
-    desc: '神通爆发流，配高倍率单段神通最佳',
+    desc: '单体神通爆发流，多目标场景下追加波及第二个敌人',
     rarity: 'purple',
     tiers: [
-      { count: 3, desc: '释放主动神通时，8% 概率额外释放一次（伤害 100%，每回合最多 1 次）',
+      { count: 3, desc: '释放单体神通时，8% 概率追加波及一个新目标（伤害 100%，每回合最多 1 次）',
         hooks: { onSkillCast: { extraCast: { chance: 0.08, mul: 1.0, maxPerTurn: 1 } } } },
       { count: 5, desc: '概率 18%，每回合最多 2 次',
         hooks: { onSkillCast: { extraCast: { chance: 0.18, mul: 1.0, maxPerTurn: 2 } } } },
-      { count: 7, desc: '概率 30%，每回合最多 2 次；额外释放伤害降至 80%',
+      { count: 7, desc: '概率 30%，每回合最多 2 次；追加目标伤害降至 80%',
         hooks: { onSkillCast: { extraCast: { chance: 0.30, mul: 0.80, maxPerTurn: 2 } } } },
     ],
   },
@@ -145,6 +145,74 @@ export const EQUIP_SETS: EquipSet[] = [
         hooks: { weaponRequired: 'spear', armorPen: 30, LIFESTEAL_flat: 0.05, stack: { id: 'spear13', perHit: 2, perStack: 0.08, max: 13 }, onMaxStack: { guaranteedCrit: 1 } } },
     ],
   },
+
+  // 8. 回归基本功套 — 反向流派：放弃神通爆发，主修变 AOE 持续清场
+  {
+    setKey: 'basic_back',
+    name: '回归基本功',
+    prefix: '本源',
+    desc: '反向流派，主修变 AOE 持续清场（无法使用神通）',
+    rarity: 'purple',
+    tiers: [
+      { count: 3, desc: '主修变 AOE，倍率 ×0.6；无法使用神通',
+        hooks: { basicBack: { mainAoeMul: 0.6, banDivine: true } } },
+      { count: 5, desc: '主修 AOE 倍率 ×1.2；无法使用神通',
+        hooks: { basicBack: { mainAoeMul: 1.2, banDivine: true } } },
+      { count: 7, desc: '主修 AOE 倍率 ×2.0；无法使用神通；主修触发 debuff 概率 ×1.5',
+        hooks: { basicBack: { mainAoeMul: 2.0, banDivine: true, debuffChanceMul: 1.5 } } },
+    ],
+  },
+
+  // 9. 剑仙套 — 武器流之剑，每次造成伤害额外触发剑气
+  {
+    setKey: 'sword_immortal',
+    name: '剑仙套',
+    prefix: '御剑',
+    desc: '武器流·剑，造成伤害额外触发剑气（需装备「剑」）',
+    rarity: 'gold',
+    tiers: [
+      { count: 3, desc: '装备「剑」时，攻击 +5%、防御 +5%、暴击率 +3%；造成伤害额外造成 1 次剑气，倍率 30%',
+        hooks: { weaponRequired: 'sword', ATK_pct: 0.05, DEF_pct: 0.05, CRIT_RATE_flat: 0.03, swordQi: { hits: 1, mul: 0.30 } } },
+      { count: 5, desc: '装备「剑」时，攻击 +8%、防御 +8%、暴击率 +5%；造成伤害额外造成 2 次剑气，倍率 45%',
+        hooks: { weaponRequired: 'sword', ATK_pct: 0.08, DEF_pct: 0.08, CRIT_RATE_flat: 0.05, swordQi: { hits: 2, mul: 0.45 } } },
+      { count: 7, desc: '装备「剑」时，攻击 +10%、防御 +10%、暴击率 +8%；造成伤害额外造成 3 次剑气，倍率 55%',
+        hooks: { weaponRequired: 'sword', ATK_pct: 0.10, DEF_pct: 0.10, CRIT_RATE_flat: 0.08, swordQi: { hits: 3, mul: 0.55 } } },
+    ],
+  },
+
+  // 10. 刀狂套 — 武器流之刀，非暴击滚雪球暴击
+  {
+    setKey: 'blade_madness',
+    name: '刀狂套',
+    prefix: '狂刀',
+    desc: '武器流·刀，非暴击叠加暴击/暴伤，暴击后清零（需装备「刀」）',
+    rarity: 'gold',
+    tiers: [
+      { count: 3, desc: '装备「刀」时，会心率 +5%、会心伤害 +15%；非暴击命中叠加：会心率 +5% / 会心伤害 +15%（暴击清零）',
+        hooks: { weaponRequired: 'blade', CRIT_RATE_flat: 0.05, CRIT_DMG_flat: 0.15, bladeStack: { critRate: 0.05, critDmg: 0.15 } } },
+      { count: 5, desc: '装备「刀」时，会心率 +8%、会心伤害 +25%；非暴击叠加：会心率 +10% / 会心伤害 +25%',
+        hooks: { weaponRequired: 'blade', CRIT_RATE_flat: 0.08, CRIT_DMG_flat: 0.25, bladeStack: { critRate: 0.10, critDmg: 0.25 } } },
+      { count: 7, desc: '装备「刀」时，会心率 +10%、会心伤害 +30%；非暴击叠加：会心率 +15% / 会心伤害 +40%（暴击仍清零）',
+        hooks: { weaponRequired: 'blade', CRIT_RATE_flat: 0.10, CRIT_DMG_flat: 0.30, bladeStack: { critRate: 0.15, critDmg: 0.40 } } },
+    ],
+  },
+
+  // 11. 天机套 — 武器流之扇，神通额外段
+  {
+    setKey: 'fan_master',
+    name: '天机套',
+    prefix: '机扇',
+    desc: '武器流·扇，神通释放后追加额外段（需装备「扇」）',
+    rarity: 'gold',
+    tiers: [
+      { count: 3, desc: '装备「扇」时，神识 +15%；释放神通后额外释放 1 次，伤害 30%',
+        hooks: { weaponRequired: 'fan', SPIRIT_pct: 0.15, fanExtra: { casts: 1, mul: 0.30 } } },
+      { count: 5, desc: '装备「扇」时，神识 +25%；释放神通后额外释放 1 次，伤害 50%',
+        hooks: { weaponRequired: 'fan', SPIRIT_pct: 0.25, fanExtra: { casts: 1, mul: 0.50 } } },
+      { count: 7, desc: '装备「扇」时，神识 +35%；释放神通后额外释放 2 次，伤害 40%',
+        hooks: { weaponRequired: 'fan', SPIRIT_pct: 0.35, fanExtra: { casts: 2, mul: 0.40 } } },
+    ],
+  },
 ]
 
 // ===== 工具函数 =====
@@ -171,6 +239,23 @@ export function countEquippedSets(equipped: Array<{ set_id?: string | null }>): 
     if (v >= 3) result[k] = v
   }
   return result
+}
+
+/**
+ * 从已穿戴装备列表聚合 setCounts + 主武器类型
+ * 用于 buildCharacterSnapshot / team start 等需要把套装信息塞进 stats 的场景
+ */
+export function aggregateEquipmentSetInfo(
+  equipRows: Array<{ slot?: string | null; set_id?: string | null; weapon_type?: string | null }>
+): { equipSetCounts: Record<string, number>; weaponType: string | null } {
+  const equipSetCounts: Record<string, number> = {}
+  let weaponType: string | null = null
+  for (const eq of equipRows) {
+    if (!eq?.slot) continue
+    if (eq.set_id) equipSetCounts[eq.set_id] = (equipSetCounts[eq.set_id] || 0) + 1
+    if (eq.slot === 'weapon' && eq.weapon_type) weaponType = eq.weapon_type
+  }
+  return { equipSetCounts, weaponType }
 }
 
 /**

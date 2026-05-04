@@ -22,13 +22,16 @@
 
 import {
   calculateDamage,
+  buildSetEffects,
+  buildActiveSetTiers,
   type BattlerStats,
   type EquippedSkillInfo,
   type SkillRefInfo,
   type BattleLogEntry,
+  type SetEffectsState,
 } from './battleEngine'
 import type { DebuffType, BuffType } from './skillData'
-import { DOT_FORMULA } from '~/shared/balance'
+import { DOT_FORMULA, PLAYER_CAPS } from '~/shared/balance'
 
 // ========== 类型 ==========
 
@@ -111,6 +114,17 @@ export interface PvpFighter {
 
   // 附灵运行时状态
   awakenState: any
+
+  // v1 套装运行时状态
+  setEffects: SetEffectsState
+  spearStacks: number
+  guaranteedCritNext: boolean
+  _multicastThisTurn: number
+  _setInstantTriggered: Record<string, boolean>
+  // 刀狂套叠加状态
+  _bladeAddedRate: number
+  _bladeAddedDmg: number
+  _bladeStackCount: number
 
   // 运行时
   alive: boolean
@@ -261,6 +275,15 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
       mainSkillExecuteBonus: s.awaken?.mainSkillExecuteBonus || 0,
     },
 
+    setEffects: buildSetEffects(undefined, null), // 占位，下面会被 stats 携带的真实数据覆盖
+    spearStacks: 0,
+    guaranteedCritNext: false,
+    _multicastThisTurn: 0,
+    _setInstantTriggered: {},
+    _bladeAddedRate: 0,
+    _bladeAddedDmg: 0,
+    _bladeStackCount: 0,
+
     alive: true,
     debuffs: [],
     buffs: [],
@@ -271,6 +294,32 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
     kills: 0,
     killStacks: 0,
   }
+
+  // v1 套装：根据 stats 上的 equipSetCounts/weaponType 解析运行时效果
+  const setEffects = buildSetEffects(sx.equipSetCounts, sx.weaponType || null)
+  fighter.setEffects = setEffects
+  // 十三枪静态加成（破甲 / 吸血）一次性应用到 fighter 上
+  fighter.armorPen = (fighter.armorPen || 0) + setEffects.spearArmorPen
+  fighter.lifesteal = Math.min(0.25, (fighter.lifesteal || 0) + setEffects.spearLifesteal)
+  // 剑仙套静态加成（持「剑」激活）
+  if (setEffects.swordActive) {
+    fighter.atk = Math.floor(fighter.atk * (1 + setEffects.swordAtkPct))
+    fighter.baseAtk = fighter.atk
+    fighter.def = Math.floor(fighter.def * (1 + setEffects.swordDefPct))
+    fighter.baseDef = fighter.def
+    fighter.crit_rate = Math.min(PLAYER_CAPS.critRate, fighter.crit_rate + setEffects.swordCritRateFlat)
+  }
+  // 刀狂套静态加成（持「刀」激活）
+  if (setEffects.bladeActive) {
+    fighter.crit_rate = Math.min(PLAYER_CAPS.critRate, fighter.crit_rate + setEffects.bladeBaseCritRate)
+    fighter.crit_dmg = Math.min(PLAYER_CAPS.critDmg, fighter.crit_dmg + setEffects.bladeBaseCritDmg)
+  }
+  // 天机套静态加成（持「扇」激活）
+  if (setEffects.fanActive && setEffects.fanSpiritPct > 0) {
+    fighter.spirit = Math.floor(fighter.spirit * (1 + setEffects.fanSpiritPct))
+  }
+  // 留一份原始件数，runPvpBattle 开局打印激活套装时用
+  ;(fighter as any)._setCountsRaw = sx.equipSetCounts || {}
 
   // 开场狂怒 buff（附灵）
   if (s.awaken?.frenzyOpening && s.awaken.frenzyOpening > 0) {
@@ -362,6 +411,24 @@ export function runPvpBattle(
     text: `【战斗开始】${sideAName} ${sideA.length} 人 vs ${sideBName} ${sideB.length} 人`,
   })
 
+  // v1 套装：开局展示双方激活的套装 + 应用刷新套 7 件 CD-1
+  for (const f of [...sideA, ...sideB]) {
+    const sx: any = (f as any)
+    const setCounts = sx._setCountsRaw || {} // 见下方 buildPvpFighter 的存档
+    const activeSets = buildActiveSetTiers(setCounts)
+    for (const s of activeSets) {
+      log({ turn: 0, type: 'set', text: `❖ ${f.name} 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)` })
+    }
+    // 刷新套 7 件套：开局所有神通 CD -refreshOpenCdReduce
+    const reduce = f.setEffects.refreshOpenCdReduce
+    if (reduce > 0 && f.divineCds.length > 0) {
+      for (let i = 0; i < f.divineCds.length; i++) {
+        f.divineCds[i] = Math.max(0, f.divineCds[i] - reduce)
+      }
+      log({ turn: 0, type: 'set', text: `  ❖【刷新套】${f.name} 开局所有神通 CD -${reduce}` })
+    }
+  }
+
   // === 施加 debuff ===
   function tryApplyDebuff(
     target: PvpFighter, targetName: string,
@@ -406,6 +473,19 @@ export function runPvpBattle(
       }
     }
 
+    // ❖ 极寒套：施加方装备时，冰冻/眩晕/束缚命中率 +X
+    if (inflictor && (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') &&
+        inflictor.setEffects?.freezeChanceBonus > 0) {
+      effChance = Math.min(1, effChance + inflictor.setEffects.freezeChanceBonus)
+      resonanceTag += ` ❖极寒+${(inflictor.setEffects.freezeChanceBonus * 100).toFixed(0)}%`
+    }
+    // ❖ 回归基本功 7 件套：施加方主修攻击触发 debuff 概率 ×1.5
+    if (inflictor && (inflictor as any)._mainSkillElement && inflictor.setEffects?.basicBackDebuffMul > 1) {
+      const m = inflictor.setEffects.basicBackDebuffMul
+      effChance = Math.min(1, effChance * m)
+      resonanceTag += ` ❖本源×${m.toFixed(1)}`
+    }
+
     if (Math.random() >= effChance) return false
     const isCtrl = ['freeze', 'stun', 'root', 'silence'].includes(debuff.type)
     // 天师附灵：施加方延长减益持续回合（不影响控制类）
@@ -447,6 +527,28 @@ export function runPvpBattle(
     else if (debuff.type === 'slow') text += ` (必定后攻)`
     else if (debuff.type === 'silence') text += ` (无法使用神通)`
     log({ turn, type: 'normal', text: `  ${text}${tianshiTag}${resonanceTag}` })
+
+    // ❖ 火神/万毒/血魔套：施加 burn/poison/bleed 时立即多结算 (instantMul - 1) 次
+    // 每场每目标每种 debuff 每回合限触发 1 次，避免多段技能滚雪球
+    const isDotType = debuff.type === 'burn' || debuff.type === 'poison' || debuff.type === 'bleed'
+    if (inflictor && isDotType && target !== inflictor) {
+      const se = inflictor.setEffects
+      let instantMul = 1
+      let setName = ''
+      if (debuff.type === 'burn'   && se.burnInstantMul   > 1) { instantMul = se.burnInstantMul;   setName = '火神套' }
+      if (debuff.type === 'poison' && se.poisonInstantMul > 1) { instantMul = se.poisonInstantMul; setName = '万毒套' }
+      if (debuff.type === 'bleed'  && se.bleedInstantMul  > 1) { instantMul = se.bleedInstantMul;  setName = '血魔套' }
+      if (instantMul > 1) {
+        const key = `${debuff.type}_${turn}`
+        if (!target._setInstantTriggered[key]) {
+          target._setInstantTriggered[key] = true
+          const extraTicks = instantMul - 1
+          const totalDmg = dmg * extraTicks
+          target.hp = Math.max(0, target.hp - totalDmg)
+          log({ turn, type: 'set', text: `  ❖【${setName}】${DEBUFF_NAMES[debuff.type]}立即结算 ×${extraTicks}，对${targetName}造成 ${totalDmg} 伤害` })
+        }
+      }
+    }
     return true
   }
 
@@ -610,6 +712,9 @@ export function runPvpBattle(
   function executeAction(attacker: PvpFighter, enemies: PvpFighter[], turn: number) {
     if (!attacker.alive || attacker.hp <= 0) return
 
+    // ❖ 套装：本回合多重施法触发计数清零
+    attacker._multicastThisTurn = 0
+
     // 回合开始效果
     turnStartEffects(attacker, turn)
     if (!attacker.alive || attacker.hp <= 0) return
@@ -639,14 +744,14 @@ export function runPvpBattle(
     const target = pickTarget(enemies)
     if (!target) return
 
-    // 选技能（神通 CD > 主修）
+    // 选技能（神通 CD > 主修；回归基本功套也禁用神通）
     let usedSkill: SkillRefInfo = attacker.activeSkill
     let isDivine = false
     const silenced = hasSilence(attacker)
     if (silenced) {
       log({ turn, type: 'normal', text: `  ${attacker.name} 被封印，无法使用神通` })
     }
-    const divines = silenced ? [] : attacker.divineSkills
+    const divines = (silenced || attacker.setEffects.basicBackBanDivine) ? [] : attacker.divineSkills
     const cdReduction = attacker.passiveEffects?.skillCdReduction || 0
 
     for (let i = 0; i < divines.length; i++) {
@@ -709,8 +814,13 @@ export function runPvpBattle(
     }
 
     // 攻击技能
+    // ❖ 回归基本功套：主修攻击强制 AOE，倍率 ×basicBackMul
+    const basicBackMain = isMainSkill && attacker.setEffects.basicBackActive && attacker.setEffects.basicBackMul > 0
+    if (basicBackMain) {
+      mul = mul * attacker.setEffects.basicBackMul
+    }
     let attackTargets: PvpFighter[]
-    if (usedSkill.isAoe) {
+    if (usedSkill.isAoe || basicBackMain) {
       attackTargets = enemies.filter(e => e.alive)
     } else if (usedSkill.targetCount && usedSkill.targetCount > 1) {
       attackTargets = [...enemies.filter(e => e.alive)].sort((a, b) => a.hp - b.hp).slice(0, usedSkill.targetCount)
@@ -721,7 +831,7 @@ export function runPvpBattle(
     const perHitMul = mul / hits
 
     // 技能标签
-    const targetLabel = usedSkill.isAoe ? '全体' : (attackTargets.length > 1 ? `${attackTargets.length}目标` : '')
+    const targetLabel = (usedSkill.isAoe || basicBackMain) ? '全体' : (attackTargets.length > 1 ? `${attackTargets.length}目标` : '')
     const hitsLabel = hits > 1 ? `${hits}段` : ''
     const skillLabel = [targetLabel, hitsLabel].filter(Boolean).join('·')
 
@@ -736,12 +846,28 @@ export function runPvpBattle(
     // 避免出现"先吸血、后伤害"乃至跨回合错位的视觉问题
     const mainSkillLifestealRate = (isMainSkill && attacker.awakenState?.mainSkillLifesteal) ? attacker.awakenState.mainSkillLifesteal : 0
     let critCdCutUsedThisTurn = false
-    const dealDamage = (t: PvpFighter, rawDmg: number, isCrit: boolean): { final: number; lifestealHeal: number } => {
-      const final = applyIncomingDamage(t, rawDmg, isCrit)
+    const dealDamage = (t: PvpFighter, rawDmg: number, isCrit: boolean, opts?: { chained?: boolean }): { final: number; lifestealHeal: number } => {
+      const se = attacker.setEffects
+      let dmg = rawDmg
+      // ❖ 极寒套：对冰冻状态敌人额外伤害
+      if (se.dmgVsFrozen > 0 && t.frozenTurns > 0) dmg = Math.floor(dmg * (1 + se.dmgVsFrozen))
+      // ❖ 十三枪：当前层数 × 每层最终伤害
+      if (se.spearActive && attacker.spearStacks > 0) {
+        dmg = Math.floor(dmg * (1 + attacker.spearStacks * se.spearStackDmgPerLevel))
+      }
+
+      const final = applyIncomingDamage(t, dmg, isCrit)
       attacker.totalDmgDealt += final
+
+      // ❖ 血魔套 7 件：目标处于流血状态时吸血 +X
+      const targetBleeding = t.debuffs.some(d => d.type === 'bleed')
+      let lsRate = attacker.lifesteal
+      if (targetBleeding && se.bleedLifestealIfBleeding > 0) {
+        lsRate = Math.min(0.25, lsRate + se.bleedLifestealIfBleeding)
+      }
       let lifestealHeal = 0
-      if (attacker.lifesteal > 0 && attacker.hp > 0 && attacker.hp < attacker.maxHp) {
-        const heal = Math.floor(final * attacker.lifesteal)
+      if (lsRate > 0 && attacker.hp > 0 && attacker.hp < attacker.maxHp) {
+        const heal = Math.floor(final * lsRate)
         if (heal > 0) {
           lifestealHeal = Math.min(heal, attacker.maxHp - attacker.hp)
           attacker.hp += lifestealHeal
@@ -756,6 +882,18 @@ export function runPvpBattle(
           lifestealHeal += actual
         }
       }
+
+      // ❖ 十三枪：每命中加层（追加伤害类不加层，避免链式）
+      if (se.spearActive && !opts?.chained && attacker.spearStacks < se.spearMaxStacks) {
+        const before = attacker.spearStacks
+        const next = Math.min(se.spearMaxStacks, before + se.spearStackPerHit)
+        attacker.spearStacks = next
+        if (next === se.spearMaxStacks && se.spearGuaranteedCritOnMax && before < se.spearMaxStacks) {
+          attacker.guaranteedCritNext = true
+          log({ turn, type: 'set', text: `  ❖【十三枪】${attacker.name} 满 ${se.spearMaxStacks} 层！下一击必暴击` })
+        }
+      }
+
       return { final, lifestealHeal }
     }
     // v1.3 心剑回响：主修暴击时所有神通 CD-1（每回合至多 1 次）
@@ -771,18 +909,68 @@ export function runPvpBattle(
         log({ turn, type: 'buff', text: `  ✦【心剑回响】${attacker.name} 主修暴击，所有神通 CD -1` })
       }
     }
+    // ❖ 刀狂套：每次主攻命中后判定（暴击清零叠加；非暴击叠加 +1 层，cap 截断）
+    const triggerBladeStack = (isCrit: boolean) => {
+      const se2 = attacker.setEffects
+      if (!se2.bladeActive) return
+      if (isCrit) {
+        if (attacker._bladeStackCount > 0) {
+          attacker.crit_rate = Math.max(0, attacker.crit_rate - attacker._bladeAddedRate)
+          attacker.crit_dmg = Math.max(1, attacker.crit_dmg - attacker._bladeAddedDmg)
+          const cnt = attacker._bladeStackCount
+          attacker._bladeAddedRate = 0; attacker._bladeAddedDmg = 0; attacker._bladeStackCount = 0
+          log({ turn, type: 'set', text: `  ❖【刀狂套】${attacker.name} 暴击触发，叠加层 ×${cnt} 清零` })
+        }
+      } else {
+        const newRate = Math.min(PLAYER_CAPS.critRate, attacker.crit_rate + se2.bladeStackCritRate)
+        const newDmg = Math.min(PLAYER_CAPS.critDmg, attacker.crit_dmg + se2.bladeStackCritDmg)
+        const addedRate = newRate - attacker.crit_rate
+        const addedDmg = newDmg - attacker.crit_dmg
+        if (addedRate > 0 || addedDmg > 0) {
+          attacker.crit_rate = newRate
+          attacker.crit_dmg = newDmg
+          attacker._bladeAddedRate += addedRate
+          attacker._bladeAddedDmg += addedDmg
+          attacker._bladeStackCount++
+        }
+      }
+    }
+    // ❖ 剑仙套：每次主攻命中后追加 N 次剑气（chained）
+    const triggerSwordQi = (mainTarget: PvpFighter) => {
+      const se2 = attacker.setEffects
+      if (!se2.swordActive || se2.swordQiHits <= 0) return
+      for (let i = 0; i < se2.swordQiHits; i++) {
+        let t = mainTarget.alive && mainTarget.hp > 0 ? mainTarget : pickTarget(enemies)
+        if (!t) return
+        const ignoreDodgeQi = !!(se2.frozenCannotDodge && t.frozenTurns > 0)
+        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), se2.swordQiMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeQi, false)
+        if (dr.damage > 0) {
+          const { final } = dealDamage(t, dr.damage, dr.isCrit, { chained: true })
+          const critText = dr.isCrit ? '暴击!' : ''
+          log({ turn, type: 'set', text: `  ❖【剑仙·剑气 ${i + 1}/${se2.swordQiHits}】${critText}对 ${t.name} 造成 ${final} 伤害 (${(se2.swordQiMul * 100).toFixed(0)}%)` })
+          if (t.hp <= 0) t.alive = false
+        }
+      }
+    }
 
     if (hits > 1 && attackTargets.length === 1) {
       // 多段单体
       for (let h = 0; h < hits; h++) {
         const liveTarget = attackTargets[0].alive ? attackTargets[0] : pickTarget(enemies)
         if (!liveTarget) break
-        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(liveTarget), perHitMul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill)
+        const ignoreDodgeFrost = !!(attacker.setEffects.frozenCannotDodge && liveTarget.frozenTurns > 0)
+        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(liveTarget), perHitMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill)
+        // ❖ 十三枪满层标记：本击必暴击（消耗后清零）
+        if (attacker.guaranteedCritNext) {
+          dr.isCrit = true
+          attacker.guaranteedCritNext = false
+        }
         if (dr.damage === 0) {
           log({ turn, type: 'dodge', text: `  第 ${h + 1} 段 被 ${liveTarget.name} 闪避` })
         } else {
           const { final, lifestealHeal } = dealDamage(liveTarget, dr.damage, dr.isCrit)
           tryCritCdCut(dr.isCrit)
+          triggerBladeStack(dr.isCrit)
           const critText = dr.isCrit ? '暴击! ' : ''
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  第 ${h + 1} 段 ${critText}对 ${liveTarget.name} 造成 ${final} 伤害` })
           if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
@@ -796,13 +984,20 @@ export function runPvpBattle(
       // AoE / 多目标 / 单体
       for (const t of attackTargets) {
         if (!t.alive) continue
-        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), mul, usedSkill.element, usedSkill.ignoreDef, false, isMainSkill)
+        const ignoreDodgeFrost = !!(attacker.setEffects.frozenCannotDodge && t.frozenTurns > 0)
+        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), mul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill)
+        // ❖ 十三枪满层标记：本击必暴击（消耗后清零）
+        if (attacker.guaranteedCritNext) {
+          dr.isCrit = true
+          attacker.guaranteedCritNext = false
+        }
         if (dr.damage === 0) {
           log({ turn, type: 'dodge', text: `  ${t.name} 闪避了 ${attacker.name} 的攻击` })
           continue
         }
         const { final, lifestealHeal } = dealDamage(t, dr.damage, dr.isCrit)
         tryCritCdCut(dr.isCrit)
+        triggerBladeStack(dr.isCrit)
         const critText = dr.isCrit ? '暴击! ' : ''
         if (skillLabel) {
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  ${critText}对 ${t.name} 造成 ${final} 伤害` })
@@ -827,7 +1022,7 @@ export function runPvpBattle(
           if (chainT) {
             const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(chainT), mul * 0.6, usedSkill.element, usedSkill.ignoreDef, false, false)
             if (dr.damage > 0) {
-              const { final, lifestealHeal } = dealDamage(chainT, dr.damage, dr.isCrit)
+              const { final, lifestealHeal } = dealDamage(chainT, dr.damage, dr.isCrit, { chained: true })
               const chainTag = ringChain > baseChain ? '紫电连华' : '连击'
               log({ turn, type: 'buff', text: `  ✦【${chainTag}】${attacker.name} 再次出手，对 ${chainT.name} 造成 ${final} 伤害` })
               if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
@@ -837,6 +1032,61 @@ export function runPvpBattle(
         }
       }
     }
+    // ❖ 剑仙套：每次主攻动作触发 N 次剑气（不论几段几目标，按 pickTarget 选主目标）
+    triggerSwordQi(target)
+
+    // ❖ 套装：刷新套 / 多重施法套（仅在攻击型神通/主修释放后触发；buff/治疗 mul=0 已提前 return）
+    const se = attacker.setEffects
+    // 刷新套：释放主修或神通后概率重置 CD 最短的神通
+    if (se.refreshChance > 0 && Math.random() < se.refreshChance) {
+      let minIdx = -1, minCd = Infinity
+      for (let i = 0; i < attacker.divineCds.length; i++) {
+        if (attacker.divineCds[i] > 0 && attacker.divineCds[i] < minCd) { minCd = attacker.divineCds[i]; minIdx = i }
+      }
+      if (minIdx >= 0) {
+        attacker.divineCds[minIdx] = 0
+        const sk = attacker.divineSkills[minIdx]
+        log({ turn, type: 'set', text: `  ❖【刷新套】${attacker.name} 神通【${sk?.name || '?'}】CD 重置` })
+      }
+    }
+    // 多重施法套：单体神通追加一个新目标（不是再次释放神通，所以不结算 buff/debuff）
+    const isSingleTarget = isDivine && !usedSkill.isAoe && (!usedSkill.targetCount || usedSkill.targetCount <= 1)
+    if (isSingleTarget && se.multicastChance > 0 && se.multicastMaxPerTurn > 0 && mul > 0) {
+      if (attacker._multicastThisTurn < se.multicastMaxPerTurn && Math.random() < se.multicastChance) {
+        const extraTarget = enemies
+          .filter(e => e.alive && e.hp > 0 && !attackTargets.includes(e))
+          .sort((a, b) => a.hp - b.hp)[0]
+        if (extraTarget) {
+          attacker._multicastThisTurn++
+          const extraMul = mul * se.multicastMul
+          const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(extraTarget), extraMul, usedSkill.element, usedSkill.ignoreDef, false, false)
+          if (dr.damage > 0) {
+            const { final } = dealDamage(extraTarget, dr.damage, dr.isCrit, { chained: true })
+            const critText = dr.isCrit ? '暴击!' : ''
+            log({ turn, type: 'set', text: `  ❖【多重施法】${critText}【${usedSkill.name}】波及 ${extraTarget.name} 造成 ${final} 伤害 (${(se.multicastMul * 100).toFixed(0)}%)` })
+            if (extraTarget.hp <= 0) extraTarget.alive = false
+          }
+        }
+      }
+    }
+
+    // ❖ 天机套：神通释放后追加 N 次额外段（chained，不消耗 CD、不结算 debuff/buff、不被刷新套/叠浪触发）
+    if (isDivine && se.fanActive && se.fanExtraCasts > 0 && se.fanExtraMul > 0 && mul > 0) {
+      for (let i = 0; i < se.fanExtraCasts; i++) {
+        let t = (target.alive && target.hp > 0) ? target : pickTarget(enemies)
+        if (!t) break
+        const ignoreDodgeFrost = !!(se.frozenCannotDodge && t.frozenTurns > 0)
+        const fanMul = mul * se.fanExtraMul
+        const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), fanMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, false)
+        if (dr.damage > 0) {
+          const { final } = dealDamage(t, dr.damage, dr.isCrit, { chained: true })
+          const critText = dr.isCrit ? '暴击!' : ''
+          log({ turn, type: 'set', text: `  ❖【天机·额外段 ${i + 1}/${se.fanExtraCasts}】${critText}【${usedSkill.name}】对 ${t.name} 造成 ${final} 伤害 (${(se.fanExtraMul * 100).toFixed(0)}%)` })
+          if (t.hp <= 0) t.alive = false
+        }
+      }
+    }
+
     // v1.3 攻击结束后清掉主修元素标记
     ;(attacker as any)._mainSkillElement = null
 

@@ -1,6 +1,6 @@
 // 后端完整战斗引擎 - 从前端 battleEngine.ts 移植
-import { Skill, SKILL_MAP, type DebuffType, type BuffType, type SkillDebuff, type SkillBuff, type PassiveEffect } from './skillData';
-import { BATTLE_FORMULA, DOT_FORMULA } from '~/shared/balance';
+import { SKILL_MAP, type Skill, type DebuffType, type BuffType, type SkillDebuff, type SkillBuff, type PassiveEffect } from './skillData';
+import { BATTLE_FORMULA, DOT_FORMULA, PLAYER_CAPS } from '~/shared/balance';
 import { EQUIP_SET_MAP, getActiveTier } from './equipSetData';
 
 // 套装运行时效果（从已穿戴件数解析得到）
@@ -34,6 +34,29 @@ export interface SetEffectsState {
   spearStackDmgPerLevel: number;
   spearMaxStacks: number;
   spearGuaranteedCritOnMax: boolean; // 满 13 层时下一击必暴击（仅 7 件套）
+  // 8. basic_back 回归基本功套
+  basicBackActive: boolean;    // 任意 ≥3 件激活
+  basicBackMul: number;        // 主修 AOE 倍率（0.6 / 1.2 / 2.0）
+  basicBackBanDivine: boolean; // 禁神通
+  basicBackDebuffMul: number;  // 主修 debuff 概率倍率（默认 1.0；7 件 = 1.5）
+  // 9. sword_immortal 剑仙套（持「剑」激活）
+  swordActive: boolean;
+  swordAtkPct: number;
+  swordDefPct: number;
+  swordCritRateFlat: number;
+  swordQiHits: number;         // 剑气次数（1 / 2 / 3）
+  swordQiMul: number;          // 剑气倍率（0.30 / 0.45 / 0.55）
+  // 10. blade_madness 刀狂套（持「刀」激活）
+  bladeActive: boolean;
+  bladeBaseCritRate: number;   // 静态加成（叠加到 stat 上）
+  bladeBaseCritDmg: number;
+  bladeStackCritRate: number;  // 每次非暴击叠加值
+  bladeStackCritDmg: number;
+  // 11. fan_master 天机套（持「扇」激活）
+  fanActive: boolean;
+  fanSpiritPct: number;        // 神识 % 加成（0.15 / 0.25 / 0.35）
+  fanExtraCasts: number;       // 额外释放次数（1 / 1 / 2）
+  fanExtraMul: number;         // 额外释放倍率（0.30 / 0.50 / 0.40）
 }
 
 export function buildSetEffects(equipSetCounts: Record<string, number> | undefined, weaponType: string | null): SetEffectsState {
@@ -47,6 +70,12 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
     spearActive: false, spearArmorPen: 0, spearLifesteal: 0,
     spearStackPerHit: 0, spearStackDmgPerLevel: 0, spearMaxStacks: 0,
     spearGuaranteedCritOnMax: false,
+    basicBackActive: false, basicBackMul: 0, basicBackBanDivine: false, basicBackDebuffMul: 1,
+    swordActive: false, swordAtkPct: 0, swordDefPct: 0, swordCritRateFlat: 0,
+    swordQiHits: 0, swordQiMul: 0,
+    bladeActive: false, bladeBaseCritRate: 0, bladeBaseCritDmg: 0,
+    bladeStackCritRate: 0, bladeStackCritDmg: 0,
+    fanActive: false, fanSpiritPct: 0, fanExtraCasts: 0, fanExtraMul: 0,
   };
   if (!equipSetCounts) return state;
   for (const [setKey, count] of Object.entries(equipSetCounts)) {
@@ -100,6 +129,46 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
           state.spearStackDmgPerLevel = hooks.stack?.perStack || 0;
           state.spearMaxStacks = hooks.stack?.max || 0;
           state.spearGuaranteedCritOnMax = !!hooks.onMaxStack?.guaranteedCrit;
+        }
+        break;
+      }
+      case 'basic_back': {
+        const bb = hooks.basicBack;
+        if (bb) {
+          state.basicBackActive = true;
+          state.basicBackMul = bb.mainAoeMul || 0;
+          state.basicBackBanDivine = !!bb.banDivine;
+          state.basicBackDebuffMul = bb.debuffChanceMul || 1;
+        }
+        break;
+      }
+      case 'sword_immortal': {
+        if (hooks.weaponRequired === weaponType) {
+          state.swordActive = true;
+          state.swordAtkPct = hooks.ATK_pct || 0;
+          state.swordDefPct = hooks.DEF_pct || 0;
+          state.swordCritRateFlat = hooks.CRIT_RATE_flat || 0;
+          state.swordQiHits = hooks.swordQi?.hits || 0;
+          state.swordQiMul = hooks.swordQi?.mul || 0;
+        }
+        break;
+      }
+      case 'blade_madness': {
+        if (hooks.weaponRequired === weaponType) {
+          state.bladeActive = true;
+          state.bladeBaseCritRate = hooks.CRIT_RATE_flat || 0;
+          state.bladeBaseCritDmg = hooks.CRIT_DMG_flat || 0;
+          state.bladeStackCritRate = hooks.bladeStack?.critRate || 0;
+          state.bladeStackCritDmg = hooks.bladeStack?.critDmg || 0;
+        }
+        break;
+      }
+      case 'fan_master': {
+        if (hooks.weaponRequired === weaponType) {
+          state.fanActive = true;
+          state.fanSpiritPct = hooks.SPIRIT_pct || 0;
+          state.fanExtraCasts = hooks.fanExtra?.casts || 0;
+          state.fanExtraMul = hooks.fanExtra?.mul || 0;
         }
         break;
       }
@@ -1110,6 +1179,25 @@ export function runWaveBattle(
   player.guaranteedCritNext = false; // 满层标记
   player.armorPen = (player.armorPen || 0) + setEffects.spearArmorPen;
   player.lifesteal = Math.min(0.25, (player.lifesteal || 0) + setEffects.spearLifesteal);
+  // 剑仙套静态加成（持「剑」激活）
+  if (setEffects.swordActive) {
+    player.atk = Math.floor(player.atk * (1 + setEffects.swordAtkPct));
+    player.def = Math.floor(player.def * (1 + setEffects.swordDefPct));
+    player.crit_rate = Math.min(PLAYER_CAPS.critRate, (player.crit_rate || 0) + setEffects.swordCritRateFlat);
+  }
+  // 刀狂套静态加成（持「刀」激活）
+  if (setEffects.bladeActive) {
+    player.crit_rate = Math.min(PLAYER_CAPS.critRate, (player.crit_rate || 0) + setEffects.bladeBaseCritRate);
+    player.crit_dmg = Math.min(PLAYER_CAPS.critDmg, (player.crit_dmg || 0) + setEffects.bladeBaseCritDmg);
+  }
+  // 天机套静态加成（持「扇」激活）
+  if (setEffects.fanActive && setEffects.fanSpiritPct > 0) {
+    player.spirit = Math.floor((player.spirit || 0) * (1 + setEffects.fanSpiritPct));
+  }
+  // 刀狂运行时叠加状态
+  (player as any)._bladeAddedRate = 0;
+  (player as any)._bladeAddedDmg = 0;
+  (player as any)._bladeStackCount = 0;
   // 战斗起始时打印已激活套装（金色高亮日志）
   const activeSets = buildActiveSetTiers((playerStats as any).equipSetCounts);
   for (const s of activeSets) {
@@ -1201,6 +1289,12 @@ export function runWaveBattle(
     if (inflictor === 'player' && debuff.type === 'freeze' && (player as any).setEffects?.freezeChanceBonus > 0) {
       effChance = Math.min(1, effChance + (player as any).setEffects.freezeChanceBonus);
       resonanceTag += ` ❖极寒+${((player as any).setEffects.freezeChanceBonus * 100).toFixed(0)}%`;
+    }
+    // ❖ 回归基本功 7 件套：玩家主修攻击触发 debuff 概率 ×1.5
+    if (inflictor === 'player' && (player as any)._mainSkillElement && (player as any).setEffects?.basicBackDebuffMul > 1) {
+      const mul = (player as any).setEffects.basicBackDebuffMul;
+      effChance = Math.min(1, effChance * mul);
+      resonanceTag += ` ❖本源×${mul.toFixed(1)}`;
     }
 
     if (Math.random() >= effChance) return false;
@@ -1777,14 +1871,14 @@ export function runWaveBattle(
       }
     }
 
-    // 玩家攻击（silence 禁用神通）
+    // 玩家攻击（silence 禁用神通；回归基本功套也禁用神通）
     let usedSkill: SkillRefInfo = activeSkill;
     let isDivine = false;
     const silenced = hasSilence(player);
     if (silenced) {
       logs.push({ turn, text: `  你被封印,无法使用神通`, type: 'normal', ...snap() });
     }
-    const divines = silenced ? [] : (equippedSkills?.divineSkills || []);
+    const divines = (silenced || setEffects.basicBackBanDivine) ? [] : (equippedSkills?.divineSkills || []);
     for (let i = 0; i < divines.length; i++) {
       if (divineCds[i] <= 0) {
         usedSkill = divines[i];
@@ -1850,8 +1944,13 @@ export function runWaveBattle(
       (player as any)._mainSkillElement = null;
     } else {
       // 攻击技能
+      // ❖ 回归基本功套：主修攻击强制 AOE，倍率 ×basicBackMul（仅主修，不影响神通——神通已被禁用）
+      const basicBackMain = isMainSkill && setEffects.basicBackActive && setEffects.basicBackMul > 0;
+      if (basicBackMain) {
+        mul = mul * setEffects.basicBackMul;
+      }
       let attackTargets: typeof aliveMonsters;
-      if (usedSkill.isAoe) {
+      if (usedSkill.isAoe || basicBackMain) {
         attackTargets = [...aliveMonsters];
       } else if (usedSkill.targetCount && usedSkill.targetCount > 1) {
         const sorted = [...aliveMonsters].sort((a, b) => a.stats.hp - b.stats.hp);
@@ -1860,10 +1959,10 @@ export function runWaveBattle(
         attackTargets = [target];
       }
 
-      const prefix = isDivine ? '神通发动！' : (rootMatched ? '灵根共鸣！' : '');
+      const prefix = isDivine ? '神通发动！' : (rootMatched ? '灵根共鸣！' : (basicBackMain ? '本源·回归！' : ''));
       const hits = usedSkill.hitCount || 1;
       const perHitMul = mul / hits;
-      const targetLabel = usedSkill.isAoe ? '全体' : (attackTargets.length > 1 ? `${attackTargets.length}目标` : '');
+      const targetLabel = (usedSkill.isAoe || basicBackMain) ? '全体' : (attackTargets.length > 1 ? `${attackTargets.length}目标` : '');
       const hitsLabel = hits > 1 ? `${hits}段` : '';
       const skillLabel = [targetLabel, hitsLabel].filter(Boolean).join('·');
       if (skillLabel) {
@@ -1945,6 +2044,50 @@ export function runWaveBattle(
           logs.push({ turn, text: '  ✦【心剑回响】主修暴击，所有神通 CD -1', type: 'buff', ...snap() });
         }
       };
+      // ❖ 刀狂套：每次主攻命中后判定（暴击清零叠加；非暴击叠加 +1 层，cap 截断）
+      const triggerBladeStack = (isCrit: boolean) => {
+        if (!setEffects.bladeActive) return;
+        const p = player as any;
+        if (isCrit) {
+          if (p._bladeStackCount > 0) {
+            player.crit_rate = Math.max(0, player.crit_rate - p._bladeAddedRate);
+            player.crit_dmg = Math.max(1, player.crit_dmg - p._bladeAddedDmg);
+            const cnt = p._bladeStackCount;
+            p._bladeAddedRate = 0; p._bladeAddedDmg = 0; p._bladeStackCount = 0;
+            logs.push({ turn, text: `  ❖【刀狂套】暴击触发，叠加层 ×${cnt} 清零`, type: 'set', ...snap() });
+          }
+        } else {
+          const newRate = Math.min(PLAYER_CAPS.critRate, player.crit_rate + setEffects.bladeStackCritRate);
+          const newDmg = Math.min(PLAYER_CAPS.critDmg, player.crit_dmg + setEffects.bladeStackCritDmg);
+          const addedRate = newRate - player.crit_rate;
+          const addedDmg = newDmg - player.crit_dmg;
+          if (addedRate > 0 || addedDmg > 0) {
+            player.crit_rate = newRate;
+            player.crit_dmg = newDmg;
+            p._bladeAddedRate = (p._bladeAddedRate || 0) + addedRate;
+            p._bladeAddedDmg = (p._bladeAddedDmg || 0) + addedDmg;
+            p._bladeStackCount = (p._bladeStackCount || 0) + 1;
+          }
+        }
+      };
+      // ❖ 剑仙套：每次主攻命中后追加 N 次剑气（chained，不触发本套/不叠十三枪/不结算 debuff）
+      const triggerSwordQi = (mainTarget: typeof monsters[0]) => {
+        if (!setEffects.swordActive || setEffects.swordQiHits <= 0) return;
+        for (let i = 0; i < setEffects.swordQiHits; i++) {
+          let t = (mainTarget.alive && mainTarget.stats.hp > 0)
+            ? mainTarget
+            : monsters.find(m => m.alive && m.stats.hp > 0)!;
+          if (!t) return;
+          const ignoreDodgeQi = !!(setEffects.frozenCannotDodge && t.frozenTurns > 0);
+          const dr = calculateDamage(player, t.stats, setEffects.swordQiMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeQi, false);
+          if (dr.damage > 0) {
+            const finalDmg = dealDamage(t, dr.damage, { chained: true });
+            const critText = dr.isCrit ? '暴击!' : '';
+            logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${setEffects.swordQiHits}】${critText}对${t.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.swordQiMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
+            if (t.stats.hp <= 0) t.alive = false;
+          }
+        }
+      };
 
       if (hits > 1 && attackTargets.length === 1) {
         // 多段单体(溢出到下一只)
@@ -1960,6 +2103,7 @@ export function runWaveBattle(
             const critText = dmgResult.isCrit ? '暴击!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
             tryCritCdCut(dmgResult.isCrit);
+            triggerBladeStack(dmgResult.isCrit);
             if (getElementMultiplier(usedSkill.element || player.element, curTarget.stats.element) > 1.0) {
               battleStats.elementAdvantageHit = true;
             }
@@ -1984,6 +2128,7 @@ export function runWaveBattle(
             const critText = dmgResult.isCrit ? '暴击!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
             tryCritCdCut(dmgResult.isCrit);
+            triggerBladeStack(dmgResult.isCrit);
             if (getElementMultiplier(usedSkill.element || player.element, t.stats.element) > 1.0) {
               battleStats.elementAdvantageHit = true;
             }
@@ -2028,11 +2173,12 @@ export function runWaveBattle(
             }
           }
         }
+        // ❖ 剑仙套：每次主攻动作触发 N 次剑气（不论几段几目标，按 pickTarget 选主目标）
+        triggerSwordQi(target);
       }
 
       // ❖ 套装：刷新套 / 多重施法套（仅在攻击型神通/主修释放后触发；buff/治疗 mul=0 不触发）
-      const setEffects = (player as any).setEffects as SetEffectsState | undefined;
-      if (setEffects) {
+      {
         // 刷新套：释放主修或神通后概率重置 CD 最短的神通
         if (setEffects.refreshChance > 0 && Math.random() < setEffects.refreshChance) {
           let minIdx = -1, minCd = Infinity;
@@ -2045,19 +2191,43 @@ export function runWaveBattle(
             logs.push({ turn, text: `  ❖【刷新套】神通【${sk?.name || '?'}】CD 重置`, type: 'set', ...snap() });
           }
         }
-        // 多重施法套：仅在神通释放后触发，对主目标再造成 multicastMul × 当前神通伤害
-        if (isDivine && setEffects.multicastChance > 0 && setEffects.multicastMaxPerTurn > 0) {
+        // 多重施法套：单体神通追加一个新目标（不是再次释放神通，所以不结算 buff/debuff）
+        // 仅对单体神通生效（AOE / 多目标神通已经能打多个目标，无需追加）
+        const isSingleTarget = isDivine && !usedSkill.isAoe && (!usedSkill.targetCount || usedSkill.targetCount <= 1);
+        if (isSingleTarget && setEffects.multicastChance > 0 && setEffects.multicastMaxPerTurn > 0 && mul > 0) {
           const triggered = (player as any)._multicastThisTurn || 0;
           if (triggered < setEffects.multicastMaxPerTurn && Math.random() < setEffects.multicastChance) {
-            (player as any)._multicastThisTurn = triggered + 1;
-            const mcTarget = monsters.find(m => m.alive && m.stats.hp > 0);
-            if (mcTarget && mul > 0) {
+            // 选主目标之外的活怪（按血量低优先），找不到就不消耗触发次数
+            const extraTarget = monsters
+              .filter(m => m.alive && m.stats.hp > 0 && !attackTargets.includes(m))
+              .sort((a, b) => a.stats.hp - b.stats.hp)[0];
+            if (extraTarget) {
+              (player as any)._multicastThisTurn = triggered + 1;
               const extraMul = mul * setEffects.multicastMul;
-              const dmgResult = calculateDamage(player, mcTarget.stats, extraMul, usedSkill.element, usedSkill.ignoreDef, false, false);
+              const dmgResult = calculateDamage(player, extraTarget.stats, extraMul, usedSkill.element, usedSkill.ignoreDef, false, false);
               if (dmgResult.damage > 0) {
-                const finalDmg = dealDamage(mcTarget, dmgResult.damage, { chained: true });
+                const finalDmg = dealDamage(extraTarget, dmgResult.damage, { chained: true });
                 const critText = dmgResult.isCrit ? '暴击!' : '';
-                logs.push({ turn, text: `  ❖【多重施法】${critText}追加【${usedSkill.name}】对${mcTarget.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.multicastMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
+                logs.push({ turn, text: `  ❖【多重施法】${critText}【${usedSkill.name}】波及${extraTarget.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.multicastMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
+              }
+            }
+          }
+        }
+        // ❖ 天机套：神通释放后追加 N 次额外段（chained，不消耗 CD、不结算 debuff/buff、不触发刷新套/叠浪）
+        if (isDivine && setEffects.fanActive && setEffects.fanExtraCasts > 0 && setEffects.fanExtraMul > 0 && mul > 0) {
+          const fanTarget = (target?.alive && target.stats.hp > 0) ? target : monsters.find(m => m.alive && m.stats.hp > 0);
+          if (fanTarget) {
+            for (let i = 0; i < setEffects.fanExtraCasts; i++) {
+              let t = fanTarget.alive && fanTarget.stats.hp > 0 ? fanTarget : monsters.find(m => m.alive && m.stats.hp > 0);
+              if (!t) break;
+              const ignoreDodgeFrost = !!(setEffects.frozenCannotDodge && t.frozenTurns > 0);
+              const fanMul = mul * setEffects.fanExtraMul;
+              const dmgResult = calculateDamage(player, t.stats, fanMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, false);
+              if (dmgResult.damage > 0) {
+                const finalDmg = dealDamage(t, dmgResult.damage, { chained: true });
+                const critText = dmgResult.isCrit ? '暴击!' : '';
+                logs.push({ turn, text: `  ❖【天机·额外段 ${i + 1}/${setEffects.fanExtraCasts}】${critText}【${usedSkill.name}】对${t.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.fanExtraMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
+                if (t.stats.hp <= 0) t.alive = false;
               }
             }
           }

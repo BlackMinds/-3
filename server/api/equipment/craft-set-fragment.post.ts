@@ -48,8 +48,8 @@ export default defineEventHandler(async (event) => {
     const tierReqLevels: Record<number, number> = { 1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195, 11: 215, 12: 240 }
     const weaponType = slot === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
 
-    // 宗门套装碎片合成：从全部 7 套中随机抽一套（保底必出套装）
-    // 十三枪要求装备「枪」，若槽位非 weapon 或 weaponType 非 spear 则跳过
+    // 宗门套装碎片合成：从全部已激活套装中随机抽一套（保底必出套装）
+    // 武器流套装（十三枪/剑仙/刀狂/天机）按 weaponRequired 字段要求 slot=weapon 且 weaponType 对应
     const eligibleSets = EQUIP_SETS.filter(s => {
       const req = (s.tiers[0]?.hooks as any)?.weaponRequired
       if (!req) return true

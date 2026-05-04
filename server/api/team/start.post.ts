@@ -6,6 +6,7 @@ import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { getSecretRealm } from '~/server/engine/secretRealmData'
 import { runTeamBattle, getTeamExpBonus, type TeamPlayerInput } from '~/server/engine/teamBattleEngine'
+import { aggregateEquipmentSetInfo } from '~/server/engine/equipSetData'
 import { getCharacterByUserId, ensureDailyReset, getRoomDetail, getSrDailyMax, SR_DAILY_FAIL_PROTECT } from '~/server/utils/team'
 import { generateSecretRealmDrops, generateSecretRealmEquip, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
@@ -207,6 +208,8 @@ async function buildPlayerBattleStats(char: any): Promise<{
     armorPen: Math.min(PLAYER_CAPS.armorPen, armorPen),
     accuracy: Math.min(PLAYER_CAPS.accuracy, accuracy),
     elementDmg, spirit,
+    // v1 套装：已穿戴件数 + 主武器类型，teamBattleEngine 调用 buildSetEffects 解析
+    ...aggregateEquipmentSetInfo(equipRows),
     // v3.7 加法池：teamBattleEngine 把功法 % 加进同池后一次乘
     _flatAtk, _flatDef, _flatHp, _flatSpd,
     _pctSumAtk: nonPassiveAtkPct, _pctSumDef: nonPassiveDefPct,
