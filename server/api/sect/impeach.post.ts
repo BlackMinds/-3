@@ -2,7 +2,7 @@ import { getPool } from '~/server/database/db'
 import { getCharByUserId, getMembership } from '~/server/utils/sect'
 import { sendMail } from '~/server/utils/mail'
 
-const IMPEACH_INACTIVE_DAYS = 3
+const IMPEACH_INACTIVE_DAYS = 1
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()

@@ -34,7 +34,7 @@ export const REALM_SHOP_ITEMS: RealmShopItem[] = [
 
   // —— 附灵石（全阶段稀缺）——
   { key: 'rs_awaken_stone',           name: '附灵石',      description: '为蓝+品装备附加一条随机附灵',          cost: 2500, weeklyLimit: 3,  category: 'awaken', reqRealmTier: 2, reqLevel: 15, pillId: 'awaken_stone' },
-  { key: 'rs_awaken_reroll',          name: '灵枢玉',      description: '重新随机一件装备的附灵（保证与原附灵不同）', cost: 2500, weeklyLimit: 30, category: 'awaken', reqRealmTier: 2, reqLevel: 15, pillId: 'awaken_reroll' },
+  { key: 'rs_awaken_reroll',          name: '灵枢玉',      description: '重新随机一件装备的附灵（保证与原附灵不同）', cost: 2500, weeklyLimit: 100, category: 'awaken', reqRealmTier: 2, reqLevel: 15, pillId: 'awaken_reroll' },
   // —— 道具兑换：10 附灵石 → 1 灵枢玉（不消耗秘境积分）——
   { key: 'rs_awaken_reroll_exchange', name: '灵枢玉',      description: '消耗 10 个附灵石兑换 1 个灵枢玉（不消耗秘境积分）', cost: 0,    weeklyLimit: 10, category: 'awaken', reqRealmTier: 2, reqLevel: 15, pillId: 'awaken_reroll', exchangeFrom: { pillId: 'awaken_stone', qty: 10 } },
 
