@@ -731,8 +731,9 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const MONSTER_SPD_MUL = 0.96;
   // v3.7.1 二次微调：
   //   - T5+ 攻击 ×0.80（中后期玩家被怪压太狠，整体降攻）
+  //   - T5+ 血量 ×1.10（中后期怪稍微肉一点，给玩家更多反应回合）
   //   - T11/T12 整体属性大幅缩（曲线平滑：跨 tier 倍率 ×5.13/×4.10 → 约 ×2.5）
-  if (tier >= 5) MONSTER_ATK_MUL *= 0.80;
+  if (tier >= 5) { MONSTER_ATK_MUL *= 0.80; MONSTER_HP_MUL *= 1.10; }
   if (tier === 11) { MONSTER_HP_MUL *= 0.50; MONSTER_ATK_MUL *= 0.50; MONSTER_DEF_MUL *= 0.50; }
   if (tier === 12) { MONSTER_HP_MUL *= 0.30; MONSTER_ATK_MUL *= 0.30; MONSTER_DEF_MUL *= 0.30; }
 
