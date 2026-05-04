@@ -100,6 +100,7 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'mirror_water', name: '明镜止水', type: 'divine', rarity: 'purple', element: 'water', multiplier: 0, cdTurns: 9, description: '反弹32%伤害+8%最大气血 5回合(基础反弹≤6倍攻击力)', buff: { type: 'reflect', duration: 5, value: 0.32 } },
   // v3.6 DOT 流派紫色神通（3 条）
   { id: 'venom_burst', name: '毒液冲击', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 1.85, cdTurns: 7, description: '[3段] 单体3×62%伤害,每段50%中毒4回合', debuff: { type: 'poison', chance: 0.50, duration: 4 }, hitCount: 3 },
+  { id: 'poison_mist', name: '毒雾蔓延', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 1.50, cdTurns: 7, description: '[群攻] 全体150%伤害,50%中毒3回合', debuff: { type: 'poison', chance: 0.50, duration: 3 }, isAoe: true },
   { id: 'bleed_storm', name: '血雨腥风', type: 'divine', rarity: 'purple', element: 'metal', multiplier: 1.55, cdTurns: 7, description: '[群攻] 全体155%伤害,40%流血3回合', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, isAoe: true },
   { id: 'burn_inferno', name: '焚天烈魂', type: 'divine', rarity: 'purple', element: 'fire', multiplier: 1.40, cdTurns: 8, description: '[群攻] 全体140%伤害,50%灼烧3回合,自身攻击+20% 3回合', debuff: { type: 'burn', chance: 0.50, duration: 3 }, buff: { type: 'atk_up', duration: 3, value: 0.20 }, isAoe: true },
   // 天品

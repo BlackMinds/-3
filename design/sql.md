@@ -57,9 +57,10 @@ UPDATE characters SET sr_daily_bonus = 1,
   WITH picks AS (
     SELECT (ARRAY[
       'sword_storm','twin_flame','flurry_palm','spring_heal','blood_fury',
-      'wood_heal','mirror_water','crit_master','earth_fortitude','poison_body',
-      'fire_mastery','dot_amplifier','phantom_step','healing_spring'
-    ])[1 + floor(random() * 14)::int] AS skill_id
+      'wood_heal','mirror_water','venom_burst','bleed_storm','burn_inferno','poison_mist',
+      'crit_master','earth_fortitude','poison_body','fire_mastery',
+      'dot_amplifier','phantom_step','healing_spring'
+    ])[1 + floor(random() * 18)::int] AS skill_id
     FROM generate_series(1, 1)        -- ← 这里就是数量
   ),
   agg AS (

@@ -316,7 +316,7 @@ async function applySingleEffect(
       const pools: Record<number, string[]> = {
         1: ['wind_blade', 'vine_whip', 'ice_palm', 'flame_sword', 'quake_fist', 'body_refine', 'flame_body'],
         3: ['fire_rain', 'frost_nova', 'earth_shield', 'golden_bell', 'swift_step', 'iron_skin'],
-        5: ['sword_storm', 'twin_flame', 'spring_heal', 'blood_fury', 'wood_heal', 'mirror_water'],
+        5: ['sword_storm', 'twin_flame', 'flurry_palm', 'spring_heal', 'blood_fury', 'wood_heal', 'mirror_water', 'venom_burst', 'bleed_storm', 'burn_inferno', 'poison_mist'],
         7: ['metal_burst', 'life_drain', 'storm_blade', 'heaven_heal', 'dao_heart'],
       }
       let poolArr = pools[1]
