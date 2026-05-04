@@ -54,7 +54,8 @@ export default defineEventHandler(async (event) => {
       }
       extraMsg = `，丹药x${def.allReward.value}`
     } else if (def.allReward.type === 'skill_page') {
-      const pages = ['fire_rain', 'frost_nova', 'earth_shield', 'quake_wave', 'vine_prison', 'golden_bell']
+      // 周任务全员奖励固定发蓝色残页（与主掉落 T3 池一致：6 神通蓝 + 5 被动蓝）
+      const pages = ['fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell','swift_step','iron_skin','thorn_aura','flame_aura','earth_wall']
       for (let i = 0; i < def.allReward.value; i++) {
         const skillId = pages[rand(0, pages.length - 1)]
         await pool.query(

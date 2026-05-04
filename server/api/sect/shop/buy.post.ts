@@ -122,8 +122,10 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'skill_page': {
+        // 与主掉落表保持一致：blue=T3 池(11)、purple=T5 池(18)
         const skillPools: Record<string, string[]> = {
-          purple: ['fire_rain', 'frost_nova', 'earth_shield', 'quake_wave', 'vine_prison', 'golden_bell'],
+          blue: ['fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell','swift_step','iron_skin','thorn_aura','flame_aura','earth_wall'],
+          purple: ['sword_storm','twin_flame','flurry_palm','spring_heal','blood_fury','wood_heal','mirror_water','venom_burst','bleed_storm','burn_inferno','poison_mist','crit_master','earth_fortitude','poison_body','fire_mastery','dot_amplifier','phantom_step','healing_spring'],
         }
         const pool_ = skillPools[eff.quality] || skillPools['purple']
         const skillId = pool_[rand(0, pool_.length - 1)]
