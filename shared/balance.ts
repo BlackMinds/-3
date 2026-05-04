@@ -200,7 +200,7 @@ export const BREAKTHROUGH_BIG_RATES: Record<number, number> = {
   5: 0.55,  // 化神 → 渡劫
   6: 0.45,  // 渡劫 → 大乘
   7: 0.35,  // 大乘 → 飞升
-  8: 0.20,  // 飞升 → 混元 (跨度极大,曲线显著陡峭)
+  8: 0.15,  // 飞升 → 混元 (跨度极大,曲线显著陡峭)
 }
 
 // 跨小境界成功率 (stage++,不改 tier)
@@ -214,7 +214,19 @@ export const BREAKTHROUGH_STAGE_RATES: Record<number, number> = {
   6: 0.80,  // 渡劫
   7: 0.75,  // 大乘
   8: 0.70,  // 飞升 (小境界5阶)
-  9: 0.60,  // 混元 (小境界5阶, 顶级难度)
+  9: 0.50,  // 混元 fallback — 实际走 BREAKTHROUGH_STAGE_RATES_PER_STAGE 的逐阶覆盖
+}
+
+// 部分境界的小境界概率会逐阶递减 (顶级境界专属)
+// key = 当前 stage (从 1 开始), 表示从 stage N → stage N+1 的成功率
+// 命中此表的 tier 优先用此处的值, 未命中时回落到 BREAKTHROUGH_STAGE_RATES[tier]
+export const BREAKTHROUGH_STAGE_RATES_PER_STAGE: Record<number, Record<number, number>> = {
+  9: {
+    1: 0.50, // 合道 → 证道
+    2: 0.40, // 证道 → 太上
+    3: 0.30, // 太上 → 太极
+    4: 0.20, // 太极 → 无极
+  },
 }
 
 // 突破失败保底：每连续失败 1 次，下次突破成功率 +N%（成功后清零）
@@ -237,6 +249,10 @@ export const BREAKTHROUGH_PENALTIES: Record<number, number> = {
 /** 给定 tier/stage/maxStage, 返回对应突破成功率 (0~1) */
 export function getBreakthroughRateAt(tier: number, stage: number, maxStage: number): number {
   if (tier === 9 && stage >= maxStage) return 0 // 混元末阶不可再突 (游戏顶点)
-  if (stage < maxStage) return BREAKTHROUGH_STAGE_RATES[tier] ?? 1.0
+  if (stage < maxStage) {
+    const perStage = BREAKTHROUGH_STAGE_RATES_PER_STAGE[tier]
+    if (perStage && perStage[stage] !== undefined) return perStage[stage]
+    return BREAKTHROUGH_STAGE_RATES[tier] ?? 1.0
+  }
   return BREAKTHROUGH_BIG_RATES[tier] ?? 0
 }

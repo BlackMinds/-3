@@ -3632,7 +3632,7 @@ const currentRealmBonus = computed(() => {
 });
 
 // 突破成功率/失败惩罚 (v3.3, 数值从 shared/balance.ts 共享)
-const REALM_STAGES_COUNT: Record<number, number> = { 1: 9, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 5 };
+const REALM_STAGES_COUNT: Record<number, number> = { 1: 9, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 5, 9: 5 };
 
 const breakthroughRate = computed(() => {
   const tier = gameStore.character?.realm_tier || 1;
