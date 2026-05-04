@@ -10,6 +10,7 @@ import { getCharacterByUserId, ensureDailyReset, getRoomDetail, getSrDailyMax, S
 import { generateSecretRealmDrops, generateSecretRealmEquip, distributeEquipments, distributeAwakenItems, distributeEnhanceStones } from '~/server/utils/secretRealmDrops'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
+import { EQUIP_SELL_PRICES } from '~/server/utils/equipment'
 import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
@@ -445,7 +446,6 @@ export default defineEventHandler(async (event) => {
         // --- 保存装备到 character_equipment（背包满 → 按基础售价转灵石） ---
         const equipIds: number[] = []
         const equipList = playerEquips.get(c.characterId) || []
-        const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 }
         const { rows: bagRows } = await client.query(
           'SELECT COUNT(*)::int AS cnt FROM character_equipment WHERE character_id = $1 AND slot IS NULL',
           [c.characterId]
@@ -454,7 +454,7 @@ export default defineEventHandler(async (event) => {
         let bagOverflowGain = 0
         for (const eq of equipList) {
           if (bagCount >= EQUIP_BAG_LIMIT) {
-            bagOverflowGain += Math.floor((sellPrices[eq.rarity] || 10) * (eq.tier || 1))
+            bagOverflowGain += Math.floor((EQUIP_SELL_PRICES[eq.rarity] || 10) * (eq.tier || 1))
             continue
           }
           const { rows: eqRows } = await client.query(

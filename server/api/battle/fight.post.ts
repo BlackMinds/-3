@@ -8,7 +8,7 @@ import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/util
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
-import { rollSubStats } from '~/server/utils/equipment'
+import { rollSubStats, EQUIP_SELL_PRICES } from '~/server/utils/equipment'
 import { EQUIP_PRIMARY_BASE, WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
@@ -929,7 +929,6 @@ export default defineEventHandler(async (event) => {
           const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
           const autoSellIdx = auto_sell ? RARITY_ORDER.indexOf(auto_sell) : -1
           const autoSellTierLimit = Number(auto_sell_tier) || 0
-          const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 }
           let autoSellIncome = 0
 
           // 背包容量：本批掉落入库前先取一次基线，后续 INSERT 用本地计数累加避免每件再 SELECT
@@ -948,14 +947,14 @@ export default defineEventHandler(async (event) => {
               // 但若该套装在黑名单内（玩家明确不想要），则跟普通装备一样按品质/阶位规则判定
               const isProtectedSet = !!d.set_id && !setBlacklist.has(d.set_id)
               if (!isProtectedSet && autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
-                const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
+                const price = Math.floor((EQUIP_SELL_PRICES[d.rarity] || 10) * (d.tier || 1))
                 autoSellIncome += price
                 result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
                 continue
               }
               // 背包满（含套装件）→ 转灵石返还
               if (bagCount >= EQUIP_BAG_LIMIT) {
-                const price = Math.floor((sellPrices[d.rarity] || 10) * (d.tier || 1))
+                const price = Math.floor((EQUIP_SELL_PRICES[d.rarity] || 10) * (d.tier || 1))
                 autoSellIncome += price
                 result.logs.push({ turn: 0, text: `背包已满，自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
                 continue

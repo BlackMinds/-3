@@ -4,7 +4,7 @@ import { generateMonsterStats, runWaveBattle, makeHealerTemplate, type BattlerSt
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE, EQUIP_BAG_LIMIT } from '~/shared/balance'
-import { rollSubStats } from '~/server/utils/equipment'
+import { rollSubStats, EQUIP_SELL_PRICES } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { rollEquipSet } from '~/server/engine/equipSetData'
@@ -192,7 +192,6 @@ export default defineEventHandler(async (event) => {
 
     const actualEquipCount = Math.min(equipCount, 25)
     // 背包容量基线 + 满后转灵石返还（按基础售价）
-    const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 }
     const { rows: bagCountRows } = await pool.query(
       'SELECT COUNT(*)::int AS cnt FROM character_equipment WHERE character_id = $1 AND slot IS NULL',
       [char.id]
@@ -215,7 +214,7 @@ export default defineEventHandler(async (event) => {
       const setKey = rollEquipSet(rarities[idx], 1.0)
       // 背包满 → 转灵石返还
       if (bagCount >= EQUIP_BAG_LIMIT) {
-        bagOverflowGain += Math.floor((sellPrices[rarities[idx]] || 10) * mapData.tier)
+        bagOverflowGain += Math.floor((EQUIP_SELL_PRICES[rarities[idx]] || 10) * mapData.tier)
         continue
       }
       const equipName = generateEquipName(rarities[idx], slots[slotIdx], weaponType, mapData.tier, ps, null, '', setKey)

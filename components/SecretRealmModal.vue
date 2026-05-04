@@ -196,7 +196,8 @@
         </div>
         <div class="battle-log-box" ref="battleLogBoxRef">
           <div v-for="(log, i) in displayedLogs" :key="i" :class="['battle-log-line', 'log-' + (log.type || 'normal')]">
-            {{ log.text }}
+            <span class="log-text">{{ log.text }}</span>
+            <span v-if="fmtLogHp(log)" class="log-hp">{{ fmtLogHp(log) }}</span>
           </div>
         </div>
         <button class="btn-cancel" @click="skipToResult">跳过</button>
@@ -272,7 +273,8 @@
           <div v-if="showResultLogs" class="log-review">
             <div v-for="(log, i) in teamStore.battleResult.logs" :key="i"
                  :class="['battle-log-line', 'log-' + (log.type || 'normal')]">
-              {{ log.text }}
+              <span class="log-text">{{ log.text }}</span>
+              <span v-if="fmtLogHp(log)" class="log-hp">{{ fmtLogHp(log) }}</span>
             </div>
           </div>
         </div>
@@ -378,7 +380,8 @@
           <div v-if="showDetailLogs" class="log-review">
             <div v-for="(log, i) in teamStore.historyDetail.logs" :key="i"
                  :class="['battle-log-line', 'log-' + (log.type || 'normal')]">
-              {{ log.text }}
+              <span class="log-text">{{ log.text }}</span>
+              <span v-if="fmtLogHp(log)" class="log-hp">{{ fmtLogHp(log) }}</span>
             </div>
           </div>
         </div>
@@ -424,6 +427,13 @@ const battleLogBoxRef = ref<HTMLElement | null>(null)
 const historyLoading = ref(false)
 const showResultLogs = ref(false)
 const showDetailLogs = ref(false)
+
+function fmtLogHp(log: any): string {
+  const parts: string[] = []
+  if (log.playerMaxHp > 0) parts.push(`我方 ${log.playerHp ?? 0}/${log.playerMaxHp}`)
+  if (log.monsterMaxHp > 0) parts.push(`敌方 ${log.monsterHp ?? 0}/${log.monsterMaxHp}`)
+  return parts.join(' · ')
+}
 
 // 轮询
 let lobbyPollTimer: any = null
@@ -1063,7 +1073,9 @@ onUnmounted(() => {
   background: #15181e; border: 1px solid #2b2e36; padding: 10px; border-radius: 6px;
   font-size: 13px; line-height: 1.6;
 }
-.battle-log-line { padding: 2px 0; }
+.battle-log-line { padding: 2px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.battle-log-line .log-text { flex: 1; min-width: 0; }
+.battle-log-line .log-hp { color: #6a6f78; font-size: 11px; font-weight: normal; white-space: nowrap; flex-shrink: 0; font-style: normal; }
 .log-crit { color: #e8c58f; font-weight: bold; }
 .log-kill { color: #a3c972; }
 .log-death { color: #eb5757; }

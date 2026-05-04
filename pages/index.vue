@@ -311,7 +311,19 @@
 
             <!-- 右列: 装备 -->
             <div class="char-col-right">
-              <div class="panel-title sub-title">法宝装备</div>
+              <div class="panel-title sub-title equip-title-row">
+                <span>法宝装备</span>
+                <div class="loadout-switcher">
+                  <button
+                    v-for="n in 3" :key="n"
+                    class="loadout-btn"
+                    :class="{ active: activeLoadout === n, switching: loadoutSwitching }"
+                    :disabled="loadoutSwitching || activeLoadout === n"
+                    @click="switchLoadout(n)"
+                    :title="`切换到装备方案 ${n}（如 PvE / PvP / 秘境）`"
+                  >{{ n }}</button>
+                </div>
+              </div>
               <!-- 套装激活面板：仅在有 ≥3 件激活时显示，激活档位常亮 -->
               <div v-if="activeSetSummaries.length > 0" class="equip-set-panel">
                 <div v-for="s in activeSetSummaries" :key="s.setKey" class="equip-set-active">
@@ -434,32 +446,68 @@
               <button class="batch-sell-btn" @click="loadEquipList" title="刷新背包">刷新</button>
             </div>
           </div>
-          <div class="equip-bag">
-            <div v-if="filteredBagList.length === 0" class="inventory-hint">无装备</div>
-            <div class="bag-grid" v-else>
-              <div
-                v-for="eq in filteredBagList"
-                :key="eq.id"
-                class="bag-cell"
-                :class="{ 'bag-cell-locked': eq.locked }"
-                :style="{ borderColor: getEquipColor(eq) }"
-                @mouseenter="onBagHover($event, eq)"
-                @mouseleave="hoverEquip = null"
-                @click.stop="onBagClick($event, eq)"
-                @contextmenu.prevent="toggleEquipLock(eq)"
-              >
-                <span v-if="eq.locked" class="bag-cell-lock" title="已锁定（右键解锁）">🔒</span>
-                <span class="bag-cell-tier">T{{ eq.tier || 1 }}</span>
-                <span class="bag-cell-name" :style="{ color: getEquipColor(eq) }">{{ eq.name }}</span>
-                <span class="bag-cell-rarity" :style="{ color: getEquipColor(eq) }">
-                  {{ getRarityName(eq.rarity) }}
-                  <span v-if="(eq.enhance_level || 0) > 0" class="enhance-tag">+{{ eq.enhance_level }}</span>
-                </span>
-                <span class="bag-cell-level" :class="{ 'level-insufficient': gameStore.charLevel < (eq.req_level || 1) }">
-                  Lv.{{ eq.req_level || 1 }}
-                </span>
+          <div class="bag-with-preview">
+            <div class="equip-bag">
+              <div v-if="filteredBagList.length === 0" class="inventory-hint">无装备</div>
+              <div class="bag-grid" v-else>
+                <div
+                  v-for="eq in filteredBagList"
+                  :key="eq.id"
+                  class="bag-cell"
+                  :class="{ 'bag-cell-locked': eq.locked, 'bag-cell-preview': hoverEquip && hoverEquip.id === eq.id }"
+                  :style="{ borderColor: getEquipColor(eq) }"
+                  @mouseenter="onBagHover($event, eq)"
+                  @click.stop="onBagClick($event, eq)"
+                  @contextmenu.prevent="toggleEquipLock(eq)"
+                >
+                  <span v-if="eq.locked" class="bag-cell-lock" title="已锁定（右键解锁）">🔒</span>
+                  <span class="bag-cell-tier">T{{ eq.tier || 1 }}</span>
+                  <span class="bag-cell-name" :style="{ color: getEquipColor(eq) }">{{ eq.name }}</span>
+                  <span class="bag-cell-rarity" :style="{ color: getEquipColor(eq) }">
+                    {{ getRarityName(eq.rarity) }}
+                    <span v-if="(eq.enhance_level || 0) > 0" class="enhance-tag">+{{ eq.enhance_level }}</span>
+                  </span>
+                  <span class="bag-cell-level" :class="{ 'level-insufficient': gameStore.charLevel < (eq.req_level || 1) }">
+                    Lv.{{ eq.req_level || 1 }}
+                  </span>
+                </div>
               </div>
             </div>
+
+            <!-- 右侧固定预览面板：hover 任意格子时在这里显示详情 -->
+            <aside class="bag-preview">
+              <div v-if="hoverEquip" class="bag-preview-card">
+                <div class="bag-preview-cols">
+                  <div class="bag-preview-col">
+                    <div class="compare-label">背包装备</div>
+                    <EquipDetail
+                      :equip="hoverEquip"
+                      :char-level="gameStore.charLevel"
+                      :show-req-level="true"
+                      :equipped-set-count="hoverEquip.set_id ? (equippedSetCounts[hoverEquip.set_id] || 0) : 0"
+                    />
+                  </div>
+                  <div class="bag-preview-col bag-preview-current" v-if="hoverCompareEquip">
+                    <div class="compare-label">当前穿戴</div>
+                    <EquipDetail
+                      :equip="hoverCompareEquip"
+                      :show-req-level="true"
+                      :equipped-set-count="hoverCompareEquip.set_id ? (equippedSetCounts[hoverCompareEquip.set_id] || 0) : 0"
+                    />
+                  </div>
+                  <div class="bag-preview-col bag-preview-empty-slot" v-else-if="(hoverEquip.base_slot || hoverEquip.slot)">
+                    <div class="compare-label">当前穿戴</div>
+                    <div class="tooltip-sub" style="color: var(--ink-faint);">该槽位为空</div>
+                  </div>
+                </div>
+                <div class="bag-preview-hint">点击格子可装备 / 强化 / 出售 · 右键锁定</div>
+              </div>
+              <div v-else class="bag-preview-empty">
+                <div class="bag-preview-empty-icon">❖</div>
+                <div class="bag-preview-empty-text">悬停背包格子查看详情</div>
+                <div class="bag-preview-empty-sub">支持与当前穿戴对比</div>
+              </div>
+            </aside>
           </div>
 
           <!-- ===== 道具（原宗门道具）===== -->
@@ -1250,6 +1298,18 @@
               <span>贡献: {{ formatNum(sectInfo.my.contribution) }}</span>
               <span>本周: {{ formatNum(sectInfo.my.weekly_contribution) }}</span>
             </div>
+            <div v-if="sectInfo.sect.leader_name" class="sect-leader-status">
+              <span>宗主：{{ sectInfo.sect.leader_name }}</span>
+              <span :class="['leader-active', leaderInactiveDays >= IMPEACH_DAYS ? 'warn' : '']">
+                · {{ formatInactive(sectInfo.sect.leader_inactive_seconds) }}
+              </span>
+              <button
+                v-if="canImpeach"
+                class="sect-impeach-btn"
+                @click="doImpeach"
+                :title="`宗主已 ${leaderInactiveDays} 天未上线，可发起弹劾`"
+              >弹劾宗主</button>
+            </div>
           </div>
 
           <!-- 新玩法入口（独立页面） -->
@@ -1295,6 +1355,9 @@
               <span class="sect-m-role" :style="{ color: getSectRoleColor(m.role) }">{{ getRoleName(m.role) }}</span>
               <span class="sect-m-lv">Lv.{{ m.level }}</span>
               <span class="sect-m-contrib">贡献: {{ formatNum(m.contribution) }}</span>
+              <span :class="['sect-m-inactive', Number(m.inactive_seconds || 0) >= IMPEACH_DAYS * 86400 ? 'warn' : '']">
+                {{ formatInactive(m.inactive_seconds) }}
+              </span>
               <template v-if="canManage && m.character_id !== gameStore.character?.id">
                 <button class="sect-btn-sm" @click="doKickMember(m.character_id)" v-if="canKick(m)">踢出</button>
                 <select class="sect-role-select" @change="doAppoint(m.character_id, ($event.target as HTMLSelectElement).value)" v-if="sectInfo.my.role === 'leader'">
@@ -1495,28 +1558,7 @@
     </main>
 
     <!-- ==================== 装备悬浮提示 ==================== -->
-    <!-- ==================== 装备 hover 提示(只看属性) ==================== -->
-    <Teleport to="body">
-      <div v-if="hoverEquip && !clickedEquip" class="fixed-tooltip equip-compare-tooltip" :style="{ top: tooltipY + 'px', left: tooltipX + 'px' }">
-        <div class="compare-columns">
-          <!-- 左侧：背包装备（新） -->
-          <div class="compare-col">
-            <div class="compare-label">背包装备</div>
-            <EquipDetail :equip="hoverEquip" :char-level="gameStore.charLevel" :show-req-level="true" />
-          </div>
-          <!-- 右侧：当前穿戴 -->
-          <div class="compare-col compare-current" v-if="hoverCompareEquip">
-            <div class="compare-label">当前穿戴</div>
-            <EquipDetail :equip="hoverCompareEquip" :show-req-level="true" />
-          </div>
-          <div class="compare-col compare-empty" v-else>
-            <div class="compare-label">当前穿戴</div>
-            <div class="tooltip-sub" style="color: var(--ink-faint);">该槽位为空</div>
-          </div>
-        </div>
-        <div class="tooltip-sub" style="color: var(--ink-faint); margin-top: 6px; text-align: center;">点击查看操作</div>
-      </div>
-    </Teleport>
+    <!-- 装备 hover 详情已迁移到背包右侧固定预览面板 (.bag-preview) -->
 
     <!-- ==================== 装备点击面板 ==================== -->
     <Teleport to="body">
@@ -3491,14 +3533,6 @@ function applyBattleLogFontSize() {
   saveSettings();
 }
 
-function shouldAutoSell(rarity: string): boolean {
-  if (autoSellThreshold.value === 'none') return false;
-  const order = ['white', 'green', 'blue', 'purple', 'gold', 'red'];
-  const thresholdIdx = order.indexOf(autoSellThreshold.value);
-  const itemIdx = order.indexOf(rarity);
-  return itemIdx <= thresholdIdx;
-}
-
 // 保存/加载设置到 localStorage
 function saveSettings() {
   const settings = {
@@ -4061,6 +4095,33 @@ async function doKickMember(charId: number) {
     if (res.code === 200) { showToast(res.message, 'success'); await loadSectInfo(); }
     else showToast(res.message, 'error');
   } catch {}
+}
+
+const IMPEACH_DAYS = 3;
+const leaderInactiveDays = computed(() => {
+  const sec = Number(sectInfo.value?.sect?.leader_inactive_seconds ?? 0);
+  return Math.floor(sec / 86400);
+});
+const canImpeach = computed(() => {
+  if (!sectInfo.value) return false;
+  const role = sectInfo.value.my.role;
+  if (role !== 'vice_leader' && role !== 'elder') return false;
+  return leaderInactiveDays.value >= IMPEACH_DAYS;
+});
+function formatInactive(seconds: number | null | undefined): string {
+  const sec = Number(seconds ?? 0);
+  if (sec < 300) return '在线';
+  if (sec < 3600) return `${Math.floor(sec / 60)} 分钟未上线`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} 小时未上线`;
+  return `${Math.floor(sec / 86400)} 天未上线`;
+}
+async function doImpeach() {
+  if (!confirm(`宗主已 ${leaderInactiveDays.value} 天未上线，确认弹劾并由你接任？`)) return;
+  try {
+    const res: any = await $fetch('/api/sect/impeach', { method: 'POST', headers: getAuthHeaders() });
+    if (res.code === 200) { showToast(res.message, 'success'); await loadSectInfo(); }
+    else showToast(res.message, 'error');
+  } catch { showToast('弹劾失败', 'error'); }
 }
 
 async function doAppoint(charId: number, role: string) {
@@ -6373,8 +6434,6 @@ function calcPillBuffEffect() {
 
 const hoverEquip = ref<any>(null);
 const hoverSlotEquip = ref<any>(null);
-const tooltipX = ref(0);
-const tooltipY = ref(0);
 
 const clickedEquip = ref<any>(null);
 const clickedEquipX = ref(0);
@@ -6387,27 +6446,15 @@ const hoverCompareEquip = computed(() => {
   return equipList.value.find(e => e.slot === slot) || null;
 });
 
-function onBagHover(e: MouseEvent, eq: any) {
+function onBagHover(_e: MouseEvent, eq: any) {
   if (clickedEquip.value) return;
+  // 仅设置 hoverEquip，由右侧固定预览面板渲染。鼠标移开不清空，保留最后一次预览。
   hoverEquip.value = eq;
-  const rect = (e.target as HTMLElement).getBoundingClientRect();
-  // 移动端：贴左显示（浮窗自身 max-width: calc(100vw - 24px)）
-  if (window.innerWidth <= 768) {
-    tooltipX.value = 12;
-  } else {
-    // 桌面端：防止超出右边界（浮窗 min-width 340，预留余量用 360）
-    const tipW = 360;
-    let x = rect.left;
-    if (x + tipW > window.innerWidth - 8) {
-      x = Math.max(8, window.innerWidth - tipW - 8);
-    }
-    tooltipX.value = x;
-  }
-  tooltipY.value = rect.top - 10;
 }
 
 function onBagClick(e: MouseEvent, eq: any) {
-  hoverEquip.value = null;
+  // 同步预览面板（兼容移动端无 hover 场景，桌面端也保持预览与点击对象一致）
+  hoverEquip.value = eq;
   clickedEquip.value = eq;
   const rect = (e.target as HTMLElement).getBoundingClientRect();
   if (window.innerWidth <= 768) {
@@ -6587,10 +6634,28 @@ const filteredBagList = computed(() => {
 });
 
 async function batchSell() {
+  // 出售范围 = 当前背包筛选视图 ∩ "品质 ≤ sellRarity"
+  // 与 filteredBagList 的过滤条件保持一致，避免一键出售卖到视图外的装备
+  const visible = filteredBagList.value.length;
+  if (visible === 0) {
+    showToast('当前筛选下没有可出售的装备', 'info');
+    return;
+  }
+  const rarityLabel: Record<string, string> = { white: '凡器', green: '灵器', blue: '法器', purple: '灵宝', gold: '仙器', red: '太古' };
+  if (!confirm(`将按当前筛选条件出售最多 ${visible} 件装备（品质上限：${rarityLabel[sellRarity.value] || sellRarity.value}及以下，跳过已锁定），是否继续？`)) {
+    return;
+  }
   try {
     const res: any = await $fetch('/api/equipment/sell-batch', {
       method: 'POST',
-      body: { rarity: sellRarity.value, tier: tierFilter.value },
+      body: {
+        rarity: sellRarity.value,
+        tier: tierFilter.value,
+        baseSlot: bagFilter.value !== 'all' ? bagFilter.value : null,
+        rarityEq: rarityFilter.value !== 'all' ? rarityFilter.value : null,
+        setKey: setFilter.value !== 'all' ? setFilter.value : null,
+        attr: attrFilter.value !== 'all' ? attrFilter.value : null,
+      },
       headers: getAuthHeaders(),
     });
     if (res.code !== 200 || !res.data) {
@@ -6619,6 +6684,42 @@ const equipList = ref<any[]>([]);
 const showEquipPicker = ref(false);
 const currentPickSlot = ref('');
 const currentPickSlotName = computed(() => getSlotName(currentPickSlot.value));
+
+// 装备方案切换（PvE / PvP / 秘境 三套预设）
+const loadoutSwitching = ref(false);
+const activeLoadout = computed<number>(() => {
+  const v = Number(gameStore.character?.active_loadout);
+  return v >= 1 && v <= 3 ? v : 1;
+});
+async function switchLoadout(n: number) {
+  if (loadoutSwitching.value) return;
+  if (activeLoadout.value === n) return;
+  loadoutSwitching.value = true;
+  try {
+    const res: any = await $fetch('/api/equipment/loadout/switch', {
+      method: 'POST',
+      body: { loadout_id: n },
+      headers: getAuthHeaders(),
+    });
+    if (res.code === 200) {
+      // 刷新角色（更新 active_loadout 字段）+ 装备列表（slot 已在后端重置）
+      await Promise.all([gameStore.loadGameData(), loadEquipList()]);
+      const skipped = Array.isArray(res.data?.skipped) ? res.data.skipped : [];
+      if (skipped.length > 0) {
+        showToast(`已切到方案 ${n}，${skipped.length} 件装备因等级或类型不匹配未穿上`, 'info');
+      } else {
+        showToast(`已切换到方案 ${n}`, 'success');
+      }
+    } else {
+      showToast(res.message || '切换失败', 'error');
+    }
+  } catch (err) {
+    console.error('切换装备方案失败', err);
+    showToast('切换装备方案失败', 'error');
+  } finally {
+    loadoutSwitching.value = false;
+  }
+}
 
 // 装备扩展属性总和 (副属性)
 const equipExtendedBonus = computed(() => {
@@ -8019,6 +8120,49 @@ onUnmounted(() => {
   gap: 8px;
 }
 
+/* 装备页 "法宝装备" 标题行：左标题 + 右 1/2/3 方案切换按钮 */
+.equip-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.loadout-switcher {
+  display: inline-flex;
+  gap: 4px;
+}
+.loadout-btn {
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #b8a880;
+  background: rgba(60, 50, 35, 0.55);
+  border: 1px solid rgba(255, 211, 94, 0.35);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.loadout-btn:hover:not(:disabled) {
+  color: #ffd35e;
+  border-color: rgba(255, 211, 94, 0.7);
+  background: rgba(80, 65, 40, 0.7);
+}
+.loadout-btn.active {
+  color: #1a1208;
+  background: linear-gradient(180deg, #ffd35e, #d8a73b);
+  border-color: #ffd35e;
+  box-shadow: 0 0 6px rgba(255, 211, 94, 0.4);
+  cursor: default;
+}
+.loadout-btn:disabled:not(.active) {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 /* 套装激活面板 — 装备区域顶部，只显示已激活档位（常亮高亮）*/
 .equip-set-panel {
   margin-bottom: 10px;
@@ -8346,6 +8490,110 @@ onUnmounted(() => {
 }
 
 .equip-bag {
+  min-width: 0;
+}
+
+/* 背包 + 右侧固定预览面板布局 */
+.bag-with-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 12px;
+  align-items: start;
+}
+
+/* 中屏（含 char-two-col 双列模式下窗口偏窄）：预览改为堆叠在格子下方，避免挤压 */
+@media (max-width: 1280px) {
+  .bag-with-preview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .bag-preview {
+    position: static;
+    height: auto;
+    /* 给一个固定 min-height，避免切换装备时下方内容上下跳 */
+    min-height: 420px;
+    max-height: none;
+    /* 堆叠模式下不需要预留滚动条 */
+    scrollbar-gutter: auto;
+    overflow-y: visible;
+  }
+}
+
+.bag-preview {
+  position: sticky;
+  top: 12px;
+  background: var(--paper-dark);
+  border: 1px solid rgba(184, 154, 90, 0.35);
+  border-radius: 6px;
+  padding: 12px;
+  /* 固定高度避免随内容长短跳动；内部统一滚动 */
+  height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  /* 始终为滚动条预留空间，防止滚动条出现/消失导致的横向重排 */
+  scrollbar-gutter: stable;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  /* 切换装备时柔化高亮变化 */
+  transition: border-color 0.15s ease;
+  /* 强制独立合成层，避免重排传染到外层 */
+  contain: layout paint;
+}
+
+.bag-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bag-preview-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bag-preview-col {
+  min-width: 0;
+}
+
+.bag-preview-current,
+.bag-preview-empty-slot {
+  border-top: 1px dashed rgba(184, 154, 90, 0.25);
+  padding-top: 8px;
+}
+
+.bag-preview-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(184, 154, 90, 0.15);
+}
+
+.bag-preview-empty {
+  text-align: center;
+  padding: 32px 8px;
+  color: var(--ink-faint);
+}
+.bag-preview-empty-icon {
+  font-size: 28px;
+  color: rgba(184, 154, 90, 0.4);
+  margin-bottom: 8px;
+}
+.bag-preview-empty-text {
+  font-size: 13px;
+  color: var(--ink-light);
+  margin-bottom: 4px;
+}
+.bag-preview-empty-sub {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* 当前在预览中的格子高亮 */
+.bag-cell-preview {
+  background: rgba(232, 204, 138, 0.12) !important;
+  box-shadow: 0 0 0 1px rgba(232, 204, 138, 0.45) inset;
 }
 
 .bag-grid {
@@ -12102,6 +12350,16 @@ onUnmounted(() => {
 .sect-ann { color: #a09880; font-size: 12px; margin-bottom: 6px; font-style: italic; }
 .sect-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #b0a890; margin-bottom: 4px; }
 .sect-my-info { display: flex; gap: 12px; font-size: 12px; color: #c9a85c; }
+.sect-leader-status { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #b0a890; margin-top: 4px; flex-wrap: wrap; }
+.sect-leader-status .leader-active { color: #8a8a7a; }
+.sect-leader-status .leader-active.warn { color: #ff7766; font-weight: bold; }
+.sect-impeach-btn {
+  background: #6b1a1a; color: #ffd; border: 1px solid #a44; padding: 2px 10px;
+  border-radius: 3px; font-size: 12px; cursor: pointer; margin-left: 4px;
+}
+.sect-impeach-btn:hover { background: #8b2a2a; border-color: #d66; }
+.sect-m-inactive { color: #8a8a7a; font-size: 11px; margin-left: 4px; }
+.sect-m-inactive.warn { color: #ff7766; font-weight: bold; }
 
 .sect-quick-entry {
   display: grid; grid-template-columns: repeat(3, 1fr);
@@ -12474,6 +12732,20 @@ onUnmounted(() => {
   }
 
   /* 背包 */
+  .bag-with-preview {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .bag-preview {
+    position: static;
+    height: auto;
+    /* 移动端缩小 min-height，避免占用过多屏幕 */
+    min-height: 280px;
+    max-height: none;
+    overflow-y: visible;
+    padding: 10px;
+  }
+  .bag-preview-empty { padding: 16px 8px; }
   .bag-grid {
     grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
     gap: 4px;

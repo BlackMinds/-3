@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { ensureLoadouts } from '~/server/utils/equipment'
 
 const ROOT_BONUS: Record<string, {
   max_hp: number; hp: number; atk: number; def: number; spd: number;
@@ -69,6 +70,9 @@ export default defineEventHandler(async (event) => {
   // 触发 "踏入仙途" 成就
   checkAchievements(charId, 'char_created', 1).catch(() => {})
   checkAchievements(charId, 'first_login', 1).catch(() => {})
+
+  // 初始化 3 套装备方案（默认全空，激活第 1 套）
+  await ensureLoadouts(charId)
 
   return { code: 200, message: '角色创建成功', data: newChar[0] }
 })

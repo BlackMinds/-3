@@ -180,7 +180,7 @@ SELECT crit_dmg, COUNT(*) AS 玩家数
   FROM characters
   GROUP BY crit_dmg
   ORDER BY crit_dmg;
-
+  
 -- 普通灵根 (金/木/水/土): 1.5 → 1.0
 UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.5;
 

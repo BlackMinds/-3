@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getCharId } from '~/server/utils/equipment'
+import { getCharId, EQUIP_SELL_PRICES, removeEquipsFromAllLoadouts } from '~/server/utils/equipment'
 import { updateSectDailyTask } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 
@@ -19,10 +19,11 @@ export default defineEventHandler(async (event) => {
 
     if (equipRows.length === 0) return { code: 400, message: '装备不存在或已穿戴' }
 
-    const sellPrices: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 } // v3.4.2: -70%
     const enhLv = equipRows[0].enhance_level || 0
-    const price = Math.floor((sellPrices[equipRows[0].rarity] || 10) * equipRows[0].tier * (1 + enhLv * 0.1))
+    const price = Math.floor((EQUIP_SELL_PRICES[equipRows[0].rarity] || 10) * equipRows[0].tier * (1 + enhLv * 0.1))
 
+    // 删装备前清掉所有装备方案中的引用，避免 loadout 指向已删除装备
+    await removeEquipsFromAllLoadouts(charId, [equip_id])
     await pool.query('DELETE FROM character_equipment WHERE id = $1', [equip_id])
     const { rows: updRows } = await pool.query(
       'UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2 RETURNING spirit_stone',

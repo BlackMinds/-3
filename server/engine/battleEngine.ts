@@ -656,11 +656,13 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   // v3.5 (功法削弱): 全 tier × 0.60 联动玩家 DPS 下降, 保持 TTK 基本不变
   // 2026-04-26: T5+ 怪物血量 +5%（含秘境，秘境组队共用 generateMonsterStats）
   // 2026-04-26 (灵戒附灵): T6+ 再 +5% 抵消玩家主修流派峰值（T6 1.428→1.4994 / T7 1.5435→1.620675 / T8 1.6275→1.708875 / T9-T10 fallback 0.546→0.5733）
+  // 2026-05-04: 全 tier ×1.5 配合玩家 HP 重平衡（境界右移 + 装备/等级血量增强），让 DOT/反伤
+  //   有充足回合数发挥；玩家 ATK 没动 → 玩家击杀怪物 TTK ×1.5，dot 跳满空间 +50%
   const HP_SCALE_BY_TIER: Record<number, number> = {
-    1: 1.03, 2: 1.03, 3: 1.03, 4: 1.03,
-    5: 1.3335, 6: 1.4994, 7: 1.620675, 8: 1.708875,
+    1: 1.55, 2: 1.55, 3: 1.55, 4: 1.55,
+    5: 2.00, 6: 2.25, 7: 2.43, 8: 2.56,
   };
-  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.5733;
+  const HP_SCALE = HP_SCALE_BY_TIER[tier] ?? 0.86;
   // v3.4.1: ATK_SCALE 0.75 → 0.70 (-6.7%)
   // 2026-04-25: ATK_SCALE 0.70 → 0.665 (-5%) 联动神识削弱, 让玩家累积受伤不至飙升
   const ATK_SCALE = 0.665;

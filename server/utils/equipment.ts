@@ -16,17 +16,17 @@ export async function consumeSpecialItem(charId: number, pillId: string): Promis
 
 // 副属性池（掉落/洗练/升品/合成全部走这里）
 // 分类：
-//   FLAT     — 固定值，跟装备 tier 走（tierMul × qualityMul）；后期贬值，充当"垃圾词条"
+//   FLAT     — 固定值，跟装备 tier 走（tierMul × qualityMul）；后期贬值，充当"垃圾词条"，允许同件装备重复出现
 //   PERCENT  — 百分比类，只乘 qualityMul，不随 tier 膨胀
 // weight — 加权抽取概率（不是概率，是相对权重）
 //   20 = 垃圾档（flat 基础属性、资源类）          - 大概率出
 //   10 = 中档   （百分比基础、五行、命中）          - 中等概率
 //    5 = 好词条 （暴击/暴伤/吸血/闪避/破甲）       - 难出，神器的组成
 export const SUB_STAT_POOL = [
-  // flat（垃圾/凑数）
+  // flat（垃圾/凑数，允许同件装备重复出现）
   { stat: 'ATK',            min: 3,  max: 20,  weight: 20 },
   { stat: 'DEF',            min: 2,  max: 15,  weight: 20 },
-  { stat: 'HP',             min: 15, max: 100, weight: 20 },
+  { stat: 'HP',             min: 30, max: 200, weight: 20 }, // 2026-05-04: ×2 配合境界血量右移
   { stat: 'SPD',            min: 1,  max: 8,   weight: 20 },
   { stat: 'SPIRIT',         min: 1,  max: 6,   weight: 20 },
   { stat: 'SPIRIT_DENSITY', min: 1,  max: 4,   weight: 20 },
@@ -34,7 +34,7 @@ export const SUB_STAT_POOL = [
   // 百分比属性（中档）
   { stat: 'ATK_PCT',        min: 1,  max: 3,   weight: 10 },
   { stat: 'DEF_PCT',        min: 1,  max: 3,   weight: 10 },
-  { stat: 'HP_PCT',         min: 1,  max: 4,   weight: 10 },
+  { stat: 'HP_PCT',         min: 2,  max: 8,   weight: 10 }, // 2026-05-04: ×2 配合境界血量右移
   { stat: 'SPD_PCT',        min: 1,  max: 2,   weight: 10 },
   { stat: 'ACCURACY',       min: 1,  max: 2,   weight: 10 }, // v3.4: max 3→2 (-33%)
   { stat: 'METAL_DMG',      min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2（配合 ceil 让 tier 分档体感更明显）
@@ -42,12 +42,12 @@ export const SUB_STAT_POOL = [
   { stat: 'WATER_DMG',      min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2
   { stat: 'FIRE_DMG',       min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2
   { stat: 'EARTH_DMG',      min: 2,  max: 4,   weight: 10 }, // v3.6: min 1→2
-  // 好词条（v3.0 weight 5→10,神器概率 0.002% → ~0.7%）
-  { stat: 'CRIT_RATE',      min: 2,  max: 3,   weight: 10 }, // v3.6: min 1→2
-  { stat: 'CRIT_DMG',       min: 2,  max: 6,   weight: 10 }, // v3.6: min 1→2（v3.5 max 8→6）
-  { stat: 'LIFESTEAL',      min: 1,  max: 1,   weight: 10 }, // max=1 顶死，靠 ceil 让 t10 自然分档为 2
-  { stat: 'DODGE',          min: 1,  max: 1,   weight: 10 }, // 同上
-  { stat: 'ARMOR_PEN',      min: 2,  max: 5,   weight: 10 }, // v3.6: min 1→2
+  // 好词条（v3.7：weight 10→5 回滚到 v3.0 之前，神器再度稀有）
+  { stat: 'CRIT_RATE',      min: 2,  max: 3,   weight: 5 },
+  { stat: 'CRIT_DMG',       min: 2,  max: 6,   weight: 5 },
+  { stat: 'LIFESTEAL',      min: 1,  max: 1,   weight: 5 }, // max=1 顶死，靠 ceil 让 t10 自然分档为 2
+  { stat: 'DODGE',          min: 1,  max: 1,   weight: 5 },
+  { stat: 'ARMOR_PEN',      min: 2,  max: 5,   weight: 5 },
 ]
 
 // 固定值类副属性（会按 tier 高速缩放）
@@ -98,17 +98,19 @@ function weightedPick<T extends { weight: number }>(pool: T[]): T {
 }
 
 /**
- * 生成一组副属性（按品质数量，不重复）
+ * 生成一组副属性
  * 按 weight 加权：垃圾词条(flat/资源)高频出，好词条(暴击/吸血)低频出 — 神器需要多条好词条才能成型
+ * v3.7: FLAT 类（ATK/DEF/HP/SPD/SPIRIT）允许同件装备重复出现，进一步拉大方差
  */
 export function rollSubStats(rarityIdx: number, tier: number, count: number): { stat: string; value: number }[] {
   const subs: { stat: string; value: number }[] = []
   const used = new Set<string>()
   for (let i = 0; i < count; i++) {
-    const available = SUB_STAT_POOL.filter(s => !used.has(s.stat))
+    // FLAT 类不进 used，可重复抽取；其他类一件装备只能出一条
+    const available = SUB_STAT_POOL.filter(s => SUB_STAT_FLAT.has(s.stat) || !used.has(s.stat))
     if (available.length === 0) break
     const pick = weightedPick(available)
-    used.add(pick.stat)
+    if (!SUB_STAT_FLAT.has(pick.stat)) used.add(pick.stat)
     subs.push({ stat: pick.stat, value: rollSubStatValue(pick.stat, pick.min, pick.max, rarityIdx, tier) })
   }
   return subs
@@ -123,4 +125,85 @@ export async function getCharId(userId: any): Promise<{ id: number } | null> {
     [userId]
   )
   return rows.length > 0 ? rows[0] : null
+}
+
+// 装备出售基础价（v3.4.2: -70%）
+// 实际价 = base × tier × (1 + enhance_level × 0.1)
+// 自动出售/背包满转售/团队战利品转售时 enhance_level 为 0，可忽略加成
+export const EQUIP_SELL_PRICES: Record<string, number> = {
+  white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000,
+}
+
+// ============================================
+// 装备方案 / Loadout helpers
+// 玩家有 3 套方案（loadout_id 1/2/3），character_equipment.slot 反映"当前激活方案下的穿戴"
+// equip/unequip 时同步写当前激活方案；卖装备时清掉所有方案的引用
+// 新角色或老库未回填的角色都用 ON CONFLICT DO NOTHING 懒创建
+// ============================================
+export async function ensureLoadouts(charId: number): Promise<void> {
+  const pool = getPool()
+  await pool.query(
+    `INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
+     VALUES ($1, 1, '{}'::jsonb), ($1, 2, '{}'::jsonb), ($1, 3, '{}'::jsonb)
+     ON CONFLICT (character_id, loadout_id) DO NOTHING`,
+    [charId]
+  )
+}
+
+export async function getActiveLoadoutId(charId: number): Promise<number> {
+  const pool = getPool()
+  const { rows } = await pool.query(
+    'SELECT COALESCE(active_loadout, 1) AS active FROM characters WHERE id = $1',
+    [charId]
+  )
+  const v = rows[0]?.active ?? 1
+  return v >= 1 && v <= 3 ? v : 1
+}
+
+// 设置当前激活方案某槽位的装备 id（equipId=null 表示清空该槽位）
+export async function syncLoadoutSlot(
+  charId: number,
+  loadoutId: number,
+  slot: string,
+  equipId: number | null
+): Promise<void> {
+  const pool = getPool()
+  if (equipId == null) {
+    await pool.query(
+      `INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots, updated_at)
+       VALUES ($1, $2, '{}'::jsonb, NOW())
+       ON CONFLICT (character_id, loadout_id) DO UPDATE SET
+         slots = character_equipment_loadouts.slots - $3::text,
+         updated_at = NOW()`,
+      [charId, loadoutId, slot]
+    )
+  } else {
+    await pool.query(
+      `INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots, updated_at)
+       VALUES ($1, $2, jsonb_build_object($3::text, $4::int), NOW())
+       ON CONFLICT (character_id, loadout_id) DO UPDATE SET
+         slots = character_equipment_loadouts.slots || jsonb_build_object($3::text, $4::int),
+         updated_at = NOW()`,
+      [charId, loadoutId, slot, equipId]
+    )
+  }
+}
+
+// 从所有方案中移除引用了 equipIds 的 slot key（卖装备 / 删装备时调）
+export async function removeEquipsFromAllLoadouts(
+  charId: number,
+  equipIds: number[]
+): Promise<void> {
+  if (!equipIds || equipIds.length === 0) return
+  const pool = getPool()
+  await pool.query(
+    `UPDATE character_equipment_loadouts
+     SET slots = COALESCE((
+       SELECT jsonb_object_agg(k, v)
+       FROM jsonb_each(slots) AS s(k, v)
+       WHERE NOT ((v)::text::int = ANY($2::int[]))
+     ), '{}'::jsonb), updated_at = NOW()
+     WHERE character_id = $1`,
+    [charId, equipIds]
+  )
 }

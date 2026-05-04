@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getCharId } from '~/server/utils/equipment'
+import { getCharId, getActiveLoadoutId, syncLoadoutSlot } from '~/server/utils/equipment'
 import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
@@ -42,6 +42,10 @@ export default defineEventHandler(async (event) => {
       'UPDATE character_equipment SET slot = $1 WHERE id = $2 AND character_id = $3',
       [slot, equip_id, charId]
     )
+
+    // 同步写当前激活方案：把该 slot 的装备 id 更新为新穿的
+    const activeLoadout = await getActiveLoadoutId(charId)
+    await syncLoadoutSlot(charId, activeLoadout, slot, equip_id)
 
     // 成就：穿戴 + 全副武装检查
     checkAchievements(charId, 'equip_wear', 1).catch(() => {})

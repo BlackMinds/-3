@@ -275,3 +275,35 @@ export const CURVES = {
 4. 启动阶段 ④: 写 `test/sim.ts` 跑模拟验证
 
 **预计工作量**: 阶段 ③+④ 约 1 周(约 30 个文件修改 + 模拟器 + 回归测试)
+
+---
+
+## 九、v3.7 副属性平衡调整(2026-05-04)
+
+### 背景
+v3.0 把好词条 weight 5→10 后,神器(4 条全好词条)概率从 0.002% 提到 ~0.7%,实测下来"神器太好开",拉低了红装的稀缺感与追求乐趣。
+
+### 改动(`server/utils/equipment.ts`)
+
+| 改动 | 旧值 | 新值 |
+|---|---|---|
+| 好词条档 weight (CRIT_RATE / CRIT_DMG / LIFESTEAL / DODGE / ARMOR_PEN) | 10 | **5** |
+| FLAT 类(ATK / DEF / HP / SPD / SPIRIT) 同件装备重复 | 不允许 | **允许** |
+
+### 数值影响(10 万件红装仿真)
+
+| 指标 | v3.0 (weight 10) | v3.7 (weight 5 + flat 重复) |
+|---|---:|---:|
+| 单条副属性命中 GOOD 概率 | ~17% | **9.6%** |
+| 神器(4 条全 GOOD)概率 | ~0.7% | **0.001%** |
+| 含 FLAT 重复词条的装备占比 | 0% | **16.3%** |
+
+### 设计意图
+- **神器更稀有**: 回到 v3.0 之前的稀缺度量级,几千件红装才出一件,延长追求曲线
+- **FLAT 重复拉大方差**: 约 1/6 红装会出现"双 ATK"或"双 HP",同 tier 红装不再千篇一律,低端装备分化更明显
+- **SPIRIT_DENSITY / LUCK 不参与重复**: 它们是百分比经济类,重复后 LUCK +48% 会破坏挂机收益平衡
+
+### 关联代码
+- `server/utils/equipment.ts:25-51` SUB_STAT_POOL (weight 调整)
+- `server/utils/equipment.ts:104-118` rollSubStats (FLAT 类不进 used 集合)
+

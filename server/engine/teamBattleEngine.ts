@@ -613,7 +613,9 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   for (const t of targets) {
     if (t.stats.hp <= 0) continue
     let totalDmg = 0
+    let totalHeal = 0
     let critFlag = false
+    let dodgedHits = 0
     for (let h = 0; h < hits; h++) {
       if (t.stats.hp <= 0) break
       const r = calculateDamage(p.stats, t.stats, perHitMul, used.element, used.ignoreDef)
@@ -621,18 +623,35 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
         t.stats.hp -= r.damage
         totalDmg += r.damage
         if (r.isCrit) critFlag = true
-        if (p.stats.lifesteal && p.stats.lifesteal > 0) {
+        if (p.stats.lifesteal && p.stats.lifesteal > 0 && p.stats.hp < p.stats.maxHp) {
           const ls = Math.floor(r.damage * p.stats.lifesteal)
+          const before = p.stats.hp
           p.stats.hp = Math.min(p.stats.maxHp, p.stats.hp + ls)
+          totalHeal += p.stats.hp - before
         }
+      } else {
+        dodgedHits++
       }
     }
     if (totalDmg > 0) {
       p.damageDealt += totalDmg
+      const healSuffix = totalHeal > 0 ? `（吸血 +${totalHeal}）` : ''
       logs.push({
         turn,
-        text: `${p.name} ${critFlag ? '暴击！' : ''}【${used.name}】${label}对 ${t.stats.name} 造成 ${totalDmg} 伤害`,
+        text: `${p.name} ${critFlag ? '暴击！' : ''}【${used.name}】${label}对 ${t.stats.name} 造成 ${totalDmg} 伤害${healSuffix}`,
         type: critFlag ? 'crit' : 'normal',
+        playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp,
+        monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp,
+      })
+    }
+    if (dodgedHits > 0) {
+      const dodgeText = hits > 1
+        ? `${p.name} 的【${used.name}】被 ${t.stats.name} 闪避了 ${dodgedHits} 次`
+        : `${p.name} 的【${used.name}】被 ${t.stats.name} 闪避了`
+      logs.push({
+        turn,
+        text: dodgeText,
+        type: 'normal',
         playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp,
         monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp,
       })

@@ -1087,3 +1087,44 @@ UPDATE sect_members SET total_contribution = contribution WHERE total_contributi
 
 -- 境界突破保底（2026-04-28）：连续突破失败次数，每次 +5% 成功率，成功后清零
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS breakthrough_fail_streak SMALLINT NOT NULL DEFAULT 0;
+
+-- ============================================
+-- 装备方案 / Loadout（2026-05-04）
+-- 玩家可保存 3 套装备方案（PvE/PvP/秘境等），随时一键切换
+-- character_equipment.slot 仍代表"当前激活方案下穿戴的槽位"
+-- character_equipment_loadouts 存每套方案的 {slot: equip_id} 快照
+-- equip/unequip 同步写当前激活方案；切换 = 把目标方案的 slots 应用到 character_equipment.slot
+-- 卖装备时清掉所有方案中的引用，避免方案指向已删除装备
+-- ============================================
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS active_loadout SMALLINT NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS character_equipment_loadouts (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  loadout_id SMALLINT NOT NULL CHECK (loadout_id BETWEEN 1 AND 3),
+  slots JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (character_id, loadout_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_loadout_char ON character_equipment_loadouts (character_id);
+
+-- 回填：所有玩家初始化方案 1（含当前装备快照）+ 空方案 2/3
+INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
+SELECT c.id, 1,
+       COALESCE(
+         (SELECT jsonb_object_agg(ce.slot, ce.id)
+          FROM character_equipment ce
+          WHERE ce.character_id = c.id AND ce.slot IS NOT NULL),
+         '{}'::jsonb
+       )
+FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
+SELECT c.id, 2, '{}'::jsonb FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
+SELECT c.id, 3, '{}'::jsonb FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;

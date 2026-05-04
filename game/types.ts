@@ -35,6 +35,7 @@ export interface CharacterData {
   sponsor_oneclick_plant?: boolean;
   cave_output_mul?: number;
   sponsor_expire_at?: string | null;
+  active_loadout?: number;
 }
 
 // ========== 境界 ==========
