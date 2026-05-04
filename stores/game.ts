@@ -14,6 +14,7 @@ export const useGameStore = defineStore('game', () => {
   const currentMapId = ref('qingfeng_valley')
   const battleTimer = ref<number | null>(null)
   const killCount = ref(0)
+  const defeatCount = ref(0)
   const sessionExp = ref(0)
   const sessionStone = ref(0)
   const battleStartTime = ref(0)
@@ -210,6 +211,7 @@ export const useGameStore = defineStore('game', () => {
     isBattling.value = true
     // 方案 A：每次开战（含切图内部 stop→start、登录恢复 auto-start）都视作新一轮历练，统计清零
     killCount.value = 0
+    defeatCount.value = 0
     sessionExp.value = 0
     sessionStone.value = 0
     sessionDrops.value = {}
@@ -474,6 +476,7 @@ export const useGameStore = defineStore('game', () => {
     } else {
       // 失败：丢弃批次剩余（后端遇到失败已 break，理论上 batchQueue 已空）
       batchQueue.value = []
+      defeatCount.value++
       deathCooldown.value = 3
       battleFrenzyStacks.value = 0
       deathTimer.value = window.setInterval(() => {
@@ -550,7 +553,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     character, loaded, battleLogs, isBattling, currentMapId,
-    killCount, sessionExp, sessionStone, sessionDrops, battleStartTime, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
+    killCount, defeatCount, sessionExp, sessionStone, sessionDrops, battleStartTime, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
     currentMonsterInfo, waveMonstersInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,

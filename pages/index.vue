@@ -1891,6 +1891,10 @@
               <span class="stats-val">{{ gameStore.killCount }}</span>
             </div>
             <div class="stats-row">
+              <span class="stats-label">胜率</span>
+              <span class="stats-val">{{ (gameStore.killCount + gameStore.defeatCount) > 0 ? (gameStore.killCount / (gameStore.killCount + gameStore.defeatCount) * 100).toFixed(1) + '%' : '-' }} <span style="color: var(--fade-ink); font-size: 12px;">({{ gameStore.killCount }}胜 / {{ gameStore.defeatCount }}负)</span></span>
+            </div>
+            <div class="stats-row">
               <span class="stats-label">获得修为</span>
               <span class="stats-val">+{{ formatNum(gameStore.sessionExp) }}</span>
             </div>
