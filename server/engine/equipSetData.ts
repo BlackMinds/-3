@@ -90,8 +90,8 @@ export const EQUIP_SETS: EquipSet[] = [
         hooks: { onApplyPoison: { instantMul: 2 } } },
       { count: 5, desc: '附加中毒时，立即额外结算 2 跳中毒伤害',
         hooks: { onApplyPoison: { instantMul: 3 } } },
-      { count: 7, desc: '附加中毒时，立即额外结算 3 跳中毒伤害',
-        hooks: { onApplyPoison: { instantMul: 4 } } },
+      { count: 7, desc: '附加中毒时，立即额外结算 3 跳中毒伤害；目标中毒状态下，对其造成的伤害 +15%',
+        hooks: { onApplyPoison: { instantMul: 4 }, conditional: { ifTargetPoisoned: { dmgAmp: 0.15 } } } },
     ],
   },
 

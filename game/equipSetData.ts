@@ -49,7 +49,7 @@ export const EQUIP_SETS: EquipSet[] = [
     tiers: [
       { count: 3, desc: '附加中毒时，立即额外结算 1 跳中毒伤害' },
       { count: 5, desc: '附加中毒时，立即额外结算 2 跳中毒伤害' },
-      { count: 7, desc: '附加中毒时，立即额外结算 3 跳中毒伤害' },
+      { count: 7, desc: '附加中毒时，立即额外结算 3 跳中毒伤害；目标中毒状态下，对其造成的伤害 +15%' },
     ],
   },
   {

@@ -19,6 +19,7 @@ export interface SetEffectsState {
   // 4. venom 万毒套
   poisonInstantMul: number;
   poisonMaxStacks: number;     // 中毒可叠加层数（仅 7 件套）
+  poisonDmgAmpVsTarget: number; // 蚀骨：目标中毒时对其造成的伤害 +X（仅 7 件套）
   // 5. blood_demon 血魔套
   bleedInstantMul: number;
   bleedLifestealIfBleeding: number; // 目标流血时玩家吸血 +X（仅 7 件套）
@@ -65,7 +66,7 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
     refreshChance: 0, refreshOpenCdReduce: 0,
     multicastChance: 0, multicastMul: 0, multicastMaxPerTurn: 0,
     burnInstantMul: 1, burnExtendIfStacked: 0, burnDurationCap: 99,
-    poisonInstantMul: 1, poisonMaxStacks: 1,
+    poisonInstantMul: 1, poisonMaxStacks: 1, poisonDmgAmpVsTarget: 0,
     bleedInstantMul: 1, bleedLifestealIfBleeding: 0,
     freezeChanceBonus: 0, dmgVsFrozen: 0, frozenCannotDodge: false,
     spearActive: false, spearArmorPen: 0, spearLifesteal: 0,
@@ -108,6 +109,7 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
       case 'venom': {
         state.poisonInstantMul = hooks.onApplyPoison?.instantMul || 1;
         state.poisonMaxStacks = hooks.onApplyPoison?.maxStacks || 1;
+        state.poisonDmgAmpVsTarget = hooks.conditional?.ifTargetPoisoned?.dmgAmp || 0;
         break;
       }
       case 'blood_demon': {
@@ -1992,6 +1994,11 @@ export function runWaveBattle(
         const setEffects = (player as any).setEffects as SetEffectsState | undefined;
         if (setEffects && setEffects.dmgVsFrozen > 0 && target.frozenTurns > 0) {
           dmg = Math.floor(dmg * (1 + setEffects.dmgVsFrozen));
+        }
+        // ❖ 万毒套·蚀骨：目标处于中毒状态时对其造成的伤害 +X
+        if (setEffects && setEffects.poisonDmgAmpVsTarget > 0) {
+          const targetPoisoned = target.debuffs?.some((d: any) => d.type === 'poison' && d.remaining > 0);
+          if (targetPoisoned) dmg = Math.floor(dmg * (1 + setEffects.poisonDmgAmpVsTarget));
         }
         // ❖ 十三枪：每层 +X 最终伤害（仅非 chained 主攻段享受；剑气/多重/天机额外段不享受）
         if (setEffects && setEffects.spearActive && !opts?.chained && (player as any).spearStacks > 0) {
