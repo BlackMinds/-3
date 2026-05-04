@@ -38,27 +38,27 @@ export const EQUIP_SETS: EquipSet[] = [
     setKey: 'fire_god', name: '火神套', prefix: '焚天',
     desc: '灼烧爆发流，配焚天烈魂、焚体诀',
     tiers: [
-      { count: 3, desc: '附加灼烧时，下一跳灼烧伤害 ×2 并立即结算 1 次' },
-      { count: 5, desc: '上述 ×3' },
-      { count: 7, desc: '上述 ×5；目标已灼烧时额外延长 1 回合（持续 cap 6 回合）' },
+      { count: 3, desc: '附加灼烧时，立即额外结算 1 跳灼烧伤害' },
+      { count: 5, desc: '附加灼烧时，立即额外结算 2 跳灼烧伤害' },
+      { count: 7, desc: '附加灼烧时，立即额外结算 4 跳灼烧伤害；目标已灼烧时额外延长 1 回合（持续 cap 6 回合）' },
     ],
   },
   {
     setKey: 'venom', name: '万毒套', prefix: '蚀骨',
     desc: '中毒爆发流，配毒液冲击、百毒不侵',
     tiers: [
-      { count: 3, desc: '附加中毒时，下一跳中毒伤害 ×2 并立即结算 1 次' },
-      { count: 5, desc: '上述 ×3' },
-      { count: 7, desc: '上述 ×4' },
+      { count: 3, desc: '附加中毒时，立即额外结算 1 跳中毒伤害' },
+      { count: 5, desc: '附加中毒时，立即额外结算 2 跳中毒伤害' },
+      { count: 7, desc: '附加中毒时，立即额外结算 3 跳中毒伤害' },
     ],
   },
   {
     setKey: 'blood_demon', name: '血魔套', prefix: '噬魂',
     desc: '流血爆发流，配剑雨纷飞、血雨腥风、十三枪',
     tiers: [
-      { count: 3, desc: '附加流血时，下一跳流血伤害 ×2 并立即结算 1 次' },
-      { count: 5, desc: '上述 ×3' },
-      { count: 7, desc: '上述 ×5；目标流血状态下你的吸血 +10%' },
+      { count: 3, desc: '附加流血时，立即额外结算 1 跳流血伤害' },
+      { count: 5, desc: '附加流血时，立即额外结算 2 跳流血伤害' },
+      { count: 7, desc: '附加流血时，立即额外结算 4 跳流血伤害；目标流血状态下你的吸血 +10%' },
     ],
   },
   {
