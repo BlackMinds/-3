@@ -922,6 +922,17 @@ ON CONFLICT (code) DO UPDATE SET
   attachments = EXCLUDED.attachments,
   description = EXCLUDED.description;
 
+-- 5.1 劳动节兑换码（2026-05-01）
+INSERT INTO redeem_codes (code, attachments, description) VALUES
+('LABOR2026', '[
+  {"type":"pill","pillId":"awaken_reroll","qty":30},
+  {"type":"pill","pillId":"awaken_stone","qty":20},
+  {"type":"pill","pillId":"reroll_sub_stat","qty":20}
+]'::jsonb, '5.1 劳动节大礼：灵枢玉×30 + 附灵石×20 + 装备鉴定符×20')
+ON CONFLICT (code) DO UPDATE SET
+  attachments = EXCLUDED.attachments,
+  description = EXCLUDED.description;
+
 -- ========================================
 -- 破妄丹（crit_pill_1）下线 - 数据清理与玩家补偿（2026-04-25）
 -- ========================================
