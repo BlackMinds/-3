@@ -11,7 +11,7 @@ import { buildEquippedSkillInfo } from '~/server/engine/battleEngine'
  * 这样彻底消除"低战力切高图刷收益"的漏洞 —— 打不动就是真打不动，胜率 0 → 收益 0。
  */
 // 灰度发布白名单：v2 新版离线挂机暂时只对开发者测试账号开放，验证稳定后放开
-const OFFLINE_V2_WHITELIST = new Set<number>([1, 3])
+const OFFLINE_V2_WHITELIST = new Set<number>([1])
 
 export default defineEventHandler(async (event) => {
   try {

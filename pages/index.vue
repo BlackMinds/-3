@@ -109,7 +109,7 @@
           </button>
           <!-- 灰度发布：v2 新版离线挂机暂时只对白名单 user_id（开发者 / 内测账号）开放 -->
           <button
-            v-if="!gameStore.isBattling && !isOffline && [1, 3].includes(userStore.userId)"
+            v-if="!gameStore.isBattling && !isOffline && [1].includes(userStore.userId)"
             class="ctrl-btn offline-start-btn"
             @click="startOffline"
           >
