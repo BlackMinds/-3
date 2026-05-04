@@ -313,11 +313,12 @@ async function applySingleEffect(
     }
     case 'skill_add': {
       // 随机给一个功法碎片（基于 tier 池）
+      // 与主掉落表（secretRealmDrops/fight/offline-claim）保持一致
       const pools: Record<number, string[]> = {
-        1: ['wind_blade', 'vine_whip', 'ice_palm', 'flame_sword', 'quake_fist', 'body_refine', 'flame_body'],
-        3: ['fire_rain', 'frost_nova', 'earth_shield', 'golden_bell', 'swift_step', 'iron_skin'],
-        5: ['sword_storm', 'twin_flame', 'flurry_palm', 'spring_heal', 'blood_fury', 'wood_heal', 'mirror_water', 'venom_burst', 'bleed_storm', 'burn_inferno', 'poison_mist'],
-        7: ['metal_burst', 'life_drain', 'storm_blade', 'heaven_heal', 'dao_heart'],
+        1: ['wind_blade','vine_whip','ice_palm','flame_sword','quake_fist','body_refine','flame_body','water_flow','root_grip','metal_skin'],
+        3: ['fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell','swift_step','iron_skin','thorn_aura','flame_aura','earth_wall'],
+        5: ['sword_storm','twin_flame','flurry_palm','spring_heal','blood_fury','wood_heal','mirror_water','venom_burst','bleed_storm','burn_inferno','poison_mist','crit_master','earth_fortitude','poison_body','fire_mastery','dot_amplifier','phantom_step','healing_spring'],
+        7: ['metal_burst','quake_stomp','life_drain','inferno_burst','storm_blade','heaven_heal','water_mastery','battle_frenzy','heavenly_body','time_stop','heavenly_wrath','dao_heart','five_elements_harmony'],
       }
       let poolArr = pools[1]
       if (tier >= 7) poolArr = pools[7]
