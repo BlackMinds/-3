@@ -171,10 +171,21 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
   const hpPct = Number(pe.hpPercent || 0)
   const spdPct = Number(pe.spdPercent || 0)
 
-  const maxHp = Math.max(1, Math.floor(s.maxHp * (1 + hpPct / 100) * hpMul))
-  const atk = Math.max(1, Math.floor(s.atk * (1 + atkPct / 100)))
-  const def = Math.max(0, Math.floor(s.def * (1 + defPct / 100)))
-  const spd = Math.max(1, Math.floor(s.spd * (1 + spdPct / 100)))
+  // v3.7 加法池：buildCharacterSnapshot 已挂 _flat/_pctSum 时，把功法 % 加进同池后一次乘
+  const sx: any = s as any
+  let atk: number, def: number, spd: number, maxHp: number
+  if (sx._flatAtk !== undefined) {
+    atk   = Math.max(1, Math.floor(sx._flatAtk * (1 + (sx._pctSumAtk || 0) + atkPct / 100)))
+    def   = Math.max(0, Math.floor(sx._flatDef * (1 + (sx._pctSumDef || 0) + defPct / 100)))
+    spd   = Math.max(1, Math.floor(sx._flatSpd * (1 + (sx._pctSumSpd || 0) + spdPct / 100)))
+    maxHp = Math.max(1, Math.floor(sx._flatHp  * (1 + (sx._pctSumHp  || 0) + hpPct / 100) * hpMul))
+  } else {
+    // 旧路径回退（向后兼容尚未挂字段的 stats）
+    maxHp = Math.max(1, Math.floor(s.maxHp * (1 + hpPct / 100) * hpMul))
+    atk = Math.max(1, Math.floor(s.atk * (1 + atkPct / 100)))
+    def = Math.max(0, Math.floor(s.def * (1 + defPct / 100)))
+    spd = Math.max(1, Math.floor(s.spd * (1 + spdPct / 100)))
+  }
 
   // 抗性合并（基础 + 被动）
   const resists = {

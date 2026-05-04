@@ -306,10 +306,20 @@ export function runTeamBattle(
     const baseStats = { ...p.stats, hp: p.stats.maxHp }
     if (p.equippedSkills?.passiveEffects) {
       const pe = p.equippedSkills.passiveEffects
-      baseStats.atk = Math.floor(baseStats.atk * (1 + pe.atkPercent / 100))
-      baseStats.def = Math.floor(baseStats.def * (1 + pe.defPercent / 100))
-      baseStats.maxHp = Math.floor(baseStats.maxHp * (1 + pe.hpPercent / 100))
-      baseStats.spd = Math.floor(baseStats.spd * (1 + (pe.spdPercent || 0) / 100))
+      // v3.7 加法池：team/start.post.ts buildPlayerBattleStats 已挂 _flat/_pctSum，把功法 % 加进同池后一次乘
+      const sx: any = p.stats as any
+      if (sx._flatAtk !== undefined) {
+        baseStats.atk   = Math.floor(sx._flatAtk * (1 + (sx._pctSumAtk || 0) + pe.atkPercent / 100))
+        baseStats.def   = Math.floor(sx._flatDef * (1 + (sx._pctSumDef || 0) + pe.defPercent / 100))
+        baseStats.maxHp = Math.floor(sx._flatHp  * (1 + (sx._pctSumHp  || 0) + pe.hpPercent / 100))
+        baseStats.spd   = Math.floor(sx._flatSpd * (1 + (sx._pctSumSpd || 0) + (pe.spdPercent || 0) / 100))
+      } else {
+        // 旧路径回退
+        baseStats.atk = Math.floor(baseStats.atk * (1 + pe.atkPercent / 100))
+        baseStats.def = Math.floor(baseStats.def * (1 + pe.defPercent / 100))
+        baseStats.maxHp = Math.floor(baseStats.maxHp * (1 + pe.hpPercent / 100))
+        baseStats.spd = Math.floor(baseStats.spd * (1 + (pe.spdPercent || 0) / 100))
+      }
       baseStats.hp = baseStats.maxHp
       baseStats.crit_rate += pe.critRate
       baseStats.crit_dmg += pe.critDmg

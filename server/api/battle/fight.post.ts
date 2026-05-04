@@ -382,6 +382,12 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
   // 装备副属性百分比（与武器类型百分比合并一次乘法）
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
+  // v3.7 加法池：所有非功法被动的 % 累加（小数, 0.10=10%），最后统一一次乘
+  // 包含：附灵% / 武器+装备% / 丹药% / 境界% / 道果% / 宗门% / 宗门技能%
+  // 不含：功法被动%（在 battleEngine.applyPassive 里加进同一池后一次乘，见 _flatAtk/_pctSumAtk 字段）
+  let nonPassiveAtkPct = 0, nonPassiveDefPct = 0, nonPassiveHpPct = 0, nonPassiveSpdPct = 0
+  // 附灵 X_PCT 累加（最后并入 nonPassive 池）
+  let awakenAtkPct = 0, awakenDefPct = 0, awakenHpPct = 0, awakenSpdPct = 0
   // v3.6 DOT/反伤副属性累计（小数 0.05 = 5%）
   let equipDotDmgPct = 0, equipReflectPct = 0
   // 套装：聚合已穿戴件数（仅统计 slot 非空）+ 记录主武器类型（供十三枪等武器流套装判定）
@@ -457,14 +463,14 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
         case 'critDmg':            critDmg += v; break
         case 'dodge':              dodge += v; break
         case 'spirit':             spirit += v; break
-        case 'atkPct':             atk = Math.floor(atk * (1 + v)); break
-        case 'defPct':             def = Math.floor(def * (1 + v)); break
-        case 'hpPct':              maxHp = Math.floor(maxHp * (1 + v)); break
-        case 'spdPct':             spd = Math.floor(spd * (1 + v)); break
+        case 'atkPct':             awakenAtkPct += v; break
+        case 'defPct':             awakenDefPct += v; break
+        case 'hpPct':              awakenHpPct  += v; break
+        case 'spdPct':             awakenSpdPct += v; break
         case 'harmonyPct':
-          atk = Math.floor(atk * (1 + v))
-          def = Math.floor(def * (1 + v))
-          maxHp = Math.floor(maxHp * (1 + v))
+          awakenAtkPct += v
+          awakenDefPct += v
+          awakenHpPct  += v
           break
         // 五行·X 元素伤害加成（value 是 0-1 的小数，转到 elementDmg 的百分比值）
         case 'FIRE_DMG_PCT':       elementDmg.fire += v * 100; break
@@ -558,13 +564,11 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
     }
   }
 
-  // 应用武器类型 + 装备副属性百分比加成（合并一次乘法，避免多重复利）
-  const totalAtkPct = weaponAtkPct + equipAtkPct
-  const totalSpdPct = weaponSpdPct + equipSpdPct
-  if (totalAtkPct > 0) atk = Math.floor(atk * (1 + totalAtkPct / 100))
-  if (equipDefPct > 0) def = Math.floor(def * (1 + equipDefPct / 100))
-  if (equipHpPct > 0) maxHp = Math.floor(maxHp * (1 + equipHpPct / 100))
-  if (totalSpdPct > 0) spd = Math.floor(spd * (1 + totalSpdPct / 100))
+  // 武器类型 + 装备副属性 X_PCT 进加法池（spirit 不在 4 项主属性池里，单独乘）
+  nonPassiveAtkPct += (weaponAtkPct + equipAtkPct) / 100
+  nonPassiveDefPct += equipDefPct / 100
+  nonPassiveHpPct  += equipHpPct / 100
+  nonPassiveSpdPct += (weaponSpdPct + equipSpdPct) / 100
   if (weaponSpiritPct > 0) spirit = Math.floor(spirit * (1 + weaponSpiritPct / 100))
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
@@ -606,11 +610,15 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   pillDefPct = Math.min(pillDefPct, PILL_PCT_CAP)
   pillHpPct  = Math.min(pillHpPct,  PILL_PCT_CAP)
   pillSpdPct = Math.min(pillSpdPct, PILL_PCT_CAP)
-  // 应用: 固定值先加, 再乘百分比
-  atk   = Math.floor((atk   + pillAtkFlat) * (1 + pillAtkPct))
-  def   = Math.floor((def   + pillDefFlat) * (1 + pillDefPct))
-  maxHp = Math.floor((maxHp + pillHpFlat)  * (1 + pillHpPct))
-  spd   = Math.floor((spd   + pillSpdFlat) * (1 + pillSpdPct))
+  // 加法池: 固定值进 flat 段、百分比进非功法 % 池
+  atk   += pillAtkFlat
+  def   += pillDefFlat
+  maxHp += pillHpFlat
+  spd   += pillSpdFlat
+  nonPassiveAtkPct += pillAtkPct
+  nonPassiveDefPct += pillDefPct
+  nonPassiveHpPct  += pillHpPct
+  nonPassiveSpdPct += pillSpdPct
   critRate += pillCritFlat
 
   // 洞府
@@ -619,24 +627,24 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
     if (cave.building_id === 'martial_hall' && cave.level > 0) expBonusPercent += 5 + (cave.level - 1) * 2
   }
 
-  // 境界百分比加成
-  if (realmBonus.hp_pct > 0) maxHp = Math.floor(maxHp * (1 + realmBonus.hp_pct / 100))
-  if (realmBonus.atk_pct > 0) atk = Math.floor(atk * (1 + realmBonus.atk_pct / 100))
-  if (realmBonus.def_pct > 0) def = Math.floor(def * (1 + realmBonus.def_pct / 100))
+  // 境界百分比加成 → 加法池
+  if (realmBonus.hp_pct > 0) nonPassiveHpPct  += realmBonus.hp_pct / 100
+  if (realmBonus.atk_pct > 0) nonPassiveAtkPct += realmBonus.atk_pct / 100
+  if (realmBonus.def_pct > 0) nonPassiveDefPct += realmBonus.def_pct / 100
 
-  // 永久属性加成(道果结晶)
+  // 永久属性加成(道果结晶) → 加法池
   const permAtkPct = Number(char.permanent_atk_pct || 0)
   const permDefPct = Number(char.permanent_def_pct || 0)
   const permHpPct = Number(char.permanent_hp_pct || 0)
-  if (permAtkPct > 0) atk = Math.floor(atk * (1 + permAtkPct / 100))
-  if (permDefPct > 0) def = Math.floor(def * (1 + permDefPct / 100))
-  if (permHpPct > 0) maxHp = Math.floor(maxHp * (1 + permHpPct / 100))
+  if (permAtkPct > 0) nonPassiveAtkPct += permAtkPct / 100
+  if (permDefPct > 0) nonPassiveDefPct += permDefPct / 100
+  if (permHpPct > 0) nonPassiveHpPct  += permHpPct / 100
 
-  // 宗门加成
+  // 宗门加成 → 加法池
   if (char._sectLevel) {
     const sectCfg = getSectLevelConfig(char._sectLevel)
-    atk = Math.floor(atk * (1 + sectCfg.atkBonus))
-    def = Math.floor(def * (1 + sectCfg.defBonus))
+    nonPassiveAtkPct += sectCfg.atkBonus
+    nonPassiveDefPct += sectCfg.defBonus
     expBonusPercent += sectCfg.expBonus * 100
   }
   if (char._sectSkills && Array.isArray(char._sectSkills)) {
@@ -644,17 +652,33 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       const skillCfg = getSectSkill(ss.skill_key)
       if (!skillCfg) continue
       const effects = calcSectSkillEffect(skillCfg, ss.level)
+      // spirit 不在 4 项主属性加法池里，保留原乘法（spirit 没经历多轮乘子，影响很小）
       if (effects.spirit_percent) spirit += Math.floor(spirit * effects.spirit_percent / 100)
-      if (effects.hp_percent) maxHp = Math.floor(maxHp * (1 + effects.hp_percent / 100))
+      if (effects.hp_percent) nonPassiveHpPct += effects.hp_percent / 100
+      // armorPen 不在 4 项池里
       if (effects.armor_pen_percent) armorPen += Math.floor(armorPen * effects.armor_pen_percent / 100) + Math.floor(effects.armor_pen_percent)
       if (effects.all_percent) {
-        atk = Math.floor(atk * (1 + effects.all_percent / 100))
-        def = Math.floor(def * (1 + effects.all_percent / 100))
-        maxHp = Math.floor(maxHp * (1 + effects.all_percent / 100))
-        spd = Math.floor(spd * (1 + effects.all_percent / 100))
+        nonPassiveAtkPct += effects.all_percent / 100
+        nonPassiveDefPct += effects.all_percent / 100
+        nonPassiveHpPct  += effects.all_percent / 100
+        nonPassiveSpdPct += effects.all_percent / 100
       }
     }
   }
+
+  // 附灵 X_PCT 并入加法池
+  nonPassiveAtkPct += awakenAtkPct
+  nonPassiveDefPct += awakenDefPct
+  nonPassiveHpPct  += awakenHpPct
+  nonPassiveSpdPct += awakenSpdPct
+
+  // 加法池一次乘（不含功法被动 — 由 battleEngine.applyPassive 用 _flat/_pctSum 字段并池后再乘）
+  // 记录 flat 段总和供 battleEngine 重算使用
+  const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd
+  atk   = Math.floor(_flatAtk * (1 + nonPassiveAtkPct))
+  def   = Math.floor(_flatDef * (1 + nonPassiveDefPct))
+  maxHp = Math.floor(_flatHp  * (1 + nonPassiveHpPct))
+  spd   = Math.floor(_flatSpd * (1 + nonPassiveSpdPct))
 
   // 附灵抗性叠加（取自 buildPlayerStats 内部临时挂载到 char 上的字段）
   const awakenCtrlResist = (char as any).__resistCtrlAwaken || 0
@@ -695,6 +719,11 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       equipSetCounts,
       // 主武器类型（sword/blade/spear/fan）— 武器流套装（如十三枪）按此判定
       weaponType: playerWeaponType,
+      // v3.7 加法池：flat 段总和 + 非功法 % 之和（小数, 0.10=10%）
+      // battleEngine.applyPassive 将功法被动 % 加进同一池，重算 atk/def/hp/spd
+      _flatAtk, _flatDef, _flatHp, _flatSpd,
+      _pctSumAtk: nonPassiveAtkPct, _pctSumDef: nonPassiveDefPct,
+      _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
     } as any,
     expBonusPercent: expBonusPercent + spiritDensity + awakenExpBonus * 100 + awakenSpiritDensityBonus * 100,
     luckPercent: luck + awakenLuckBonus * 100,

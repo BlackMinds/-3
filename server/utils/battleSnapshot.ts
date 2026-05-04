@@ -136,6 +136,8 @@ export async function buildCharacterSnapshot(
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
   // v3.7 反伤流派 PvP 对齐：装备副属性 REFLECT_PCT + 附灵 reflectPct (明镜甲/玄镜佩) 汇入 equipReflectPct
   let equipReflectPct = 0
+  // v3.7 加法池：所有非功法被动 % 累加（小数, 0.10=10%），最后统一一次乘
+  let nonPassiveAtkPct = 0, nonPassiveDefPct = 0, nonPassiveHpPct = 0, nonPassiveSpdPct = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -191,13 +193,11 @@ export async function buildCharacterSnapshot(
     }
   }
 
-  // 武器 + 装备副属性百分比（合并一次乘法）
-  const totalAtkPct = weaponAtkPct + equipAtkPct
-  const totalSpdPct = weaponSpdPct + equipSpdPct
-  if (totalAtkPct > 0) atk = Math.floor(atk * (1 + totalAtkPct / 100))
-  if (equipDefPct > 0) def = Math.floor(def * (1 + equipDefPct / 100))
-  if (equipHpPct > 0) maxHp = Math.floor(maxHp * (1 + equipHpPct / 100))
-  if (totalSpdPct > 0) spd = Math.floor(spd * (1 + totalSpdPct / 100))
+  // 武器 + 装备副属性百分比 → 加法池
+  nonPassiveAtkPct += (weaponAtkPct + equipAtkPct) / 100
+  nonPassiveDefPct += equipDefPct / 100
+  nonPassiveHpPct  += equipHpPct / 100
+  nonPassiveSpdPct += (weaponSpdPct + equipSpdPct) / 100
   if (weaponSpiritPct > 0) spirit = Math.floor(spirit * (1 + weaponSpiritPct / 100))
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
@@ -234,59 +234,70 @@ export async function buildCharacterSnapshot(
     pillDefPct = Math.min(pillDefPct, PILL_PCT_CAP)
     pillHpPct  = Math.min(pillHpPct,  PILL_PCT_CAP)
     pillSpdPct = Math.min(pillSpdPct, PILL_PCT_CAP)
-    atk   = Math.floor((atk   + pillAtkFlat) * (1 + pillAtkPct))
-    def   = Math.floor((def   + pillDefFlat) * (1 + pillDefPct))
-    maxHp = Math.floor((maxHp + pillHpFlat)  * (1 + pillHpPct))
-    spd   = Math.floor(spd * (1 + pillSpdPct))
+    // 加法池：flat 进 flat 段，pct 进非功法 % 池
+    atk   += pillAtkFlat
+    def   += pillDefFlat
+    maxHp += pillHpFlat
+    nonPassiveAtkPct += pillAtkPct
+    nonPassiveDefPct += pillDefPct
+    nonPassiveHpPct  += pillHpPct
+    nonPassiveSpdPct += pillSpdPct
     critRate += pillCritFlat
   }
 
-  // 境界百分比
-  if (realmBonus.hp_pct > 0) maxHp = Math.floor(maxHp * (1 + realmBonus.hp_pct / 100))
-  if (realmBonus.atk_pct > 0) atk = Math.floor(atk * (1 + realmBonus.atk_pct / 100))
-  if (realmBonus.def_pct > 0) def = Math.floor(def * (1 + realmBonus.def_pct / 100))
+  // 境界百分比 → 加法池
+  if (realmBonus.hp_pct > 0) nonPassiveHpPct  += realmBonus.hp_pct / 100
+  if (realmBonus.atk_pct > 0) nonPassiveAtkPct += realmBonus.atk_pct / 100
+  if (realmBonus.def_pct > 0) nonPassiveDefPct += realmBonus.def_pct / 100
 
-  // 永久属性
+  // 永久属性 → 加法池
   const permAtkPct = Number(char.permanent_atk_pct || 0)
   const permDefPct = Number(char.permanent_def_pct || 0)
   const permHpPct = Number(char.permanent_hp_pct || 0)
-  if (permAtkPct > 0) atk = Math.floor(atk * (1 + permAtkPct / 100))
-  if (permDefPct > 0) def = Math.floor(def * (1 + permDefPct / 100))
-  if (permHpPct > 0) maxHp = Math.floor(maxHp * (1 + permHpPct / 100))
+  if (permAtkPct > 0) nonPassiveAtkPct += permAtkPct / 100
+  if (permDefPct > 0) nonPassiveDefPct += permDefPct / 100
+  if (permHpPct > 0) nonPassiveHpPct  += permHpPct / 100
 
-  // 宗门等级加成
+  // 宗门等级加成 → 加法池
   if (sectLevel > 0) {
     const sectCfg = getSectLevelConfig(sectLevel)
-    atk = Math.floor(atk * (1 + sectCfg.atkBonus))
-    def = Math.floor(def * (1 + sectCfg.defBonus))
+    nonPassiveAtkPct += sectCfg.atkBonus
+    nonPassiveDefPct += sectCfg.defBonus
   }
 
-  // 宗门功法
+  // 宗门功法 → 加法池（spirit/armorPen 不在 4 项池里，保留原处理）
   for (const ss of sectSkills) {
     const skillCfg = getSectSkill(ss.skill_key)
     if (!skillCfg) continue
     const effects = calcSectSkillEffect(skillCfg, ss.level)
     if (effects.spirit_percent) spirit += Math.floor(spirit * effects.spirit_percent / 100)
-    if (effects.hp_percent) maxHp = Math.floor(maxHp * (1 + effects.hp_percent / 100))
+    if (effects.hp_percent) nonPassiveHpPct += effects.hp_percent / 100
     if (effects.armor_pen_percent) armorPen += Math.floor(effects.armor_pen_percent)
     if (effects.all_percent) {
-      atk = Math.floor(atk * (1 + effects.all_percent / 100))
-      def = Math.floor(def * (1 + effects.all_percent / 100))
-      maxHp = Math.floor(maxHp * (1 + effects.all_percent / 100))
-      spd = Math.floor(spd * (1 + effects.all_percent / 100))
+      nonPassiveAtkPct += effects.all_percent / 100
+      nonPassiveDefPct += effects.all_percent / 100
+      nonPassiveHpPct  += effects.all_percent / 100
+      nonPassiveSpdPct += effects.all_percent / 100
     }
   }
 
-  // ===== timed_buffs 合并（同 stat_key 累加）=====
+  // ===== timed_buffs 合并（同 stat_key 累加） → 加法池 =====
   const timedAgg: Record<string, number> = {}
   for (const b of timedBuffs) {
     timedAgg[b.stat_key] = (timedAgg[b.stat_key] || 0) + Number(b.stat_value)
   }
-  if (timedAgg.atk_pct) atk = Math.floor(atk * (1 + timedAgg.atk_pct / 100))
-  if (timedAgg.def_pct) def = Math.floor(def * (1 + timedAgg.def_pct / 100))
-  if (timedAgg.hp_pct) maxHp = Math.floor(maxHp * (1 + timedAgg.hp_pct / 100))
-  if (timedAgg.spd_pct) spd = Math.floor(spd * (1 + timedAgg.spd_pct / 100))
+  if (timedAgg.atk_pct) nonPassiveAtkPct += timedAgg.atk_pct / 100
+  if (timedAgg.def_pct) nonPassiveDefPct += timedAgg.def_pct / 100
+  if (timedAgg.hp_pct)  nonPassiveHpPct  += timedAgg.hp_pct / 100
+  if (timedAgg.spd_pct) nonPassiveSpdPct += timedAgg.spd_pct / 100
   if (timedAgg.crit_rate) critRate += timedAgg.crit_rate / 100
+
+  // 加法池一次乘（不含功法被动 — buildPvpFighter 把功法 % 加进 _pctSum 后再一次乘）
+  const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd
+  atk   = Math.floor(_flatAtk * (1 + nonPassiveAtkPct))
+  def   = Math.floor(_flatDef * (1 + nonPassiveDefPct))
+  maxHp = Math.floor(_flatHp  * (1 + nonPassiveHpPct))
+  spd   = Math.floor(_flatSpd * (1 + nonPassiveSpdPct))
 
   const stats: BattlerStats = {
     name: char.name,
@@ -308,6 +319,11 @@ export async function buildCharacterSnapshot(
     spirit,
     // v3.7 反伤流派 PvP 对齐：透传给 multiBattleEngine.buildPvpFighter
     equipReflectPct,
+    // v3.7 加法池：flat 段总和 + 非功法 % 之和（小数, 0.10=10%）
+    // buildPvpFighter 把功法 % 加进同池后一次乘
+    _flatAtk, _flatDef, _flatHp, _flatSpd,
+    _pctSumAtk: nonPassiveAtkPct, _pctSumDef: nonPassiveDefPct,
+    _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
   } as any
 
   // 战力综合评分（用于匹配/赔率）

@@ -64,6 +64,8 @@ async function buildPlayerBattleStats(char: any): Promise<{
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
+  // v3.7 加法池：所有非功法被动 % 累加（小数, 0.10=10%），最后一次乘
+  let nonPassiveAtkPct = 0, nonPassiveDefPct = 0, nonPassiveHpPct = 0, nonPassiveSpdPct = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -114,28 +116,27 @@ async function buildPlayerBattleStats(char: any): Promise<{
     }
   }
 
-  const totalAtkPct = weaponAtkPct + equipAtkPct
-  const totalSpdPct = weaponSpdPct + equipSpdPct
-  if (totalAtkPct > 0) atk = Math.floor(atk * (1 + totalAtkPct / 100))
-  if (equipDefPct > 0) def = Math.floor(def * (1 + equipDefPct / 100))
-  if (equipHpPct > 0) maxHp = Math.floor(maxHp * (1 + equipHpPct / 100))
-  if (totalSpdPct > 0) spd = Math.floor(spd * (1 + totalSpdPct / 100))
+  // 武器+装备 % → 加法池
+  nonPassiveAtkPct += (weaponAtkPct + equipAtkPct) / 100
+  nonPassiveDefPct += equipDefPct / 100
+  nonPassiveHpPct  += equipHpPct / 100
+  nonPassiveSpdPct += (weaponSpdPct + equipSpdPct) / 100
   if (weaponSpiritPct > 0) spirit = Math.floor(spirit * (1 + weaponSpiritPct / 100))
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
   lifesteal += weaponLifestealFlat / 100
 
-  // 丹药
+  // 丹药 → 加法池（保留 team 原有的简化数值 0.15/0.20/0.10）
   for (const buff of buffRows) {
     if (buff.expire_time && new Date(buff.expire_time).getTime() <= Date.now()) continue
     const qf = Number(buff.quality_factor) || 1.0
-    if (buff.pill_id === 'atk_pill_1') atk = Math.floor(atk * (1 + 0.15 * qf))
-    if (buff.pill_id === 'def_pill_1') def = Math.floor(def * (1 + 0.15 * qf))
-    if (buff.pill_id === 'hp_pill_1') maxHp = Math.floor(maxHp * (1 + 0.20 * qf))
+    if (buff.pill_id === 'atk_pill_1') nonPassiveAtkPct += 0.15 * qf
+    if (buff.pill_id === 'def_pill_1') nonPassiveDefPct += 0.15 * qf
+    if (buff.pill_id === 'hp_pill_1')  nonPassiveHpPct  += 0.20 * qf
     if (buff.pill_id === 'full_pill_1') {
-      atk = Math.floor(atk * (1 + 0.10 * qf))
-      def = Math.floor(def * (1 + 0.10 * qf))
-      maxHp = Math.floor(maxHp * (1 + 0.10 * qf))
+      nonPassiveAtkPct += 0.10 * qf
+      nonPassiveDefPct += 0.10 * qf
+      nonPassiveHpPct  += 0.10 * qf
     }
   }
 
@@ -145,24 +146,24 @@ async function buildPlayerBattleStats(char: any): Promise<{
     if (cave.building_id === 'martial_hall' && cave.level > 0) expBonusPercent += 5 + (cave.level - 1) * 2
   }
 
-  // 境界百分比
-  if (realmBonus.hp_pct > 0) maxHp = Math.floor(maxHp * (1 + realmBonus.hp_pct / 100))
-  if (realmBonus.atk_pct > 0) atk = Math.floor(atk * (1 + realmBonus.atk_pct / 100))
-  if (realmBonus.def_pct > 0) def = Math.floor(def * (1 + realmBonus.def_pct / 100))
+  // 境界百分比 → 加法池
+  if (realmBonus.hp_pct > 0) nonPassiveHpPct  += realmBonus.hp_pct / 100
+  if (realmBonus.atk_pct > 0) nonPassiveAtkPct += realmBonus.atk_pct / 100
+  if (realmBonus.def_pct > 0) nonPassiveDefPct += realmBonus.def_pct / 100
 
-  // 永久加成
+  // 永久加成 → 加法池
   const permAtkPct = Number(char.permanent_atk_pct || 0)
   const permDefPct = Number(char.permanent_def_pct || 0)
   const permHpPct = Number(char.permanent_hp_pct || 0)
-  if (permAtkPct > 0) atk = Math.floor(atk * (1 + permAtkPct / 100))
-  if (permDefPct > 0) def = Math.floor(def * (1 + permDefPct / 100))
-  if (permHpPct > 0) maxHp = Math.floor(maxHp * (1 + permHpPct / 100))
+  if (permAtkPct > 0) nonPassiveAtkPct += permAtkPct / 100
+  if (permDefPct > 0) nonPassiveDefPct += permDefPct / 100
+  if (permHpPct > 0) nonPassiveHpPct  += permHpPct / 100
 
-  // 宗门加成
+  // 宗门加成 → 加法池
   if (char._sectLevel) {
     const sectCfg = getSectLevelConfig(char._sectLevel)
-    atk = Math.floor(atk * (1 + sectCfg.atkBonus))
-    def = Math.floor(def * (1 + sectCfg.defBonus))
+    nonPassiveAtkPct += sectCfg.atkBonus
+    nonPassiveDefPct += sectCfg.defBonus
     expBonusPercent += sectCfg.expBonus * 100
   }
   if (char._sectSkills && Array.isArray(char._sectSkills)) {
@@ -171,16 +172,23 @@ async function buildPlayerBattleStats(char: any): Promise<{
       if (!skillCfg) continue
       const effects = calcSectSkillEffect(skillCfg, ss.level)
       if (effects.spirit_percent) spirit += Math.floor(spirit * effects.spirit_percent / 100)
-      if (effects.hp_percent) maxHp = Math.floor(maxHp * (1 + effects.hp_percent / 100))
+      if (effects.hp_percent) nonPassiveHpPct += effects.hp_percent / 100
       if (effects.armor_pen_percent) armorPen += Math.floor(armorPen * effects.armor_pen_percent / 100) + Math.floor(effects.armor_pen_percent)
       if (effects.all_percent) {
-        atk = Math.floor(atk * (1 + effects.all_percent / 100))
-        def = Math.floor(def * (1 + effects.all_percent / 100))
-        maxHp = Math.floor(maxHp * (1 + effects.all_percent / 100))
-        spd = Math.floor(spd * (1 + effects.all_percent / 100))
+        nonPassiveAtkPct += effects.all_percent / 100
+        nonPassiveDefPct += effects.all_percent / 100
+        nonPassiveHpPct  += effects.all_percent / 100
+        nonPassiveSpdPct += effects.all_percent / 100
       }
     }
   }
+
+  // 加法池一次乘（不含功法被动 — teamBattleEngine 把功法 % 加进同池后再一次乘）
+  const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd
+  atk   = Math.floor(_flatAtk * (1 + nonPassiveAtkPct))
+  def   = Math.floor(_flatDef * (1 + nonPassiveDefPct))
+  maxHp = Math.floor(_flatHp  * (1 + nonPassiveHpPct))
+  spd   = Math.floor(_flatSpd * (1 + nonPassiveSpdPct))
 
   // 玩家属性硬上限 (v3.0 从 shared/balance.ts 读取, 与 battle/fight.post.ts 保持一致)
   const stats: BattlerStats = {
@@ -199,7 +207,11 @@ async function buildPlayerBattleStats(char: any): Promise<{
     armorPen: Math.min(PLAYER_CAPS.armorPen, armorPen),
     accuracy: Math.min(PLAYER_CAPS.accuracy, accuracy),
     elementDmg, spirit,
-  }
+    // v3.7 加法池：teamBattleEngine 把功法 % 加进同池后一次乘
+    _flatAtk, _flatDef, _flatHp, _flatSpd,
+    _pctSumAtk: nonPassiveAtkPct, _pctSumDef: nonPassiveDefPct,
+    _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
+  } as any
   const equippedSkills = buildEquippedSkillInfo(skillRows)
   return { stats, equippedSkills, expBonusPercent: expBonusPercent + spiritDensity, luckPercent: luck }
 }

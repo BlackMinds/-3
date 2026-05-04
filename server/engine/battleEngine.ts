@@ -721,10 +721,22 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   const spdRoleMul = SPD_ROLE_MUL[role] ?? 1.0;
   const spdValue = Math.floor(spdBase * spdRoleMul * randFloat(0.85, 1.15));
 
+  // v3.7: 玩家"加法池"重平衡补偿（test/sim-additive-pool.ts 数值模拟，截图角色基准）
+  //   玩家攻击 ×0.44 → 怪物 HP ×0.44 / DEF ×0.44（守恒玩家秒怪 TTK 与"实际伤害"）
+  //   玩家防御 ×0.66 / 血量 ×0.57 (均值 0.62) → 怪物 ATK ×0.62（守恒怪物威胁）
+  //   玩家身法 ×0.96 → 怪物 SPD ×0.96（基本不变，加法池下身法乘子链最短）
+  const MONSTER_HP_MUL  = 0.44;
+  const MONSTER_ATK_MUL = 0.62;
+  const MONSTER_DEF_MUL = 0.44;
+  const MONSTER_SPD_MUL = 0.96;
+
   return {
-    name: template.name, maxHp, hp: maxHp,
-    atk: Math.floor(power * r.atk * ATK_SCALE), def: Math.floor(power * r.def * 0.6),
-    spd: spdValue,
+    name: template.name,
+    maxHp: Math.floor(maxHp * MONSTER_HP_MUL),
+    hp: Math.floor(maxHp * MONSTER_HP_MUL),
+    atk: Math.floor(power * r.atk * ATK_SCALE * MONSTER_ATK_MUL),
+    def: Math.floor(power * r.def * 0.6 * MONSTER_DEF_MUL),
+    spd: Math.floor(spdValue * MONSTER_SPD_MUL),
     crit_rate: Math.min(0.50, critRate), crit_dmg: Math.min(2.5, critDmg), // v3.4: 怪物暴伤 cap 3.0→2.5
     dodge: Math.min(0.30, dodge), lifesteal: Math.min(0.15, lifesteal),
     element: template.element, resists: monsterResists,
@@ -971,10 +983,20 @@ export function runWaveBattle(
   // 应用被动
   if (equippedSkills?.passiveEffects) {
     const p = equippedSkills.passiveEffects;
-    player.atk = Math.floor(player.atk * (1 + p.atkPercent / 100));
-    player.def = Math.floor(player.def * (1 + p.defPercent / 100));
-    player.maxHp = Math.floor(player.maxHp * (1 + p.hpPercent / 100));
-    player.spd = Math.floor(player.spd * (1 + (p.spdPercent || 0) / 100));
+    // v3.7 加法池：功法 % 加进 buildPlayerStats 已挂的 _flat/_pctSum 同池后一次乘
+    // 旧 stats 没挂这些字段时（PK/秘境的快照路径）回退到原乘法保持向后兼容
+    const ps: any = playerStats as any;
+    if (ps._flatAtk !== undefined) {
+      player.atk   = Math.floor(ps._flatAtk * (1 + (ps._pctSumAtk || 0) + p.atkPercent / 100));
+      player.def   = Math.floor(ps._flatDef * (1 + (ps._pctSumDef || 0) + p.defPercent / 100));
+      player.maxHp = Math.floor(ps._flatHp  * (1 + (ps._pctSumHp  || 0) + p.hpPercent / 100));
+      player.spd   = Math.floor(ps._flatSpd * (1 + (ps._pctSumSpd || 0) + (p.spdPercent || 0) / 100));
+    } else {
+      player.atk = Math.floor(player.atk * (1 + p.atkPercent / 100));
+      player.def = Math.floor(player.def * (1 + p.defPercent / 100));
+      player.maxHp = Math.floor(player.maxHp * (1 + p.hpPercent / 100));
+      player.spd = Math.floor(player.spd * (1 + (p.spdPercent || 0) / 100));
+    }
     player.hp = player.maxHp;
     player.crit_rate += p.critRate;
     player.crit_dmg += p.critDmg;

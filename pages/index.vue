@@ -4246,9 +4246,9 @@ function formatStatNum(n: number, unit?: string): string {
   return formatNumber(Math.round(n));
 }
 
-// 主属性 — 严格镜像 server/api/battle/fight.post.ts 的 buildPlayerStats 计算顺序，
-// 让面板与战斗逐步乘除一致（飘渺神行/万毒归一等百分比被动加成基数 = 总值，不是白板）。
-// 同时记录每一步加成来源，供属性详情弹窗显示。
+// 主属性 — 严格镜像 server/api/battle/fight.post.ts 的 buildPlayerStats 计算顺序。
+// v3.7 加法池：所有 % 加成（含功法被动）累加到一个池里，最后一次乘 (1 + sumPct)。
+// 步骤明细中每个 % 条目的 delta 改为按"该 pct / sumPct × 总加成"分摊，便于直观对比贡献。
 const mainStats = computed(() => {
   const c = gameStore.character;
   if (!c) return [];
@@ -4259,94 +4259,106 @@ const mainStats = computed(() => {
   const lb = gameStore.levelBonus;
   const pb = calcPillBuffEffect();
 
-  // 4 条独立的累计 + 步骤明细
+  // ===== flat 段 =====
   const baseAtk = Number(c.atk), baseDef = Number(c.def), baseHp = Number(c.max_hp), baseSpd = Number(c.spd);
-  let atk = baseAtk, def = baseDef, maxHp = baseHp, spd = baseSpd;
-  const atkSteps: StatStep[] = [], defSteps: StatStep[] = [], hpSteps: StatStep[] = [], spdSteps: StatStep[] = [];
-  const push = (arr: StatStep[], source: string, before: number, after: number, note?: string) => {
-    const d = after - before;
-    if (d !== 0) arr.push({ source, delta: d, note });
+  let flatAtk = baseAtk, flatDef = baseDef, flatHp = baseHp, flatSpd = baseSpd;
+  const atkFlatSteps: StatStep[] = [], defFlatSteps: StatStep[] = [], hpFlatSteps: StatStep[] = [], spdFlatSteps: StatStep[] = [];
+  const pushFlat = (arr: StatStep[], source: string, delta: number, note?: string) => {
+    if (delta !== 0) arr.push({ source, delta, note });
   };
 
   // 1) 等级
-  let p = atk; atk += lb.atk; push(atkSteps, '等级加成', p, atk);
-  p = def; def += lb.def; push(defSteps, '等级加成', p, def);
-  p = maxHp; maxHp += lb.hp; push(hpSteps, '等级加成', p, maxHp);
-  p = spd; spd += lb.spd; push(spdSteps, '等级加成', p, spd);
+  flatAtk += lb.atk; pushFlat(atkFlatSteps, '等级加成', lb.atk);
+  flatDef += lb.def; pushFlat(defFlatSteps, '等级加成', lb.def);
+  flatHp  += lb.hp;  pushFlat(hpFlatSteps,  '等级加成', lb.hp);
+  flatSpd += lb.spd; pushFlat(spdFlatSteps, '等级加成', lb.spd);
 
   // 2) 境界 flat
-  p = atk; atk += rb.atk; push(atkSteps, '境界 flat', p, atk);
-  p = def; def += rb.def; push(defSteps, '境界 flat', p, def);
-  p = maxHp; maxHp += rb.hp; push(hpSteps, '境界 flat', p, maxHp);
-  p = spd; spd += rb.spd; push(spdSteps, '境界 flat', p, spd);
+  flatAtk += rb.atk; pushFlat(atkFlatSteps, '境界 flat', rb.atk);
+  flatDef += rb.def; pushFlat(defFlatSteps, '境界 flat', rb.def);
+  flatHp  += rb.hp;  pushFlat(hpFlatSteps,  '境界 flat', rb.hp);
+  flatSpd += rb.spd; pushFlat(spdFlatSteps, '境界 flat', rb.spd);
 
-  // 3) 装备 主属性 + 副属性 flat（聚合后整体显示，避免步骤过多）
-  p = atk; atk += eb.ATK || 0; push(atkSteps, '装备 主+副属性', p, atk);
-  p = def; def += eb.DEF || 0; push(defSteps, '装备 主+副属性', p, def);
-  p = maxHp; maxHp += eb.HP || 0; push(hpSteps, '装备 主+副属性', p, maxHp);
-  p = spd; spd += eb.SPD || 0; push(spdSteps, '装备 主+副属性', p, spd);
+  // 3) 装备 主+副属性 flat
+  flatAtk += eb.ATK || 0; pushFlat(atkFlatSteps, '装备 主+副属性', eb.ATK || 0);
+  flatDef += eb.DEF || 0; pushFlat(defFlatSteps, '装备 主+副属性', eb.DEF || 0);
+  flatHp  += eb.HP  || 0; pushFlat(hpFlatSteps,  '装备 主+副属性', eb.HP  || 0);
+  flatSpd += eb.SPD || 0; pushFlat(spdFlatSteps, '装备 主+副属性', eb.SPD || 0);
 
-  // 4) 附灵主属性 %
-  if (ab.atkPct > 0) { p = atk; atk = Math.floor(atk * (1 + ab.atkPct)); push(atkSteps, `附灵 +${(ab.atkPct * 100).toFixed(1)}%`, p, atk); }
-  if (ab.defPct > 0) { p = def; def = Math.floor(def * (1 + ab.defPct)); push(defSteps, `附灵 +${(ab.defPct * 100).toFixed(1)}%`, p, def); }
-  if (ab.hpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + ab.hpPct)); push(hpSteps, `附灵 +${(ab.hpPct * 100).toFixed(1)}%`, p, maxHp); }
-  if (ab.spdPct > 0) { p = spd; spd = Math.floor(spd * (1 + ab.spdPct)); push(spdSteps, `附灵 +${(ab.spdPct * 100).toFixed(1)}%`, p, spd); }
+  // 4) 丹药 flat
+  flatAtk += pb.atkFlat || 0; pushFlat(atkFlatSteps, '丹药 flat', pb.atkFlat || 0);
+  flatDef += pb.defFlat || 0; pushFlat(defFlatSteps, '丹药 flat', pb.defFlat || 0);
+  flatHp  += pb.hpFlat  || 0; pushFlat(hpFlatSteps,  '丹药 flat', pb.hpFlat  || 0);
+  flatSpd += pb.spdFlat || 0; pushFlat(spdFlatSteps, '丹药 flat', pb.spdFlat || 0);
 
-  // 5) 武器类型 + 装备副属性 X_PCT 合并一次乘
+  // ===== 加法池 % 段（小数, 0.10 = 10%）=====
+  // 每条记录 (source, pct, note?) — 用于详情弹窗按贡献比例分摊 delta
+  type PctEntry = { source: string; pct: number; note?: string };
+  const atkPctEntries: PctEntry[] = [], defPctEntries: PctEntry[] = [],
+        hpPctEntries: PctEntry[] = [],  spdPctEntries: PctEntry[] = [];
+
+  // 4a) 附灵 %
+  if (ab.atkPct > 0) atkPctEntries.push({ source: '附灵', pct: ab.atkPct });
+  if (ab.defPct > 0) defPctEntries.push({ source: '附灵', pct: ab.defPct });
+  if (ab.hpPct  > 0) hpPctEntries.push({  source: '附灵', pct: ab.hpPct });
+  if (ab.spdPct > 0) spdPctEntries.push({ source: '附灵', pct: ab.spdPct });
+
+  // 4b) 武器类型 + 装备副属性 X_PCT
   const equipAtkPct = (eb as any).ATK_PCT || 0;
   const equipDefPct = (eb as any).DEF_PCT || 0;
-  const equipHpPct = (eb as any).HP_PCT || 0;
+  const equipHpPct  = (eb as any).HP_PCT  || 0;
   const equipSpdPct = (eb as any).SPD_PCT || 0;
   const totalAtkPct = (wb.ATK_percent || 0) + equipAtkPct;
   const totalSpdPct = (wb.SPD_percent || 0) + equipSpdPct;
-  if (totalAtkPct > 0) { p = atk; atk = Math.floor(atk * (1 + totalAtkPct / 100)); push(atkSteps, `武器类型+装备% 合计 +${totalAtkPct.toFixed(1)}%`, p, atk); }
-  if (equipDefPct > 0) { p = def; def = Math.floor(def * (1 + equipDefPct / 100)); push(defSteps, `装备 +${equipDefPct.toFixed(1)}%`, p, def); }
-  if (equipHpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + equipHpPct / 100)); push(hpSteps, `装备 +${equipHpPct.toFixed(1)}%`, p, maxHp); }
-  if (totalSpdPct > 0) { p = spd; spd = Math.floor(spd * (1 + totalSpdPct / 100)); push(spdSteps, `武器类型+装备% 合计 +${totalSpdPct.toFixed(1)}%`, p, spd); }
+  if (totalAtkPct > 0) atkPctEntries.push({ source: '武器类型+装备%', pct: totalAtkPct / 100 });
+  if (equipDefPct > 0) defPctEntries.push({ source: '装备%',          pct: equipDefPct / 100 });
+  if (equipHpPct  > 0) hpPctEntries.push({  source: '装备%',          pct: equipHpPct  / 100 });
+  if (totalSpdPct > 0) spdPctEntries.push({ source: '武器类型+装备%', pct: totalSpdPct / 100 });
 
-  // 6) 丹药 — flat 先加再 pct 乘
-  if ((pb.atkFlat || 0) > 0 || (pb.atk || 0) > 0) { p = atk; atk = Math.floor((atk + (pb.atkFlat || 0)) * (1 + (pb.atk || 0) / 100)); push(atkSteps, `丹药 +${pb.atkFlat || 0} +${(pb.atk || 0).toFixed(1)}%`, p, atk); }
-  if ((pb.defFlat || 0) > 0 || (pb.def || 0) > 0) { p = def; def = Math.floor((def + (pb.defFlat || 0)) * (1 + (pb.def || 0) / 100)); push(defSteps, `丹药 +${pb.defFlat || 0} +${(pb.def || 0).toFixed(1)}%`, p, def); }
-  if ((pb.hpFlat || 0) > 0 || (pb.hp || 0) > 0) { p = maxHp; maxHp = Math.floor((maxHp + (pb.hpFlat || 0)) * (1 + (pb.hp || 0) / 100)); push(hpSteps, `丹药 +${pb.hpFlat || 0} +${(pb.hp || 0).toFixed(1)}%`, p, maxHp); }
-  if ((pb.spdFlat || 0) > 0 || (pb.spd || 0) > 0) { p = spd; spd = Math.floor((spd + (pb.spdFlat || 0)) * (1 + (pb.spd || 0) / 100)); push(spdSteps, `丹药 +${pb.spdFlat || 0} +${(pb.spd || 0).toFixed(1)}%`, p, spd); }
+  // 4c) 丹药 %
+  if ((pb.atk || 0) > 0) atkPctEntries.push({ source: '丹药', pct: (pb.atk || 0) / 100 });
+  if ((pb.def || 0) > 0) defPctEntries.push({ source: '丹药', pct: (pb.def || 0) / 100 });
+  if ((pb.hp  || 0) > 0) hpPctEntries.push({  source: '丹药', pct: (pb.hp  || 0) / 100 });
+  if ((pb.spd || 0) > 0) spdPctEntries.push({ source: '丹药', pct: (pb.spd || 0) / 100 });
 
-  // 7) 境界百分比
-  if (rb.atk_pct > 0) { p = atk; atk = Math.floor(atk * (1 + rb.atk_pct / 100)); push(atkSteps, `境界 +${rb.atk_pct}%`, p, atk); }
-  if (rb.def_pct > 0) { p = def; def = Math.floor(def * (1 + rb.def_pct / 100)); push(defSteps, `境界 +${rb.def_pct}%`, p, def); }
-  if (rb.hp_pct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + rb.hp_pct / 100)); push(hpSteps, `境界 +${rb.hp_pct}%`, p, maxHp); }
+  // 4d) 境界 %
+  if (rb.atk_pct > 0) atkPctEntries.push({ source: '境界', pct: rb.atk_pct / 100 });
+  if (rb.def_pct > 0) defPctEntries.push({ source: '境界', pct: rb.def_pct / 100 });
+  if (rb.hp_pct  > 0) hpPctEntries.push({  source: '境界', pct: rb.hp_pct  / 100 });
 
-  // 8) 道果结晶
+  // 4e) 道果结晶
   const permAtkPct = Number((c as any).permanent_atk_pct || 0);
   const permDefPct = Number((c as any).permanent_def_pct || 0);
-  const permHpPct = Number((c as any).permanent_hp_pct || 0);
-  if (permAtkPct > 0) { p = atk; atk = Math.floor(atk * (1 + permAtkPct / 100)); push(atkSteps, `道果结晶 +${permAtkPct}%`, p, atk); }
-  if (permDefPct > 0) { p = def; def = Math.floor(def * (1 + permDefPct / 100)); push(defSteps, `道果结晶 +${permDefPct}%`, p, def); }
-  if (permHpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + permHpPct / 100)); push(hpSteps, `道果结晶 +${permHpPct}%`, p, maxHp); }
+  const permHpPct  = Number((c as any).permanent_hp_pct  || 0);
+  if (permAtkPct > 0) atkPctEntries.push({ source: '道果结晶', pct: permAtkPct / 100 });
+  if (permDefPct > 0) defPctEntries.push({ source: '道果结晶', pct: permDefPct / 100 });
+  if (permHpPct  > 0) hpPctEntries.push({  source: '道果结晶', pct: permHpPct  / 100 });
 
-  // 9a) 宗门等级加成
+  // 4f) 宗门等级
   const sect = sectInfo.value;
   if (sect && sect.sect) {
     const sAtk = Number(sect.sect.atk_bonus || 0);
     const sDef = Number(sect.sect.def_bonus || 0);
-    if (sAtk > 0) { p = atk; atk = Math.floor(atk * (1 + sAtk)); push(atkSteps, `宗门等级 +${(sAtk * 100).toFixed(0)}%`, p, atk); }
-    if (sDef > 0) { p = def; def = Math.floor(def * (1 + sDef)); push(defSteps, `宗门等级 +${(sDef * 100).toFixed(0)}%`, p, def); }
+    if (sAtk > 0) atkPctEntries.push({ source: '宗门等级', pct: sAtk });
+    if (sDef > 0) defPctEntries.push({ source: '宗门等级', pct: sDef });
   }
-  // 9b) 宗门技能（已学且未冻结）
+
+  // 4g) 宗门技能
   for (const s of sectSkillsList.value) {
     if (!s || !s.learned || s.frozen) continue;
     const eff = s.currentEffects;
     if (!eff) continue;
-    if (eff.hp_percent) { p = maxHp; maxHp = Math.floor(maxHp * (1 + eff.hp_percent / 100)); push(hpSteps, `${s.name} +${eff.hp_percent.toFixed(1)}%`, p, maxHp); }
+    if (eff.hp_percent)  hpPctEntries.push({ source: s.name, pct: eff.hp_percent / 100 });
     if (eff.all_percent) {
-      const pct = eff.all_percent;
-      p = atk; atk = Math.floor(atk * (1 + pct / 100)); push(atkSteps, `${s.name} +${pct.toFixed(1)}%`, p, atk);
-      p = def; def = Math.floor(def * (1 + pct / 100)); push(defSteps, `${s.name} +${pct.toFixed(1)}%`, p, def);
-      p = maxHp; maxHp = Math.floor(maxHp * (1 + pct / 100)); push(hpSteps, `${s.name} +${pct.toFixed(1)}%`, p, maxHp);
-      p = spd; spd = Math.floor(spd * (1 + pct / 100)); push(spdSteps, `${s.name} +${pct.toFixed(1)}%`, p, spd);
+      const v = eff.all_percent / 100;
+      atkPctEntries.push({ source: s.name, pct: v });
+      defPctEntries.push({ source: s.name, pct: v });
+      hpPctEntries.push({  source: s.name, pct: v });
+      spdPctEntries.push({ source: s.name, pct: v });
     }
   }
 
-  // 10) 功法被动百分比（最后乘，含 PASSIVE_PCT_CAP=40）
+  // 4h) 功法被动 (PASSIVE_PCT_CAP=40 单类硬上限)
   let passAtkPct = 0, passDefPct = 0, passHpPct = 0, passSpdPct = 0;
   const passNames: string[] = [];
   for (let i = 0; i < equippedPassives.value.length; i++) {
@@ -4357,26 +4369,47 @@ const mainStats = computed(() => {
     let hit = false;
     if (pp.effect.ATK_percent) { passAtkPct += pp.effect.ATK_percent * lvMul; hit = true; }
     if (pp.effect.DEF_percent) { passDefPct += pp.effect.DEF_percent * lvMul; hit = true; }
-    if (pp.effect.HP_percent) { passHpPct += pp.effect.HP_percent * lvMul; hit = true; }
+    if (pp.effect.HP_percent)  { passHpPct  += pp.effect.HP_percent  * lvMul; hit = true; }
     if (pp.effect.SPD_percent) { passSpdPct += pp.effect.SPD_percent * lvMul; hit = true; }
     if (hit) passNames.push(`${pp.name} Lv${lv}`);
   }
   const PASSIVE_PCT_CAP = 40;
   passAtkPct = Math.min(passAtkPct, PASSIVE_PCT_CAP);
   passDefPct = Math.min(passDefPct, PASSIVE_PCT_CAP);
-  passHpPct = Math.min(passHpPct, PASSIVE_PCT_CAP);
+  passHpPct  = Math.min(passHpPct,  PASSIVE_PCT_CAP);
   passSpdPct = Math.min(passSpdPct, PASSIVE_PCT_CAP);
   const passNote = passNames.join(' / ');
-  if (passAtkPct > 0) { p = atk; atk = Math.floor(atk * (1 + passAtkPct / 100)); push(atkSteps, `功法被动 +${passAtkPct.toFixed(1)}%`, p, atk, passNote); }
-  if (passDefPct > 0) { p = def; def = Math.floor(def * (1 + passDefPct / 100)); push(defSteps, `功法被动 +${passDefPct.toFixed(1)}%`, p, def, passNote); }
-  if (passHpPct > 0) { p = maxHp; maxHp = Math.floor(maxHp * (1 + passHpPct / 100)); push(hpSteps, `功法被动 +${passHpPct.toFixed(1)}%`, p, maxHp, passNote); }
-  if (passSpdPct > 0) { p = spd; spd = Math.floor(spd * (1 + passSpdPct / 100)); push(spdSteps, `功法被动 +${passSpdPct.toFixed(1)}%`, p, spd, passNote); }
+  if (passAtkPct > 0) atkPctEntries.push({ source: '功法被动', pct: passAtkPct / 100, note: passNote });
+  if (passDefPct > 0) defPctEntries.push({ source: '功法被动', pct: passDefPct / 100, note: passNote });
+  if (passHpPct  > 0) hpPctEntries.push({  source: '功法被动', pct: passHpPct  / 100, note: passNote });
+  if (passSpdPct > 0) spdPctEntries.push({ source: '功法被动', pct: passSpdPct / 100, note: passNote });
+
+  // ===== 加法池一次乘 + 各条按贡献比例分摊 delta =====
+  const compose = (flat: number, flatSteps: StatStep[], pctEntries: PctEntry[]): { total: number; steps: StatStep[] } => {
+    const sumPct = pctEntries.reduce((a, e) => a + e.pct, 0);
+    const total = Math.floor(flat * (1 + sumPct));
+    const totalPctDelta = total - flat;
+    const steps: StatStep[] = [...flatSteps];
+    for (const e of pctEntries) {
+      // delta = 该条 pct 占总 pct 的比例 × 总 % 加成量；最后一条吃掉 floor 误差
+      const isLast = e === pctEntries[pctEntries.length - 1];
+      const used = steps.slice(flatSteps.length).reduce((a, s) => a + s.delta, 0);
+      const delta = isLast ? (totalPctDelta - used) : Math.round(totalPctDelta * (e.pct / sumPct));
+      if (delta !== 0) steps.push({ source: `${e.source} +${(e.pct * 100).toFixed(1)}%`, delta, note: e.note });
+    }
+    return { total, steps };
+  };
+
+  const atkR = compose(flatAtk, atkFlatSteps, atkPctEntries);
+  const defR = compose(flatDef, defFlatSteps, defPctEntries);
+  const hpR  = compose(flatHp,  hpFlatSteps,  hpPctEntries);
+  const spdR = compose(flatSpd, spdFlatSteps, spdPctEntries);
 
   return [
-    { label: '气血', value: formatNum(maxHp), bonus: maxHp - baseHp, base: baseHp, total: maxHp, steps: hpSteps, unit: '' },
-    { label: '攻击', value: formatNum(atk), bonus: atk - baseAtk, base: baseAtk, total: atk, steps: atkSteps, unit: '' },
-    { label: '防御', value: formatNum(def), bonus: def - baseDef, base: baseDef, total: def, steps: defSteps, unit: '' },
-    { label: '身法', value: formatNum(spd), bonus: spd - baseSpd, base: baseSpd, total: spd, steps: spdSteps, unit: '' },
+    { label: '气血', value: formatNum(hpR.total),  bonus: hpR.total  - baseHp,  base: baseHp,  total: hpR.total,  steps: hpR.steps,  unit: '' },
+    { label: '攻击', value: formatNum(atkR.total), bonus: atkR.total - baseAtk, base: baseAtk, total: atkR.total, steps: atkR.steps, unit: '' },
+    { label: '防御', value: formatNum(defR.total), bonus: defR.total - baseDef, base: baseDef, total: defR.total, steps: defR.steps, unit: '' },
+    { label: '身法', value: formatNum(spdR.total), bonus: spdR.total - baseSpd, base: baseSpd, total: spdR.total, steps: spdR.steps, unit: '' },
   ];
 });
 
