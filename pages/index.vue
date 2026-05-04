@@ -396,41 +396,40 @@
                 <option value="none">无套装</option>
                 <option v-for="s in EQUIP_SETS" :key="s.setKey" :value="s.setKey">{{ s.name }}</option>
               </select>
-              <select v-model="attrFilter" class="sell-select" title="按主属性或副属性筛选（含强化条目）">
-                <option value="all">全部属性</option>
-                <optgroup label="主属性">
-                  <option value="ATK">攻击 (ATK)</option>
-                  <option value="DEF">防御 (DEF)</option>
-                  <option value="HP">气血 (HP)</option>
-                  <option value="SPD">身法 (SPD)</option>
-                  <option value="CRIT_RATE">会心率</option>
-                  <option value="CRIT_DMG">会心伤害</option>
-                  <option value="SPIRIT">神识</option>
-                </optgroup>
-                <optgroup label="百分比副属性">
-                  <option value="ATK_PCT">攻击%</option>
-                  <option value="DEF_PCT">防御%</option>
-                  <option value="HP_PCT">气血%</option>
-                  <option value="SPD_PCT">身法%</option>
-                </optgroup>
-                <optgroup label="特殊副属性">
-                  <option value="LIFESTEAL">吸血</option>
-                  <option value="DODGE">闪避</option>
-                  <option value="ARMOR_PEN">破甲</option>
-                  <option value="ACCURACY">命中</option>
-                  <option value="LUCK">福缘</option>
-                  <option value="SPIRIT_DENSITY">灵气浓度</option>
-                  <option value="DOT_DMG_PCT">DOT伤害</option>
-                  <option value="REFLECT_PCT">反伤倍率</option>
-                </optgroup>
-                <optgroup label="五行强化">
-                  <option value="METAL_DMG">金系</option>
-                  <option value="WOOD_DMG">木系</option>
-                  <option value="WATER_DMG">水系</option>
-                  <option value="FIRE_DMG">火系</option>
-                  <option value="EARTH_DMG">土系</option>
-                </optgroup>
-              </select>
+              <div class="attr-picker">
+                <button
+                  type="button"
+                  class="sell-select attr-picker-btn"
+                  :class="{ 'has-selection': attrFilter.length > 0 }"
+                  :title="attrFilter.length > 0 ? attrFilter.map(v => ATTR_LABEL_MAP[v] || v).join('、') : '按主属性或副属性筛选（多选 OR）'"
+                  @click.stop="attrPickerOpen = !attrPickerOpen"
+                >
+                  {{ attrFilterButtonText }}
+                  <span class="attr-picker-caret">▾</span>
+                </button>
+                <div v-if="attrPickerOpen" class="attr-picker-panel" @click.stop>
+                  <div class="attr-picker-head">
+                    <span class="attr-picker-hint">多选 · 命中任一即显示</span>
+                    <button type="button" class="attr-picker-clear" :disabled="attrFilter.length === 0" @click="clearAttrFilter">清空</button>
+                  </div>
+                  <div v-for="g in ATTR_FILTER_GROUPS" :key="g.label" class="attr-picker-group">
+                    <div class="attr-picker-group-title">{{ g.label }}</div>
+                    <label
+                      v-for="it in g.items"
+                      :key="it.value"
+                      class="attr-picker-item"
+                      :class="{ 'is-checked': attrFilter.includes(it.value) }"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="attrFilter.includes(it.value)"
+                        @change="toggleAttrFilter(it.value)"
+                      />
+                      <span>{{ it.label }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
               <button v-if="hasActiveAdvancedFilter" class="filter-btn filter-clear" @click="clearAdvancedFilters" title="清除所有高级筛选">✕ 清除</button>
             </div>
             <div class="bag-actions">
@@ -4101,7 +4100,7 @@ async function doKickMember(charId: number) {
   } catch {}
 }
 
-const IMPEACH_DAYS = 3;
+const IMPEACH_DAYS = 1;
 const leaderInactiveDays = computed(() => {
   const sec = Number(sectInfo.value?.sect?.leader_inactive_seconds ?? 0);
   return Math.floor(sec / 86400);
@@ -6619,19 +6618,92 @@ const sellRarity = ref('white');
 const tierFilter = ref<'all' | number>('all');
 // 高级筛选：套装 / 属性 / 品质
 const setFilter = ref<'all' | 'none' | string>('all');
-const attrFilter = ref<'all' | string>('all');
+// attrFilter：空数组 = 全部属性；多选取并集（OR 命中）
+const attrFilter = ref<string[]>([]);
 const rarityFilter = ref<'all' | string>('all');
+const attrPickerOpen = ref(false);
 
 const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red'];
 
+const ATTR_FILTER_GROUPS: Array<{ label: string; items: Array<{ value: string; label: string }> }> = [
+  {
+    label: '主属性',
+    items: [
+      { value: 'ATK', label: '攻击 (ATK)' },
+      { value: 'DEF', label: '防御 (DEF)' },
+      { value: 'HP', label: '气血 (HP)' },
+      { value: 'SPD', label: '身法 (SPD)' },
+      { value: 'CRIT_RATE', label: '会心率' },
+      { value: 'CRIT_DMG', label: '会心伤害' },
+      { value: 'SPIRIT', label: '神识' },
+    ],
+  },
+  {
+    label: '百分比副属性',
+    items: [
+      { value: 'ATK_PCT', label: '攻击%' },
+      { value: 'DEF_PCT', label: '防御%' },
+      { value: 'HP_PCT', label: '气血%' },
+      { value: 'SPD_PCT', label: '身法%' },
+    ],
+  },
+  {
+    label: '特殊副属性',
+    items: [
+      { value: 'LIFESTEAL', label: '吸血' },
+      { value: 'DODGE', label: '闪避' },
+      { value: 'ARMOR_PEN', label: '破甲' },
+      { value: 'ACCURACY', label: '命中' },
+      { value: 'LUCK', label: '福缘' },
+      { value: 'SPIRIT_DENSITY', label: '灵气浓度' },
+      { value: 'DOT_DMG_PCT', label: 'DOT伤害' },
+      { value: 'REFLECT_PCT', label: '反伤倍率' },
+    ],
+  },
+  {
+    label: '五行强化',
+    items: [
+      { value: 'METAL_DMG', label: '金系' },
+      { value: 'WOOD_DMG', label: '木系' },
+      { value: 'WATER_DMG', label: '水系' },
+      { value: 'FIRE_DMG', label: '火系' },
+      { value: 'EARTH_DMG', label: '土系' },
+    ],
+  },
+];
+const ATTR_LABEL_MAP: Record<string, string> = ATTR_FILTER_GROUPS
+  .flatMap(g => g.items)
+  .reduce((acc, it) => { acc[it.value] = it.label; return acc; }, {} as Record<string, string>);
+
+function toggleAttrFilter(val: string) {
+  const i = attrFilter.value.indexOf(val);
+  if (i >= 0) attrFilter.value.splice(i, 1);
+  else attrFilter.value.push(val);
+}
+function clearAttrFilter() {
+  attrFilter.value = [];
+}
+function closeAttrPicker() { attrPickerOpen.value = false; }
+watch(attrPickerOpen, (open) => {
+  if (open) document.addEventListener('click', closeAttrPicker);
+  else document.removeEventListener('click', closeAttrPicker);
+});
+onBeforeUnmount(() => document.removeEventListener('click', closeAttrPicker));
+const attrFilterButtonText = computed(() => {
+  const n = attrFilter.value.length;
+  if (n === 0) return '全部属性';
+  if (n === 1) return ATTR_LABEL_MAP[attrFilter.value[0]] || attrFilter.value[0];
+  return `已选 ${n} 项`;
+});
+
 // 是否启用了任意高级筛选（用于决定是否显示"清除"按钮）
 const hasActiveAdvancedFilter = computed(() =>
-  setFilter.value !== 'all' || attrFilter.value !== 'all' || rarityFilter.value !== 'all'
+  setFilter.value !== 'all' || attrFilter.value.length > 0 || rarityFilter.value !== 'all'
 );
 
 function clearAdvancedFilters() {
   setFilter.value = 'all';
-  attrFilter.value = 'all';
+  attrFilter.value = [];
   rarityFilter.value = 'all';
 }
 
@@ -6659,12 +6731,12 @@ const filteredBagList = computed(() => {
       list = list.filter(e => e.set_id === setFilter.value);
     }
   }
-  if (attrFilter.value !== 'all') {
-    const want = attrFilter.value;
+  if (attrFilter.value.length > 0) {
+    const wantSet = new Set(attrFilter.value);
     list = list.filter(e => {
-      if (e.primary_stat === want) return true;
+      if (e.primary_stat && wantSet.has(e.primary_stat)) return true;
       const subs = parseSubs(e.sub_stats);
-      return Array.isArray(subs) && subs.some((s: any) => s?.stat === want);
+      return Array.isArray(subs) && subs.some((s: any) => s?.stat && wantSet.has(s.stat));
     });
   }
   return list;
@@ -6691,7 +6763,7 @@ async function batchSell() {
         baseSlot: bagFilter.value !== 'all' ? bagFilter.value : null,
         rarityEq: rarityFilter.value !== 'all' ? rarityFilter.value : null,
         setKey: setFilter.value !== 'all' ? setFilter.value : null,
-        attr: attrFilter.value !== 'all' ? attrFilter.value : null,
+        attr: attrFilter.value.length > 0 ? attrFilter.value : null,
       },
       headers: getAuthHeaders(),
     });
@@ -8507,6 +8579,100 @@ onUnmounted(() => {
   font-family: 'Noto Serif SC', serif;
   font-size: 12px;
   color: var(--ink-medium);
+  cursor: pointer;
+}
+
+.attr-picker {
+  position: relative;
+  display: inline-block;
+}
+.attr-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 90px;
+  text-align: left;
+}
+.attr-picker-btn.has-selection {
+  border-color: var(--gold-ink);
+  color: var(--gold-ink);
+  background: rgba(232, 204, 138, 0.08);
+}
+.attr-picker-caret {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-left: auto;
+}
+.attr-picker-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 220px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 6px 4px;
+  background: var(--paper-dark, #1c1814);
+  border: 1px solid rgba(184, 154, 90, 0.35);
+  border-radius: 3px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.attr-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 8px 6px;
+  border-bottom: 1px dashed rgba(184, 154, 90, 0.2);
+  margin-bottom: 4px;
+}
+.attr-picker-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.attr-picker-clear {
+  background: transparent;
+  border: 1px solid rgba(196, 92, 74, 0.4);
+  border-radius: 2px;
+  color: #c45c4a;
+  font-size: 11px;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+.attr-picker-clear:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.attr-picker-clear:not(:disabled):hover {
+  background: rgba(196, 92, 74, 0.12);
+}
+.attr-picker-group {
+  padding: 2px 0;
+}
+.attr-picker-group-title {
+  font-size: 11px;
+  color: var(--gold-ink);
+  padding: 4px 8px 2px;
+  letter-spacing: 1px;
+}
+.attr-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--ink-medium);
+  cursor: pointer;
+  user-select: none;
+}
+.attr-picker-item:hover {
+  background: rgba(232, 204, 138, 0.06);
+  color: var(--gold-ink);
+}
+.attr-picker-item.is-checked {
+  color: var(--gold-ink);
+}
+.attr-picker-item input[type="checkbox"] {
+  accent-color: var(--gold-ink, #d4af37);
   cursor: pointer;
 }
 

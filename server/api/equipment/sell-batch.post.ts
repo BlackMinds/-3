@@ -35,7 +35,12 @@ export default defineEventHandler(async (event) => {
   const useSetEq = typeof setKey === 'string' && setKey !== 'none' && setKey.length > 0
 
   // attr 过滤（主属性或副属性命中）后置在 JS 里做，避免复杂 JSON SQL
-  const useAttr = typeof attr === 'string' && attr.length > 0
+  // 兼容旧的单值字符串与新的数组（多选 OR 命中）
+  const attrList: string[] = Array.isArray(attr)
+    ? attr.filter((v: any) => typeof v === 'string' && v.length > 0)
+    : (typeof attr === 'string' && attr.length > 0 ? [attr] : [])
+  const useAttr = attrList.length > 0
+  const attrSet = new Set(attrList)
 
   const char = await getCharId(event.context.userId)
   if (!char) return { code: 400, message: '角色不存在' }
@@ -46,11 +51,18 @@ export default defineEventHandler(async (event) => {
     await client.query('BEGIN')
 
     // 拼装 SQL：基础条件 + 可选过滤
+    // slot IS NULL 的装备仍可能挂在非激活方案里（切方案时 slot 字段会被清空），
+    // 用 NOT IN 子查询排除掉所有被任意方案 loadout 引用的装备 id
     const where: string[] = [
       'character_id = $1',
       'slot IS NULL',
       'rarity = ANY($2)',
       'COALESCE(locked, FALSE) = FALSE',
+      `id NOT IN (
+         SELECT (v)::text::int
+         FROM character_equipment_loadouts l, jsonb_each(l.slots) AS s(k, v)
+         WHERE l.character_id = $1
+       )`,
     ]
     const params: any[] = [charId, allowedFinal]
 
@@ -75,16 +87,16 @@ export default defineEventHandler(async (event) => {
                  FOR UPDATE`
     const { rows } = await client.query(sql, params)
 
-    // 内存里再做 attr 过滤（主属性 / 副属性命中）
+    // 内存里再做 attr 过滤（主属性 / 副属性命中，多选取并集）
     let filteredRows = rows
     if (useAttr) {
       filteredRows = rows.filter(eq => {
-        if (eq.primary_stat === attr) return true
+        if (eq.primary_stat && attrSet.has(eq.primary_stat)) return true
         let subs: any = eq.sub_stats
         if (typeof subs === 'string') {
           try { subs = JSON.parse(subs) } catch { subs = [] }
         }
-        return Array.isArray(subs) && subs.some((s: any) => s?.stat === attr)
+        return Array.isArray(subs) && subs.some((s: any) => s?.stat && attrSet.has(s.stat))
       })
     }
 

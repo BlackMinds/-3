@@ -19,6 +19,18 @@ export default defineEventHandler(async (event) => {
 
     if (equipRows.length === 0) return { code: 400, message: '装备不存在或已穿戴' }
 
+    // slot=NULL 的装备仍可能挂在非激活方案里（切方案时 slot 字段会被清空）
+    const { rows: refRows } = await pool.query(
+      `SELECT loadout_id FROM character_equipment_loadouts l, jsonb_each(l.slots) AS s(k, v)
+       WHERE l.character_id = $1 AND (v)::text::int = $2
+       ORDER BY loadout_id`,
+      [charId, equip_id]
+    )
+    if (refRows.length > 0) {
+      const ids = refRows.map(r => r.loadout_id).join('/')
+      return { code: 400, message: `装备已挂在方案 ${ids}，请先在方案中取下` }
+    }
+
     const enhLv = equipRows[0].enhance_level || 0
     const price = Math.floor((EQUIP_SELL_PRICES[equipRows[0].rarity] || 10) * equipRows[0].tier * (1 + enhLv * 0.1))
 
