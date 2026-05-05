@@ -98,6 +98,33 @@
           </div>
         </div>
 
+        <!-- 木桩属性自定义面板 -->
+        <div v-if="gameStore.currentMapId === 'dummy_arena' && !gameStore.isBattling" class="dummy-panel">
+          <div class="dummy-panel-title">木桩属性（仅普通攻击 · 无奖励）</div>
+          <div class="dummy-grid">
+            <label class="dummy-field"><span>血量</span><input type="number" min="1" v-model.number="gameStore.dummyStats.maxHp" /></label>
+            <label class="dummy-field"><span>攻击</span><input type="number" min="0" v-model.number="gameStore.dummyStats.atk" /></label>
+            <label class="dummy-field"><span>防御</span><input type="number" min="0" v-model.number="gameStore.dummyStats.def" /></label>
+            <label class="dummy-field"><span>速度</span><input type="number" min="0" v-model.number="gameStore.dummyStats.spd" /></label>
+            <label class="dummy-field"><span>暴击率</span><input type="number" step="0.01" min="0" max="1" v-model.number="gameStore.dummyStats.crit_rate" /></label>
+            <label class="dummy-field"><span>暴击伤害</span><input type="number" step="0.1" min="1" max="10" v-model.number="gameStore.dummyStats.crit_dmg" /></label>
+            <label class="dummy-field"><span>闪避</span><input type="number" step="0.01" min="0" max="0.9" v-model.number="gameStore.dummyStats.dodge" /></label>
+            <label class="dummy-field"><span>破甲</span><input type="number" min="0" max="100" v-model.number="gameStore.dummyStats.armorPen" /></label>
+            <label class="dummy-field"><span>命中</span><input type="number" min="0" max="1000" v-model.number="gameStore.dummyStats.accuracy" /></label>
+            <label class="dummy-field">
+              <span>属性</span>
+              <select v-model="gameStore.dummyStats.element">
+                <option :value="null">无</option>
+                <option value="metal">金</option>
+                <option value="wood">木</option>
+                <option value="water">水</option>
+                <option value="fire">火</option>
+                <option value="earth">土</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
         <!-- 战斗控制 -->
         <div class="battle-controls">
           <button
@@ -130,8 +157,12 @@
             秘境组队
           </button>
           <template v-else>
-            <button class="ctrl-btn stop-btn" @click="gameStore.stopBattle()">
-              离开
+            <button
+              class="ctrl-btn stop-btn"
+              :class="{ 'stop-btn-dummy': gameStore.currentMapId === 'dummy_arena' }"
+              @click="gameStore.stopBattle()"
+            >
+              {{ gameStore.currentMapId === 'dummy_arena' ? '中断测试' : '离开' }}
             </button>
           </template>
           <div class="battle-stats" v-if="gameStore.isBattling">
@@ -1834,23 +1865,25 @@
             </tbody></table>
           </div>
 
-          <!-- 按地图列出 -->
-          <div class="drop-section" v-for="map in gameStore.unlockedMaps" :key="map.id">
-            <div class="map-name">{{ map.name }} (T{{ map.tier }})</div>
-            <div class="drop-detail">
-              <div class="drop-monsters">
-                <span v-for="m in map.monsters" :key="m.id" class="drop-monster-tag" :style="{ color: m.element ? elemColor(m.element) : '#ccc' }">
-                  {{ m.name }}({{ m.element ? elemName(m.element) : '无' }})
-                </span>
-                <span v-if="map.boss" class="drop-monster-tag" style="color: #FFAA00; font-weight: bold;">
-                  Boss: {{ map.boss.name }}
-                </span>
+          <!-- 按地图列出（木桩演武场无奖励，跳过） -->
+          <template v-for="map in gameStore.unlockedMaps" :key="map.id">
+            <div class="drop-section" v-if="map.id !== 'dummy_arena'">
+              <div class="map-name">{{ map.name }} (T{{ map.tier }})</div>
+              <div class="drop-detail">
+                <div class="drop-monsters">
+                  <span v-for="m in map.monsters" :key="m.id" class="drop-monster-tag" :style="{ color: m.element ? elemColor(m.element) : '#ccc' }">
+                    {{ m.name }}({{ m.element ? elemName(m.element) : '无' }})
+                  </span>
+                  <span v-if="map.boss" class="drop-monster-tag" style="color: #FFAA00; font-weight: bold;">
+                    Boss: {{ map.boss.name }}
+                  </span>
+                </div>
+                <p>装备: T{{ map.tier }}阶 {{ dropQualityRange(map.tier) }}</p>
+                <p>功法: {{ dropSkillRange(map.tier) }}</p>
+                <p>灵草: {{ dropHerbInfo(map) }}</p>
               </div>
-              <p>装备: T{{ map.tier }}阶 {{ dropQualityRange(map.tier) }}</p>
-              <p>功法: {{ dropSkillRange(map.tier) }}</p>
-              <p>灵草: {{ dropHerbInfo(map) }}</p>
             </div>
-          </div>
+          </template>
 
           <!-- 装备品质分布 -->
           <div class="drop-section" style="margin-top: 12px;">
@@ -2365,9 +2398,9 @@
             <p class="help-text">回合制自动战斗,每波 1-5 只怪同时出现。玩家每回合攻击血量最低的怪,所有存活怪每回合攻击玩家。主修功法每回合施展,神通按 CD 自动释放(优先级更高)。</p>
             <p class="help-text" style="margin-top: 4px;">10 种异常状态:</p>
             <table class="help-table"><tbody>
-              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×18%火伤</td></tr>
-              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受目标气血×4%毒伤</td></tr>
-              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×13%物伤</td></tr>
+              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×25%火伤</td></tr>
+              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受目标气血×3%毒伤</td></tr>
+              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×18%物伤</td></tr>
               <tr><td style="color: #5b8eaa;">冻结</td><td>无法行动(控制类,受控抗影响)</td></tr>
               <tr><td style="color: #c9a85c;">眩晕</td><td>无法行动(控制类,受控抗影响)</td></tr>
               <tr><td style="color: #5b8eaa;">减速</td><td>必定后攻</td></tr>
@@ -2387,11 +2420,11 @@
           </div>
           <div class="help-section">
             <div class="help-title">DOT 流派 (持续伤害)</div>
-            <p class="help-text">三种 DOT 公式 (v3.6 上调 ~30%):</p>
+            <p class="help-text">三种 DOT 公式 (v3.8 中毒下调 5%→3%):</p>
             <table class="help-table"><tbody>
-              <tr><td>灼烧 (火)</td><td>攻击力 × 18% / 回合</td></tr>
-              <tr><td>中毒 (木)</td><td>目标气血 × 4% / 回合</td></tr>
-              <tr><td>流血 (金)</td><td>攻击力 × 13% / 回合</td></tr>
+              <tr><td>灼烧 (火)</td><td>攻击力 × 25% / 回合</td></tr>
+              <tr><td>中毒 (木)</td><td>目标气血 × 3% / 回合</td></tr>
+              <tr><td>流血 (金)</td><td>攻击力 × 18% / 回合</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;"><b>DOT 加成链:</b>装备副属性「DOT伤害 +5~25%」 → 功法「万毒归一」+25% → 主修元素灵戒 (金鸣戒+流血/木灵戒+中毒/<b>焚天烬戒+灼烧</b>) → 神通基础 dot duration。多源叠加。</p>
             <p class="help-text" style="margin-top: 4px;">紫色 DOT 神通: <b>毒液冲击</b> (3 段中毒)、<b>血雨腥风</b> (AOE 流血)、<b>焚天烈魂</b> (AOE 灼烧 + 自身 atk +20%)、剑雨纷飞、双焰斩、连环掌、九天玄火阵。</p>
@@ -3004,7 +3037,7 @@
           <!-- 自动出售 -->
           <div class="settings-section">
             <div class="settings-title">自动出售</div>
-            <p class="settings-desc">战斗掉落的装备同时满足品质和阶位条件时自动出售为灵石；套装件默认保留，可在右侧勾选不需要的套装一并自动出售</p>
+            <p class="settings-desc">战斗掉落的装备同时满足品质和阶位条件时自动出售为灵石；套装件默认保留，可在右侧勾选不需要的套装一并自动出售；勾选"无套装"则散件按规则自动卖，取消勾选可保留所有无套装散件</p>
             <div class="auto-sell-group">
               <div class="auto-sell-col">
                 <div class="auto-sell-subtitle">品质筛选</div>
@@ -3027,6 +3060,10 @@
               <div class="auto-sell-col">
                 <div class="auto-sell-subtitle">套装筛选（勾选 = 不要，会被自动卖）</div>
                 <div class="auto-sell-options">
+                  <label class="auto-sell-label" title="无套装的散件装备">
+                    <input type="checkbox" v-model="autoSellNoSet" @change="saveSettings" />
+                    <span style="color: #aaaaaa;">无套装</span>
+                  </label>
                   <label v-for="s in EQUIP_SETS" :key="s.setKey" class="auto-sell-label" :title="s.desc">
                     <input type="checkbox" :value="s.setKey" v-model="autoSellSetBlacklist" @change="saveSettings" />
                     <span style="color: #ffd35e;">{{ s.name }}</span>
@@ -3038,7 +3075,8 @@
               当前: {{ autoSellThreshold === 'none' ? '不自动出售' :
                 '自动出售 ' + autoSellOptions.find(o => o.value === autoSellThreshold)?.label +
                 (autoSellTier > 0 ? ' 且 T' + autoSellTier + '及以下阶位' : '（不限阶位）') + ' 的装备' +
-                (autoSellSetBlacklist.length > 0 ? '；含不要的套装：' + autoSellSetBlacklist.map(k => EQUIP_SET_MAP[k]?.name).filter(Boolean).join('、') : '；保留全部套装') }}
+                (autoSellNoSet ? '；含无套装散件' : '；保留无套装散件') +
+                (autoSellSetBlacklist.length > 0 ? '；含不要的套装：' + autoSellSetBlacklist.map(k => EQUIP_SET_MAP[k]?.name).filter(Boolean).join('、') : '；保留其他全部套装') }}
             </p>
           </div>
 
@@ -3512,6 +3550,8 @@ const autoSellTierOptions = [
 const autoSellTier = ref(0);
 // 套装黑名单：勾选 = 这些套装的装备件不保留，会跟普通装备一起被自动出售
 const autoSellSetBlacklist = ref<string[]>([]);
+// 无套装散件：true = 按品质/阶位规则自动卖；false = 保护无套装散件不卖
+const autoSellNoSet = ref(true);
 
 // ===== 设置: 字体 & 战斗日志字体大小 =====
 const DEFAULT_FONT_FAMILY = "'Noto Serif SC', 'STSong', 'SimSun', serif";
@@ -3545,6 +3585,7 @@ function saveSettings() {
     autoSell: autoSellThreshold.value,
     autoSellTier: autoSellTier.value,
     autoSellSetBlacklist: autoSellSetBlacklist.value,
+    autoSellNoSet: autoSellNoSet.value,
     uiFontFamily: uiFontFamily.value,
     battleLogFontSize: battleLogFontSize.value,
   };
@@ -3559,6 +3600,8 @@ function loadSettings() {
     autoSellThreshold.value = settings.autoSell || 'none';
     autoSellTier.value = settings.autoSellTier || 0;
     autoSellSetBlacklist.value = Array.isArray(settings.autoSellSetBlacklist) ? settings.autoSellSetBlacklist : [];
+    // 旧存档无此字段时默认 true，保持原有"卖无套装散件"行为
+    autoSellNoSet.value = typeof settings.autoSellNoSet === 'boolean' ? settings.autoSellNoSet : true;
     if (settings.uiFontFamily) {
       uiFontFamily.value = settings.uiFontFamily;
       document.documentElement.style.setProperty('--ui-font-family', uiFontFamily.value);
@@ -7429,6 +7472,55 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* ========== 木桩演武场属性面板 ========== */
+.dummy-panel {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  background: rgba(40, 36, 30, 0.6);
+  border: 1px solid rgba(201, 168, 92, 0.25);
+  border-radius: 4px;
+}
+.dummy-panel-title {
+  font-size: 16px;
+  color: var(--gold-ink, #c9a85c);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.dummy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 10px;
+}
+.dummy-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ink-light, #d8ceb8);
+}
+.dummy-field > span {
+  flex: 0 0 60px;
+  letter-spacing: 1px;
+  opacity: 0.85;
+}
+.dummy-field input,
+.dummy-field select {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  background: rgba(20, 18, 16, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: #d8ceb8;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  outline: none;
+}
+.dummy-field input:focus,
+.dummy-field select:focus {
+  border-color: rgba(201, 168, 92, 0.5);
+}
+
 /* ========== 战斗控制 ========== */
 .battle-controls {
   display: flex;
@@ -7578,6 +7670,23 @@ onUnmounted(() => {
 
 .stop-btn:hover {
   background: rgba(196, 92, 74, 0.15);
+}
+
+.stop-btn-dummy {
+  background: rgba(196, 92, 74, 0.25);
+  border-color: rgba(196, 92, 74, 0.55);
+  color: #ffd6cf;
+  font-weight: 600;
+  animation: dummyPulse 1.6s ease-in-out infinite;
+}
+
+.stop-btn-dummy:hover {
+  background: rgba(196, 92, 74, 0.45);
+}
+
+@keyframes dummyPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 92, 74, 0.0); }
+  50%      { box-shadow: 0 0 12px 2px rgba(196, 92, 74, 0.45); }
 }
 
 .battle-stats {

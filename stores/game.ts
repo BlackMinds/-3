@@ -62,6 +62,20 @@ export const useGameStore = defineStore('game', () => {
   const equippedSkills = ref<any>(null)
   const battleFrenzyStacks = ref(0)
 
+  // 木桩演武场自定义属性（仅 currentMapId === 'dummy_arena' 时生效）
+  const dummyStats = ref({
+    maxHp: 100000,
+    atk: 0,
+    def: 0,
+    spd: 0,
+    crit_rate: 0,
+    crit_dmg: 1.5,
+    dodge: 0,
+    armorPen: 0,
+    accuracy: 0,
+    element: null as string | null,
+  })
+
   const caveBonus = ref({
     expBonus: 0,
     skillRate: 0,
@@ -317,23 +331,32 @@ export const useGameStore = defineStore('game', () => {
       let autoSell = 'none'
       let autoSellTier = 0
       let autoSellSetBlacklist: string[] = []
+      let autoSellNoSet = true
       try {
         const s = JSON.parse(localStorage.getItem('xiantu_settings') || '{}')
         autoSell = s.autoSell || 'none'
         autoSellTier = s.autoSellTier || 0
         autoSellSetBlacklist = Array.isArray(s.autoSellSetBlacklist) ? s.autoSellSetBlacklist : []
+        autoSellNoSet = typeof s.autoSellNoSet === 'boolean' ? s.autoSellNoSet : true
       } catch {}
 
-      const res: any = await fetchApi('/battle/fight', {
-        method: 'POST',
-        body: {
-          map_id: currentMapId.value,
-          auto_sell: autoSell,
-          auto_sell_tier: autoSellTier,
-          auto_sell_set_blacklist: autoSellSetBlacklist,
-          batch_count: BATCH_COUNT,
-        },
-      })
+      const isDummy = currentMapId.value === 'dummy_arena'
+      const res: any = isDummy
+        ? await fetchApi('/battle/dummy', {
+            method: 'POST',
+            body: { dummy_stats: dummyStats.value },
+          })
+        : await fetchApi('/battle/fight', {
+            method: 'POST',
+            body: {
+              map_id: currentMapId.value,
+              auto_sell: autoSell,
+              auto_sell_tier: autoSellTier,
+              auto_sell_set_blacklist: autoSellSetBlacklist,
+              auto_sell_no_set: autoSellNoSet,
+              batch_count: BATCH_COUNT,
+            },
+          })
       // 后端已计算整批 → 不论 session 是否过期，守卫都按全批 logs 总时长设置，
       // 防止"开始→离开→立即开始"在请求返回后 expectedBattleEndAt 未被写入就绕过守卫
       const battles: any[] = res?.code === 200 && Array.isArray(res.data?.battles) ? res.data.battles : []
@@ -553,7 +576,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     character, loaded, battleLogs, isBattling, currentMapId,
-    killCount, defeatCount, sessionExp, sessionStone, sessionDrops, battleStartTime, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab,
+    killCount, defeatCount, sessionExp, sessionStone, sessionDrops, battleStartTime, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab, dummyStats,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
     currentMonsterInfo, waveMonstersInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
