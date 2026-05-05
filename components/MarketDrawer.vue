@@ -22,18 +22,12 @@
           <option value="red">仙品（红）</option>
         </select>
         <select v-model="filter.slot" @change="reload">
-          <option value="">全部槽位</option>
-          <option value="weapon">武器</option>
-          <option value="helmet">头盔</option>
-          <option value="armor">铠甲</option>
-          <option value="boots">靴子</option>
-          <option value="ring">戒指</option>
-          <option value="amulet">护符</option>
-          <option value="treasure">法宝</option>
+          <option value="">全部部位</option>
+          <option v-for="s in EQUIP_SLOTS" :key="s.slot" :value="s.slot">{{ s.name }}</option>
         </select>
         <select v-model="filter.tier" @change="reload">
-          <option value="">全部 Tier</option>
-          <option v-for="t in [3,4,5,6,7,8,9,10]" :key="t" :value="t">T{{ t }}</option>
+          <option value="">全部 T 级</option>
+          <option v-for="t in [3,4,5,6,7,8,9,10,11,12]" :key="t" :value="t">T{{ t }}</option>
         </select>
         <select v-model="filter.sort" @change="reload">
           <option value="time_desc">时间↓</option>
@@ -41,13 +35,57 @@
           <option value="price_desc">价格↓</option>
           <option value="cost_performance">性价比</option>
         </select>
+
+        <!-- 属性多选筛选（与背包一致） -->
+        <div class="attr-picker">
+          <button
+            type="button"
+            class="sell-select attr-picker-btn"
+            :class="{ 'has-selection': attrFilter.length > 0 }"
+            :title="attrFilter.length > 0 ? attrFilter.map(v => ATTR_LABEL_MAP[v] || v).join('、') : '按主属性或副属性筛选（多选 AND，需全部命中）'"
+            @click.stop="attrPickerOpen = !attrPickerOpen"
+          >
+            {{ attrFilterButtonText }}
+            <span class="attr-picker-caret">▾</span>
+          </button>
+          <div v-if="attrPickerOpen" class="attr-picker-panel" @click.stop>
+            <div class="attr-picker-head">
+              <span class="attr-picker-hint">多选 · 需全部命中</span>
+              <button type="button" class="attr-picker-clear" :disabled="attrFilter.length === 0" @click="attrFilter = []">清空</button>
+            </div>
+            <div v-for="g in ATTR_FILTER_GROUPS" :key="g.label" class="attr-picker-group">
+              <div class="attr-picker-group-title">{{ g.label }}</div>
+              <label
+                v-for="it in g.items"
+                :key="it.value"
+                class="attr-picker-item"
+                :class="{ 'is-checked': attrFilter.includes(it.value) }"
+              >
+                <input
+                  type="checkbox"
+                  :checked="attrFilter.includes(it.value)"
+                  @change="toggleAttrFilter(it.value)"
+                />
+                <span>{{ it.label }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <button class="btn sm" @click="reload">🔄 刷新</button>
       </div>
 
       <div v-if="tab === 'browse'" class="market-list">
         <div v-if="loading" class="empty">加载中...</div>
-        <div v-else-if="!listings.length" class="empty">暂无挂单</div>
-        <div v-for="l in listings" :key="l.id" class="market-item">
+        <div v-else-if="!filteredListings.length" class="empty">无符合条件的挂单</div>
+        <div
+          v-for="l in filteredListings"
+          :key="l.id"
+          class="market-item"
+          @mouseenter="onHover($event, l.item_snapshot)"
+          @mousemove="onHoverMove"
+          @mouseleave="hoverEquip = null"
+        >
           <div class="item-icon" :class="'rarity-' + l.item_snapshot.rarity">
             {{ slotIcon(l.item_snapshot.base_slot || l.item_snapshot.slot) }}
           </div>
@@ -55,6 +93,8 @@
             <div class="item-title">
               <span :class="'rc-' + l.item_snapshot.rarity">{{ l.item_snapshot.name }}</span>
               <span class="muted">（{{ rarityLabel(l.item_snapshot.rarity) }}·T{{ l.item_snapshot.tier }}<span v-if="l.item_snapshot.enhance_level">·+{{ l.item_snapshot.enhance_level }}</span>）</span>
+              <span v-if="l.item_snapshot.awaken_effect" class="awaken-tag">✦附灵</span>
+              <span v-if="l.item_snapshot.set_id" class="set-tag">❖套装</span>
             </div>
             <div class="item-stats">
               <span>{{ statLabel(l.item_snapshot.primary_stat) }} +{{ l.item_snapshot.primary_value }}</span>
@@ -93,7 +133,14 @@
       <div v-if="tab === 'mine'" class="market-list">
         <div v-if="loading" class="empty">加载中...</div>
         <div v-else-if="!mine.length" class="empty">无挂单</div>
-        <div v-for="l in mine" :key="l.id" class="market-item">
+        <div
+          v-for="l in mine"
+          :key="l.id"
+          class="market-item"
+          @mouseenter="onHover($event, l.item_snapshot)"
+          @mousemove="onHoverMove"
+          @mouseleave="hoverEquip = null"
+        >
           <div class="item-icon" :class="'rarity-' + l.item_snapshot.rarity">
             {{ slotIcon(l.item_snapshot.base_slot || l.item_snapshot.slot) }}
           </div>
@@ -129,7 +176,14 @@
       <div v-if="tab === 'history'" class="market-list">
         <div v-if="loading" class="empty">加载中...</div>
         <div v-else-if="!history.length" class="empty">无记录</div>
-        <div v-for="t in history" :key="t.id" class="market-item">
+        <div
+          v-for="t in history"
+          :key="t.id"
+          class="market-item"
+          @mouseenter="onHover($event, t.item_snapshot)"
+          @mousemove="onHoverMove"
+          @mouseleave="hoverEquip = null"
+        >
           <div class="item-icon" :class="'rarity-' + t.item_snapshot.rarity">
             {{ slotIcon(t.item_snapshot.base_slot || t.item_snapshot.slot) }}
           </div>
@@ -149,6 +203,11 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 装备 hover 浮窗（fixed 定位，跟随鼠标） -->
+    <div v-if="hoverEquip" class="market-hover-tooltip" :style="{ top: tipY + 'px', left: tipX + 'px' }">
+      <EquipDetail :equip="hoverEquip" />
     </div>
 
     <!-- 上架弹窗 -->
@@ -191,6 +250,9 @@
 </template>
 
 <script setup lang="ts">
+import { EQUIP_SLOTS } from '~/game/equipData'
+import EquipDetail from '~/components/EquipDetail.vue'
+
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 
@@ -202,6 +264,8 @@ const acting = ref(false)
 // 浏览
 const listings = ref<any[]>([])
 const filter = reactive({ rarity: '', slot: '', tier: '' as any, sort: 'time_desc' })
+const attrFilter = ref<string[]>([])
+const attrPickerOpen = ref(false)
 
 // 我的挂单
 const mine = ref<any[]>([])
@@ -220,20 +284,107 @@ const pickedEquip = ref<any>(null)
 const pickedRef = ref<any>(null)
 const sellPrice = ref<number>(0)
 
+// hover tooltip
+const hoverEquip = ref<any>(null)
+const tipX = ref(0)
+const tipY = ref(0)
+
+// 属性多选筛选（与 pages/index.vue 背包保持一致）
+const ATTR_FILTER_GROUPS: Array<{ label: string; items: Array<{ value: string; label: string }> }> = [
+  {
+    label: '主属性',
+    items: [
+      { value: 'ATK', label: '攻击 (ATK)' },
+      { value: 'DEF', label: '防御 (DEF)' },
+      { value: 'HP', label: '气血 (HP)' },
+      { value: 'SPD', label: '身法 (SPD)' },
+      { value: 'CRIT_RATE', label: '会心率' },
+      { value: 'CRIT_DMG', label: '会心伤害' },
+      { value: 'SPIRIT', label: '神识' },
+    ],
+  },
+  {
+    label: '百分比副属性',
+    items: [
+      { value: 'ATK_PCT', label: '攻击%' },
+      { value: 'DEF_PCT', label: '防御%' },
+      { value: 'HP_PCT', label: '气血%' },
+      { value: 'SPD_PCT', label: '身法%' },
+    ],
+  },
+  {
+    label: '特殊副属性',
+    items: [
+      { value: 'LIFESTEAL', label: '吸血' },
+      { value: 'DODGE', label: '闪避' },
+      { value: 'ARMOR_PEN', label: '破甲' },
+      { value: 'ACCURACY', label: '命中' },
+      { value: 'LUCK', label: '福缘' },
+      { value: 'SPIRIT_DENSITY', label: '灵气浓度' },
+      { value: 'DOT_DMG_PCT', label: 'DOT伤害' },
+      { value: 'REFLECT_PCT', label: '反伤倍率' },
+    ],
+  },
+  {
+    label: '五行强化',
+    items: [
+      { value: 'METAL_DMG', label: '金系' },
+      { value: 'WOOD_DMG', label: '木系' },
+      { value: 'WATER_DMG', label: '水系' },
+      { value: 'FIRE_DMG', label: '火系' },
+      { value: 'EARTH_DMG', label: '土系' },
+    ],
+  },
+]
+const ATTR_LABEL_MAP: Record<string, string> = ATTR_FILTER_GROUPS
+  .flatMap(g => g.items)
+  .reduce((acc, it) => { acc[it.value] = it.label; return acc }, {} as Record<string, string>)
+
+function toggleAttrFilter(val: string) {
+  const i = attrFilter.value.indexOf(val)
+  if (i >= 0) attrFilter.value.splice(i, 1)
+  else attrFilter.value.push(val)
+}
+function closeAttrPicker() { attrPickerOpen.value = false }
+watch(attrPickerOpen, (open) => {
+  if (open) document.addEventListener('click', closeAttrPicker)
+  else document.removeEventListener('click', closeAttrPicker)
+})
+onBeforeUnmount(() => document.removeEventListener('click', closeAttrPicker))
+const attrFilterButtonText = computed(() => {
+  const n = attrFilter.value.length
+  if (n === 0) return '全部属性'
+  if (n === 1) return ATTR_LABEL_MAP[attrFilter.value[0]] || attrFilter.value[0]
+  return `已选 ${n} 项`
+})
+
+const filteredListings = computed(() => {
+  if (attrFilter.value.length === 0) return listings.value
+  const wants = attrFilter.value
+  return listings.value.filter(l => {
+    const snap = l.item_snapshot || {}
+    const subs = Array.isArray(snap.sub_stats) ? snap.sub_stats : []
+    const subStats = subs.map((s: any) => s?.stat).filter(Boolean)
+    return wants.every(a => snap.primary_stat === a || subStats.includes(a))
+  })
+})
+
 const RARITY_LABEL: Record<string, string> = {
   white: '凡品', green: '灵品', blue: '玄品', purple: '地品', gold: '天品', red: '仙品',
 }
 const STAT_LABEL: Record<string, string> = {
   ATK: '攻击', DEF: '防御', HP: '气血', SPD: '身法',
   ATK_PCT: '攻击%', DEF_PCT: '防御%', HP_PCT: '气血%', SPD_PCT: '身法%',
-  CRIT_RATE: '暴击率', CRIT_DMG: '暴击伤害',
+  CRIT_RATE: '会心率', CRIT_DMG: '会心伤害',
   DODGE: '闪避', LIFESTEAL: '吸血',
-  ARMOR_PEN: '破甲', ACCURACY: '命中', SPIRIT: '神识', SPIRIT_DENSITY: '灵气密度', LUCK: '幸运',
-  METAL_DMG: '金伤', WOOD_DMG: '木伤', WATER_DMG: '水伤', FIRE_DMG: '火伤', EARTH_DMG: '土伤',
+  ARMOR_PEN: '破甲', ACCURACY: '命中', SPIRIT: '神识',
+  SPIRIT_DENSITY: '灵气浓度', LUCK: '福缘',
+  METAL_DMG: '金系', WOOD_DMG: '木系', WATER_DMG: '水系', FIRE_DMG: '火系', EARTH_DMG: '土系',
+  DOT_DMG_PCT: 'DOT伤害', REFLECT_PCT: '反伤倍率',
 }
 const SLOT_ICON: Record<string, string> = {
-  weapon: '⚔️', helmet: '🪖', armor: '🛡️', boots: '🥾',
-  ring: '💍', amulet: '📿', treasure: '🔮',
+  weapon: '⚔️', helmet: '🪖', armor: '👘', boots: '🥾',
+  ring: '💍', pendant: '📿', treasure: '🔮',
 }
 
 function close() { emit('update:modelValue', false) }
@@ -270,6 +421,28 @@ function diffClass(p: number) {
   return 'neutral'
 }
 
+// hover tooltip 跟随鼠标，避免溢出抽屉
+function placeTip(clientX: number, clientY: number) {
+  const TIP_W = 320
+  const TIP_H = 320
+  let x = clientX + 16
+  let y = clientY + 12
+  if (x + TIP_W > window.innerWidth - 8) x = clientX - TIP_W - 16
+  if (y + TIP_H > window.innerHeight - 8) y = window.innerHeight - TIP_H - 8
+  if (x < 8) x = 8
+  if (y < 8) y = 8
+  tipX.value = x
+  tipY.value = y
+}
+function onHover(e: MouseEvent, snap: any) {
+  hoverEquip.value = snap
+  placeTip(e.clientX, e.clientY)
+}
+function onHoverMove(e: MouseEvent) {
+  if (!hoverEquip.value) return
+  placeTip(e.clientX, e.clientY)
+}
+
 const estimatedReceive = computed(() => {
   if (!sellPrice.value) return 0
   const tax = Math.ceil(sellPrice.value * 0.10)
@@ -284,7 +457,7 @@ async function reload() {
   if (tab.value !== 'browse') return
   loading.value = true
   try {
-    const q: any = { sort: filter.sort, page: 1, pageSize: 30 }
+    const q: any = { sort: filter.sort, page: 1, pageSize: 50 }
     if (filter.rarity) q.rarity = filter.rarity
     if (filter.slot) q.slot = filter.slot
     if (filter.tier) q.tier = filter.tier
@@ -311,6 +484,7 @@ async function loadHistory() {
 
 async function switchTab(t: 'browse' | 'mine' | 'history') {
   tab.value = t
+  hoverEquip.value = null
   if (t === 'browse') await reload()
   else if (t === 'mine') await loadMine()
   else await loadHistory()
@@ -410,6 +584,7 @@ async function submitSell() {
 
 watch(() => props.modelValue, (v) => {
   if (v) reload()
+  else hoverEquip.value = null
 })
 </script>
 
@@ -419,7 +594,7 @@ watch(() => props.modelValue, (v) => {
   z-index: 9000; display: flex; justify-content: flex-end;
 }
 .market-drawer {
-  width: 640px; max-width: 100vw; height: 100%;
+  width: 680px; max-width: 100vw; height: 100%;
   background: #1a1a2e; color: #e0e0f0;
   display: flex; flex-direction: column;
   border-left: 1px solid #333;
@@ -449,11 +624,50 @@ watch(() => props.modelValue, (v) => {
 .market-toolbar {
   display: flex; gap: 8px; padding: 8px 16px;
   border-bottom: 1px solid #333; flex-wrap: wrap;
+  position: relative;  /* attr-picker 子绝对定位的锚点 */
 }
 .market-toolbar select, .market-toolbar input {
   background: #2a2a42; color: #ddd; border: 1px solid #444;
   padding: 5px 8px; border-radius: 4px; font-size: 13px;
 }
+
+/* 属性多选筛选（与背包同套样式） */
+.attr-picker { position: relative; display: inline-block; }
+.attr-picker-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-width: 110px; text-align: left;
+  background: #2a2a42; color: #ddd; border: 1px solid #444;
+  padding: 5px 10px; border-radius: 4px; font-size: 13px; cursor: pointer;
+}
+.attr-picker-btn.has-selection { border-color: #c9a85c; color: #ffd700; background: rgba(232,204,138,0.08); }
+.attr-picker-caret { font-size: 10px; opacity: 0.7; margin-left: auto; }
+.attr-picker-panel {
+  position: absolute; top: calc(100% + 4px); left: 0;
+  z-index: 50; min-width: 220px; max-height: 380px; overflow-y: auto;
+  padding: 6px 4px; background: #1c1814;
+  border: 1px solid rgba(184, 154, 90, 0.35);
+  border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+.attr-picker-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2px 8px 6px; border-bottom: 1px dashed rgba(184, 154, 90, 0.2); margin-bottom: 4px;
+}
+.attr-picker-hint { font-size: 11px; color: #888; }
+.attr-picker-clear {
+  background: transparent; border: 1px solid rgba(196, 92, 74, 0.4);
+  border-radius: 2px; color: #c45c4a; font-size: 11px; padding: 1px 6px; cursor: pointer;
+}
+.attr-picker-clear:disabled { opacity: 0.4; cursor: not-allowed; }
+.attr-picker-clear:not(:disabled):hover { background: rgba(196, 92, 74, 0.12); }
+.attr-picker-group { padding: 2px 0; }
+.attr-picker-group-title { font-size: 11px; color: #c9a85c; padding: 4px 8px 2px; letter-spacing: 1px; }
+.attr-picker-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; font-size: 12px; color: #aab; cursor: pointer; user-select: none;
+}
+.attr-picker-item:hover { background: rgba(232,204,138,0.06); color: #ffd700; }
+.attr-picker-item.is-checked { color: #ffd700; }
+.attr-picker-item input[type="checkbox"] { accent-color: #d4af37; cursor: pointer; }
 
 .btn {
   background: #2a2a42; color: #ddd; border: 1px solid #444;
@@ -471,7 +685,7 @@ watch(() => props.modelValue, (v) => {
 .market-item {
   display: flex; gap: 12px; padding: 10px 16px;
   border-bottom: 1px solid #2a2a42;
-  align-items: center;
+  align-items: center; cursor: default;
 }
 .market-item:hover { background: #222238; }
 
@@ -486,6 +700,8 @@ watch(() => props.modelValue, (v) => {
 
 .item-main { flex: 1; min-width: 0; }
 .item-title { font-size: 15px; margin-bottom: 4px; }
+.awaken-tag { font-size: 11px; color: #FFAA00; margin-left: 6px; }
+.set-tag    { font-size: 11px; color: #78c8ff; margin-left: 4px; }
 .item-stats { font-size: 13px; color: #aab; }
 .item-stats .sub { color: #889; }
 .item-meta { font-size: 12px; color: #666; margin-top: 3px; }
@@ -506,6 +722,20 @@ watch(() => props.modelValue, (v) => {
 .role-badge { font-size: 12px; padding: 1px 6px; border-radius: 3px; margin-left: 6px; }
 .role-badge.buy { background: rgba(110,199,139,0.2); color: #6ec78b; }
 .role-badge.sell { background: rgba(255,215,0,0.2); color: #ffd700; }
+
+/* Hover tooltip — fixed 定位，跟鼠标 */
+.market-hover-tooltip {
+  position: fixed; z-index: 10000;
+  pointer-events: none;
+  width: 320px;
+  padding: 12px 14px;
+  background: rgba(20, 16, 12, 0.96);
+  border: 1px solid #c9a85c;
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+  color: #ddd;
+  font-family: 'Noto Serif SC', serif;
+}
 
 /* 上架弹窗 */
 .sell-overlay {
@@ -538,5 +768,6 @@ watch(() => props.modelValue, (v) => {
   .item-stats { font-size: 11px; }
   .price { font-size: 14px; }
   .item-side { min-width: 80px; }
+  .market-hover-tooltip { width: 260px; }
 }
 </style>
