@@ -7,7 +7,24 @@ export type MailCategory =
   | 'spirit_vein_surge'
   | 'spirit_vein_raid'
   | 'spirit_vein_jackpot'
+  | 'market'
   | 'system'
+
+export interface EquipmentSnapshot {
+  name: string
+  base_slot: string | null
+  slot?: string | null
+  weapon_type?: string | null
+  rarity: 'white' | 'green' | 'blue' | 'purple' | 'gold' | 'red'
+  primary_stat: string
+  primary_value: number
+  sub_stats?: Array<{ stat: string; value: number }> | null
+  awaken_effect?: any
+  set_id?: string | null
+  enhance_level?: number
+  req_level?: number
+  tier?: number
+}
 
 export type MailAttachment =
   | { type: 'spirit_stone'; amount: number }
@@ -18,6 +35,7 @@ export type MailAttachment =
   | { type: 'recipe'; recipeId: string }
   | { type: 'title'; titleKey: string; duration: number }
   | { type: 'timed_buff'; sourceType: string; sourceId?: string; statKey: string; statValue: number; duration: number }
+  | { type: 'equipment'; snapshot: EquipmentSnapshot }
 
 export interface SendMailParams {
   characterId: number
@@ -225,6 +243,33 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
         client
       )
       break
+    case 'equipment': {
+      const s = att.snapshot
+      await client.query(
+        `INSERT INTO character_equipment
+          (character_id, slot, base_slot, weapon_type, name, rarity,
+           primary_stat, primary_value, sub_stats, awaken_effect, set_id,
+           enhance_level, req_level, tier, locked, is_bound)
+         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10,
+                 $11, $12, $13, FALSE, FALSE)`,
+        [
+          characterId,
+          s.base_slot || null,
+          s.weapon_type || null,
+          s.name,
+          s.rarity,
+          s.primary_stat,
+          s.primary_value,
+          s.sub_stats ? JSON.stringify(s.sub_stats) : null,
+          s.awaken_effect ? JSON.stringify(s.awaken_effect) : null,
+          s.set_id || null,
+          s.enhance_level ?? 0,
+          s.req_level ?? 1,
+          s.tier ?? 1,
+        ]
+      )
+      break
+    }
   }
 }
 

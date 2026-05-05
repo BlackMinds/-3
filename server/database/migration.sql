@@ -1139,3 +1139,107 @@ ON CONFLICT (character_id, loadout_id) DO NOTHING;
 INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
 SELECT c.id, 3, '{}'::jsonb FROM characters c
 ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+-- ============================================
+-- 坊市系统（v1.0, 2026-05-05）
+-- 仅交易装备实例；门槛 紫色 + tier ≥ 3；每日成交 ≤ 10 件
+-- 详见 design/system-market.md
+-- ============================================
+
+-- 装备绑定标记（默认 FALSE = 可流通；任务/宗门奖励等可置 TRUE）
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS is_bound BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 挂单表
+CREATE TABLE IF NOT EXISTS market_listings (
+  id BIGSERIAL PRIMARY KEY,
+  seller_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  category VARCHAR(16) NOT NULL DEFAULT 'equipment' CHECK (category IN ('equipment')),
+  category_key VARCHAR(80) NOT NULL,
+  item_snapshot JSONB NOT NULL,
+  quantity INT NOT NULL DEFAULT 1 CHECK (quantity = 1),
+  unit_price BIGINT NOT NULL CHECK (unit_price > 0),
+  total_price BIGINT GENERATED ALWAYS AS (unit_price * quantity) STORED,
+  status VARCHAR(16) NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active','sold','cancelled','expired','risk_blocked')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  closed_at TIMESTAMP DEFAULT NULL,
+  buyer_id INT DEFAULT NULL REFERENCES characters(id),
+  tax_amount BIGINT DEFAULT 0,
+  seller_received BIGINT DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_active_category
+  ON market_listings (category, category_key, unit_price)
+  WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_market_active_expires
+  ON market_listings (expires_at) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_market_seller
+  ON market_listings (seller_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_market_buyer
+  ON market_listings (buyer_id, closed_at DESC) WHERE buyer_id IS NOT NULL;
+
+-- 成交流水表
+CREATE TABLE IF NOT EXISTS market_transactions (
+  id BIGSERIAL PRIMARY KEY,
+  listing_id BIGINT NOT NULL REFERENCES market_listings(id),
+  seller_id INT NOT NULL REFERENCES characters(id),
+  buyer_id INT NOT NULL REFERENCES characters(id),
+  category VARCHAR(16) NOT NULL DEFAULT 'equipment',
+  category_key VARCHAR(80) NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  unit_price BIGINT NOT NULL,
+  total_price BIGINT NOT NULL,
+  tax_amount BIGINT NOT NULL,
+  seller_received BIGINT NOT NULL,
+  risk_score SMALLINT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_tx_category_time
+  ON market_transactions (category_key, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_market_tx_seller_day
+  ON market_transactions (seller_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_market_tx_buyer_day
+  ON market_transactions (buyer_id, created_at DESC);
+
+-- 实时参考价
+CREATE TABLE IF NOT EXISTS market_reference_price (
+  category_key VARCHAR(80) PRIMARY KEY,
+  ref_price BIGINT NOT NULL,
+  sample_count INT NOT NULL,
+  calc_method VARCHAR(16) NOT NULL CHECK (calc_method IN ('base','historical')),
+  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 基础参考价（策划兜底；实际值在代码常量里维护，启动时回写此表，方便 SQL 直查）
+CREATE TABLE IF NOT EXISTS market_base_price (
+  category_key VARCHAR(80) PRIMARY KEY,
+  base_price BIGINT NOT NULL,
+  notes VARCHAR(200) DEFAULT ''
+);
+
+-- 每日限额缓存
+CREATE TABLE IF NOT EXISTS market_daily_quota (
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  quota_date DATE NOT NULL,
+  listing_count INT DEFAULT 0,
+  buy_count INT DEFAULT 0,
+  sell_count INT DEFAULT 0,
+  buy_amount BIGINT DEFAULT 0,
+  sell_amount BIGINT DEFAULT 0,
+  PRIMARY KEY (character_id, quota_date)
+);
+
+-- 风控日志（MVP 阶段先建表，后续阶段再接入实际规则）
+CREATE TABLE IF NOT EXISTS market_risk_log (
+  id BIGSERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id),
+  listing_id BIGINT REFERENCES market_listings(id),
+  rule_hit VARCHAR(30) NOT NULL,
+  extra_info JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_risk_char
+  ON market_risk_log (character_id, created_at DESC);
