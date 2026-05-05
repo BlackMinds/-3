@@ -819,6 +819,8 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
           t.alive = false
           killedMonsters.push({ name: t.stats.name, element: t.stats.element, isBoss: t.template.role === 'boss' })
         }
+      } else {
+        logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${se.swordQiHits}】被 ${t.stats.name} 闪避`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
       }
     }
   }

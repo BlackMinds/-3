@@ -2110,6 +2110,8 @@ export function runWaveBattle(
             const critText = dr.isCrit ? '暴击!' : '';
             logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${setEffects.swordQiHits}】${critText}对${t.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.swordQiMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
             if (t.stats.hp <= 0) t.alive = false;
+          } else {
+            logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${setEffects.swordQiHits}】被${t.stats.name}闪避`, type: 'set', ...snap() });
           }
         }
       };

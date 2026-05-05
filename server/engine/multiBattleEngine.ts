@@ -951,6 +951,8 @@ export function runPvpBattle(
           const critText = dr.isCrit ? '暴击!' : ''
           log({ turn, type: 'set', text: `  ❖【剑仙·剑气 ${i + 1}/${se2.swordQiHits}】${critText}对 ${t.name} 造成 ${final} 伤害 (${(se2.swordQiMul * 100).toFixed(0)}%)` })
           if (t.hp <= 0) t.alive = false
+        } else {
+          log({ turn, type: 'set', text: `  ❖【剑仙·剑气 ${i + 1}/${se2.swordQiHits}】被 ${t.name} 闪避` })
         }
       }
     }
