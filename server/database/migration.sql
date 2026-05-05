@@ -1243,3 +1243,13 @@ CREATE TABLE IF NOT EXISTS market_risk_log (
 
 CREATE INDEX IF NOT EXISTS idx_market_risk_char
   ON market_risk_log (character_id, created_at DESC);
+
+-- 天道洗髓丹兑换码（2026-05-05）
+-- 灵根定向转换道具 ×5
+INSERT INTO redeem_codes (code, attachments, description) VALUES
+('XISUI2026', '[
+  {"type":"pill","pillId":"reset_root","qty":5}
+]'::jsonb, '天道洗髓丹×5（灵根定向转换）')
+ON CONFLICT (code) DO UPDATE SET
+  attachments = EXCLUDED.attachments,
+  description = EXCLUDED.description;
