@@ -23,7 +23,7 @@
           </span>
         </div>
         <button class="drop-table-btn" @click="showDropTable = true">掉落表</button>
-        <button class="drop-table-btn" @click="showToast('坊市暂未开放，敬请期待', 'error')">坊市</button>
+        <button class="drop-table-btn" @click="showMarket = true">坊市</button>
         <button class="drop-table-btn" @click="openRanking">风云榜</button>
         <button class="drop-table-btn" @click="openPkDojo">斗法台</button>
         <button class="drop-table-btn fengyun-btn" @click="eventStore.openPanel()">
