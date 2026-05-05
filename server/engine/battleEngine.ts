@@ -353,7 +353,7 @@ const DEBUFF_NAMES: Record<string, string> = {
 
 function calcDotDamage(type: DebuffType, targetMaxHp: number, attackerAtk: number): number {
   // 改读 balance.ts 常量，避免数值散落
-  if (type === 'poison') return Math.max(1, Math.floor(targetMaxHp * DOT_FORMULA.poisonPerTurnHpRatio));
+  if (type === 'poison') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.poisonPerTurnAtkRatio));
   if (type === 'burn') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio));
   if (type === 'bleed') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.bleedPerTurnAtkRatio));
   return 0;

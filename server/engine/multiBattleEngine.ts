@@ -165,7 +165,7 @@ const DEBUFF_NAMES: Record<string, string> = {
 
 function calcDotDamage(type: DebuffType, targetMaxHp: number, attackerAtk: number): number {
   // v3.7: 统一走 DOT_FORMULA 常量，与 battleEngine 保持一致
-  if (type === 'poison') return Math.max(1, Math.floor(targetMaxHp * DOT_FORMULA.poisonPerTurnHpRatio))
+  if (type === 'poison') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.poisonPerTurnAtkRatio))
   if (type === 'burn') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio))
   if (type === 'bleed') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.bleedPerTurnAtkRatio))
   return 0

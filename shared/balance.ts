@@ -178,7 +178,7 @@ export const BATTLE_FORMULA = {
 // DOT 伤害公式
 // v3.7: 基础 DOT 再上调约 35%，让裸值 DOT 至少与 1 次普攻持平（3 回合总伤），不再依赖养成栈才"能用"
 export const DOT_FORMULA = {
-  poisonPerTurnHpRatio: 0.03,  // 0.05→0.03（占目标 maxHp 比例过高，与攻击系 DOT 差距过大；中毒定位为啃肉特化但单层不爆炸）
+  poisonPerTurnAtkRatio: 0.25, // v3.9: 改为攻击系 DOT，公式与灼烧一致（原 maxHp×3% 在高血量怪 / 木桩面板下过 OP）
   burnPerTurnAtkRatio: 0.25,   // 0.18→0.25（+39%）每回合扣 25% atk
   bleedPerTurnAtkRatio: 0.18,  // 0.13→0.18（+38%）每回合扣 18% atk
 } as const

@@ -251,7 +251,7 @@ function applyDebuffDps(
   // 持续伤害 debuff
   // v3.7: 统一走 DOT_FORMULA，与 battleEngine / multiBattleEngine 保持一致
   if (debuff.type === 'burn') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio))
-  if (debuff.type === 'poison') d.damagePerTurn = Math.max(1, Math.floor(defenderMaxHp * DOT_FORMULA.poisonPerTurnHpRatio))
+  if (debuff.type === 'poison') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.poisonPerTurnAtkRatio))
   if (debuff.type === 'bleed') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.bleedPerTurnAtkRatio))
   // 冻结/眩晕：锁定行动回合
   if (debuff.type === 'freeze' || debuff.type === 'stun') {
