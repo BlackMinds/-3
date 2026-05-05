@@ -57,7 +57,7 @@
 - 不灭金身（免死保留 20% 血）
 - 战意沸腾（叠层机制）
 - 道心通明（神通 CD-1）
-- **v3.7 DOT 公式**: 灼烧 ATK×25%/turn、中毒 maxHp×5%/turn、流血 ATK×18%/turn（v3.6: 18%/4%/13%；让裸值 DOT 3 回合总伤 ≈ 1 次普攻，不再依赖养成栈才"能用"）
+- **v3.8 DOT 公式**: 灼烧 ATK×25%/turn、中毒 maxHp×3%/turn、流血 ATK×18%/turn（v3.7: 25%/5%/18%，中毒 5%→3%；v3.6: 18%/4%/13%。让裸值 DOT 3 回合总伤 ≈ 1 次普攻，不再依赖养成栈才"能用"）
 - **v3.7 DOT 三引擎归一**: battleEngine / multiBattleEngine / teamBattleEngine 全部走 `shared/balance.ts` 的 `DOT_FORMULA` 常量
   - 旧版 multiBattleEngine 漏迭代停留在 v3.5（15%/3%/10%），现已对齐
   - 旧版 teamBattleEngine（秘境组队）用混合公式 `atk×0.4~0.6 + maxHp×0.03~0.04`，比主战 DOT 高 4~6 倍，已废弃改为统一公式（注意：这会**显著降低秘境组队战的 DOT 输出**，需要后续单独跑秘境平衡测试）
