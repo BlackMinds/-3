@@ -58,17 +58,59 @@ async function runOneMatch(matchId: number) {
   const { rows: matchRows } = await pool.query(
     `SELECT m.*, ra.roster_duel AS a_duel, ra.roster_team_a AS a_team_a, ra.roster_team_b AS a_team_b,
             rb.roster_duel AS b_duel, rb.roster_team_a AS b_team_a, rb.roster_team_b AS b_team_b,
-            sa.name AS sect_a_name, sb.name AS sect_b_name
+            COALESCE(sa.name, '已解散宗门') AS sect_a_name,
+            COALESCE(sb.name, '已解散宗门') AS sect_b_name
        FROM sect_war_match m
-       JOIN sect_war_registration ra ON ra.season_id = m.season_id AND ra.sect_id = m.sect_a_id
-       JOIN sect_war_registration rb ON rb.season_id = m.season_id AND rb.sect_id = m.sect_b_id
-       JOIN sects sa ON m.sect_a_id = sa.id
-       JOIN sects sb ON m.sect_b_id = sb.id
+       LEFT JOIN sect_war_registration ra ON ra.season_id = m.season_id AND ra.sect_id = m.sect_a_id
+       LEFT JOIN sect_war_registration rb ON rb.season_id = m.season_id AND rb.sect_id = m.sect_b_id
+       LEFT JOIN sects sa ON m.sect_a_id = sa.id
+       LEFT JOIN sects sb ON m.sect_b_id = sb.id
       WHERE m.id = $1`,
     [matchId]
   )
   if (matchRows.length === 0) return
   const m = matchRows[0]
+
+  // walkover：报名后退赛 / 宗门解散，导致 registration 缺失。判一方不战而胜
+  const aMissing = !m.a_duel || !m.sect_a_id
+  const bMissing = !m.b_duel || !m.sect_b_id
+  if (aMissing || bMissing) {
+    if (aMissing && bMissing) {
+      // 双缺：直接判 a 胜（其实哪边都行，仅为给 winner_sect_id 赋值；但 sect_a_id 可能为 null）
+      // 这种情况下不发奖、不写 battle，仅把 match 标记完成避免反复处理
+      await pool.query(
+        `UPDATE sect_war_match SET winner_sect_id = COALESCE(sect_a_id, sect_b_id),
+                                   score_a = 0, score_b = 0, fought_at = NOW()
+          WHERE id = $1`,
+        [matchId]
+      )
+      return { matchId, winnerSectId: m.sect_a_id || m.sect_b_id, scoreA: 0, scoreB: 0, mvpId: null, m }
+    }
+    const winnerSide: 'a' | 'b' = aMissing ? 'b' : 'a'
+    const winnerSectId = winnerSide === 'a' ? m.sect_a_id : m.sect_b_id
+    const loserName = aMissing ? m.sect_a_name : m.sect_b_name
+    const winnerName = winnerSide === 'a' ? m.sect_a_name : m.sect_b_name
+    const sA = winnerSide === 'a' ? 5 : 0
+    const sB = winnerSide === 'b' ? 5 : 0
+    await pool.query(
+      `INSERT INTO sect_war_battle (match_id, round_no, battle_type, side_a_chars, side_b_chars, winner_side, battle_log)
+       VALUES ($1, 1, 'duel', '[]'::jsonb, '[]'::jsonb, $2, $3::jsonb)`,
+      [
+        matchId,
+        winnerSide,
+        JSON.stringify([
+          { type: 'system', text: `${loserName} 未提交阵容，${winnerName} 不战而胜` },
+        ]),
+      ]
+    )
+    await pool.query(
+      `UPDATE sect_war_match
+        SET winner_sect_id = $1, score_a = $2, score_b = $3, fought_at = NOW()
+        WHERE id = $4`,
+      [winnerSectId, sA, sB, matchId]
+    )
+    return { matchId, winnerSectId, scoreA: sA, scoreB: sB, mvpId: null, m }
+  }
 
   let scoreA = 0, scoreB = 0
   const mvpStats: Record<number, { wins: number; dmg: number; taken: number; side: 'a' | 'b' }> = {}
@@ -206,34 +248,40 @@ export async function runSeasonFights(seasonId: number) {
 export async function settleMatchRewards(matchId: number) {
   const pool = getPool()
   const { rows: matchRows } = await pool.query(
-    `SELECT m.*, sa.name AS sect_a_name, sb.name AS sect_b_name,
+    `SELECT m.*,
+            COALESCE(sa.name, '已解散宗门') AS sect_a_name,
+            COALESCE(sb.name, '已解散宗门') AS sect_b_name,
             ra.roster_duel AS a_duel, ra.roster_team_a AS a_team_a, ra.roster_team_b AS a_team_b,
             rb.roster_duel AS b_duel, rb.roster_team_a AS b_team_a, rb.roster_team_b AS b_team_b
        FROM sect_war_match m
-       JOIN sect_war_registration ra ON ra.season_id = m.season_id AND ra.sect_id = m.sect_a_id
-       JOIN sect_war_registration rb ON rb.season_id = m.season_id AND rb.sect_id = m.sect_b_id
-       JOIN sects sa ON m.sect_a_id = sa.id
-       JOIN sects sb ON m.sect_b_id = sb.id
+       LEFT JOIN sect_war_registration ra ON ra.season_id = m.season_id AND ra.sect_id = m.sect_a_id
+       LEFT JOIN sect_war_registration rb ON rb.season_id = m.season_id AND rb.sect_id = m.sect_b_id
+       LEFT JOIN sects sa ON m.sect_a_id = sa.id
+       LEFT JOIN sects sb ON m.sect_b_id = sb.id
       WHERE m.id = $1`,
     [matchId]
   )
   if (matchRows.length === 0) return
   const m = matchRows[0]
+  if (!m.winner_sect_id) return
   const winnerSectId = m.winner_sect_id
   const loserSectId = winnerSectId === m.sect_a_id ? m.sect_b_id : m.sect_a_id
   const winnerName = winnerSectId === m.sect_a_id ? m.sect_a_name : m.sect_b_name
   const loserName = winnerSectId === m.sect_a_id ? m.sect_b_name : m.sect_a_name
 
-  // 胜方 +250000 / 败方 +80000
+  // 胜方 +250000 / 败方 +80000（败方宗门已解散则跳过）
   await pool.query('UPDATE sects SET fund = fund + 250000 WHERE id = $1', [winnerSectId])
-  await pool.query('UPDATE sects SET fund = fund + 80000 WHERE id = $1', [loserSectId])
+  if (loserSectId) {
+    await pool.query('UPDATE sects SET fund = fund + 80000 WHERE id = $1', [loserSectId])
+  }
 
-  const winnerRoster = winnerSectId === m.sect_a_id
-    ? [...m.a_duel, ...m.a_team_a, ...m.a_team_b]
-    : [...m.b_duel, ...m.b_team_a, ...m.b_team_b]
-  const loserRoster = winnerSectId === m.sect_a_id
-    ? [...m.b_duel, ...m.b_team_a, ...m.b_team_b]
-    : [...m.a_duel, ...m.a_team_a, ...m.a_team_b]
+  // walkover：缺方 roster 为 null，对应循环空数组跳过
+  const winnerRoster: number[] = winnerSectId === m.sect_a_id
+    ? [...(m.a_duel || []), ...(m.a_team_a || []), ...(m.a_team_b || [])]
+    : [...(m.b_duel || []), ...(m.b_team_a || []), ...(m.b_team_b || [])]
+  const loserRoster: number[] = winnerSectId === m.sect_a_id
+    ? [...(m.b_duel || []), ...(m.b_team_a || []), ...(m.b_team_b || [])]
+    : [...(m.a_duel || []), ...(m.a_team_a || []), ...(m.a_team_b || [])]
 
   // 胜方参战 9 人：贡献 +2000 + 灵石 +50000
   for (const cid of winnerRoster) {
@@ -282,7 +330,7 @@ export async function settleMatchRewards(matchId: number) {
     [matchId]
   )
   const winnerSide = winnerSectId === m.sect_a_id ? 'a' : 'b'
-  const winnerDuelRoster = winnerSide === 'a' ? m.a_duel : m.b_duel
+  const winnerDuelRoster: number[] = (winnerSide === 'a' ? m.a_duel : m.b_duel) || []
   const allDuelWins = duelBattles.length >= 3 && duelBattles.every((b: any) => b.winner_side === winnerSide)
   if (allDuelWins) {
     for (const cid of winnerDuelRoster) {

@@ -61,5 +61,24 @@ export default defineEventHandler(async (event) => {
     actions.push('marked settled')
   }
 
+  // 兜底：错过 fighting 窗口的赛季（cron 没命中 / 失败）
+  // - 当届：stage 已经走到 settled 但 status 还没标 settled
+  // - 历史届：end_date 已过但 status 仍非 settled
+  // runSeasonFights 内部只跑 winner_sect_id IS NULL 的 match，并把 status 标 settled
+  const fallbackIds: number[] = []
+  if (stage === 'settled' && season.status !== 'settled') {
+    fallbackIds.push(season.id)
+  }
+  const { rows: stale } = await pool.query(
+    `SELECT id, season_no FROM sect_war_season
+      WHERE status != 'settled' AND end_date <= NOW() AND id != $1`,
+    [season.id]
+  )
+  for (const r of stale) fallbackIds.push(r.id)
+  for (const sid of fallbackIds) {
+    const res = await runSeasonFights(sid)
+    actions.push(`fallback runSeasonFights(season_id=${sid}): ${res.processed} matches`)
+  }
+
   return { ok: true, seasonNo, stage, seasonStatus: season.status, actions }
 })
