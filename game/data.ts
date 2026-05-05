@@ -438,6 +438,16 @@ export const MAPS: MapData[] = [
     ],
     boss: { id: 'omega_dao_lord', name: '终焉道祖', power: 700000000, element: null, exp: 4500000000, spirit_stone_range: [30000000000, 70000000000], role: 'boss', drop_table: 'boss_t15' },
   },
+  // ===== 木桩演武场（测试用）：自定义属性 / 仅普通攻击 / 无奖励 / 无掉落 =====
+  {
+    id: 'dummy_arena', name: '木桩演武场', tier: 0,
+    realm_required: '测试', recommended_power: 0,
+    element: null, description: '可自定义木桩属性，木桩仅会普通攻击，战斗不结算奖励',
+    monsters: [
+      { id: 'training_dummy', name: '木桩', power: 0, element: null, exp: 0, spirit_stone_range: [0, 0], role: 'dummy', drop_table: 'dummy_t0' },
+    ],
+    boss: null,
+  },
 ];
 
 // ========== 初始技能 ==========

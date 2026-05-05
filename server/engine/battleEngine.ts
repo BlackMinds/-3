@@ -458,6 +458,9 @@ function buildHealerSkillPool(tier: number, elem: string | null): MonsterSkillDe
 
 // 2026-05-04: 全部攻击型 multiplier × 0.65（-35%）联动 healer 池，目标延长 T7+ 战斗回合数
 export function buildMonsterSkillPool(template: MonsterTemplate): MonsterSkillDef[] {
+  // 木桩：技能池为空，怪物每回合走 multiplier=1.0 的"普通攻击"分支
+  if (template.role === 'dummy') return [];
+
   const tier = parseInt(template.drop_table.replace(/\D/g, '')) || 1;
   const elem = template.element;
   const isBoss = template.role === 'boss';
