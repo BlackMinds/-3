@@ -70,8 +70,9 @@ export default defineEventHandler(async (event) => {
       [spiritual_root, char.id]
     )
 
+    const ROOT_CN: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' }
     await client.query('COMMIT')
-    return { code: 200, message: `灵根已重置为${spiritual_root}` }
+    return { code: 200, message: `灵根已转换为「${ROOT_CN[spiritual_root]}」` }
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})
     console.error('重置灵根失败:', error)

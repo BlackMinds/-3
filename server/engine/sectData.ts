@@ -110,7 +110,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: 'recipe_full',        name: '天元丹方',     description: '永久解锁【天元丹】炼制配方',    cost: 15000, weeklyLimit: 1, requiredSectLevel: 6, category: 'set', effect: { type: 'unlock_pill_recipe', pill_id: 'full_pill_1' } },
 
   // 传说 (宗门8级)
-  { key: 'reset_root',         name: '天道洗髓丹',   description: '重置灵根属性',             cost: 30000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'reset_root', value: 1 } },
+  { key: 'reset_root',         name: '天道洗髓丹',   description: '将灵根定向转换为指定属性（五行任选其一）', cost: 30000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'reset_root', value: 1 } },
   { key: 'universal_page',     name: '万能功法残页', description: '可代替任意功法残页x1',      cost: 20000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'universal_skill_page', value: 1 } },
   { key: 'premium_equip_box',  name: '极品装备宝箱', description: '随机金品/红品装备x1',      cost: 25000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'random_equip_box', minRarity: 'gold' } },
 

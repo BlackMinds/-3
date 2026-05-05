@@ -6339,7 +6339,7 @@ async function useSectItem(item: any) {
     sectItemDialog.value = {
       show: true, type: 'root',
       title: '天道洗髓丹',
-      message: '选择新灵根 (会清除当前灵根的初始抗性)',
+      message: '选择要定向转换的目标灵根（仅重置初始 15% 五行抗性，不影响其他属性）',
       onSelect: async (root: string) => {
         try {
           const res: any = await $fetch('/api/character/reset-root', { method: 'POST', body: { spiritual_root: root }, headers: getAuthHeaders() });
