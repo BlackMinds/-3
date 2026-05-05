@@ -812,16 +812,15 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   // v3.7.1 二次微调：
   //   - T5+ 攻击 ×0.80（中后期玩家被怪压太狠，整体降攻）
   //   - T5+ 血量 ×1.10（中后期怪稍微肉一点，给玩家更多反应回合）
-  //   - T11/T12 整体属性大幅缩（曲线平滑：跨 tier 倍率 ×5.13/×4.10 → 约 ×2.5）
-  // v3.7.2 新增 T13-T15:
-  //   - 沿用 T11/T12 的"整体大幅缩"思路，让 power 翻倍带来的 ATK 倍率维持 ~×2.5 跨 tier
-  //   - T13 ×0.18 / T14 ×0.10 / T15 ×0.06（同时作用于 HP/ATK/DEF）
+  // v3.8.1 跨 tier 跳幅校准：玩家 T10→T15 整体 ATK 仅 ×1.7（等级+装备线性），怪物原跨幅 ×1.7-2.5 装备完全跟不上
+  //   T11-T15 MUL 收紧到每 tier 跳幅约 ×1.5 (HP/ATK/DEF 同步)
+  //   T11 ×0.30 / T12 ×0.10 / T13 ×0.05 / T14 ×0.025 / T15 ×0.012
   if (tier >= 5) { MONSTER_ATK_MUL *= 0.80; MONSTER_HP_MUL *= 1.10; }
-  if (tier === 11) { MONSTER_HP_MUL *= 0.50; MONSTER_ATK_MUL *= 0.50; MONSTER_DEF_MUL *= 0.50; }
-  if (tier === 12) { MONSTER_HP_MUL *= 0.30; MONSTER_ATK_MUL *= 0.30; MONSTER_DEF_MUL *= 0.30; }
-  if (tier === 13) { MONSTER_HP_MUL *= 0.18; MONSTER_ATK_MUL *= 0.18; MONSTER_DEF_MUL *= 0.18; }
-  if (tier === 14) { MONSTER_HP_MUL *= 0.10; MONSTER_ATK_MUL *= 0.10; MONSTER_DEF_MUL *= 0.10; }
-  if (tier === 15) { MONSTER_HP_MUL *= 0.06; MONSTER_ATK_MUL *= 0.06; MONSTER_DEF_MUL *= 0.06; }
+  if (tier === 11) { MONSTER_HP_MUL *= 0.30;  MONSTER_ATK_MUL *= 0.30;  MONSTER_DEF_MUL *= 0.30;  }
+  if (tier === 12) { MONSTER_HP_MUL *= 0.10;  MONSTER_ATK_MUL *= 0.10;  MONSTER_DEF_MUL *= 0.10;  }
+  if (tier === 13) { MONSTER_HP_MUL *= 0.05;  MONSTER_ATK_MUL *= 0.05;  MONSTER_DEF_MUL *= 0.05;  }
+  if (tier === 14) { MONSTER_HP_MUL *= 0.025; MONSTER_ATK_MUL *= 0.025; MONSTER_DEF_MUL *= 0.025; }
+  if (tier === 15) { MONSTER_HP_MUL *= 0.012; MONSTER_ATK_MUL *= 0.012; MONSTER_DEF_MUL *= 0.012; }
 
   return {
     name: template.name,
