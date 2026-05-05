@@ -774,8 +774,10 @@ export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
     const body = await readBody(event)
-    const { map_id, auto_sell, auto_sell_tier, auto_sell_set_blacklist } = body
+    const { map_id, auto_sell, auto_sell_tier, auto_sell_set_blacklist, auto_sell_no_set } = body
     const setBlacklist: Set<string> = new Set(Array.isArray(auto_sell_set_blacklist) ? auto_sell_set_blacklist : [])
+    // 旧客户端不传该字段时默认 true，保持原"无套装散件按规则自动卖"的行为
+    const autoSellNoSet: boolean = typeof auto_sell_no_set === 'boolean' ? auto_sell_no_set : true
     const batchCount = Math.max(1, Math.min(BATCH_MAX, Number(body.batch_count) || 1))
     if (!map_id) return { code: 400, message: '缺少地图ID' }
 
@@ -1007,7 +1009,8 @@ export default defineEventHandler(async (event) => {
               const itemTier = d.tier || 1
               // 自动出售默认跳过套装件（玩家不需要手动锁定每件套装；批量出售保留 locked 字段控制）
               // 但若该套装在黑名单内（玩家明确不想要），则跟普通装备一样按品质/阶位规则判定
-              const isProtectedSet = !!d.set_id && !setBlacklist.has(d.set_id)
+              // 无套装散件：autoSellNoSet=false 时同样保护（玩家想保留所有散件）
+              const isProtectedSet = (!!d.set_id && !setBlacklist.has(d.set_id)) || (!d.set_id && !autoSellNoSet)
               if (!isProtectedSet && autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
                 const price = Math.floor((EQUIP_SELL_PRICES[d.rarity] || 10) * (d.tier || 1))
                 autoSellIncome += price
