@@ -92,6 +92,7 @@ const expandedId = ref<number | null>(null)
 
 const tabs = [
   { value: null, label: '全部', icon: '📬' },
+  { value: 'market', label: '坊市', icon: '🏪' },
   { value: 'sect_war', label: '宗门战', icon: '⚔️' },
   { value: 'sect_war_bet', label: '押注', icon: '💰' },
   { value: 'spirit_vein_surge', label: '涌灵', icon: '🌊' },
@@ -116,14 +117,19 @@ function formatTime(t: string) {
 }
 
 function catIcon(c: string) {
-  return { sect_war: '⚔️', sect_war_bet: '💰', spirit_vein_surge: '🌊', spirit_vein_raid: '🗡️', spirit_vein_jackpot: '🏆', system: '📢' }[c] || '📬'
+  return { sect_war: '⚔️', sect_war_bet: '💰', spirit_vein_surge: '🌊', spirit_vein_raid: '🗡️', spirit_vein_jackpot: '🏆', market: '🏪', system: '📢' }[c] || '📬'
 }
 
 function attIcon(type: string) {
   return {
     spirit_stone: '💎', contribution: '📜', exp: '✨',
     material: '🧪', recipe: '📖', title: '🏅', timed_buff: '🌟',
+    equipment: '⚔️',
   }[type] || '🎁'
+}
+
+const RARITY_LABEL: Record<string, string> = {
+  white: '凡品', green: '灵品', blue: '玄品', purple: '地品', gold: '天品', red: '仙品',
 }
 
 // 属性 key 中文映射
@@ -174,6 +180,12 @@ function attLabel(att: any) {
     case 'timed_buff': {
       const statName = STAT_LABEL[att.statKey] || att.statKey
       return `${statName} +${att.statValue}%（${Math.floor(att.duration / 86400)} 天）`
+    }
+    case 'equipment': {
+      const s = att.snapshot || {}
+      const r = RARITY_LABEL[s.rarity] || s.rarity
+      const enh = s.enhance_level ? `·+${s.enhance_level}` : ''
+      return `${s.name || '装备'}（${r}${enh}）`
     }
     default: return JSON.stringify(att)
   }

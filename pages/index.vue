@@ -1360,6 +1360,13 @@
                 <br><small>节点争夺 · 24h 异步</small>
               </span>
             </NuxtLink>
+            <button class="sect-entry-btn market" @click="showMarket = true">
+              <span class="entry-icon">🏪</span>
+              <span class="entry-text">
+                <b>坊市</b>
+                <br><small>装备 C2C · 紫品起售</small>
+              </span>
+            </button>
             <button class="sect-entry-btn mail" @click="showGlobalMail = true">
               <span class="entry-icon">📬</span>
               <span v-if="globalMailUnread > 0" class="entry-red-dot">{{ globalMailUnread > 99 ? '99+' : globalMailUnread }}</span>
@@ -2399,7 +2406,7 @@
             <p class="help-text" style="margin-top: 4px;">10 种异常状态:</p>
             <table class="help-table"><tbody>
               <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×25%火伤</td></tr>
-              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受目标气血×3%毒伤</td></tr>
+              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受攻击力×25%毒伤</td></tr>
               <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×18%物伤</td></tr>
               <tr><td style="color: #5b8eaa;">冻结</td><td>无法行动(控制类,受控抗影响)</td></tr>
               <tr><td style="color: #c9a85c;">眩晕</td><td>无法行动(控制类,受控抗影响)</td></tr>
@@ -2420,10 +2427,10 @@
           </div>
           <div class="help-section">
             <div class="help-title">DOT 流派 (持续伤害)</div>
-            <p class="help-text">三种 DOT 公式 (v3.8 中毒下调 5%→3%):</p>
+            <p class="help-text">三种 DOT 公式 (v3.9 中毒改为攻击系):</p>
             <table class="help-table"><tbody>
               <tr><td>灼烧 (火)</td><td>攻击力 × 25% / 回合</td></tr>
-              <tr><td>中毒 (木)</td><td>目标气血 × 3% / 回合</td></tr>
+              <tr><td>中毒 (木)</td><td>攻击力 × 25% / 回合</td></tr>
               <tr><td>流血 (金)</td><td>攻击力 × 18% / 回合</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;"><b>DOT 加成链:</b>装备副属性「DOT伤害 +5~25%」 → 功法「万毒归一」+25% → 主修元素灵戒 (金鸣戒+流血/木灵戒+中毒/<b>焚天烬戒+灼烧</b>) → 神通基础 dot duration。多源叠加。</p>
@@ -3136,6 +3143,9 @@
 
     <!-- 站内邮件抽屉（宗门战/灵脉潮汐奖励通知） -->
     <MailDrawer v-model="showGlobalMail" />
+
+    <!-- 坊市抽屉 -->
+    <MarketDrawer v-model="showMarket" />
   </div>
 </template>
 
@@ -3862,6 +3872,7 @@ const sectSubTab = ref('members');
 const showGlobalMail = ref(false);
 const globalMailUnread = ref(0);
 const globalMailUnclaimed = ref(0);
+const showMarket = ref(false);
 const sectWarStage = ref<string | null>(null);
 const myVeinOccupyCount = ref(0);
 const donateAmount = ref(10000);
@@ -12708,6 +12719,7 @@ onUnmounted(() => {
 .sect-entry-btn.war:hover { border-color: #c9a85c; box-shadow: 0 0 8px rgba(201, 168, 92, 0.35); }
 .sect-entry-btn.vein:hover { border-color: #5ca8c9; box-shadow: 0 0 8px rgba(92, 168, 201, 0.35); }
 .sect-entry-btn.mail:hover { border-color: #a85cc9; box-shadow: 0 0 8px rgba(168, 92, 201, 0.35); }
+.sect-entry-btn.market:hover { border-color: #c9a85c; box-shadow: 0 0 8px rgba(201, 168, 92, 0.45); }
 .entry-icon { font-size: 26px; flex-shrink: 0; }
 .entry-text { flex: 1; font-size: 15px; line-height: 1.4; }
 .entry-text b { color: #ffd700; font-size: 15px; }
