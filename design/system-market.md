@@ -12,11 +12,11 @@
 | 基础设施 | 来源 | 本系统使用场景 |
 |---------|------|-------------|
 | 站内邮件系统 (`mails`) | `system-sect-war.md §零` | 成交到账、挂单过期退回、被购买通知、封禁/违规公告 **统一走邮件下发**（不直接写背包，保证异步安全） |
-| 背包系列表 | `character_equipment` / `character_skill_inventory` / `character_pills` / `character_materials` | 上架时扣减、取消/过期时通过邮件退回 |
+| 背包系列表 | `character_equipment` | 上架时扣减、取消/过期时通过邮件退回 |
 | `characters.spirit_stone` | 现有 | 交易媒介（唯一货币） |
 | 全服广播 (`world_broadcast`) | 现有 | 高价值商品成交 / 史诗级拍卖打广播 |
 
-> ⚠️ **开工前置：** 邮件系统必须先能承载"物品型附件"（equipment 实例 / 残页 count / 丹药带 quality_factor / 灵草带 quality / 灵石）。若现有 `mails.attachments` 尚未支持全部类型，需先补齐 claim 分发器。
+> ⚠️ **开工前置：** 邮件系统必须先能承载"装备实例附件"和"灵石附件"。若现有 `mails.attachments` 尚未支持装备实例的整包重建（强化等级 / 副词条 / 觉醒效果），需先补齐 claim 分发器。
 
 ---
 
@@ -43,9 +43,9 @@
 ### 1.3 核心循环
 
 ```
-玩家 A 刷图/秘境 → 获得暂不需要的装备/功法/丹药
+玩家 A 刷图/秘境 → 获得暂不需要的装备
     ↓
-在坊市挂单（选品类 → 设价 → 系统校验价格区间）→ 物品从背包移至托管
+在坊市挂单（选装备 → 设价 → 系统校验价格区间）→ 装备从背包移至托管
     ↓
 玩家 B 搜索需要的品类 → 看到 A 的挂单 + 系统参考价对比 → 购买
     ↓
@@ -64,7 +64,7 @@
 | 邮件系统 | **强依赖**：所有物品交付都走邮件，保证异步+原子性 |
 | 宗门战 / 灵脉潮汐 | **无耦合**：坊市独立运转，不参与 PVP 荣誉/贡献度体系 |
 | 全服广播 | **轻度使用**：仅史诗级成交（如 +10 仙品装备）触发 |
-| 洗髓丹 / 功法残页 / 丹药 | **全部可流通**（除绑定标记的） |
+| 装备 | **可流通**（除绑定标记的）；功法残页 / 丹药 / 灵草 / 洗髓丹一期均不可交易 |
 
 ---
 
@@ -74,7 +74,7 @@
 
 - 修仙题材中流通性最高的词（凡人/遮天/雪中悍刀行都用）
 - 2 字，短；前端图标位置不紧张
-- 可派生子 Tab 名：**宝阁**（装备）/ **典阁**（功法残页）/ **丹房**（丹药）/ **药圃**（灵草）
+- 一期仅开放**宝阁**（装备）一个分区，未来按需扩展
 
 ### 2.2 UI 主入口
 
@@ -86,12 +86,12 @@
 ┌──────────────────────────────────────────────────┐
 │  坊市                                    [我的挂单] [成交记录] │
 ├──────────────────────────────────────────────────┤
-│  Tab: [宝阁·装备] [典阁·功法] [丹房·丹药] [药圃·灵草]       │
+│  分区: 宝阁·装备（一期仅此一项）                          │
 ├──────────────────────────────────────────────────┤
-│  筛选: [品质▼] [境界▼] [类型▼] [排序:时间/价格/性价比]       │
+│  筛选: [品质▼] [境界▼] [槽位▼] [排序:时间/价格/性价比]       │
 │  搜索: [_______________]                                  │
 ├──────────────────────────────────────────────────┤
-│  [图标] 太虚剑 (玄品·+7)      参考价 12,000      │
+│  [图标] 太虚剑 (地品·+7)      参考价 12,000      │
 │         副词条: 攻击+120, 破甲+5%             9,500  [购买] │
 │         🟢 低于参考价 21%    卖家: 青莲道君           │
 ├──────────────────────────────────────────────────┤
@@ -152,12 +152,15 @@
 
 ### 4.1 可上架品类
 
-| 品类 | 实例粒度 | 上架单位 | 备注 |
-|------|---------|---------|------|
-| 装备 (`character_equipment`) | 单件实例 | 1 件/单 | 带强化等级、副词条、觉醒效果整体打包 |
-| 功法残页 (`character_skill_inventory`) | 按 `skill_id` 堆叠 | 1-999 页/单 | 不交易功法等级（等级信息只存 inventory，卖出时等级清零回 Lv.1）|
-| 丹药 (`character_pills`) | 按 `pill_id + quality_factor` 堆叠 | 1-99 颗/单 | `quality_factor` 写入交易记录 |
-| 灵草 (`character_materials`) | 按 `material_id + quality` 堆叠 | 1-999 株/单 | |
+| 品类 | 实例粒度 | 上架单位 | 门槛 | 备注 |
+|------|---------|---------|------|------|
+| 装备 (`character_equipment`) | 单件实例 | 1 件/单 | **品质 ≥ 紫色** 且 **tier ≥ 3** | 带强化等级、副词条、觉醒效果整体打包 |
+
+**一期仅开放装备**。具体准入：
+- 品质 `rarity ∈ {purple, gold, red}`（白/绿/蓝品质装备一律不可挂单）
+- 地图 `tier ≥ 3`（早期阶段装备不进入坊市，避免低境界跳级、降低工作室低价倾销空间）
+
+功法残页 / 丹药 / 灵草等堆叠类资源同样暂不进入坊市，原因见 §4.2。
 
 ### 4.2 不可上架品类（硬规则）
 
@@ -166,6 +169,9 @@
 - 绑定物品（`is_bound = TRUE`）
 - 宗门专属奖励（贡献兑换品）
 - 洗髓丹 / 改名券 / 转职类道具
+- **白 / 绿 / 蓝品质装备**（低于紫色一律不可挂单，避免新手装垃圾流通污染参考价、压缩工作室低价倾销空间）
+- **tier < 3 的装备**（早期阶段装备只走自产自销，防低境界用坊市跳级）
+- **功法残页 / 丹药 / 灵草等堆叠类资源**（一期不开放，原因：堆叠品流动性强、易被工作室批量化套现，留待后续单开"散件市集"或在反 RMT 体系成熟后再开放）
 
 ### 4.3 账号准入门槛
 
@@ -173,23 +179,27 @@
 
 | 条件 | 效果 |
 |------|------|
-| 账号注册 < 7 天 | 完全禁用坊市（看都看不到） |
+| 账号注册 < 1 天 | 完全禁用坊市（看都看不到） |
 | 角色境界 < 筑基（tier < 2） | 仅可浏览，不可交易 |
 | 角色等级 < 30 | 仅可浏览 |
 | 上述都满足 | 可买、可卖 |
 
-**理由**：绝大多数工作室小号活不过 7 天 + 筑基门槛的组合。
+**理由**：1 天冷却挡掉"注册即交易"的脚本号，配合筑基门槛进一步抬高工作室成本；更严格的对敲检测交给 §4.5 风控规则。
 
 ### 4.4 挂单数与交易量限制
 
 | 限制项 | 数值 | 目的 |
 |-------|------|------|
-| 单角色同时挂单数 | 20 单 | 防刷参考价 |
-| 单角色每日上架次数 | 50 次 | 同上 |
-| 单角色每日成交额（买 + 卖） | 5,000,000 灵石 | 阻断 RMT 大额转账 |
-| 单件商品成交后冷却 | 无 | 不限制频次，只限制金额 |
+| 单角色同时挂单数 | 10 单 | 与每日成交上限对齐，防刷参考价 |
+| 单角色每日上架次数 | 20 次 | 给取消重挂留余量，仍限制刷参考价 |
+| 单角色**每日成交件数**（买 + 卖合计） | **10 件** | 主限额：阻断工作室批量化、限制 RMT 转账规模 |
+| 单角色每日成交额（买 + 卖） | 5,000,000 灵石 | 附加护栏：单件超大额下单的兜底约束 |
+| 单件商品成交后冷却 | 无 | 不限制频次，只限制件数与金额 |
 
-超限的操作直接拒绝，前端提示"您今日交易额已达上限，请明日再来"。
+超限的操作直接拒绝，前端按命中的具体规则提示：
+- 件数超限 → "您今日交易件数（买+卖）已达 10 件上限，请明日再来"
+- 金额超限 → "您今日交易额已达上限，请明日再来"
+- 挂单数超限 → "您当前进行中的挂单已达上限，请下架部分商品后再上架"
 
 ### 4.5 反工作室 / 反 RMT 双向判定
 
@@ -223,9 +233,6 @@
 | 品类 | 归一化键 `category_key` |
 |------|------------------------|
 | 装备 | `eq:{slot}:{rarity}:{tier}:{enhance_level}` |
-| 功法残页 | `sk:{skill_id}` |
-| 丹药 | `pill:{pill_id}:{quality_factor}` |
-| 灵草 | `mat:{material_id}:{quality}` |
 
 **注意装备的简化**：副词条、觉醒效果、具体 `primary_value` **不进入键**。这意味着坊市会把"同品质同强化等级的同槽位装备"归为一类，参考价一致。玩家可以通过副词条差异定价超出/低于参考价（但仍受 ±3x 护栏约束）。
 
@@ -252,14 +259,16 @@
 
 ```json
 {
-  "eq:weapon:blue:3:0": 8000,
   "eq:weapon:purple:3:0": 25000,
+  "eq:weapon:purple:5:0": 60000,
   "eq:weapon:gold:5:0": 150000,
-  "sk:xuan_gong_001": 500,
-  "pill:peiyuan:1.0": 200,
-  "pill:peiyuan:2.0": 1200
+  "eq:weapon:red:7:0": 800000,
+  "eq:armor:purple:4:0": 30000,
+  "eq:accessory:gold:5:0": 120000
 }
 ```
+
+> 仅紫色及以上 + tier ≥ 3 的归一化键会被写入 base_price 表；低于该门槛的装备压根进不了坊市，自然不需要参考价。
 
 ### 5.4 前端提示
 
@@ -280,13 +289,13 @@ CREATE TABLE IF NOT EXISTS market_listings (
   id BIGSERIAL PRIMARY KEY,
   seller_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
 
-  -- 分类
-  category VARCHAR(16) NOT NULL CHECK (category IN ('equipment','skill','pill','material')),
+  -- 分类（一期仅 'equipment'，保留 column 以备未来扩展堆叠品）
+  category VARCHAR(16) NOT NULL DEFAULT 'equipment' CHECK (category IN ('equipment')),
   category_key VARCHAR(80) NOT NULL,  -- 归一化键（见 §5.1）
 
   -- 物品快照（托管期间原始背包行已删除，这里保留全量重建所需）
   item_snapshot JSONB NOT NULL,
-  quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  quantity INT NOT NULL DEFAULT 1 CHECK (quantity = 1),  -- 装备恒为 1
 
   -- 价格
   unit_price BIGINT NOT NULL CHECK (unit_price > 0),     -- 单价
@@ -342,9 +351,9 @@ CREATE TABLE IF NOT EXISTS market_transactions (
   seller_id INT NOT NULL REFERENCES characters(id),
   buyer_id INT NOT NULL REFERENCES characters(id),
 
-  category VARCHAR(16) NOT NULL,
+  category VARCHAR(16) NOT NULL DEFAULT 'equipment',
   category_key VARCHAR(80) NOT NULL,
-  quantity INT NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
   unit_price BIGINT NOT NULL,
   total_price BIGINT NOT NULL,
   tax_amount BIGINT NOT NULL,
@@ -394,11 +403,16 @@ CREATE TABLE IF NOT EXISTS market_base_price (
 CREATE TABLE IF NOT EXISTS market_daily_quota (
   character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
   quota_date DATE NOT NULL,
-  listing_count INT DEFAULT 0,
-  buy_amount BIGINT DEFAULT 0,
-  sell_amount BIGINT DEFAULT 0,
+  listing_count INT DEFAULT 0,       -- 当日上架次数
+  buy_count INT DEFAULT 0,           -- 当日买入件数（成交计）
+  sell_count INT DEFAULT 0,          -- 当日卖出件数（成交计）
+  buy_amount BIGINT DEFAULT 0,       -- 当日买入金额
+  sell_amount BIGINT DEFAULT 0,      -- 当日卖出金额
   PRIMARY KEY (character_id, quota_date)
 );
+
+-- 校验时使用 (buy_count + sell_count) <= market_max_daily_trade_count
+-- 同时校验 (buy_amount + sell_amount) <= market_max_daily_trade_amount
 
 -- 日切后自然失效，定期清理 7 天前数据
 ```
@@ -427,8 +441,8 @@ CREATE INDEX idx_risk_char ON market_risk_log (character_id, created_at DESC);
 #### `GET /api/market/listings`
 **请求参数**
 ```
-category: 'equipment' | 'skill' | 'pill' | 'material'   (必填)
-filters: { rarity?, tier?, slot?, skill_id?, pill_id?, material_id?, quality? }
+category: 'equipment'   (一期固定值，预留参数以兼容后续扩展)
+filters: { rarity?, tier?, slot?, weapon_type?, set_id?, enhance_level_min?, enhance_level_max? }
 sort: 'time_desc' | 'price_asc' | 'price_desc' | 'cost_performance'
 page: number (默认 1)
 page_size: number (默认 20, 最大 50)
@@ -474,21 +488,21 @@ page_size: number (默认 20, 最大 50)
     "category": "equipment",
     "inventory_id": 98765   // character_equipment.id
   },
-  "quantity": 1,             // equipment 恒为 1，堆叠品 1~上限
   "unit_price": 9500
 }
 ```
 
 **服务端流程**（事务内执行）：
 1. 鉴权 + 校验账号准入（§4.3）
-2. 校验当日挂单次数 < 50、进行中挂单 < 20
-3. 校验物品存在、归属、未绑定
-4. 计算 `category_key`，拉取 `ref_price`
-5. 校验 `unit_price ∈ [ref * 0.3, ref * 3.0]`
-6. 从背包扣除物品（equipment 直接 `DELETE`，堆叠品 `count -= quantity`）
-7. 构造 `item_snapshot` 写入 `market_listings`
-8. `market_daily_quota.listing_count += 1`
-9. 返回新挂单信息
+2. 校验当日挂单次数 < 20、进行中挂单 < 10
+3. 校验装备存在、归属、未绑定、未穿戴中
+4. **校验装备 `rarity ∈ {purple, gold, red}` 且 `tier ≥ 3`**（不满足直接拒，错误码 `ITEM_BELOW_MARKET_THRESHOLD`）
+5. 计算 `category_key`，拉取 `ref_price`
+6. 校验 `unit_price ∈ [ref * 0.3, ref * 3.0]`
+7. 从背包扣除装备（`character_equipment` 行 `DELETE`）
+8. 构造 `item_snapshot` 写入 `market_listings`（quantity 恒为 1）
+9. `market_daily_quota.listing_count += 1`
+10. 返回新挂单信息
 
 ### 7.3 购买
 
@@ -505,16 +519,17 @@ page_size: number (默认 20, 最大 50)
 3. 校验买家 ≠ 卖家
 4. 风控检查（§4.5）——命中任一硬规则直接 ROLLBACK + 写 `market_risk_log`
 5. 校验买家 `spirit_stone >= total_price`
-6. 校验买家当日买入额度、卖家当日卖出额度
-7. 扣买家灵石：`characters.spirit_stone -= total_price`
-8. 写交易流水 `market_transactions`
-9. 更新 `market_listings`: status='sold', buyer_id, tax_amount, seller_received, closed_at
-10. 更新双方 `market_daily_quota`
-11. 发邮件：
+6. **校验买家当日 (buy_count + sell_count) < 10、卖家当日 (buy_count + sell_count) < 10**
+7. 校验买家当日买入额度、卖家当日卖出额度（金额护栏，§4.4）
+8. 扣买家灵石：`characters.spirit_stone -= total_price`
+9. 写交易流水 `market_transactions`
+10. 更新 `market_listings`: status='sold', buyer_id, tax_amount, seller_received, closed_at
+11. 更新双方 `market_daily_quota`：买家 `buy_count += 1, buy_amount += total_price`，卖家 `sell_count += 1, sell_amount += total_price`
+12. 发邮件：
     - 给卖家：灵石 `seller_received` + 成交通知
     - 给买家：物品附件（按 item_snapshot 重建）
-12. 高价值成交（total_price > 100万）触发 `world_broadcast`
-13. 提交事务
+13. 高价值成交（total_price > 100万）触发 `world_broadcast`
+14. 提交事务
 
 ### 7.4 取消 / 过期
 
@@ -582,13 +597,16 @@ ON CONFLICT (category_key) DO UPDATE SET
 | `market_price_ceiling_ratio` | 3.0 | 参考价偏离容忍上限 |
 | `market_listing_duration_hours` | 48 | 节日活动可延长到 72 |
 | `market_cancel_fee_ratio` | 0.05 | 下架费率 |
-| `market_max_active_listings` | 20 | 单角色同时进行中挂单 |
-| `market_max_daily_listings` | 50 | 单角色每日上架次数 |
-| `market_max_daily_trade_amount` | 5,000,000 | 单角色每日成交额 |
+| `market_max_active_listings` | 10 | 单角色同时进行中挂单 |
+| `market_max_daily_listings` | 20 | 单角色每日上架次数 |
+| `market_max_daily_trade_count` | 10 | 单角色每日成交件数（买 + 卖合计） |
+| `market_max_daily_trade_amount` | 5,000,000 | 单角色每日成交额（金额护栏） |
 | `market_broadcast_threshold` | 1,000,000 | 触发全服广播的成交额 |
 | `market_entry_realm_tier` | 2 | 准入境界 |
 | `market_entry_level` | 30 | 准入等级 |
-| `market_entry_register_days` | 7 | 账号最低注册天数 |
+| `market_entry_register_days` | 1 | 账号最低注册天数 |
+| `market_item_min_rarity` | `purple` | 装备上架最低品质（白/绿/蓝禁止） |
+| `market_item_min_tier` | 3 | 装备上架最低 tier |
 | `market_ref_sample_min` | 5 | 参考价最小样本 |
 | `market_ref_window_days` | 7 | 参考价滑动窗口 |
 
@@ -605,7 +623,7 @@ ON CONFLICT (category_key) DO UPDATE SET
   ↓
 弹窗:
   ┌─────────────────────────────────────┐
-  │ 挂售 · 太虚剑 (玄品·+7)               │
+  │ 挂售 · 太虚剑 (地品·+7)               │
   │                                      │
   │ 系统参考价: 12,000 灵石               │
   │ 允许区间: [3,600 ~ 36,000]            │
@@ -648,19 +666,18 @@ ON CONFLICT (category_key) DO UPDATE SET
 ### 阶段一：最小可玩（MVP，预计 4-5 天）
 
 - [ ] 表结构迁移（§6 全部表）
-- [ ] 装备单品类的挂单 / 购买 / 下架 / 过期闭环
+- [ ] 装备的挂单 / 购买 / 下架 / 过期闭环
 - [ ] 参考价的基础价兜底（§5.3 基础价表手填）
-- [ ] 邮件附件分发装备类
+- [ ] 邮件附件分发装备实例
 - [ ] 基础 UI：坊市主页 + 我的挂单
 - [ ] 账号准入（§4.3）+ 价格区间护栏（§3.2）+ 交易税（§3.3）
-- [ ] 不做：广播 / 风控 / 参考价历史计算 / 功法丹药灵草
+- [ ] 不做：广播 / 风控 / 参考价历史计算
 
-### 阶段二：完整品类（预计 3 天）
+### 阶段二：参考价 + 限额（预计 2 天）
 
-- [ ] 功法残页、丹药、灵草上架 / 购买
-- [ ] 邮件附件分发上述类型
 - [ ] 历史参考价计算定时任务（§5.2）
 - [ ] 下架费、挂单限额、每日成交额限制
+- [ ] 我的挂单 / 成交记录页完整版
 
 ### 阶段三：安全与风控（预计 2-3 天）
 
@@ -675,6 +692,11 @@ ON CONFLICT (category_key) DO UPDATE SET
 - [ ] 搜索 / 筛选 / 收藏夹
 - [ ] 策划后台：基础参考价热更新、税率热更新
 
+### 远期扩展（不在本次排期）
+
+- [ ] 功法残页 / 丹药 / 灵草等堆叠品的"散件市集"分区（需要先完善反工作室体系）
+- [ ] 拍卖房（高价值装备走单独竞拍入口）
+
 ---
 
 ## 十一、风险与未决事项
@@ -684,7 +706,7 @@ ON CONFLICT (category_key) DO UPDATE SET
 | 风险 | 缓解措施 |
 |------|---------|
 | **冷启动无参考价**：开服前期所有品类走 base_price，玩家感知不到区间 | 基础参考价表必须在开服前评审，避免 10 倍数量级偏差 |
-| **装备归一化键粒度粗**：同品质同等级同槽位装备词条差异巨大，参考价失真 | 允许 3 倍上限 ceiling 让好词条装备溢价；后续可引入副词条加成分档 |
+| **装备归一化键粒度粗**：同品质同等级同槽位装备词条差异巨大，参考价失真 | 允许 3 倍上限 ceiling 让好词条装备溢价；门槛限定紫色+起步进一步缩小样本方差；后续可引入副词条加成分档 |
 | **工作室多账号换设备换 IP 规避风控** | 阶段三接入行为指纹（挂单频次、价格分布异常） |
 | **通缩**：税率过高玩家不愿交易 | 参数化税率，上线后 2 周看交易密度动态调 |
 | **首日爆仓**：开服即有人挂高价骗参考价** | 开服前 7 天全部走 base_price，第 8 天起才启用历史均价 |
@@ -693,8 +715,7 @@ ON CONFLICT (category_key) DO UPDATE SET
 
 1. **是否支持一口价+议价**？目前方案只支持一口价，拍卖/砍价需额外设计
 2. **绑定逻辑落在哪**？建议在每张背包表加 `is_bound BOOLEAN DEFAULT FALSE`，掉落/合成时置 FALSE，宗门/任务奖励时置 TRUE
-3. **跨服坊市**？本方案按全服单坊市设计，如果以后分服需要增加 `server_id` 维度
-4. **高价值装备是否走拍卖房**？目前全走一口价，后期可考虑 > 参考价 10 倍的商品走单独竞拍入口
+3. **高价值装备是否走拍卖房**？目前全走一口价，后期可考虑 > 参考价 10 倍的商品走单独竞拍入口
 
 ---
 
@@ -706,8 +727,14 @@ ON CONFLICT (category_key) DO UPDATE SET
 - [ ] 挂单 48 小时不动自动过期，邮件退回卖家
 - [ ] 下架扣 5% 灵石，物品邮件退回
 - [ ] 同 IP 双号购买被阻断
-- [ ] 新号（< 7 天）访问坊市入口被拒
-- [ ] 堆叠物品（残页/丹药/灵草）部分上架，背包剩余数量正确
+- [ ] 新号（< 1 天）访问坊市入口被拒
+- [ ] 试图上架功法残页 / 丹药 / 灵草被前后端双重拒绝
+- [ ] 试图上架蓝品（玄品）及以下品质装备被拒，错误码 `ITEM_BELOW_MARKET_THRESHOLD`
+- [ ] 试图上架 tier < 3 的紫色装备被拒
+- [ ] 紫色 tier 3 装备可正常挂单成交
+- [ ] 已穿戴中的装备无法上架
+- [ ] 单角色当日买入 5 件 + 卖出 5 件后，第 11 件买卖均被拒（前端提示"今日交易件数已达上限"）
+- [ ] 单角色同时挂单达到 10 件后，第 11 次上架被拒
 - [ ] 高价成交触发广播
 - [ ] 交易税率配置改为 0.15，新交易按新税率结算
 - [ ] 参考价定时任务跑一次后，有足够样本的品类 `calc_method` 切为 `historical`
