@@ -263,11 +263,13 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
   // T1-T2 品质权重上调（前期装备更新频繁带来爽感）
   // T11/T12 顶级图：紫品起步、金/红主流，白绿全砍
+  // T13-T15 道域/法则/道祖：金红双品，红装权重逐级抬升
   const weights: Record<number, number[]> = {
     1: [40,40,17,3,0,0], 2: [30,40,22,7,1,0], 3: [20,35,25,15,4.5,0.5],
     4: [5,25,30,25,13,2], 5: [0,10,30,35,22,3], 6: [0,0,20,40,35,5],
     7: [0,0,10,35,45,10], 8: [0,0,5,25,55,15], 9: [0,0,0,20,60,20], 10: [0,0,0,10,60,30],
     11: [0,0,0,5,55,40], 12: [0,0,0,0,50,50],
+    13: [0,0,0,0,35,65], 14: [0,0,0,0,25,75], 15: [0,0,0,0,15,85],
   }
   const w = weights[tier] || weights[1]
   const total = w.reduce((a, b) => a + b, 0)
@@ -280,7 +282,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]
   const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[idx]))
-  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240 }
+  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
   const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
   const subStats = generateSubStats(idx, tier)
   // 套装注入：白/绿不出套装；蓝~红按品质有概率获得套装碎片身份；boss luck ×1.5
@@ -333,7 +335,7 @@ function generateEnhanceStoneDrop(tier: number, isBoss: boolean, luckMul: number
   if (tier < 4) return null
   const base: Record<number, number> = {
     4: 0.020, 5: 0.018, 6: 0.015, 7: 0.012, 8: 0.010, 9: 0.008, 10: 0.006,
-    11: 0.004, 12: 0.003,
+    11: 0.004, 12: 0.003, 13: 0.0025, 14: 0.0020, 15: 0.0015,
   }
   let rate = (base[tier] ?? 0) * luckMul
   if (isBoss) rate *= 4
