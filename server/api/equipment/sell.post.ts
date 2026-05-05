@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     await removeEquipsFromAllLoadouts(charId, [equip_id])
     await pool.query('DELETE FROM character_equipment WHERE id = $1', [equip_id])
     const { rows: updRows } = await pool.query(
-      'UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2 RETURNING spirit_stone',
+      'UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2 RETURNING spirit_stone',
       [price, charId]
     )
     const newSpiritStone = updRows[0]?.spirit_stone

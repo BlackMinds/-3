@@ -136,7 +136,7 @@ export async function applyEventEffects(
   const params: any[] = []
   let p = 1
   if (reward.stoneDelta !== 0) {
-    updates.push(`spirit_stone = GREATEST(spirit_stone + $${p}, $${p + 1})`)
+    updates.push(`spirit_stone = LEAST(70000000000, GREATEST(spirit_stone + $${p}, $${p + 1}))`)
     // 下限保护：至少保留 getStoneFloor(tier)
     params.push(reward.stoneDelta, getStoneFloor(tier))
     p += 2

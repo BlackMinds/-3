@@ -11,9 +11,10 @@ export default defineEventHandler(async (event) => {
 
     // 防作弊：单次上报限制
     const maxExp = 10000000
-    const maxStone = 50000000
     const safeExp = Math.min(Math.max(0, Math.floor(exp_gained)), maxExp)
-    const safeStone = Math.min(Math.max(0, Math.floor(spirit_stone_gained)), maxStone)
+    // 怪物掉落灵石已停发；前端上报的 spirit_stone_gained 一律忽略
+    void spirit_stone_gained
+    const safeStone = 0
     const safeLevelExp = Math.min(Math.max(0, Math.floor(level_exp_gained || 0)), maxExp)
 
     const { rows: charRows } = await pool.query(
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
     await pool.query(
       `UPDATE characters
        SET cultivation_exp = cultivation_exp + $1,
-           spirit_stone = spirit_stone + $2,
+           spirit_stone = LEAST(70000000000, spirit_stone + $2),
            level_exp = level_exp + $3,
            current_map = $4,
            last_online = NOW()

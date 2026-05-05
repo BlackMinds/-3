@@ -453,7 +453,9 @@ export default defineEventHandler(async (event) => {
         const failInc = isWin ? 0 : 1
 
         const stoneRatio = 0.4 + 0.6 * c.contribution
-        const myStone = Math.floor(totalBaseStone * stoneRatio * rewardMul * ratingMul)
+        // 怪物掉落灵石已停发；保留 stoneRatio/totalBaseStone 计算供后续若恢复时复用
+        void totalBaseStone; void rewardMul; void ratingMul
+        const myStone = 0
         // 经验与灵石对齐按贡献度分摊（原本不分摊 = 4 人各拿全额，整队总流出 4×，与 stone 语义不一致）
         const myExp = Math.floor(totalBaseExp * stoneRatio * rewardMul * ratingMul * (1 + expTeamBonus))
         const myPoints = Math.floor(basePoints * stoneRatio)
@@ -482,7 +484,7 @@ export default defineEventHandler(async (event) => {
           bagCount++
         }
         if (bagOverflowGain > 0) {
-          await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [bagOverflowGain, c.characterId])
+          await client.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [bagOverflowGain, c.characterId])
         }
 
         // --- 保存灵草到 character_materials ---
@@ -557,7 +559,7 @@ export default defineEventHandler(async (event) => {
         // 更新角色（含等级+境界）
         await client.query(
           `UPDATE characters SET
-             spirit_stone = spirit_stone + $1,
+             spirit_stone = LEAST(70000000000, spirit_stone + $1),
              cultivation_exp = $2,
              realm_tier = $3,
              realm_stage = $4,

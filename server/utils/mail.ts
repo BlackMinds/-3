@@ -172,7 +172,7 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
   switch (att.type) {
     case 'spirit_stone':
       await client.query(
-        `UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2`,
+        `UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2`,
         [att.amount, characterId]
       )
       break

@@ -164,6 +164,11 @@ export const PASSIVE_PCT_CAP = 40 // atkPercent/defPercent/hpPercent/spdPercent 
 // 满后新装备直接按基础售价转灵石返还，套装件也不例外
 export const EQUIP_BAG_LIMIT = 400
 
+// 灵石持有上限：700 亿（70_000_000_000）
+// 所有 spirit_stone += 入口在 SQL 层用 LEAST(SPIRIT_STONE_CAP, spirit_stone + X) 强制封顶
+// 同时战斗/秘境/挂机的怪物掉落灵石已置 0，仅保留出售/邮件/宗门/活动等非掉落产出
+export const SPIRIT_STONE_CAP = 70_000_000_000
+
 // =====================================================================
 // 八、战斗公式常量
 // =====================================================================

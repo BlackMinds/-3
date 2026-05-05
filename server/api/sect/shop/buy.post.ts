@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
         break
 
       case 'spirit_stone':
-        await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [eff.value, char.id])
+        await client.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [eff.value, char.id])
         resultMsg = `获得${eff.value}灵石`
         break
 

@@ -929,7 +929,9 @@ export default defineEventHandler(async (event) => {
       // v3.4.3: 历练经验整体 ×0.7（修为/等级双经验同步缩）
       const totalExp = Math.floor(result.totalExp * expMul * catchUpMul * 0.7)
       const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
-      const totalStone = Math.floor(result.totalStone * stoneTierBonus)
+      void stoneTierBonus
+      // 怪物掉落灵石已停发；保留 totalStone 变量名以兼容下游 DB/前端接口，固定为 0
+      const totalStone = 0
       const levelExp = totalExp
 
       if (result.won && catchUpMul < 1.0 && result.totalExp > 0) {
@@ -980,7 +982,7 @@ export default defineEventHandler(async (event) => {
           const newExpTotal = Number(baseline.cultivation_exp || 0) + totalExp
           const br = applyCultivationExp(newExpTotal, baseline.realm_tier || 1, baseline.realm_stage || 1)
           await client.query(
-            `UPDATE characters SET cultivation_exp = $1, spirit_stone = spirit_stone + $2, level_exp = level_exp + $3, last_online = NOW() WHERE id = $4`,
+            `UPDATE characters SET cultivation_exp = $1, spirit_stone = LEAST(70000000000, spirit_stone + $2), level_exp = level_exp + $3, last_online = NOW() WHERE id = $4`,
             [br.cultivation_exp, totalStone, levelExp, char.id]
           )
 
@@ -1064,7 +1066,7 @@ export default defineEventHandler(async (event) => {
           }
 
           if (autoSellIncome > 0) {
-            await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [autoSellIncome, char.id])
+            await client.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [autoSellIncome, char.id])
           }
           autoSellIncomeOut = autoSellIncome
         } else if (!result.won) {

@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
     const r = def.reward
 
     if (r.spirit_stone) {
-      await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [r.spirit_stone, charId])
+      await client.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [r.spirit_stone, charId])
       rewards.push(`灵石 +${r.spirit_stone}`)
     }
 

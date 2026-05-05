@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     const def = DAILY_TASK_TYPES.find(t => t.type === task.task_type)
     if (def?.extraReward) {
       if (def.extraReward.type === 'spirit_stone') {
-        await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [def.extraReward.value, char.id])
+        await pool.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [def.extraReward.value, char.id])
       } else if (def.extraReward.type === 'cultivation_exp') {
         await pool.query('UPDATE characters SET cultivation_exp = cultivation_exp + $1 WHERE id = $2', [def.extraReward.value, char.id])
       }

@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
 
     const total = unitPrice * count
     const { rows: updRows } = await client.query(
-      'UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2 RETURNING spirit_stone',
+      'UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2 RETURNING spirit_stone',
       [total, charId]
     )
 

@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
     // 全员奖励
     let extraMsg = ''
     if (def.allReward.type === 'spirit_stone') {
-      await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [def.allReward.value, char.id])
+      await pool.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [def.allReward.value, char.id])
       extraMsg = `，+${def.allReward.value}灵石`
     } else if (def.allReward.type === 'pill') {
       const pillIds = ['atk_pill_1', 'def_pill_1', 'hp_pill_1']

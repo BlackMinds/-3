@@ -158,7 +158,9 @@ export default defineEventHandler(async (event) => {
 
     const totalKills = Math.floor(cumulativeKilled * battleMultiplier)
     const expGained = Math.floor(cumulativeExpScaled * battleMultiplier)
-    const stoneGained = Math.floor(cumulativeStoneScaled * battleMultiplier)
+    // 怪物掉落灵石已停发；保留累积量但产出固定为 0
+    void cumulativeStoneScaled
+    const stoneGained = 0
     const levelExpGained = expGained
 
     // 累加 cultivation_exp 并扣除突破
@@ -170,7 +172,7 @@ export default defineEventHandler(async (event) => {
         cultivation_exp = $1,
         realm_tier = $2,
         realm_stage = $3,
-        spirit_stone = spirit_stone + $4,
+        spirit_stone = LEAST(70000000000, spirit_stone + $4),
         level_exp = level_exp + $5,
         offline_start = NULL,
         offline_map = NULL,
@@ -243,7 +245,7 @@ export default defineEventHandler(async (event) => {
       bagCount++
     }
     if (bagOverflowGain > 0) {
-      await pool.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [bagOverflowGain, char.id])
+      await pool.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [bagOverflowGain, char.id])
     }
 
     // 功法掉落

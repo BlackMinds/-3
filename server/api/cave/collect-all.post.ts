@@ -50,7 +50,7 @@ export default defineEventHandler(async (event) => {
       )
     }
     if (totalStone > 0) {
-      await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [totalStone, charId])
+      await client.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [totalStone, charId])
     }
 
     await client.query('COMMIT')

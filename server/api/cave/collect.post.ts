@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
         [br.cultivation_exp, br.realm_tier, br.realm_stage, charId]
       )
     } else if (config.output.type === 'spirit_stone') {
-      await client.query('UPDATE characters SET spirit_stone = spirit_stone + $1 WHERE id = $2', [amount, charId])
+      await client.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [amount, charId])
     }
 
     await client.query(
