@@ -61,13 +61,14 @@ export default defineEventHandler(async (event) => {
     }
     await client.query('DELETE FROM character_pills WHERE id = $1 AND count <= 0', [pillRows[0].id])
 
-    const bonus = ROOT_BONUS[spiritual_root]
+    // 同一 UPDATE 不可对同一列赋两次值；按选中灵根直接计算每列目标值
+    const r = (key: string) => ROOT_BONUS[spiritual_root].resist_field === key ? 0.15 : 0
     await client.query(
       `UPDATE characters SET spiritual_root = $1,
-       resist_metal = 0, resist_wood = 0, resist_water = 0, resist_fire = 0, resist_earth = 0,
-       ${bonus.resist_field} = 0.15
+       resist_metal = $3, resist_wood = $4, resist_water = $5, resist_fire = $6, resist_earth = $7
        WHERE id = $2`,
-      [spiritual_root, char.id]
+      [spiritual_root, char.id,
+       r('resist_metal'), r('resist_wood'), r('resist_water'), r('resist_fire'), r('resist_earth')]
     )
 
     const ROOT_CN: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' }
