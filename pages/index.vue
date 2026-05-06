@@ -188,8 +188,19 @@
             <span class="tower-meta">{{ towerStore.lastResult.total_turns }} 回合</span>
             <span v-if="towerStore.lastResult.unlocked_title" class="tower-reward-title">称号「{{ towerStore.lastResult.unlocked_title }}」已解锁（去成就页领取并佩戴）</span>
             <span v-if="towerStore.lastResult.permanent_bonus_pct > 0" class="tower-reward-stat">+{{ towerStore.lastResult.permanent_bonus_pct }}% 全属性永久加成</span>
+            <!-- 倒计时（满足"非重温 + 可挑战 + 还有未通关层"才启动） -->
             <span v-if="towerStore.autoChallengeCountdown > 0 && towerStore.canChallenge" class="tower-countdown">
               {{ towerStore.autoChallengeCountdown }} 秒后自动挑战第 {{ towerStore.nextFloor }} 层…
+            </span>
+            <!-- 没倒计时时给出原因提示 -->
+            <span v-else-if="towerStore.isReplay" class="tower-no-auto-hint">
+              （重温模式，不自动连战；如需推进进度，请挑战「下一关」）
+            </span>
+            <span v-else-if="towerStore.maxFloor >= towerStore.implementedFloors" class="tower-no-auto-hint">
+              （已通关当前开放的全部 {{ towerStore.implementedFloors }} 层，等待新内容上线）
+            </span>
+            <span v-else-if="towerStore.dailyFailUsed >= towerStore.dailyFailMax" class="tower-no-auto-hint">
+              （今日 {{ towerStore.dailyFailMax }} 次失败已用完，明日 00:00 重置）
             </span>
             <button class="ctrl-btn tower-stop" @click="cancelAutoChallenge">暂停下塔</button>
           </div>
@@ -7947,6 +7958,7 @@ onUnmounted(() => {
 .tower-reward-title { color: #c0a060; font-size: 13px; }
 .tower-reward-stat { color: #6dd070; font-weight: bold; font-size: 13px; }
 .tower-countdown { color: #f0d090; font-size: 13px; margin-left: auto; }
+.tower-no-auto-hint { color: #8a8070; font-size: 12px; margin-left: auto; font-style: italic; }
 .tower-fail-info { color: #c0a070; font-size: 13px; }
 .tower-stop, .tower-retry { font-size: 12px; padding: 4px 10px; }
 .tower-preview {
