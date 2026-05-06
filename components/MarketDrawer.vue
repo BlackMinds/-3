@@ -222,14 +222,43 @@
         <div v-if="sellLoading" class="empty">加载中...</div>
         <template v-else>
           <div class="sell-section">
-            <div class="sell-label">从背包选择</div>
+            <div class="sell-label">筛选</div>
+            <div class="sell-filter-row">
+              <select v-model="sellFilter.rarity">
+                <option value="">全部品质</option>
+                <option value="purple">地品</option>
+                <option value="gold">天品</option>
+                <option value="red">仙品</option>
+              </select>
+              <select v-model="sellFilter.slot">
+                <option value="">全部部位</option>
+                <option v-for="s in EQUIP_SLOTS" :key="s.slot" :value="s.slot">{{ s.name }}</option>
+              </select>
+              <select v-model="sellFilter.tier">
+                <option value="">全部 T 级</option>
+                <option v-for="t in availableSellTiers" :key="t" :value="t">T{{ t }}</option>
+              </select>
+            </div>
+            <input
+              v-model="sellFilter.keyword"
+              type="text"
+              class="sell-search"
+              placeholder="按名称搜索…"
+            />
+          </div>
+          <div class="sell-section">
+            <div class="sell-label">
+              从背包选择
+              <span class="muted small">（{{ filteredSellableEquips.length }}/{{ sellableEquips.length }}）</span>
+            </div>
             <select v-model="sellEquipId" @change="onPickEquip">
               <option :value="0">-- 选择装备（地品+ T3+） --</option>
-              <option v-for="e in sellableEquips" :key="e.id" :value="e.id">
+              <option v-for="e in filteredSellableEquips" :key="e.id" :value="e.id">
                 {{ e.name }}（{{ rarityLabel(e.rarity) }}·T{{ e.tier }}<span v-if="e.enhance_level">·+{{ e.enhance_level }}</span>）
               </option>
             </select>
             <div v-if="!sellableEquips.length" class="muted small">背包暂无符合条件的装备</div>
+            <div v-else-if="!filteredSellableEquips.length" class="muted small">当前筛选下没有装备，<a class="link-btn" @click="resetSellFilter">清空筛选</a></div>
           </div>
           <template v-if="pickedEquip && pickedRef">
             <div class="sell-section">
@@ -289,6 +318,42 @@ const sellEquipId = ref<number>(0)
 const pickedEquip = ref<any>(null)
 const pickedRef = ref<any>(null)
 const sellPrice = ref<number>(0)
+const sellFilter = reactive({ rarity: '', slot: '', tier: '' as number | '', keyword: '' })
+
+const availableSellTiers = computed(() => {
+  const set = new Set<number>()
+  for (const e of sellableEquips.value) {
+    const t = Number(e.tier)
+    if (Number.isFinite(t)) set.add(t)
+  }
+  return Array.from(set).sort((a, b) => a - b)
+})
+
+const filteredSellableEquips = computed(() => {
+  const kw = sellFilter.keyword.trim().toLowerCase()
+  return sellableEquips.value.filter(e => {
+    if (sellFilter.rarity && e.rarity !== sellFilter.rarity) return false
+    if (sellFilter.slot && (e.base_slot || e.slot) !== sellFilter.slot) return false
+    if (sellFilter.tier !== '' && Number(e.tier) !== Number(sellFilter.tier)) return false
+    if (kw && !String(e.name || '').toLowerCase().includes(kw)) return false
+    return true
+  })
+})
+
+function resetSellFilter() {
+  sellFilter.rarity = ''
+  sellFilter.slot = ''
+  sellFilter.tier = ''
+  sellFilter.keyword = ''
+}
+
+watch(filteredSellableEquips, list => {
+  if (sellEquipId.value && !list.some(e => e.id === sellEquipId.value)) {
+    sellEquipId.value = 0
+    pickedEquip.value = null
+    pickedRef.value = null
+  }
+})
 
 // hover tooltip
 const hoverEquip = ref<any>(null)
@@ -535,6 +600,7 @@ async function openSell() {
   sellEquipId.value = 0
   pickedEquip.value = null
   pickedRef.value = null
+  resetSellFilter()
   try {
     const res = await api('/equipment/list')
     if (res.code === 200) {
@@ -760,6 +826,15 @@ watch(() => props.modelValue, (v) => {
   width: 100%; box-sizing: border-box;
   background: #2a2a42; color: #fff; border: 1px solid #555;
   padding: 6px 10px; border-radius: 4px; font-size: 14px;
+}
+.sell-filter-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px; margin-bottom: 6px;
+}
+.sell-filter-row select { padding: 5px 6px; font-size: 13px; }
+.sell-search { font-size: 13px; }
+.sell-modal .link-btn {
+  color: #ffd700; cursor: pointer; text-decoration: underline;
 }
 .sell-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 
