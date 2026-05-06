@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { generateMonsterStats, buildEquippedSkillInfo, runWaveBattle, buildMonsterSkillDescriptions, makeHealerTemplate, type BattlerStats, type MonsterTemplate } from '~/server/engine/battleEngine'
+import { generateMonsterStats, buildEquippedSkillInfo, runWaveBattle, buildMonsterSkillDescriptions, makeHealerTemplate, applyInnateMainToAwaken, type BattlerStats, type MonsterTemplate } from '~/server/engine/battleEngine'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { generateEquipName } from '~/server/engine/equipNameData'
@@ -879,6 +879,8 @@ export default defineEventHandler(async (event) => {
     for (let bi = 0; bi < batchCount; bi++) {
       // char 上次结算后字段已 Object.assign 回来，buildPlayerStats 用最新 level/realm 重算
       const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows)
+      // v3.9: 把主修内蕴被动叠加进 awaken（与 v1.3 灵戒同字段共池，引擎复用 mainSkill* 钩子）
+      applyInnateMainToAwaken((playerStats as any).awaken, equippedSkills.activeSkill)
 
       // 生成怪物波次
       const isBoss = mapData.boss && Math.random() < 0.01

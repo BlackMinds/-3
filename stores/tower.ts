@@ -68,7 +68,7 @@ export interface TowerBattleResult {
   is_first_clear: boolean
   unlocked_title: string | null
   permanent_bonus_pct: number
-  purple_skill_drop?: { skill_id: string; name: string; element: string | null } | null
+  purple_skill_drops?: { skill_id: string; name: string; element: string | null }[]
 }
 
 export const useTowerStore = defineStore('tower', () => {

@@ -1380,3 +1380,18 @@ CREATE TABLE IF NOT EXISTS tower_clears (
   UNIQUE(character_id, floor)
 );
 CREATE INDEX IF NOT EXISTS idx_tower_clears_char ON tower_clears(character_id, floor);
+
+-- v3.9 紫品主修每日掉落记录（每 10 层一个节点，每节点同日仅触发 1 次，每次随机 1-2 本，全日上限 20 本）
+-- 唯一键 (character_id, drop_date, floor) 保证同节点同日幂等；count 记录该节点本次掉的本数（用于查"当日累积"）
+CREATE TABLE IF NOT EXISTS tower_purple_drops (
+  id            SERIAL PRIMARY KEY,
+  character_id  INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  drop_date     DATE NOT NULL,
+  floor         SMALLINT NOT NULL,
+  skill_id      VARCHAR(64) NOT NULL,    -- 该节点首本紫品 ID（仅审计用，多本时其余仅写入 inventory）
+  count         SMALLINT NOT NULL DEFAULT 1,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(character_id, drop_date, floor)
+);
+ALTER TABLE tower_purple_drops ADD COLUMN IF NOT EXISTS count SMALLINT NOT NULL DEFAULT 1;
+CREATE INDEX IF NOT EXISTS idx_tower_purple_drops_char ON tower_purple_drops(character_id, drop_date);

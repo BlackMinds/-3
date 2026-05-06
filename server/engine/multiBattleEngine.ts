@@ -24,6 +24,7 @@ import {
   calculateDamage,
   buildSetEffects,
   buildActiveSetTiers,
+  applyInnateMainToAwaken,
   type BattlerStats,
   type EquippedSkillInfo,
   type SkillRefInfo,
@@ -276,8 +277,11 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
       mainSkillPoisonAmpElem: s.awaken?.mainSkillPoisonAmpElem,
       mainSkillFreezeChance: s.awaken?.mainSkillFreezeChance || 0,
       mainSkillFreezeChanceElem: s.awaken?.mainSkillFreezeChanceElem,
+      mainSkillExtraFreezeChance: s.awaken?.mainSkillExtraFreezeChance || 0,
       mainSkillBurnDuration: s.awaken?.mainSkillBurnDuration || 0,
       mainSkillBurnDurationElem: s.awaken?.mainSkillBurnDurationElem,
+      mainSkillBurnAmp: s.awaken?.mainSkillBurnAmp || 0,
+      mainSkillBurnAmpElem: s.awaken?.mainSkillBurnAmpElem,
       mainSkillBrittleAmp: s.awaken?.mainSkillBrittleAmp || 0,
       mainSkillBrittleAmpElem: s.awaken?.mainSkillBrittleAmpElem,
       mainSkillChainChance: s.awaken?.mainSkillChainChance || 0,
@@ -305,6 +309,9 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
     kills: 0,
     killStacks: 0,
   }
+
+  // v3.9 主修内蕴被动注入 awakenState（与 v1.3 灵戒同字段共池）
+  applyInnateMainToAwaken(fighter.awakenState, fighter.activeSkill)
 
   // v1 套装：根据 stats 上的 equipSetCounts/weaponType 解析运行时效果
   const setEffects = buildSetEffects(sx.equipSetCounts, sx.weaponType || null)
@@ -1021,6 +1028,13 @@ export function runPvpBattle(
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  第 ${h + 1} 段 ${critText}对 ${liveTarget.name} 造成 ${final} 伤害` })
           if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
           if (usedSkill.debuff) tryApplyDebuff(liveTarget, liveTarget.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
+          // v3.9 玄冰诀：主修命中独立 roll 额外冻结 1 回合
+          if (isMainSkill && liveTarget.hp > 0) {
+            const extraFreeze = (attacker.awakenState?.mainSkillExtraFreezeChance) || 0
+            if (extraFreeze > 0 && Math.random() < extraFreeze) {
+              tryApplyDebuff(liveTarget, liveTarget.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, attacker.atk, turn, attacker)
+            }
+          }
           triggerAwakenOnHit(attacker, liveTarget, turn)
           triggerRetaliate(attacker, liveTarget, final, dr.isCrit, turn)
           if (liveTarget.hp <= 0) liveTarget.alive = false
@@ -1052,6 +1066,13 @@ export function runPvpBattle(
         }
         if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
         if (usedSkill.debuff) tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
+        // v3.9 玄冰诀：主修命中独立 roll 额外冻结 1 回合
+        if (isMainSkill && t.hp > 0) {
+          const extraFreeze = (attacker.awakenState?.mainSkillExtraFreezeChance) || 0
+          if (extraFreeze > 0 && Math.random() < extraFreeze) {
+            tryApplyDebuff(t, t.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, attacker.atk, turn, attacker)
+          }
+        }
         triggerAwakenOnHit(attacker, t, turn)
         triggerRetaliate(attacker, t, final, dr.isCrit, turn)
         if (t.hp <= 0) t.alive = false

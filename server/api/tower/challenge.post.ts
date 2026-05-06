@@ -17,6 +17,12 @@ import {
   ENTRY_REALM_TIER, ENTRY_LEVEL, getFloorDef,
 } from '~/server/engine/towerData'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { ACTIVE_SKILLS } from '~/server/engine/skillData'
+
+// v3.9 紫品主修池（仅通天塔每 10 层节点掉落）
+const TOWER_PURPLE_ACTIVE_IDS = ['gale_blade', 'wither_bloom', 'frost_art', 'sky_inferno', 'mountain_seal']
+// 单日累计紫品上限（恰好 = 10 个节点 × 每节点上限 2 本，需打到 100 层才能触满）
+const DAILY_PURPLE_DROP_CAP = 20
 
 // 通天塔战斗锁（与主战斗锁独立，避免相互冲突）
 const towerLock = new Map<number, { until: number }>()
@@ -126,6 +132,8 @@ export default defineEventHandler(async (event) => {
     let unlockedTitle: string | null = null
     let permanentBonusPct = 0
     let battleId: number | null = null
+    // v3.9 紫品主修每 10 层节点掉落（每节点同日仅 1 次，每次随机 1-2 本，全日上限 20 本）
+    let purpleSkillDrops: { skill_id: string; name: string; element: string | null }[] = []
 
     const client = await pool.connect()
     try {
@@ -144,6 +152,76 @@ export default defineEventHandler(async (event) => {
       battleId = ins.rows[0].id
 
       if (outcome.won) {
+        // v3.9 紫品主修节点掉落（首通/重温通用，仅取决于 floor 和当日额度）
+        //   - 节点：floor % 10 === 0 (10/20/.../100)
+        //   - 单节点同日仅 1 次（唯一键拦截）
+        //   - 每节点随机 1-2 本，每日累计 20 本封顶（达到上限即截断或不发）
+        if (floor > 0 && floor % 10 === 0) {
+          // 当日已累计本数（SUM(count)），用于上限校验
+          const { rows: capRows } = await client.query(
+            `SELECT COALESCE(SUM(count), 0) AS dropped FROM tower_purple_drops
+              WHERE character_id = $1 AND drop_date = CURRENT_DATE`,
+            [char.id]
+          )
+          const droppedToday = Number(capRows[0]?.dropped || 0)
+          if (droppedToday < DAILY_PURPLE_DROP_CAP) {
+            // 本节点 roll 1-2 本，超过当日剩余额度时截断
+            const rolledCount = 1 + Math.floor(Math.random() * 2)  // 1 或 2
+            const remaining = DAILY_PURPLE_DROP_CAP - droppedToday
+            const grantCount = Math.min(rolledCount, remaining)
+
+            // 拥有数（inventory + 已装备），用于权重 1/2^owned
+            const { rows: invRows } = await client.query(
+              'SELECT skill_id, count FROM character_skill_inventory WHERE character_id = $1 AND skill_id = ANY($2)',
+              [char.id, TOWER_PURPLE_ACTIVE_IDS]
+            )
+            const ownedMap: Record<string, number> = {}
+            for (const r of invRows) ownedMap[r.skill_id] = r.count || 0
+            const { rows: equippedPurple } = await client.query(
+              `SELECT skill_id FROM character_skills WHERE character_id = $1 AND skill_id = ANY($2)`,
+              [char.id, TOWER_PURPLE_ACTIVE_IDS]
+            )
+            for (const r of equippedPurple) ownedMap[r.skill_id] = (ownedMap[r.skill_id] || 0) + 1
+
+            // 选 grantCount 个 skill_id（每本独立 roll，已掉的会进 ownedMap 影响后续权重）
+            const chosenList: string[] = []
+            for (let i = 0; i < grantCount; i++) {
+              const weights = TOWER_PURPLE_ACTIVE_IDS.map(id => {
+                const owned = ownedMap[id] || 0
+                return owned === 0 ? 100 : Math.max(1, Math.floor(100 / Math.pow(2, owned)))
+              })
+              const total = weights.reduce((a, b) => a + b, 0)
+              let r = Math.random() * total
+              let pick = TOWER_PURPLE_ACTIVE_IDS[TOWER_PURPLE_ACTIVE_IDS.length - 1]
+              for (let j = 0; j < TOWER_PURPLE_ACTIVE_IDS.length; j++) {
+                r -= weights[j]
+                if (r <= 0) { pick = TOWER_PURPLE_ACTIVE_IDS[j]; break }
+              }
+              chosenList.push(pick)
+              ownedMap[pick] = (ownedMap[pick] || 0) + 1  // 影响下一本的权重
+            }
+
+            // 节点级幂等 INSERT：成功才发奖；冲突则该节点同日已掉过，跳过
+            const dropRes = await client.query(
+              `INSERT INTO tower_purple_drops (character_id, drop_date, floor, skill_id, count)
+               VALUES ($1, CURRENT_DATE, $2, $3, $4)
+               ON CONFLICT (character_id, drop_date, floor) DO NOTHING RETURNING id`,
+              [char.id, floor, chosenList[0], grantCount]
+            )
+            if ((dropRes.rowCount ?? 0) > 0) {
+              for (const sid of chosenList) {
+                await client.query(
+                  `INSERT INTO character_skill_inventory (character_id, skill_id, count) VALUES ($1, $2, 1)
+                   ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
+                  [char.id, sid]
+                )
+                const def = ACTIVE_SKILLS.find(s => s.id === sid)
+                purpleSkillDrops.push({ skill_id: sid, name: def?.name || sid, element: def?.element || null })
+              }
+            }
+          }
+        }
+
         if (isAdvance) {
           // 推进进度
           newMaxFloor = floor
@@ -223,6 +301,7 @@ export default defineEventHandler(async (event) => {
           is_first_clear: isFirstClear,
           unlocked_title: unlockedTitle,
           permanent_bonus_pct: permanentBonusPct,
+          purple_skill_drops: purpleSkillDrops,
         },
         state_after: {
           max_floor: newMaxFloor,

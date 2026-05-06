@@ -247,6 +247,7 @@ export interface PlayerAwakenState {
   mainSkillPoisonAmpElem?: AwakenElement;
   mainSkillFreezeChance?: number;    // 主修冻结概率 +X%（水）
   mainSkillFreezeChanceElem?: AwakenElement;
+  mainSkillExtraFreezeChance?: number; // v3.9 玄冰诀主修内蕴：命中独立 X 概率追加冻结 1 回合（不依赖原 debuff roll）
   mainSkillBurnDuration?: number;    // 主修灼烧持续 +X 回合（火）
   mainSkillBurnDurationElem?: AwakenElement;
   mainSkillBurnAmp?: number;         // v3.6 主修施加灼烧每跳伤害 +X%（火）
@@ -317,6 +318,17 @@ export interface SkillRefInfo {
   targetCount?: number;
   hitCount?: number;
   healAtkRatio?: number;
+  // 主修内蕴被动（仅 active 类用），战斗组装时叠加进 awakenState 同名字段
+  innateMain?: {
+    mainSkillCritRate?: number;
+    mainSkillLifesteal?: number;
+    mainSkillArmorPen?: number;
+    mainSkillBurnAmp?: number;
+    mainSkillExtraFreezeChance?: number;
+    mainSkillBrittleAmp?: number;
+    mainSkillBleedAmp?: number;
+    mainSkillPoisonAmp?: number;
+  };
 }
 
 export interface EquippedSkillInfo {
@@ -943,6 +955,34 @@ export function calculateDamage(
   return { damage, isCrit };
 }
 
+// ========== v3.9 主修内蕴被动 → awaken 注入（PvE/PvP 共用） ==========
+// 把主修功法的 innateMain 合并进 awaken/awakenState，复用 v1.3 灵戒同名钩子
+export function applyInnateMainToAwaken(awaken: any, activeSkill: SkillRefInfo | null) {
+  const innate = activeSkill?.innateMain;
+  if (!innate || !awaken) return;
+  const elem = (activeSkill?.element || null) as AwakenElement | null;
+  if (innate.mainSkillCritRate)          awaken.mainSkillCritRate = (awaken.mainSkillCritRate || 0) + innate.mainSkillCritRate;
+  if (innate.mainSkillLifesteal)         awaken.mainSkillLifesteal = (awaken.mainSkillLifesteal || 0) + innate.mainSkillLifesteal;
+  if (innate.mainSkillArmorPen)          awaken.mainSkillArmorPen = (awaken.mainSkillArmorPen || 0) + innate.mainSkillArmorPen;
+  if (innate.mainSkillExtraFreezeChance) awaken.mainSkillExtraFreezeChance = (awaken.mainSkillExtraFreezeChance || 0) + innate.mainSkillExtraFreezeChance;
+  if (innate.mainSkillBurnAmp && elem) {
+    awaken.mainSkillBurnAmp = (awaken.mainSkillBurnAmp || 0) + innate.mainSkillBurnAmp;
+    if (!awaken.mainSkillBurnAmpElem) awaken.mainSkillBurnAmpElem = elem;
+  }
+  if (innate.mainSkillBrittleAmp && elem) {
+    awaken.mainSkillBrittleAmp = (awaken.mainSkillBrittleAmp || 0) + innate.mainSkillBrittleAmp;
+    if (!awaken.mainSkillBrittleAmpElem) awaken.mainSkillBrittleAmpElem = elem;
+  }
+  if (innate.mainSkillBleedAmp && elem) {
+    awaken.mainSkillBleedAmp = (awaken.mainSkillBleedAmp || 0) + innate.mainSkillBleedAmp;
+    if (!awaken.mainSkillBleedAmpElem) awaken.mainSkillBleedAmpElem = elem;
+  }
+  if (innate.mainSkillPoisonAmp && elem) {
+    awaken.mainSkillPoisonAmp = (awaken.mainSkillPoisonAmp || 0) + innate.mainSkillPoisonAmp;
+    if (!awaken.mainSkillPoisonAmpElem) awaken.mainSkillPoisonAmpElem = elem;
+  }
+}
+
 // ========== 从DB技能行构建EquippedSkillInfo ==========
 
 export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
@@ -982,6 +1022,7 @@ export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
         debuff: skill.debuff ? { ...skill.debuff, chance: skill.debuff.chance * lvMul } : undefined,
         buff: scaleBuff(skill.buff),
         ignoreDef: skill.ignoreDef, isAoe: skill.isAoe, targetCount: skill.targetCount, hitCount: skill.hitCount, healAtkRatio: skill.healAtkRatio ? skill.healAtkRatio * lvMul : undefined,
+        innateMain: skill.innateMain,
       };
     } else if (skill.type === 'divine') {
       divineSkills.push({
@@ -2194,6 +2235,13 @@ export function runWaveBattle(
             }
             logs.push({ turn, text: `  第${hitsDone + 1}段 ${critText}对${curTarget.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
             if (usedSkill.debuff) tryApplyDebuff(curTarget, curTarget.stats.name, usedSkill.debuff as any, player.atk, turn, 'player');
+            // v3.9 玄冰诀：主修命中独立 roll 额外冻结 1 回合（与原 debuff 取 max，不延长，仅补漏）
+            if (isMainSkill && curTarget.stats.hp > 0) {
+              const extraFreeze = (player.awakenState?.mainSkillExtraFreezeChance) || 0;
+              if (extraFreeze > 0 && Math.random() < extraFreeze) {
+                tryApplyDebuff(curTarget, curTarget.stats.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, player.atk, turn, 'player');
+              }
+            }
             // v1.2 附灵：命中触发 DOT
             triggerAwakenOnHit(curTarget, curTarget.stats.name, turn);
           } else {
@@ -2225,6 +2273,13 @@ export function runWaveBattle(
               logs.push({ turn, text: `  ${critText}对${t.stats.name}造成 ${finalDmg} 伤害`, type: dmgResult.isCrit ? 'crit' : 'normal', ...snap() });
             }
             if (usedSkill.debuff) tryApplyDebuff(t, t.stats.name, usedSkill.debuff as any, player.atk, turn, 'player');
+            // v3.9 玄冰诀：主修命中独立 roll 额外冻结 1 回合
+            if (isMainSkill && t.stats.hp > 0) {
+              const extraFreeze = (player.awakenState?.mainSkillExtraFreezeChance) || 0;
+              if (extraFreeze > 0 && Math.random() < extraFreeze) {
+                tryApplyDebuff(t, t.stats.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, player.atk, turn, 'player');
+              }
+            }
             // v1.2 附灵：命中触发 DOT
             triggerAwakenOnHit(t, t.stats.name, turn);
           } else {

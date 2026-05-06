@@ -69,9 +69,22 @@ export interface Skill {
   targetCount?: number;     // 攻击目标数(2=打2只,3=打3只)
   hitCount?: number;        // 多段攻击(每段 = 倍率/hitCount)
   healAtkRatio?: number;    // 即时回血(攻击力倍率,如 2.0 = 回复200%攻击力的气血)
+  // 主修内蕴被动（仅 active 类用）：在战斗组装时叠加进 awakenState 同名字段，引擎复用 v1.3 钩子
+  innateMain?: {
+    mainSkillCritRate?: number;          // 主修暴击率 +X
+    mainSkillLifesteal?: number;         // 主修命中回 X% 最大气血
+    mainSkillArmorPen?: number;          // 主修无视目标 X% 防御
+    mainSkillBurnAmp?: number;           // 主修施加灼烧每跳伤害 +X
+    mainSkillExtraFreezeChance?: number; // 主修命中独立 X 概率追加冻结 1 回合
+    mainSkillBrittleAmp?: number;        // 主修脆弱减防加深 +X
+    mainSkillBleedAmp?: number;          // 主修流血每跳伤害 +X
+    mainSkillPoisonAmp?: number;         // 主修中毒每跳伤害 +X
+  };
 }
 
-// 主修功法 (6 个: 基础剑法 + 五行各一) - v3.5: 绿品 1.3→1.10 (-15%)
+// 主修功法 (11 个: 白×1 + 绿×5 + 紫×5)
+//   v3.5: 绿品 1.3→1.10 (-15%)
+//   v3.9: 新增紫品五行主修，倍率 1.50，自带主修向被动（复用 v1.3 灵戒同名钩子）
 export const ACTIVE_SKILLS: Skill[] = [
   { id: 'basic_sword', name: '基础剑法', type: 'active', rarity: 'white', element: null, multiplier: 1.0, description: '造成100%灵力伤害' },
   { id: 'wind_blade', name: '风刃术', type: 'active', rarity: 'green', element: 'metal', multiplier: 1.10, description: '造成110%金属性伤害,30%流血2回合', debuff: { type: 'bleed', chance: 0.30, duration: 2 } },
@@ -79,6 +92,27 @@ export const ACTIVE_SKILLS: Skill[] = [
   { id: 'ice_palm', name: '寒冰掌', type: 'active', rarity: 'green', element: 'water', multiplier: 1.10, description: '造成110%水属性伤害,25%冻结1回合', debuff: { type: 'freeze', chance: 0.25, duration: 1 } },
   { id: 'flame_sword', name: '烈焰剑诀', type: 'active', rarity: 'green', element: 'fire', multiplier: 1.10, description: '造成110%火属性伤害,40%灼烧3回合', debuff: { type: 'burn', chance: 0.40, duration: 3 } },
   { id: 'quake_fist', name: '裂地拳', type: 'active', rarity: 'green', element: 'earth', multiplier: 1.10, description: '造成110%土属性伤害,30%脆弱3回合', debuff: { type: 'brittle', chance: 0.30, duration: 3, value: 0.20 } },
+  // ===== v3.9 紫品五行主修 =====
+  { id: 'gale_blade', name: '罡风斩', type: 'active', rarity: 'purple', element: 'metal', multiplier: 1.50,
+    description: '造成150%金属性伤害,60%流血3回合;主修暴击率+5%',
+    debuff: { type: 'bleed', chance: 0.60, duration: 3 },
+    innateMain: { mainSkillCritRate: 0.05 } },
+  { id: 'wither_bloom', name: '万木枯荣诀', type: 'active', rarity: 'purple', element: 'wood', multiplier: 1.50,
+    description: '造成150%木属性伤害,70%中毒4回合;主修命中回1.5%最大气血',
+    debuff: { type: 'poison', chance: 0.70, duration: 4 },
+    innateMain: { mainSkillLifesteal: 0.015 } },
+  { id: 'frost_art', name: '玄冰诀', type: 'active', rarity: 'purple', element: 'water', multiplier: 1.50,
+    description: '造成150%水属性伤害,40%冻结1回合;主修命中10%概率额外冻结1回合',
+    debuff: { type: 'freeze', chance: 0.40, duration: 1 },
+    innateMain: { mainSkillExtraFreezeChance: 0.10 } },
+  { id: 'sky_inferno', name: '焚天烈焰诀', type: 'active', rarity: 'purple', element: 'fire', multiplier: 1.50,
+    description: '造成150%火属性伤害,70%灼烧4回合;主修施加的灼烧每跳伤害+15%',
+    debuff: { type: 'burn', chance: 0.70, duration: 4 },
+    innateMain: { mainSkillBurnAmp: 0.15 } },
+  { id: 'mountain_seal', name: '撼山印', type: 'active', rarity: 'purple', element: 'earth', multiplier: 1.50,
+    description: '造成150%土属性伤害,60%脆弱3回合(减防25%);主修无视目标8%防御',
+    debuff: { type: 'brittle', chance: 0.60, duration: 3, value: 0.25 },
+    innateMain: { mainSkillArmorPen: 0.08 } },
 ];
 
 // 神通技能 (14 个) - v3.5: 全线 ×0.60 让数值视觉脱离"百万级",蓝品保底 ≥0.85
