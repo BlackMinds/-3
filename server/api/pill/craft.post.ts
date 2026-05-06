@@ -3,6 +3,7 @@ import { getPool } from '~/server/database/db'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { getPillById } from '~/game/pillData'
+import { consumeCraftToken } from '~/server/utils/craftSession'
 
 const QUALITY_MUL: Record<string, number> = {
   white: 1.00, green: 1.10, blue: 1.25, purple: 1.50, gold: 2.00, red: 3.00,
@@ -29,11 +30,17 @@ const FIRE_NAME: Record<FireTier, string> = {
 export default defineEventHandler(async (event) => {
   const pool = getPool()
   const userId = event.context.userId
-  const { pill_id, cost, success_rate, herbs_used, fire_position } = await readBody(event)
+  const { pill_id, herbs_used, fire_position, token } = await readBody(event)
 
   if (!Array.isArray(herbs_used) || herbs_used.length === 0) {
     return { code: 400, message: '灵草参数错误' }
   }
+  if (typeof token !== 'string' || token.length === 0) {
+    return { code: 400, message: '炼丹会话失效,请重新开火' }
+  }
+
+  const recipe = getPillById(pill_id)
+  if (!recipe) return { code: 400, message: '丹方不存在' }
 
   // 单独捕获取连接超时,避免冒泡成 500 导致前端显示"网络错误"
   let client: PoolClient
@@ -53,8 +60,12 @@ export default defineEventHandler(async (event) => {
     if (charRows.length === 0) return { code: 400, message: '角色不存在' }
     const charId = charRows[0].id
 
-    const recipe = getPillById(pill_id)
-    if (recipe?.requireUnlock) {
+    // 一次性消费火候 token: 校验 charId + pillId + 未过期
+    if (!consumeCraftToken(token, charId, pill_id)) {
+      return { code: 400, message: '炼丹会话失效,请重新开火' }
+    }
+
+    if (recipe.requireUnlock) {
       const { rows: unlockRows } = await client.query(
         'SELECT id FROM character_unlocked_recipes WHERE character_id = $1 AND pill_id = $2',
         [charId, pill_id]
@@ -63,6 +74,15 @@ export default defineEventHandler(async (event) => {
         return { code: 400, message: '该丹方尚未解锁,请先在宗门商店购买' }
       }
     }
+
+    // 服务端权威成功率: 由 recipe.successRate * (1 + 炼丹房加成%) 计算
+    const { rows: pillRoomRows } = await client.query(
+      "SELECT level FROM character_cave WHERE character_id = $1 AND building_id = 'pill_room'",
+      [charId]
+    )
+    const pillRoomLevel = pillRoomRows.length > 0 ? Number(pillRoomRows[0].level) : 0
+    const craftRate = pillRoomLevel > 0 ? 5 + 3 * (pillRoomLevel - 1) : 0
+    const successRate = Math.min(0.95, recipe.successRate * (1 + craftRate / 100))
 
     // 计算品质系数（纯内存）
     let totalCount = 0
@@ -80,15 +100,15 @@ export default defineEventHandler(async (event) => {
     const fireMul = FIRE_MULTIPLIER[fireTier]
     const qualityFactor = Math.round(rawFactor * fireMul * 100) / 100
 
-    // 灵石消耗按原始品质系数调整(火候不影响灵石消耗)
-    const actualCost = Math.floor(cost * rawFactor)
+    // 灵石消耗按原始品质系数调整(火候不影响灵石消耗); cost 来自服务端 recipe
+    const actualCost = Math.floor(recipe.cost * rawFactor)
 
-    // 成功裁决（提前 roll，事务内统一落库）
+    // 成功裁决（提前 roll，事务内统一落库）; success_rate 服务端算
     let success: boolean
     if (fireTier === 'explode') {
       success = false
     } else {
-      success = Math.random() < success_rate
+      success = Math.random() < successRate
     }
 
     // 真火档有 15% 概率产双份
