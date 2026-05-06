@@ -39,7 +39,7 @@ export interface PassiveEffect {
   // 触发型被动
   poison_on_hit_taken_chance?: number;  // 被打概率使敌方中毒
   burn_on_hit_taken_chance?: number;    // 被打概率使敌方灼烧
-  reflect_on_crit_taken?: number;       // 被暴击时反弹伤害%
+  reflect_on_crit_taken?: number;       // 被会心时反弹伤害%
   // 特殊效果
   revive_once?: boolean;                 // 免死1次,保留20%血
   skill_cd_reduction_turns?: number;     // 神通CD-N回合
@@ -48,7 +48,7 @@ export interface PassiveEffect {
   battle_frenzy_stacks?: number;         // 战意沸腾当前叠层(由 store 维护)
   // v3 紫色被动新机制
   dot_amplifier_percent?: number;        // 你造成的 DOT(灼烧/中毒/流血)伤害放大%
-  crit_after_dodge?: boolean;            // 闪避后下次攻击必暴击
+  crit_after_dodge?: boolean;            // 闪避后下次攻击必会心
   heal_amplifier_percent?: number;       // 你受到的治疗(神通治疗/被动 regen)放大%
 }
 
@@ -71,7 +71,7 @@ export interface Skill {
   healAtkRatio?: number;    // 即时回血(攻击力倍率,如 2.0 = 回复200%攻击力的气血)
   // 主修内蕴被动（仅 active 类用）：在战斗组装时叠加进 awakenState 同名字段，引擎复用 v1.3 钩子
   innateMain?: {
-    mainSkillCritRate?: number;          // 主修暴击率 +X
+    mainSkillCritRate?: number;          // 主修会心率 +X
     mainSkillLifesteal?: number;         // 主修命中回 X% 最大气血
     mainSkillArmorPen?: number;          // 主修无视目标 X% 防御
     mainSkillBurnAmp?: number;           // 主修施加灼烧每跳伤害 +X
@@ -94,9 +94,9 @@ export const ACTIVE_SKILLS: Skill[] = [
   { id: 'quake_fist', name: '裂地拳', type: 'active', rarity: 'green', element: 'earth', multiplier: 1.10, description: '造成110%土属性伤害,30%脆弱3回合', debuff: { type: 'brittle', chance: 0.30, duration: 3, value: 0.20 } },
   // ===== v3.9 紫品五行主修 =====
   { id: 'gale_blade', name: '罡风斩', type: 'active', rarity: 'purple', element: 'metal', multiplier: 1.50,
-    description: '造成150%金属性伤害,45%流血3回合;主修暴击率+5%',
+    description: '造成150%金属性伤害,45%流血3回合;会心率+5%',
     debuff: { type: 'bleed', chance: 0.45, duration: 3 },
-    innateMain: { mainSkillCritRate: 0.05 } },
+    effect: { CRIT_RATE_flat: 0.05 } },
   { id: 'wither_bloom', name: '万木枯荣诀', type: 'active', rarity: 'purple', element: 'wood', multiplier: 1.50,
     description: '造成150%木属性伤害,50%中毒4回合;主修命中回1.5%最大气血',
     debuff: { type: 'poison', chance: 0.50, duration: 4 },
@@ -158,18 +158,18 @@ export const PASSIVE_SKILLS: Skill[] = [
   { id: 'root_grip', name: '盘根术', type: 'passive', rarity: 'green', element: 'wood', multiplier: 0, description: '气血+10%,木抗+10%', effect: { HP_percent: 10, RESIST_WOOD: 0.10 } },
   { id: 'metal_skin', name: '金身术', type: 'passive', rarity: 'green', element: 'metal', multiplier: 0, description: '防御+8%,金抗+10%', effect: { DEF_percent: 8, RESIST_METAL: 0.10 } },
   // 玄品
-  { id: 'swift_step', name: '凌波微步', type: 'passive', rarity: 'blue', element: 'water', multiplier: 0, description: '闪避+5%,暴击率+4%,水抗+10%', effect: { DODGE_flat: 0.05, CRIT_RATE_flat: 0.04, RESIST_WATER: 0.10 } },
-  { id: 'iron_skin', name: '铁布衫', type: 'passive', rarity: 'blue', element: 'metal', multiplier: 0, description: '防御+10%,控制抗性+10%,被暴击反弹10%', effect: { DEF_percent: 10, RESIST_CTRL: 0.10, reflect_on_crit_taken: 0.10 } },
+  { id: 'swift_step', name: '凌波微步', type: 'passive', rarity: 'blue', element: 'water', multiplier: 0, description: '闪避+5%,会心率+4%,水抗+10%', effect: { DODGE_flat: 0.05, CRIT_RATE_flat: 0.04, RESIST_WATER: 0.10 } },
+  { id: 'iron_skin', name: '铁布衫', type: 'passive', rarity: 'blue', element: 'metal', multiplier: 0, description: '防御+10%,控制抗性+10%,被会心反弹10%', effect: { DEF_percent: 10, RESIST_CTRL: 0.10, reflect_on_crit_taken: 0.10 } },
   { id: 'thorn_aura', name: '荆棘之体', type: 'passive', rarity: 'blue', element: 'wood', multiplier: 0, description: '反弹8%伤害,木抗+15%,被打10%中毒2回合', effect: { reflect_damage_percent: 0.08, RESIST_WOOD: 0.15, poison_on_hit_taken_chance: 0.10 } },
   { id: 'flame_aura', name: '焚身火甲', type: 'passive', rarity: 'blue', element: 'fire', multiplier: 0, description: '攻击+8%,火抗+15%,被打10%灼烧2回合', effect: { ATK_percent: 8, RESIST_FIRE: 0.15, burn_on_hit_taken_chance: 0.10 } },
   { id: 'earth_wall', name: '厚土心法', type: 'passive', rarity: 'blue', element: 'earth', multiplier: 0, description: '防御+8%,气血+6%,土抗+15%', effect: { DEF_percent: 8, HP_percent: 6, RESIST_EARTH: 0.15 } },
   // 地品
-  { id: 'crit_master', name: '破绽感知', type: 'passive', rarity: 'purple', element: 'metal', multiplier: 0, description: '暴击率+6%,暴击伤害+18%', effect: { CRIT_RATE_flat: 0.06, CRIT_DMG_flat: 0.18 } },
+  { id: 'crit_master', name: '破绽感知', type: 'passive', rarity: 'purple', element: 'metal', multiplier: 0, description: '会心率+6%,会心伤害+18%', effect: { CRIT_RATE_flat: 0.06, CRIT_DMG_flat: 0.18 } },
   { id: 'earth_fortitude', name: '不动如山', type: 'passive', rarity: 'purple', element: 'earth', multiplier: 0, description: '防御+12%,气血+10%,控制抗性+20%', effect: { DEF_percent: 12, HP_percent: 10, RESIST_CTRL: 0.20 } },
   { id: 'poison_body', name: '百毒不侵', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '木抗+30%,控制抗性+10%,吸血+5%', effect: { RESIST_WOOD: 0.30, RESIST_CTRL: 0.10, LIFESTEAL_flat: 0.05 } },
   { id: 'fire_mastery', name: '焚天之体', type: 'passive', rarity: 'purple', element: 'fire', multiplier: 0, description: '攻击+12%,火抗+20%', effect: { ATK_percent: 12, RESIST_FIRE: 0.20 } },
-  { id: 'dot_amplifier', name: '万毒归一', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你造成的灼烧/中毒/流血伤害+25%,攻击+6%,暴击率+3%', effect: { dot_amplifier_percent: 25, ATK_percent: 6, CRIT_RATE_flat: 0.03 } },
-  { id: 'phantom_step', name: '飘渺神行', type: 'passive', rarity: 'purple', element: 'water', multiplier: 0, description: '闪避+8%,闪避后下次攻击必暴击,速度+8%', effect: { DODGE_flat: 0.08, crit_after_dodge: true, SPD_percent: 8 } },
+  { id: 'dot_amplifier', name: '万毒归一', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你造成的灼烧/中毒/流血伤害+25%,攻击+6%,会心率+3%', effect: { dot_amplifier_percent: 25, ATK_percent: 6, CRIT_RATE_flat: 0.03 } },
+  { id: 'phantom_step', name: '飘渺神行', type: 'passive', rarity: 'purple', element: 'water', multiplier: 0, description: '闪避+8%,闪避后下次攻击必会心,速度+8%', effect: { DODGE_flat: 0.08, crit_after_dodge: true, SPD_percent: 8 } },
   { id: 'healing_spring', name: '春风化雨', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你受到的治疗+30%,每回合回血+1%,水/木抗+10%', effect: { heal_amplifier_percent: 30, regen_per_turn_percent: 0.01, RESIST_WATER: 0.10, RESIST_WOOD: 0.10 } },
   // 天品
   { id: 'water_mastery', name: '渊海之心', type: 'passive', rarity: 'gold', element: 'water', multiplier: 0, description: '每回合回1.5%血,水抗+20%,防御+12%', effect: { regen_per_turn_percent: 0.015, RESIST_WATER: 0.20, DEF_percent: 12 } },

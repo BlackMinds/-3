@@ -136,7 +136,7 @@
         { "id": "metal", "name": "金灵根", "bonus": { "ATK_percent": 15 }, "resist_bonus": { "RESIST_METAL": 0.15 }, "affinity": "metal", "cultivation_bonus": 1.0, "description": "攻击天赋，适合暴力输出流" },
         { "id": "wood",  "name": "木灵根", "bonus": { "HP_percent": 15 }, "resist_bonus": { "RESIST_WOOD": 0.15 }, "affinity": "wood", "cultivation_bonus": 1.0, "description": "生命天赋，适合持久吸血流" },
         { "id": "water", "name": "水灵根", "bonus": { "DEF_percent": 15 }, "resist_bonus": { "RESIST_WATER": 0.15 }, "affinity": "water", "cultivation_bonus": 1.0, "description": "防御天赋，适合控制冻结流" },
-        { "id": "fire",  "name": "火灵根", "bonus": { "CRIT_DMG_percent": 20 }, "resist_bonus": { "RESIST_FIRE": 0.15 }, "affinity": "fire", "cultivation_bonus": 1.0, "description": "爆发天赋，适合暴击灼烧流" },
+        { "id": "fire",  "name": "火灵根", "bonus": { "CRIT_DMG_percent": 20 }, "resist_bonus": { "RESIST_FIRE": 0.15 }, "affinity": "fire", "cultivation_bonus": 1.0, "description": "爆发天赋，适合会心灼烧流" },
         { "id": "earth", "name": "土灵根", "bonus": { "DEF_percent": 10, "HP_percent": 10 }, "resist_bonus": { "RESIST_EARTH": 0.15 }, "affinity": "earth", "cultivation_bonus": 1.0, "description": "坚韧天赋，适合肉盾反击流" }
       ]
     },

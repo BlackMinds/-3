@@ -90,9 +90,9 @@ const AWAKEN_BY_SLOT: Record<string, { stat: string; value: number }> = {
   weapon:  { stat: 'mainSkillMultBonus', value: 0.15 }, // 主修攻击 +15%
   armor:   { stat: 'damageReduction',    value: 0.08 }, // 减伤 8%
   helmet:  { stat: 'harmonyPct',         value: 0.08 }, // 攻防血同 +8%
-  boots:   { stat: 'critRate',           value: 0.10 }, // 暴击率 +10%
+  boots:   { stat: 'critRate',           value: 0.10 }, // 会心率 +10%
   treasure:{ stat: 'atkPct',             value: 0.12 }, // 攻击 +12%
-  ring:    { stat: 'mainSkillCritRate',  value: 0.10 }, // 主修暴击率 +10%
+  ring:    { stat: 'mainSkillCritRate',  value: 0.10 }, // 主修会心率 +10%
   pendant: { stat: 'lifesteal',          value: 0.06 }, // 吸血 +6%
 }
 

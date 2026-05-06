@@ -3,7 +3,7 @@
  *
  * 场景：T10 装备 + 配套附灵 + 丹药加成 + 宗门加成 全集
  *   atk 5500 / def 900 / hp 80000 / crit_rate 32% / crit_dmg 1.85x / spirit 60
- *   附灵 玄冥 +35% 暴伤 / 主修锋锐 +14% / 焚烬戒 / 焚天戒 等
+ *   附灵 玄冥 +35% 会伤 / 主修锋锐 +14% / 焚烬戒 / 焚天戒 等
  *   丹药假设 atk +30% / def +20% / hp +25% (PILL_PCT_CAP=0.40 各 80% 利用率)
  *   宗门加成假设 atk +10% / def +10% / hp +10%
  *
@@ -41,7 +41,7 @@ interface BuildOpts {
   setCounts: Record<string, number>
   weaponType?: string | null
   element: string                  // 主修元素
-  critDmgBonus?: number            // 玄冥附灵叠加暴伤
+  critDmgBonus?: number            // 玄冥附灵叠加会伤
   awakenState?: any                // 主修锋锐 / 焚烬戒 / 心剑回响 等
   elementDmg?: Partial<Record<'metal' | 'wood' | 'water' | 'fire' | 'earth', number>>
   active: { name: string; multiplier: number; element: string | null }
@@ -225,7 +225,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
 
   // 10. 刀狂套 — 刀武器，金主修
   {
-    key: 'blade_madness', label: '刀狂套7 (刀武器+暴击叠加)',
+    key: 'blade_madness', label: '刀狂套7 (刀武器+会心叠加)',
     make: () => mkBuild('blade_madness', '刀狂套', {
       setCounts: { blade_madness: 7 }, element: 'metal', weaponType: 'blade',
       awakenState: { mainSkillCritRate: 0.14 },

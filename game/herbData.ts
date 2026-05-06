@@ -23,7 +23,7 @@ export const HERBS: HerbDef[] = [
   { id: 'metal_herb',   name: '锐金草', element: 'metal', description: '金系灵草,攻击系丹药主料', unlockPlotMaxLevel: 1  },
   { id: 'wood_herb',    name: '青木叶', element: 'wood',  description: '木系灵草,气血系丹药主料', unlockPlotMaxLevel: 1  },
   { id: 'water_herb',   name: '玄水苔', element: 'water', description: '水系灵草,防御系丹药主料', unlockPlotMaxLevel: 4  },
-  { id: 'fire_herb',    name: '赤焰花', element: 'fire',  description: '火系灵草,暴击系丹药主料', unlockPlotMaxLevel: 4  },
+  { id: 'fire_herb',    name: '赤焰花', element: 'fire',  description: '火系灵草,会心系丹药主料', unlockPlotMaxLevel: 4  },
   { id: 'earth_herb',   name: '厚土参', element: 'earth', description: '土系灵草,综合系丹药主料', unlockPlotMaxLevel: 7  },
   { id: 'spirit_grass', name: '仙灵草', element: null,    description: '突破丹药关键材料',       unlockPlotMaxLevel: 10 },
 ];

@@ -51,7 +51,7 @@ export function buildMonster(m: MonsterBuild): MonsterStats {
   let def = Math.floor(power * r.def * 0.6)
   let spd = Math.floor(power * r.spd * 0.5)
 
-  // 暴击/闪避/吸血/破甲/命中 (按 role 和 tier 叠加)
+  // 会心/闪避/吸血/破甲/命中 (按 role 和 tier 叠加)
   let critRate = 0.05 + m.tier * 0.01
   let critDmg = 1.5 + m.tier * 0.05
   if (m.role === 'dps') { critRate += 0.05; critDmg += 0.2 }

@@ -3,7 +3,7 @@
  *
  * 支持：
  *  - 主修/神通技能 + CD 管理
- *  - 被动技能加成（ATK%/HP%/DEF% + 元素抗性 + 回血 + 反伤 + 连击 + 暴击减伤等）
+ *  - 被动技能加成（ATK%/HP%/DEF% + 元素抗性 + 回血 + 反伤 + 连击 + 会心减伤等）
  *  - 附灵效果（焚魂/淬毒/裂魂/洗髓/回春/斩杀/不屈等）
  *  - 五行相克（金木水火土相生相克 ×1.3 / ×0.7）
  *  - 元素伤害加成 / 破甲 / 抗性 / 命中闪避
@@ -70,7 +70,7 @@ export interface PvpFighterInput {
 
 // ========== PvP 平衡系数 ==========
 // PvE 的属性公式在玩家 vs 怪物下是平衡的，直接搬到 PvP 会让:
-// - 暴击 / AoE 神通一击制胜
+// - 会心 / AoE 神通一击制胜
 // - 战斗 1-2 回合结束,玩不出技能/debuff/buff 的博弈
 // 因此 PvP 引入两套独立系数,让角色更耐打、伤害更克制
 
@@ -80,7 +80,7 @@ export interface PvpBalanceConfig {
   hpMultiplier: number       // 战斗前 HP/maxHp 放大倍数
   damageMultiplier: number   // 最终伤害缩放倍数
   dotMultiplier: number      // DOT（中毒/灼烧/流血）伤害缩放
-  critDmgReduction: number   // 暴击伤害削减（0.2 = 少 20%）
+  critDmgReduction: number   // 会心伤害削减（0.2 = 少 20%）
 }
 
 export const PVP_BALANCE: Record<PvpMode, PvpBalanceConfig> = {
@@ -667,7 +667,7 @@ export function runPvpBattle(
     let dmg = rawDmg
     // PvP 全局伤害缩放（基于 pvpMode）
     dmg = dmg * balance.damageMultiplier
-    // 暴击额外削减（避免单次暴击直接秒杀）
+    // 会心额外削减（避免单次会心直接秒杀）
     if (isCrit && balance.critDmgReduction > 0) {
       dmg = dmg * (1 - balance.critDmgReduction)
     }
@@ -722,7 +722,7 @@ export function runPvpBattle(
     if (isCrit && pe?.reflectOnCrit && Math.random() < pe.reflectOnCrit) {
       const rfc = Math.floor(dmg * 0.5)
       attacker.hp -= rfc
-      log({ turn, type: 'normal', text: `  【暴击反弹】${attacker.name} 受到 ${rfc} 点反震` })
+      log({ turn, type: 'normal', text: `  【会心反弹】${attacker.name} 受到 ${rfc} 点反震` })
     }
   }
 
@@ -941,13 +941,13 @@ export function runPvpBattle(
         attacker.spearStacks = next
         if (next === se.spearMaxStacks && se.spearGuaranteedCritOnMax && before < se.spearMaxStacks) {
           attacker.guaranteedCritNext = true
-          log({ turn, type: 'set', text: `  ❖【十三枪】${attacker.name} 满 ${se.spearMaxStacks} 层！下一击必暴击` })
+          log({ turn, type: 'set', text: `  ❖【十三枪】${attacker.name} 满 ${se.spearMaxStacks} 层！下一击必会心` })
         }
       }
 
       return { final, lifestealHeal }
     }
-    // v1.3 心剑回响：主修暴击时所有神通 CD-1（每回合至多 1 次）
+    // v1.3 心剑回响：主修会心时所有神通 CD-1（每回合至多 1 次）
     const tryCritCdCut = (isCrit: boolean) => {
       if (!isCrit || !isMainSkill || critCdCutUsedThisTurn) return
       if (!attacker.awakenState?.mainSkillCritCdCut) return
@@ -957,10 +957,10 @@ export function runPvpBattle(
       }
       if (cut) {
         critCdCutUsedThisTurn = true
-        log({ turn, type: 'buff', text: `  ✦【心剑回响】${attacker.name} 主修暴击，所有神通 CD -1` })
+        log({ turn, type: 'buff', text: `  ✦【心剑回响】${attacker.name} 主修会心，所有神通 CD -1` })
       }
     }
-    // ❖ 刀狂套：每次主攻命中后判定（暴击清零叠加；非暴击叠加 +1 层，cap 截断）
+    // ❖ 刀狂套：每次主攻命中后判定（会心清零叠加；非会心叠加 +1 层，cap 截断）
     const triggerBladeStack = (isCrit: boolean) => {
       const se2 = attacker.setEffects
       if (!se2.bladeActive) return
@@ -970,7 +970,7 @@ export function runPvpBattle(
           attacker.crit_dmg = Math.max(1, attacker.crit_dmg - attacker._bladeAddedDmg)
           const cnt = attacker._bladeStackCount
           attacker._bladeAddedRate = 0; attacker._bladeAddedDmg = 0; attacker._bladeStackCount = 0
-          log({ turn, type: 'set', text: `  ❖【刀狂套】${attacker.name} 暴击触发，叠加层 ×${cnt} 清零` })
+          log({ turn, type: 'set', text: `  ❖【刀狂套】${attacker.name} 会心触发，叠加层 ×${cnt} 清零` })
         }
       } else {
         const newRate = Math.min(PLAYER_CAPS.critRate, attacker.crit_rate + se2.bladeStackCritRate)
@@ -997,7 +997,7 @@ export function runPvpBattle(
         const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), se2.swordQiMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeQi, false)
         if (dr.damage > 0) {
           const { final } = dealDamage(t, dr.damage, dr.isCrit, { chained: true })
-          const critText = dr.isCrit ? '暴击!' : ''
+          const critText = dr.isCrit ? '会心!' : ''
           log({ turn, type: 'set', text: `  ❖【剑仙·剑气 ${i + 1}/${se2.swordQiHits}】${critText}对 ${t.name} 造成 ${final} 伤害 (${(se2.swordQiMul * 100).toFixed(0)}%)` })
           if (t.hp <= 0) t.alive = false
         } else {
@@ -1013,7 +1013,7 @@ export function runPvpBattle(
         if (!liveTarget) break
         const ignoreDodgeFrost = !!(attacker.setEffects.frozenCannotDodge && liveTarget.frozenTurns > 0)
         const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(liveTarget), perHitMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill)
-        // ❖ 十三枪满层标记：本击必暴击（消耗后清零）
+        // ❖ 十三枪满层标记：本击必会心（消耗后清零）
         if (attacker.guaranteedCritNext) {
           dr.isCrit = true
           attacker.guaranteedCritNext = false
@@ -1024,7 +1024,7 @@ export function runPvpBattle(
           const { final, lifestealHeal } = dealDamage(liveTarget, dr.damage, dr.isCrit)
           tryCritCdCut(dr.isCrit)
           triggerBladeStack(dr.isCrit)
-          const critText = dr.isCrit ? '暴击! ' : ''
+          const critText = dr.isCrit ? '会心! ' : ''
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  第 ${h + 1} 段 ${critText}对 ${liveTarget.name} 造成 ${final} 伤害` })
           if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
           if (usedSkill.debuff) tryApplyDebuff(liveTarget, liveTarget.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
@@ -1046,7 +1046,7 @@ export function runPvpBattle(
         if (!t.alive) continue
         const ignoreDodgeFrost = !!(attacker.setEffects.frozenCannotDodge && t.frozenTurns > 0)
         const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), mul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill)
-        // ❖ 十三枪满层标记：本击必暴击（消耗后清零）
+        // ❖ 十三枪满层标记：本击必会心（消耗后清零）
         if (attacker.guaranteedCritNext) {
           dr.isCrit = true
           attacker.guaranteedCritNext = false
@@ -1058,7 +1058,7 @@ export function runPvpBattle(
         const { final, lifestealHeal } = dealDamage(t, dr.damage, dr.isCrit)
         tryCritCdCut(dr.isCrit)
         triggerBladeStack(dr.isCrit)
-        const critText = dr.isCrit ? '暴击! ' : ''
+        const critText = dr.isCrit ? '会心! ' : ''
         if (skillLabel) {
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  ${critText}对 ${t.name} 造成 ${final} 伤害` })
         } else {
@@ -1133,7 +1133,7 @@ export function runPvpBattle(
           const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(extraTarget), extraMul, usedSkill.element, usedSkill.ignoreDef, false, false)
           if (dr.damage > 0) {
             const { final } = dealDamage(extraTarget, dr.damage, dr.isCrit, { chained: true })
-            const critText = dr.isCrit ? '暴击!' : ''
+            const critText = dr.isCrit ? '会心!' : ''
             log({ turn, type: 'set', text: `  ❖【多重施法】${critText}【${usedSkill.name}】波及 ${extraTarget.name} 造成 ${final} 伤害 (${(se.multicastMul * 100).toFixed(0)}%)` })
             if (extraTarget.hp <= 0) extraTarget.alive = false
           }
@@ -1151,7 +1151,7 @@ export function runPvpBattle(
         const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(t), fanMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, false)
         if (dr.damage > 0) {
           const { final } = dealDamage(t, dr.damage, dr.isCrit, { chained: true })
-          const critText = dr.isCrit ? '暴击!' : ''
+          const critText = dr.isCrit ? '会心!' : ''
           log({ turn, type: 'set', text: `  ❖【天机·额外段 ${i + 1}/${se.fanExtraCasts}】${critText}【${usedSkill.name}】对 ${t.name} 造成 ${final} 伤害 (${(se.fanExtraMul * 100).toFixed(0)}%)` })
           if (t.hp <= 0) t.alive = false
         }

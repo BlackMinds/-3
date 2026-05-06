@@ -53,7 +53,7 @@ const WEAPON_POOL: AwakenDef[] = [
     desc: (v) => `命中时 ${(v * 100).toFixed(0)}% 概率流血 2 回合` },
   { id: 'aw_keen', name: '锋锐', slot: 'weapon', stat: 'critRate',
     tiers: { blue: 0.03, purple: 0.05, gold: 0.08, red: 0.12 },
-    desc: (v) => `暴击率 +${(v * 100).toFixed(0)}%` },
+    desc: (v) => `会心率 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_shatter', name: '破军', slot: 'weapon', stat: 'atkPct',
     tiers: { blue: 0.05, purple: 0.08, gold: 0.12, red: 0.18 },
     desc: (v) => `攻击 +${(v * 100).toFixed(0)}%` },
@@ -77,7 +77,7 @@ const WEAPON_POOL: AwakenDef[] = [
     desc: (v) => `普攻 ${(v * 100).toFixed(0)}% 概率再打 1 次（60% 伤害）` },
   { id: 'aw_crit_bonus', name: '噬心', slot: 'weapon', stat: 'critDmg',
     tiers: { blue: 0.10, purple: 0.18, gold: 0.28, red: 0.40 },
-    desc: (v) => `暴击伤害 +${(v * 100).toFixed(0)}%` },
+    desc: (v) => `会心伤害 +${(v * 100).toFixed(0)}%` },
 ];
 
 // ============ 法袍（13 条 / 生存向）============
@@ -90,7 +90,7 @@ const ARMOR_POOL: AwakenDef[] = [
     desc: (v) => `气血 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_thorns', name: '荆棘', slot: 'armor', stat: 'reflectOnCrit',
     tiers: { blue: 0.15, purple: 0.25, gold: 0.35, red: 0.50 },
-    desc: (v) => `受暴击时 ${(v * 100).toFixed(0)}% 反弹伤害` },
+    desc: (v) => `受会心时 ${(v * 100).toFixed(0)}% 反弹伤害` },
   // v3.6 反伤流派支持：armor 常驻反伤（与神通明镜止水叠加）
   { id: 'aw_mirror_armor', name: '明镜甲', slot: 'armor', stat: 'reflectPct',
     tiers: { blue: 0.06, purple: 0.10, gold: 0.15, red: 0.22 },
@@ -125,7 +125,7 @@ const ARMOR_POOL: AwakenDef[] = [
     desc: (v) => `五系抗性 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_crit_shield', name: '金钟罩', slot: 'armor', stat: 'critTakenReduction',
     tiers: { blue: 0.10, purple: 0.18, gold: 0.25, red: 0.35 },
-    desc: (v) => `受暴击时伤害再减 ${(v * 100).toFixed(0)}%` },
+    desc: (v) => `受会心时伤害再减 ${(v * 100).toFixed(0)}%` },
 ];
 
 // ============ 灵佩（12 条 / 辅助向）============
@@ -136,7 +136,7 @@ const PENDANT_POOL: AwakenDef[] = [
   { id: 'aw_doom', name: '玄冥', slot: 'pendant', stat: 'critDmg',
     // v3.4: red 60→50 (-10pp); 戒指改 CRIT_DMG 主属性后再 ×0.7 (red 50→35) 让玄冥不再独大
     tiers: { blue: 0.08, purple: 0.15, gold: 0.24, red: 0.35 },
-    desc: (v) => `暴伤 +${(v * 100).toFixed(0)}%` },
+    desc: (v) => `会伤 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_insight', name: '神识', slot: 'pendant', stat: 'spirit',
     // v3.4: red 60→50 (-17%), 其他 tier 按比例
     tiers: { blue: 8, purple: 17, gold: 30, red: 50 },
@@ -184,7 +184,7 @@ const RING_POOL: AwakenDef[] = [
     desc: (v) => `主修伤害倍率 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_main_crit', name: '主修锋锐', slot: 'ring', stat: 'mainSkillCritRate',
     tiers: { blue: 0.04, purple: 0.07, gold: 0.10, red: 0.14 },
-    desc: (v) => `主修攻击额外暴击率 +${(v * 100).toFixed(0)}%` },
+    desc: (v) => `主修攻击额外会心率 +${(v * 100).toFixed(0)}%` },
   { id: 'aw_main_pierce', name: '主修破玄', slot: 'ring', stat: 'mainSkillArmorPen',
     tiers: { blue: 0.06, purple: 0.10, gold: 0.15, red: 0.22 },
     desc: (v) => `主修无视目标 ${(v * 100).toFixed(0)}% 防御` },
@@ -217,7 +217,7 @@ const RING_POOL: AwakenDef[] = [
     desc: (v) => `主修 ${(v * 100).toFixed(0)}% 概率追击一次（60% 倍率，与兵器连击互斥取大）` },
   { id: 'aw_main_cdcut', name: '心剑回响', slot: 'ring', stat: 'mainSkillCritCdCut',
     tiers: { blue: 1, purple: 1, gold: 1, red: 1 },
-    desc: () => `主修暴击时所有神通 CD -1（每回合至多 1 次）` },
+    desc: () => `主修会心时所有神通 CD -1（每回合至多 1 次）` },
   { id: 'aw_main_execute', name: '灵戒裂魂', slot: 'ring', stat: 'mainSkillExecute',
     // value = 加成百分比，threshold 通过 meta 在 rollAwakenEffect 内按品质注入
     tiers: { blue: 0.30, purple: 0.45, gold: 0.60, red: 0.85 },

@@ -816,13 +816,13 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       p.spearStacks = next
       if (next === se.spearMaxStacks && se.spearGuaranteedCritOnMax && before < se.spearMaxStacks) {
         p.guaranteedCritNext = true
-        logs.push({ turn, text: `  ❖【十三枪】${p.name} 满 ${se.spearMaxStacks} 层！下一击必暴击`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
+        logs.push({ turn, text: `  ❖【十三枪】${p.name} 满 ${se.spearMaxStacks} 层！下一击必会心`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
       }
     }
     return { final: dmg, lifestealHeal }
   }
 
-  // ❖ 刀狂套：每次主攻命中后判定（暴击清零叠加；非暴击叠加 +1 层，cap 截断）
+  // ❖ 刀狂套：每次主攻命中后判定（会心清零叠加；非会心叠加 +1 层，cap 截断）
   const triggerBladeStack = (isCrit: boolean) => {
     if (!se.bladeActive) return
     if (isCrit) {
@@ -831,7 +831,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
         p.stats.crit_dmg = Math.max(1, p.stats.crit_dmg - p._bladeAddedDmg)
         const cnt = p._bladeStackCount
         p._bladeAddedRate = 0; p._bladeAddedDmg = 0; p._bladeStackCount = 0
-        logs.push({ turn, text: `  ❖【刀狂套】${p.name} 暴击触发，叠加层 ×${cnt} 清零`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+        logs.push({ turn, text: `  ❖【刀狂套】${p.name} 会心触发，叠加层 ×${cnt} 清零`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
       }
     } else {
       const newRate = Math.min(PLAYER_CAPS.critRate, p.stats.crit_rate + se.bladeStackCritRate)
@@ -857,7 +857,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       const dr = calculateDamage(p.stats, t.stats, se.swordQiMul, used.element, used.ignoreDef, ignoreDodgeQi)
       if (dr.damage > 0) {
         const { final } = applySetDamage(t, dr.damage, dr.isCrit, { chained: true })
-        const critText = dr.isCrit ? '暴击!' : ''
+        const critText = dr.isCrit ? '会心!' : ''
         logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${se.swordQiHits}】${critText}对 ${t.stats.name} 造成 ${final} 伤害 (${(se.swordQiMul * 100).toFixed(0)}%)`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
         if (t.stats.hp <= 0) {
           t.alive = false
@@ -879,7 +879,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       if (t.stats.hp <= 0) break
       const ignoreDodgeFrost = !!(se.frozenCannotDodge && t.frozenTurns > 0)
       const r = calculateDamage(p.stats, t.stats, perHitMul, used.element, used.ignoreDef, ignoreDodgeFrost)
-      // ❖ 十三枪满层标记：本击必暴击（消耗后清零）
+      // ❖ 十三枪满层标记：本击必会心（消耗后清零）
       if (p.guaranteedCritNext) {
         r.isCrit = true
         p.guaranteedCritNext = false
@@ -899,7 +899,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       const healSuffix = totalHeal > 0 ? `（吸血 +${totalHeal}）` : ''
       logs.push({
         turn,
-        text: `${p.name} ${critFlag ? '暴击！' : ''}【${used.name}】${label}对 ${t.stats.name} 造成 ${totalDmg} 伤害${healSuffix}`,
+        text: `${p.name} ${critFlag ? '会心！' : ''}【${used.name}】${label}对 ${t.stats.name} 造成 ${totalDmg} 伤害${healSuffix}`,
         type: critFlag ? 'crit' : 'normal',
         playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp,
         monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp,
@@ -962,7 +962,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
         if (r.damage > 0) {
           const { final } = applySetDamage(extraTarget, r.damage, r.isCrit, { chained: true })
           p.damageDealt += final
-          const critText = r.isCrit ? '暴击!' : ''
+          const critText = r.isCrit ? '会心!' : ''
           logs.push({ turn, text: `  ❖【多重施法】${critText}【${used.name}】波及 ${extraTarget.stats.name} 造成 ${final} 伤害 (${(se.multicastMul * 100).toFixed(0)}%)`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, extraTarget.stats.hp), monsterMaxHp: extraTarget.stats.maxHp })
           if (extraTarget.stats.hp <= 0) {
             extraTarget.alive = false
@@ -988,7 +988,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       if (r.damage > 0) {
         const { final } = applySetDamage(t, r.damage, r.isCrit, { chained: true })
         p.damageDealt += final
-        const critText = r.isCrit ? '暴击!' : ''
+        const critText = r.isCrit ? '会心!' : ''
         logs.push({ turn, text: `  ❖【天机·额外段 ${i + 1}/${se.fanExtraCasts}】${critText}【${used.name}】对 ${t.stats.name} 造成 ${final} 伤害 (${(se.fanExtraMul * 100).toFixed(0)}%)`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
         if (t.stats.hp <= 0) {
           t.alive = false
@@ -1133,8 +1133,8 @@ function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: 
     const hitText = hits > 1 ? `第${h + 1}段` : ''
     // 有技能时压缩成简短伤害行，否则完整打印"XX 普攻 YY 造成 Z 伤害"
     const lineText = skill
-      ? `  ${hitText} ${r.isCrit ? '暴击！' : ''}造成 ${dmg} 伤害`
-      : `${m.stats.name} ${r.isCrit ? '暴击！' : ''}普攻 ${target.name}，造成 ${dmg} 伤害`
+      ? `  ${hitText} ${r.isCrit ? '会心！' : ''}造成 ${dmg} 伤害`
+      : `${m.stats.name} ${r.isCrit ? '会心！' : ''}普攻 ${target.name}，造成 ${dmg} 伤害`
     logs.push({
       turn,
       text: lineText,

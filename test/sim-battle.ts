@@ -6,7 +6,7 @@
  * - 每回合按 SPD 决定行动顺序
  * - 攻击公式完全复刻 calculateDamage
  * - 技能按"平均 multiplier"估算 (主修 1.2 / 神通 3.0, 按 CD 加权)
- * - 吸血 / 暴击 / 闪避 / 破甲 / 五行克制 完整复刻
+ * - 吸血 / 会心 / 闪避 / 破甲 / 五行克制 完整复刻
  * - 最大 150 回合 (超时视为失败)
  */
 
@@ -64,7 +64,7 @@ function calcDamage(
 
   let dmg = atkAtk * skillMul * elemMul * ratio
 
-  // 暴击
+  // 会心
   const isCrit = Math.random() < atkCritRate
   if (isCrit) dmg *= atkCritDmg
 
@@ -163,7 +163,7 @@ export interface BatchResult {
   avgTurns: number
   avgDps: number
   avgHpLeft: number
-  critRate: number // 实际暴击率
+  critRate: number // 实际会心率
   dodgeRate: number // 实际被闪避率
 }
 

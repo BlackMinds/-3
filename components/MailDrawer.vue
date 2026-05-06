@@ -135,7 +135,7 @@ const RARITY_LABEL: Record<string, string> = {
 // 属性 key 中文映射
 const STAT_LABEL: Record<string, string> = {
   atk_pct: '攻击', def_pct: '防御', hp_pct: '气血', spd_pct: '身法',
-  crit_rate: '暴击率', crit_dmg: '暴击伤害',
+  crit_rate: '会心率', crit_dmg: '会心伤害',
   atk: '攻击', def: '防御', hp: '气血', spd: '身法',
   dodge: '闪避', lifesteal: '吸血',
   armor_pen: '破甲', accuracy: '命中',

@@ -132,7 +132,7 @@ for (const d of diags) {
 console.log('\n【详细诊断】')
 for (const d of diags) {
   console.log(`\nT${d.tier}: ${d.presetName}`)
-  console.log(`  玩家: ATK ${fmtNum(d.player.atk)} / DEF ${fmtNum(d.player.def)} / HP ${fmtNum(d.player.hp)} / 暴伤 ${(d.player.critDmg * 100).toFixed(0)}%`)
+  console.log(`  玩家: ATK ${fmtNum(d.player.atk)} / DEF ${fmtNum(d.player.def)} / HP ${fmtNum(d.player.hp)} / 会伤 ${(d.player.critDmg * 100).toFixed(0)}%`)
   console.log(`  怪物: ATK ${fmtNum(d.monster.atk)} / DEF ${fmtNum(d.monster.def)} / HP ${fmtNum(d.monster.hp)}`)
   console.log(`  玩家 DPS ${fmtNum(d.playerDps)} (BD ×1.2) / 怪物 DPS ${fmtNum(d.monsterDps)}`)
   console.log(`  EHP: 玩家 ${fmtNum(d.playerEhp)} (BD ×2.0) / 怪物 ${fmtNum(d.monsterEhp)}`)

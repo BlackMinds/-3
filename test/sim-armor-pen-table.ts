@@ -1,7 +1,7 @@
 /**
  * 破甲伤害对照表
  * 固定玩家 build，对各种怪物算「单次确定性伤害」
- * 去掉暴击/闪避随机，纯看公式输出
+ * 去掉会心/闪避随机，纯看公式输出
  *
  * 用法: npx tsx test/sim-armor-pen-table.ts
  */
@@ -14,7 +14,7 @@ import { BATTLE_FORMULA } from '../shared/balance'
 const AP_LEVELS = [0, 10, 20, 50]
 const SKILL_MUL = 1.50
 
-// 单次确定性伤害（不带暴击/闪避，纯公式输出）
+// 单次确定性伤害（不带会心/闪避，纯公式输出）
 function calcSingleHit(atk: number, def: number, armorPen: number): number {
   const effectiveDef = def * Math.max(0, 1 - armorPen / 100)
   const ratio = atk / (atk + effectiveDef * BATTLE_FORMULA.atkDefRatioDefWeight)
@@ -94,7 +94,7 @@ function printTable(presetKey: string) {
 }
 
 function main() {
-  console.log(`# 破甲伤害对照（DEF 权重=${BATTLE_FORMULA.atkDefRatioDefWeight}, 单次确定性伤害, 不含暴击/元素加成）\n`)
+  console.log(`# 破甲伤害对照（DEF 权重=${BATTLE_FORMULA.atkDefRatioDefWeight}, 单次确定性伤害, 不含会心/元素加成）\n`)
   printTable('T5_mid')
   printTable('T7_late')
   printTable('T10_final')

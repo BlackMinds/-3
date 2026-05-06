@@ -53,8 +53,8 @@ function reportBuild(presetKey: string, tier: number, runs: number) {
   console.log(`  DEF:       ${fmtNum(player.def)}`)
   console.log(`  HP:        ${fmtNum(player.maxHp)}`)
   console.log(`  SPD:       ${fmtNum(player.spd)}`)
-  console.log(`  暴击率:    ${fmtPct(player.critRate)}${player.rawBeforeCap.critRate > PLAYER_CAPS.critRate ? ` ✂️ cap (原 ${fmtPct(player.rawBeforeCap.critRate)})` : ''}`)
-  console.log(`  暴伤:      ${(player.critDmg * 100).toFixed(0)}%${player.rawBeforeCap.critDmg > PLAYER_CAPS.critDmg ? ` ✂️ cap (原 ${(player.rawBeforeCap.critDmg * 100).toFixed(0)}%)` : ''}`)
+  console.log(`  会心率:    ${fmtPct(player.critRate)}${player.rawBeforeCap.critRate > PLAYER_CAPS.critRate ? ` ✂️ cap (原 ${fmtPct(player.rawBeforeCap.critRate)})` : ''}`)
+  console.log(`  会伤:      ${(player.critDmg * 100).toFixed(0)}%${player.rawBeforeCap.critDmg > PLAYER_CAPS.critDmg ? ` ✂️ cap (原 ${(player.rawBeforeCap.critDmg * 100).toFixed(0)}%)` : ''}`)
   console.log(`  闪避:      ${fmtPct(player.dodge)}${player.rawBeforeCap.dodge > PLAYER_CAPS.dodge ? ` ✂️ cap (原 ${fmtPct(player.rawBeforeCap.dodge)})` : ''}`)
   console.log(`  吸血:      ${fmtPct(player.lifesteal)}${player.rawBeforeCap.lifesteal > PLAYER_CAPS.lifesteal ? ` ✂️ cap (原 ${fmtPct(player.rawBeforeCap.lifesteal)})` : ''}`)
   console.log(`  破甲:      ${fmtNum(player.armorPen)}${player.rawBeforeCap.armorPen > PLAYER_CAPS.armorPen ? ` ✂️ cap (原 ${fmtNum(player.rawBeforeCap.armorPen)})` : ''}`)
@@ -62,7 +62,7 @@ function reportBuild(presetKey: string, tier: number, runs: number) {
 
   console.log('\n【怪物属性】')
   console.log(`  ATK: ${fmtNum(monster.atk)} / DEF: ${fmtNum(monster.def)} / HP: ${fmtNum(monster.maxHp)} / SPD: ${fmtNum(monster.spd)}`)
-  console.log(`  暴击 ${fmtPct(monster.critRate)} / 暴伤 ${(monster.critDmg*100).toFixed(0)}% / 闪避 ${fmtPct(monster.dodge)} / 破甲 ${fmtNum(monster.armorPen)}`)
+  console.log(`  会心 ${fmtPct(monster.critRate)} / 会伤 ${(monster.critDmg*100).toFixed(0)}% / 闪避 ${fmtPct(monster.dodge)} / 破甲 ${fmtNum(monster.armorPen)}`)
 
   console.log(`\n【战斗模拟 ${runs} 次】`)
   const turnRange = getTargetTurns(tier)
@@ -71,7 +71,7 @@ function reportBuild(presetKey: string, tier: number, runs: number) {
   console.log(`  平均击杀回合:  ${result.avgTurns.toFixed(1).padStart(6)}   (目标 ${turnRange})     ${inRange(result.avgTurns, turnRange) ? '✅' : '⚠️'}`)
   console.log(`  平均 DPS:      ${fmtNum(result.avgDps).padStart(12)}`)
   console.log(`  平均剩余 HP:   ${fmtNum(result.avgHpLeft).padStart(12)} / ${fmtNum(player.maxHp)} (${fmtPct(result.avgHpLeft / player.maxHp)})`)
-  console.log(`  实际暴击率:    ${fmtPct(result.critRate).padStart(6)}   (设定 ${fmtPct(player.critRate)})`)
+  console.log(`  实际会心率:    ${fmtPct(result.critRate).padStart(6)}   (设定 ${fmtPct(player.critRate)})`)
   console.log(`  被闪避率:      ${fmtPct(result.dodgeRate).padStart(6)}   (怪物 ${fmtPct(monster.dodge)})`)
   console.log('')
 }

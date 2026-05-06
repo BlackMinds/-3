@@ -38,7 +38,7 @@ export interface SetEffectsState {
   spearStackPerHit: number;    // 每命中获得层数
   spearStackDmgPerLevel: number;
   spearMaxStacks: number;
-  spearGuaranteedCritOnMax: boolean; // 满 13 层时下一击必暴击（仅 7 件套）
+  spearGuaranteedCritOnMax: boolean; // 满 13 层时下一击必会心（仅 7 件套）
   // 8. basic_back 回归基本功套
   basicBackActive: boolean;    // 任意 ≥3 件激活
   basicBackMul: number;        // 主修 AOE 倍率（多于 1 个目标时使用）
@@ -56,7 +56,7 @@ export interface SetEffectsState {
   bladeActive: boolean;
   bladeBaseCritRate: number;   // 静态加成（叠加到 stat 上）
   bladeBaseCritDmg: number;
-  bladeStackCritRate: number;  // 每次非暴击叠加值
+  bladeStackCritRate: number;  // 每次非会心叠加值
   bladeStackCritDmg: number;
   // 11. fan_master 天机套（持「扇」激活）
   fanActive: boolean;
@@ -237,7 +237,7 @@ export interface PlayerAwakenState {
   // ===== v1.3 灵戒附灵·主修功法增幅 =====
   // 通用向：仅主修攻击生效（usedSkill === activeSkill）
   mainSkillMultBonus?: number;       // 主修伤害倍率 +X%
-  mainSkillCritRate?: number;        // 主修攻击额外暴击率 +X%
+  mainSkillCritRate?: number;        // 主修攻击额外会心率 +X%
   mainSkillArmorPen?: number;        // 主修无视目标 X% 防御
   mainSkillLifesteal?: number;       // 主修命中回 X% 最大气血
   // 属性匹配向：仅主修元素匹配 requireElement 时生效
@@ -256,7 +256,7 @@ export interface PlayerAwakenState {
   mainSkillBrittleAmpElem?: AwakenElement;
   // 机制向
   mainSkillChainChance?: number;     // 主修追击概率（与兵器 chainAttackChance 取大）
-  mainSkillCritCdCut?: boolean;      // 主修暴击时所有神通 CD-1（每回合至多 1 次）
+  mainSkillCritCdCut?: boolean;      // 主修会心时所有神通 CD-1（每回合至多 1 次）
   mainSkillExecuteThr?: number;      // 残血阈值（0.20~0.35）
   mainSkillExecuteBonus?: number;    // 残血伤害加成（0.30~0.85）
 }
@@ -343,7 +343,7 @@ export interface EquippedSkillInfo {
     reviveOnce?: boolean; skillCdReduction?: number;
     // v3 紫色被动
     dotAmpPct?: number;            // dot_amplifier_percent: 你造成 DOT 伤害放大%
-    critAfterDodge?: boolean;      // crit_after_dodge: 闪避后下次攻击必暴击
+    critAfterDodge?: boolean;      // crit_after_dodge: 闪避后下次攻击必会心
     healAmpPct?: number;           // heal_amplifier_percent: 你受到的治疗放大%
   };
 }
@@ -858,7 +858,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
     atk: Math.floor(power * r.atk * ATK_SCALE * MONSTER_ATK_MUL),
     def: Math.floor(power * r.def * 0.6 * MONSTER_DEF_MUL),
     spd: Math.floor(spdValue * MONSTER_SPD_MUL),
-    crit_rate: Math.min(0.50, critRate), crit_dmg: Math.min(2.5, critDmg), // v3.4: 怪物暴伤 cap 3.0→2.5
+    crit_rate: Math.min(0.50, critRate), crit_dmg: Math.min(2.5, critDmg), // v3.4: 怪物会伤 cap 3.0→2.5
     dodge: Math.min(0.30, dodge), lifesteal: Math.min(0.15, lifesteal),
     element: template.element, resists: monsterResists,
     armorPen: Math.min(30, armorPen), accuracy: Math.min(25, accuracy),
@@ -924,14 +924,14 @@ export function calculateDamage(
 
   let damage = attacker.atk * skillMultiplier * elementMulti * resistFactor * atkDefRatio * elementDmgBonus * awakenDmgMul;
 
-  // v3 飘渺神行：上一次闪避后的攻击强制暴击（命中不被闪避才消费）
-  // v1.3 主修锋锐：主修攻击额外暴击率
+  // v3 飘渺神行：上一次闪避后的攻击强制会心（命中不被闪避才消费）
+  // v1.3 主修锋锐：主修攻击额外会心率
   const mainSkillCritRate = (isMainSkill && awakenState?.mainSkillCritRate) ? awakenState.mainSkillCritRate : 0;
   let isCrit = Math.random() < (attacker.crit_rate + mainSkillCritRate);
   if ((attacker as any).forceCritNext) {
     isCrit = true;
   }
-  // ❖ 十三枪 7 件套：满层时下一击必暴击
+  // ❖ 十三枪 7 件套：满层时下一击必会心
   if ((attacker as any).guaranteedCritNext) {
     isCrit = true;
   }
@@ -1024,6 +1024,18 @@ export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
         ignoreDef: skill.ignoreDef, isAoe: skill.isAoe, targetCount: skill.targetCount, hitCount: skill.hitCount, healAtkRatio: skill.healAtkRatio ? skill.healAtkRatio * lvMul : undefined,
         innateMain: skill.innateMain,
       };
+      // v3.9 紫品主修自带的常驻被动（active.effect）也并入 passiveEffects（与被动功法同处理）
+      if (skill.effect) {
+        const e = skill.effect;
+        pe.atkPercent += (e.ATK_percent || 0) * lvMul;
+        pe.defPercent += (e.DEF_percent || 0) * lvMul;
+        pe.hpPercent += (e.HP_percent || 0) * lvMul;
+        pe.spdPercent += (e.SPD_percent || 0) * lvMul;
+        pe.critRate += (e.CRIT_RATE_flat || 0) * lvMul;
+        pe.critDmg += (e.CRIT_DMG_flat || 0) * lvMul;
+        pe.dodge += (e.DODGE_flat || 0) * lvMul;
+        pe.lifesteal += (e.LIFESTEAL_flat || 0) * lvMul;
+      }
     } else if (skill.type === 'divine') {
       divineSkills.push({
         name: skill.name, multiplier: skill.multiplier * lvMul, cdTurns: skill.cdTurns, element: skill.element,
@@ -1080,7 +1092,7 @@ export function buildEquippedSkillInfo(skillRows: any[]): EquippedSkillInfo {
 // ========== 波次战斗(1 vs N只怪) ==========
 
 export interface WaveBattleStats {
-  playerCritCount: number;        // 玩家本场暴击次数
+  playerCritCount: number;        // 玩家本场会心次数
   playerHitsTaken: number;        // 玩家本场被命中次数（造成 >0 伤害）
   elementAdvantageHit: boolean;   // 玩家对怪物打出过 1.3x 五行相克
   lifestealFullRecovery: boolean; // 通过吸血从非满血回到满血
@@ -1551,7 +1563,7 @@ export function runWaveBattle(
       atk_up: `攻击+${((b.value || 0) * 100).toFixed(0)}%`,
       def_up: `防御+${((b.value || 0) * 100).toFixed(0)}%`,
       spd_up: `身法+${((b.value || 0) * 100).toFixed(0)}%`,
-      crit_up: `暴击+${((b.value || 0) * 100).toFixed(0)}%`,
+      crit_up: `会心+${((b.value || 0) * 100).toFixed(0)}%`,
       regen: `每回合回复 ${(((b.valuePercent || 0)) * 100).toFixed(0)}% 气血`,
       reflect: `反弹${((b.value || 0) * 100).toFixed(0)}%伤害`,
     };
@@ -1770,7 +1782,7 @@ export function runWaveBattle(
         const brittle = getBrittleBonus(player);
         if (brittle > 0) dmg = Math.floor(dmg * (1 + brittle));
         if (pe?.damageReductionFlat) dmg = Math.floor(dmg * (1 - pe.damageReductionFlat));
-        // v1.2 附灵：受伤减免 + 暴击额外减免 + 不屈（低血 DEF 叠加→近似减伤）
+        // v1.2 附灵：受伤减免 + 会心额外减免 + 不屈（低血 DEF 叠加→近似减伤）
         dmg = applyAwakenIncomingReduction(dmg, isCrit);
         // 玩家 buff：金钟罩等（immune = 伤害减半）
         if (hasPlayerBuff('immune')) dmg = Math.max(1, Math.floor(dmg * 0.5));
@@ -1821,7 +1833,7 @@ export function runWaveBattle(
         if (isCrit && pe?.reflectOnCrit && Math.random() < pe.reflectOnCrit) {
           const rfc = Math.floor(dmg * 0.5);
           sourceMonster.stats.hp -= rfc;
-          logs.push({ turn, text: `  【暴击反弹】${sourceMonster.stats.name}受到 ${rfc} 点反震`, type: 'normal', ...snap() });
+          logs.push({ turn, text: `  【会心反弹】${sourceMonster.stats.name}受到 ${rfc} 点反震`, type: 'normal', ...snap() });
         }
       };
 
@@ -1832,7 +1844,7 @@ export function runWaveBattle(
           const mResult = calculateDamage(m.stats, player, perHitMul, skillElem);
           if (mResult.damage > 0) {
             const dmg = applyPlayerHit(mResult.damage, mResult.isCrit);
-            const critText = mResult.isCrit ? '暴击!' : '';
+            const critText = mResult.isCrit ? '会心!' : '';
             logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dmg} 点伤害`, type: mResult.isCrit ? 'crit' : 'normal', ...snap() });
             triggerRetaliate(dmg, mResult.isCrit, m);
           } else if ((player as any).critAfterDodge) {
@@ -1845,7 +1857,7 @@ export function runWaveBattle(
         const mResult = calculateDamage(m.stats, player, skillMul, skillElem);
         if (mResult.damage === 0) {
           logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}的攻击被你闪避了`, type: 'normal', ...snap() });
-          // v3 飘渺神行：闪避后下次攻击必暴击
+          // v3 飘渺神行：闪避后下次攻击必会心
           if ((player as any).critAfterDodge) {
             (player as any).forceCritNext = true;
           }
@@ -2016,7 +2028,7 @@ export function runWaveBattle(
     // 玩家 buff：atk_up 通过 mul 放大（与 def_up 临时放大 def 对称，避免战意沸腾累积冲突）
     const atkUpSum = sumPlayerBuff('atk_up');
     if (atkUpSum > 0) mul *= (1 + atkUpSum);
-    // 玩家 buff：crit_up 临时加到暴击率（回合末还原）
+    // 玩家 buff：crit_up 临时加到会心率（回合末还原）
     const critUpSum = sumPlayerBuff('crit_up');
     const origPlayerCritRate = player.crit_rate;
     if (critUpSum > 0) player.crit_rate = Math.min(0.95, origPlayerCritRate + critUpSum);
@@ -2083,9 +2095,9 @@ export function runWaveBattle(
         logs.push({ turn, text: `  ❖【刷新套】此次伤害削弱（CD 重置代价已扣除）`, type: 'set', ...snap() });
       }
 
-      // v1.3 主修噬灵：主修命中即触发（与暴击无关），按最大气血百分比回复
+      // v1.3 主修噬灵：主修命中即触发（与会心无关），按最大气血百分比回复
       const mainSkillLifestealRate = (isMainSkill && player.awakenState?.mainSkillLifesteal) ? player.awakenState.mainSkillLifesteal : 0;
-      // v1.3 心剑回响：主修暴击时所有神通 CD-1（每回合至多 1 次）
+      // v1.3 心剑回响：主修会心时所有神通 CD-1（每回合至多 1 次）
       let critCdCutUsedThisTurn = false;
 
       // 对怪物造成伤害（应用脆弱、吸血汇总）
@@ -2135,27 +2147,27 @@ export function runWaveBattle(
             turnLifestealTotal += actualHeal;
           }
         }
-        // ❖ 十三枪：任何主攻伤害 +1 层；满 13 层时设必暴击；满层暴击触发后清零（爽点节奏）
+        // ❖ 十三枪：任何主攻伤害 +1 层；满 13 层时设必会心；满层会心触发后清零（爽点节奏）
         // chained 段（剑气/多重/天机）不叠也不清
         if (setEffects && setEffects.spearActive && !opts?.chained) {
           const before = (player as any).spearStacks || 0;
-          // 满层时若本击是暴击 → 视为爆发触发 → 清零（含必暴击与自然暴击）
+          // 满层时若本击是会心 → 视为爆发触发 → 清零（含必会心与自然会心）
           if (before >= setEffects.spearMaxStacks && opts?.isCrit) {
             (player as any).spearStacks = 0;
-            logs.push({ turn, text: `  ❖【十三枪】满 ${before} 层暴击爆发，层数清零`, type: 'set', ...snap() });
+            logs.push({ turn, text: `  ❖【十三枪】满 ${before} 层会心爆发，层数清零`, type: 'set', ...snap() });
           } else if (before < setEffects.spearMaxStacks) {
             const next = Math.min(setEffects.spearMaxStacks, before + setEffects.spearStackPerHit);
             (player as any).spearStacks = next;
-            // 刚刚到满：标记下一击必暴击（仅 7 件套）
+            // 刚刚到满：标记下一击必会心（仅 7 件套）
             if (next === setEffects.spearMaxStacks && setEffects.spearGuaranteedCritOnMax) {
               (player as any).guaranteedCritNext = true;
-              logs.push({ turn, text: `  ❖【十三枪】满 ${setEffects.spearMaxStacks} 层！下一击必暴击`, type: 'set', ...snap() });
+              logs.push({ turn, text: `  ❖【十三枪】满 ${setEffects.spearMaxStacks} 层！下一击必会心`, type: 'set', ...snap() });
             }
           }
         }
         return dmg;
       };
-      // v1.3 心剑回响：当主修暴击时调用
+      // v1.3 心剑回响：当主修会心时调用
       const tryCritCdCut = (isCrit: boolean) => {
         if (!isCrit || !isMainSkill || critCdCutUsedThisTurn) return;
         if (!player.awakenState?.mainSkillCritCdCut) return;
@@ -2165,10 +2177,10 @@ export function runWaveBattle(
         }
         if (cut) {
           critCdCutUsedThisTurn = true;
-          logs.push({ turn, text: '  ✦【心剑回响】主修暴击，所有神通 CD -1', type: 'buff', ...snap() });
+          logs.push({ turn, text: '  ✦【心剑回响】主修会心，所有神通 CD -1', type: 'buff', ...snap() });
         }
       };
-      // ❖ 刀狂套：每次主攻命中后判定（暴击清零叠加；非暴击叠加 +1 层，cap 截断）
+      // ❖ 刀狂套：每次主攻命中后判定（会心清零叠加；非会心叠加 +1 层，cap 截断）
       const triggerBladeStack = (isCrit: boolean) => {
         if (!setEffects.bladeActive) return;
         const p = player as any;
@@ -2178,7 +2190,7 @@ export function runWaveBattle(
             player.crit_dmg = Math.max(1, player.crit_dmg - p._bladeAddedDmg);
             const cnt = p._bladeStackCount;
             p._bladeAddedRate = 0; p._bladeAddedDmg = 0; p._bladeStackCount = 0;
-            logs.push({ turn, text: `  ❖【刀狂套】暴击触发，叠加层 ×${cnt} 清零`, type: 'set', ...snap() });
+            logs.push({ turn, text: `  ❖【刀狂套】会心触发，叠加层 ×${cnt} 清零`, type: 'set', ...snap() });
           }
         } else {
           const newRate = Math.min(PLAYER_CAPS.critRate, player.crit_rate + setEffects.bladeStackCritRate);
@@ -2206,7 +2218,7 @@ export function runWaveBattle(
           const dr = calculateDamage(player, t.stats, setEffects.swordQiMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeQi, false);
           if (dr.damage > 0) {
             const finalDmg = dealDamage(t, dr.damage, { chained: true });
-            const critText = dr.isCrit ? '暴击!' : '';
+            const critText = dr.isCrit ? '会心!' : '';
             logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${setEffects.swordQiHits}】${critText}对${t.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.swordQiMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
             if (t.stats.hp <= 0) t.alive = false;
           } else {
@@ -2226,7 +2238,7 @@ export function runWaveBattle(
           const dmgResult = calculateDamage(player, curTarget.stats, perHitMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill);
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(curTarget, dmgResult.damage, { isCrit: dmgResult.isCrit });
-            const critText = dmgResult.isCrit ? '暴击!' : '';
+            const critText = dmgResult.isCrit ? '会心!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
             tryCritCdCut(dmgResult.isCrit);
             triggerBladeStack(dmgResult.isCrit);
@@ -2260,7 +2272,7 @@ export function runWaveBattle(
           const dmgResult = calculateDamage(player, t.stats, mul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, isMainSkill);
           if (dmgResult.damage > 0) {
             const finalDmg = dealDamage(t, dmgResult.damage, { isCrit: dmgResult.isCrit });
-            const critText = dmgResult.isCrit ? '暴击!' : '';
+            const critText = dmgResult.isCrit ? '会心!' : '';
             if (dmgResult.isCrit) battleStats.playerCritCount++;
             tryCritCdCut(dmgResult.isCrit);
             triggerBladeStack(dmgResult.isCrit);
@@ -2353,7 +2365,7 @@ export function runWaveBattle(
               const dmgResult = calculateDamage(player, extraTarget.stats, extraMul, usedSkill.element, usedSkill.ignoreDef, false, false);
               if (dmgResult.damage > 0) {
                 const finalDmg = dealDamage(extraTarget, dmgResult.damage, { chained: true });
-                const critText = dmgResult.isCrit ? '暴击!' : '';
+                const critText = dmgResult.isCrit ? '会心!' : '';
                 logs.push({ turn, text: `  ❖【多重施法】${critText}【${usedSkill.name}】波及${extraTarget.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.multicastMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
               }
             }
@@ -2371,7 +2383,7 @@ export function runWaveBattle(
               const dmgResult = calculateDamage(player, t.stats, fanMul, usedSkill.element, usedSkill.ignoreDef, ignoreDodgeFrost, false);
               if (dmgResult.damage > 0) {
                 const finalDmg = dealDamage(t, dmgResult.damage, { chained: true });
-                const critText = dmgResult.isCrit ? '暴击!' : '';
+                const critText = dmgResult.isCrit ? '会心!' : '';
                 logs.push({ turn, text: `  ❖【天机·额外段 ${i + 1}/${setEffects.fanExtraCasts}】${critText}【${usedSkill.name}】对${t.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.fanExtraMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
                 if (t.stats.hp <= 0) t.alive = false;
               }

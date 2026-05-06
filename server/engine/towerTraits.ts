@@ -26,7 +26,7 @@ export function applyTraits(stats: BattlerStats, traits: TraitId[]): void {
         stats.atk = Math.floor(stats.atk * 1.30)
         stats.spd = Math.floor(stats.spd * 1.15)
         break
-      case 'T03': // 爆发：暴击率 +50% / 暴伤 +50%（cap 在引擎内部 cap 2.5 / cap 0.50）
+      case 'T03': // 爆发：会心率 +50% / 会伤 +50%（cap 在引擎内部 cap 2.5 / cap 0.50）
         stats.crit_rate = Math.min(0.50, stats.crit_rate + 0.50)
         stats.crit_dmg = Math.min(2.5, stats.crit_dmg + 0.50)
         break

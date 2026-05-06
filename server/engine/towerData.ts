@@ -31,7 +31,7 @@ export interface TraitDef {
 
 export const TRAITS: Record<TraitId, TraitDef> = {
   T01: { id: 'T01', name: '狂暴',       desc: '攻击 +30%、速度 +15%（开战即激活）',                   category: 'rage' },
-  T03: { id: 'T03', name: '爆发',       desc: '暴击率 +50%、暴击伤害 +50%',                            category: 'rage' },
+  T03: { id: 'T03', name: '爆发',       desc: '会心率 +50%、会心伤害 +50%',                            category: 'rage' },
   T05: { id: 'T05', name: '再生',       desc: '每回合恢复最大血量 5%',                                 category: 'sustain' },
   T07: { id: 'T07', name: '减伤',       desc: '受到伤害减少 30%（实际由防御 ×1.5 体现）',              category: 'defense' },
   T08: { id: 'T08', name: '护盾叠加',   desc: '基础最大血量 +30%（相当于初始护盾）',                   category: 'defense' },

@@ -21,7 +21,7 @@ export async function consumeSpecialItem(charId: number, pillId: string): Promis
 // weight — 加权抽取概率（不是概率，是相对权重）
 //   20 = 垃圾档（flat 基础属性、资源类）          - 大概率出
 //   10 = 中档   （百分比基础、五行、命中）          - 中等概率
-//    5 = 好词条 （暴击/暴伤/吸血/闪避/破甲）       - 难出，神器的组成
+//    5 = 好词条 （会心/会伤/吸血/闪避/破甲）       - 难出，神器的组成
 export const SUB_STAT_POOL = [
   // flat（垃圾/凑数，允许同件装备重复出现）
   { stat: 'ATK',            min: 3,  max: 20,  weight: 20 },
@@ -53,7 +53,7 @@ export const SUB_STAT_POOL = [
 // 固定值类副属性（会按 tier 高速缩放）
 export const SUB_STAT_FLAT = new Set(['ATK', 'DEF', 'HP', 'SPD', 'SPIRIT'])
 
-// 好词条（暴击/暴伤/吸血/闪避/破甲）— tier 浮动最低，防引擎 cap 撞顶
+// 好词条（会心/会伤/吸血/闪避/破甲）— tier 浮动最低，防引擎 cap 撞顶
 export const SUB_STAT_GOOD = new Set(['CRIT_RATE', 'CRIT_DMG', 'LIFESTEAL', 'DODGE', 'ARMOR_PEN'])
 
 // 副属性数量按品质
@@ -64,7 +64,7 @@ export const RARITY_SUB_COUNT: Record<string, number> = {
 /**
  * 副属性 tier 浮动系数（v3.5：让 t 级在副属性上真正分档）
  *   FLAT     — +10%/tier，t10 = 1.9×（满档继续按 tier 缩放，flat 后期靠 tier 撑）
- *   GOOD     — +4%/tier， t10 = 1.36×（暴击/暴伤/吸血/闪避/破甲）
+ *   GOOD     — +4%/tier， t10 = 1.36×（会心/会伤/吸血/闪避/破甲）
  *   其余 PCT — +6%/tier， t10 = 1.54×（PCT/五行/命中/SPIRIT_DENSITY/LUCK）
  *
  * v3.8.4 (2026-05-06)：百分比类（GOOD + PCT）T11+ 截断在 T10 上限
@@ -104,7 +104,7 @@ function weightedPick<T extends { weight: number }>(pool: T[]): T {
 
 /**
  * 生成一组副属性
- * 按 weight 加权：垃圾词条(flat/资源)高频出，好词条(暴击/吸血)低频出 — 神器需要多条好词条才能成型
+ * 按 weight 加权：垃圾词条(flat/资源)高频出，好词条(会心/吸血)低频出 — 神器需要多条好词条才能成型
  * v3.7: FLAT 类（ATK/DEF/HP/SPD/SPIRIT）允许同件装备重复出现，进一步拉大方差
  */
 export function rollSubStats(rarityIdx: number, tier: number, count: number): { stat: string; value: number }[] {

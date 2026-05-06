@@ -5,7 +5,7 @@
  *
  * 三个 build 共用同一基础属性（atk/def/hp/spd/crit），仅套装+附灵+神通配置不同：
  *  A. 刷新套7 + 心剑回响 + 主修锋锐 + 单红神通（6CD 5.0 倍率）
- *  B. 剑仙套7 + 主修锋锐 + 玄冥(暴伤+) + 标准神通（4CD 3.5 倍率）
+ *  B. 剑仙套7 + 主修锋锐 + 玄冥(会伤+) + 标准神通（4CD 3.5 倍率）
  *  C. 多重施法套7 + 主修锋锐 + 标准神通（4CD 3.5 倍率）
  *
  * 跑法：npx tsx test/sim-refresh-vs-others.ts
@@ -22,7 +22,7 @@ const BASE = {
   atk: 5500,
   def: 900,
   spd: 110,
-  crit_rate: 0.32,   // 32% 基础暴击率
+  crit_rate: 0.32,   // 32% 基础会心率
   crit_dmg: 1.85,
   dodge: 0.04,
   lifesteal: 0.02,
@@ -34,7 +34,7 @@ function mkStats(name: string, opts: {
   weaponType?: string | null
   element?: string
   awaken?: any
-  critDmgBonus?: number  // 玄冥附灵把暴伤拉高
+  critDmgBonus?: number  // 玄冥附灵把会伤拉高
 }): BattlerStats {
   return {
     name,
@@ -72,8 +72,8 @@ function buildRefresh(name: string): PvpFighterInput {
     stats: mkStats(name, {
       setCounts: { refresh: 7 },
       awaken: {
-        mainSkillCritCdCut: true,    // 心剑回响（红品，暴击时全神通 CD-1）
-        mainSkillCritRate: 0.14,     // 主修锋锐（红，主修+14% 暴击）
+        mainSkillCritCdCut: true,    // 心剑回响（红品，会心时全神通 CD-1）
+        mainSkillCritRate: 0.14,     // 主修锋锐（红，主修+14% 会心）
       },
     }),
     equippedSkills: {
@@ -93,7 +93,7 @@ function buildSword(name: string): PvpFighterInput {
     stats: mkStats(name, {
       setCounts: { sword_immortal: 7 },
       weaponType: 'sword',
-      critDmgBonus: 0.35,            // 玄冥（红品 +35% 暴伤）
+      critDmgBonus: 0.35,            // 玄冥（红品 +35% 会伤）
       awaken: {
         mainSkillCritRate: 0.14,     // 主修锋锐
       },
@@ -245,7 +245,7 @@ console.log('============================================================')
 console.log(`套装平衡对照模拟（每组 ${N} 场，maxTurns=${MAX_TURNS}）`)
 console.log('============================================================')
 console.log('Build A: 刷新套7 + 心剑回响 + 主修锋锐 + 单红神通(6CD 5.0)')
-console.log('Build B: 剑仙套7 + 主修锋锐 + 玄冥(+35%暴伤) + 4CD 3.5 神通')
+console.log('Build B: 剑仙套7 + 主修锋锐 + 玄冥(+35%会伤) + 4CD 3.5 神通')
 console.log('Build C: 多重施法套7 + 主修锋锐 + 4CD 3.5 神通')
 console.log('============================================================\n')
 

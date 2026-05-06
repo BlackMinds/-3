@@ -32,15 +32,15 @@
 
 ### 1.2 提案核心
 让**灵戒附灵**作为"主修功法的隐性升阶维度"：
-- 同样的"烈焰剑诀"，灵戒附灵不同 → 偏暴击爆发 / 偏灼烧持续 / 偏五行强化 → 玩出不同流派
+- 同样的"烈焰剑诀"，灵戒附灵不同 → 偏会心爆发 / 偏灼烧持续 / 偏五行强化 → 玩出不同流派
 - 主修功法本体不再扩充（数据简洁），通过附灵层产生组合空间
 
 ### 1.3 与既有 v1.2 的差异化
 | 槽位 | 效果池方向 | 触发心智 |
 |------|----------|---------|
-| `weapon` 兵器 | 通用输出（吸血/持续伤害/暴击/斩杀） | 普攻每次都吃到 |
+| `weapon` 兵器 | 通用输出（吸血/持续伤害/会心/斩杀） | 普攻每次都吃到 |
 | `armor` 法袍 | 通用生存（反伤/减伤/回血/抗性） | 受击/回合开始 |
-| `pendant` 灵佩 | 通用辅助（身法/暴伤/掉率/经验） | 全战斗常驻 |
+| `pendant` 灵佩 | 通用辅助（身法/会伤/掉率/经验） | 全战斗常驻 |
 | **`ring` 灵戒（新）** | **主修功法专属增幅** | 仅主修攻击触发 |
 
 **心智差异**：兵器/法袍/灵佩附灵是"装上就生效"，灵戒附灵是"看你主修是什么 → 决定能吃到多少"，给玩家 build 决策权重。
@@ -56,7 +56,7 @@
 | ID | 名称 | 效果 | 实现 stat | 蓝 | 紫 | 金 | 红 |
 |----|------|------|-----------|----|----|----|----|
 | `aw_main_amp` | 心法贯通 | **主修**伤害倍率 +X% | 新增 `mainSkillMultBonus` | 8 | 13 | 20 | 28 |
-| `aw_main_crit` | 主修锋锐 | **主修**攻击额外暴击率 +X% | 新增 `mainSkillCritRate` | 4 | 7 | 10 | 14 |
+| `aw_main_crit` | 主修锋锐 | **主修**攻击额外会心率 +X% | 新增 `mainSkillCritRate` | 4 | 7 | 10 | 14 |
 | `aw_main_pierce` | 主修破玄 | **主修**攻击无视目标 X% 防御 | 新增 `mainSkillArmorPen` | 6 | 10 | 15 | 22 |
 | `aw_main_lifesteal` | 主修噬灵 | **主修**命中回复 X% 最大气血 | 新增 `mainSkillLifesteal` | 1.5 | 2.5 | 4 | 6 |
 
@@ -80,7 +80,7 @@
 | ID | 名称 | 效果 | 实现 stat | 蓝 | 紫 | 金 | 红 |
 |----|------|------|-----------|----|----|----|----|
 | `aw_main_chain` | 紫电连华 | **主修**攻击 X% 概率追击一次（60% 倍率，不递归触发附灵） | 新增 `mainSkillChainChance` | 8 | 13 | 20 | 28 |
-| `aw_main_cdcut` | 心剑回响 | **主修**暴击时，所有神通 CD -1 (每回合至多 1 次) | 新增 `mainSkillCritCdCut` | bool | bool | bool | bool |
+| `aw_main_cdcut` | 心剑回响 | **主修**会心时，所有神通 CD -1 (每回合至多 1 次) | 新增 `mainSkillCritCdCut` | bool | bool | bool | bool |
 | `aw_main_execute` | 灵戒裂魂 | **主修**对气血<X% 目标伤害 +30% / +45% / +60% / +85% | 新增 `mainSkillExecuteHpThr` + Bonus | 20%阈值/30% | 25%阈值/45% | 30%阈值/60% | 35%阈值/85% |
 
 > 机制向只 3 条，避免与兵器附灵 (`aw_chain`/`aw_execute`) 完全同质化——区别在于**仅主修触发**且效果更强。
@@ -93,8 +93,8 @@
 
 | 维度 | 灵戒附灵贡献 | 与既有上限关系 |
 |------|------------|--------------|
-| 主修倍率提升 | 心法贯通 +28%（红品最高） | 单一加法不影响其他暴击/暴伤 cap |
-| 主修暴击率 | 主修锋锐 +14% | 与兵器锋锐 +12% 叠加 → 主修攻击单点暴击率上限提升 ~26%，仍未破 50% 引擎 cap |
+| 主修倍率提升 | 心法贯通 +28%（红品最高） | 单一加法不影响其他会心/会伤 cap |
+| 主修会心率 | 主修锋锐 +14% | 与兵器锋锐 +12% 叠加 → 主修攻击单点会心率上限提升 ~26%，仍未破 50% 引擎 cap |
 | 主修吸血 | 主修噬灵 +6% | 独立通道，不与 `lifesteal` 叠加，上限 6% < 怪物 cap 15% |
 | 灼烧持续 | 焚天戒 +2 回合 | 仅主修触发，与神通灼烧不叠加 |
 | 主修追击 | 紫电连华 28% × 60%倍率 | 追击不递归触发附灵（防循环），单回合期望伤害 +16.8% |
@@ -102,7 +102,7 @@
 **关键 clamp**：
 - 单角色仅 1 件灵戒，所有"mainSkill\*"效果**不跨件叠加**（结构天然保护）
 - 主修追击与兵器 `aw_chain` 连击**互斥**（防双倍连击爆发）→ 实现层在 chainCheck 时取 `Math.max`，不累加
-- 心剑回响 CD-1 每回合至多 1 次（避免主修连续暴击导致神通秒转）
+- 心剑回响 CD-1 每回合至多 1 次（避免主修连续会心导致神通秒转）
 
 ---
 
@@ -193,16 +193,16 @@ function conditionalAttach(p, requireElem, key, value) {
 | 字段 | 插入位置 | 逻辑 |
 |------|---------|-----|
 | `mainSkillMultBonus` | 主动技能伤害公式 `multiplier` 取用前 | `mult = skill.multiplier * (1 + p.mainSkillMultBonus)` 仅 `type==='active'` |
-| `mainSkillCritRate` | 暴击 roll 前 | `if (skill.type==='active') critRate += p.mainSkillCritRate` |
+| `mainSkillCritRate` | 会心 roll 前 | `if (skill.type==='active') critRate += p.mainSkillCritRate` |
 | `mainSkillArmorPen` | 主修攻击伤害公式 def 取用前 | `if (skill.type==='active') effectiveDef *= 1 - p.mainSkillArmorPen` |
-| `mainSkillLifesteal` | 主修攻击命中后 | `p.hp += p.maxHp * p.mainSkillLifesteal` (仅命中即触发，与暴击无关) |
+| `mainSkillLifesteal` | 主修攻击命中后 | `p.hp += p.maxHp * p.mainSkillLifesteal` (仅命中即触发，与会心无关) |
 | `mainSkillBleedAmp` | 主修施加流血时 | 流血伤害字段 × (1 + bonus) — 在 debuff tickDamage 阶段乘 |
 | `mainSkillPoisonStack` | 主修施加中毒时 | 允许同目标叠 1-2 层，每层独立 tick |
 | `mainSkillFreezeChance` | 主修施加冻结的 roll 前 | `freezeChance += bonus` |
 | `mainSkillBurnDuration` | 主修施加灼烧的 applyDebuff 调用 | `duration += bonus` |
 | `mainSkillBrittleAmp` | 主修施加脆弱时 | 脆弱减防 value × (1 + bonus) |
 | `mainSkillChainChance` | 主修攻击结算后 | `if (Math.random() < chance) doExtraMainAttack(0.6)`，不递归触发附灵 |
-| `mainSkillCritCdCut` | 主修暴击命中后 | `for (skill of divineSkills) skill.cdRemaining = max(0, cdRemaining-1)`，每回合至多 1 次 |
+| `mainSkillCritCdCut` | 主修会心命中后 | `for (skill of divineSkills) skill.cdRemaining = max(0, cdRemaining-1)`，每回合至多 1 次 |
 | `mainSkillExecuteHpThr` | 主修伤害结算乘法链 | `if (target.hp/target.maxHp < threshold) damage *= 1 + bonus` |
 
 **关键约束**：所有 `mainSkill*` 钩子都需要先判断"当前是否在执行主修攻击"——建议在 `executeActiveAttack(player, skill)` 入口设置 `p._isMainSkillAttack = true`，结算后清掉，避免神通误触发。
@@ -261,7 +261,7 @@ function conditionalAttach(p, requireElem, key, value) {
 
 ### 通用向（4 条）
 - [ ] 心法贯通：主修攻击伤害比无附灵高 X%
-- [ ] 主修锋锐：仅主修攻击额外暴击概率，神通不受影响
+- [ ] 主修锋锐：仅主修攻击额外会心概率，神通不受影响
 - [ ] 主修破玄：主修对高防御目标伤害提升明显
 - [ ] 主修噬灵：主修命中后角色气血回复
 

@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
     ])
     if (!aSnap || !bSnap) return { code: 500, message: '快照失败' }
 
-    // 5. 跑战斗（1v1 模式：HP×1.3 / 伤害×0.7 / DOT×0.6 / 暴伤-15%）
+    // 5. 跑战斗（1v1 模式：HP×1.3 / 伤害×0.7 / DOT×0.6 / 会伤-15%）
     const result = runPvpBattle(
       [toInput(aSnap)],
       [toInput(bSnap)],

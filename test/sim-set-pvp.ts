@@ -146,7 +146,7 @@ const swordQiLogs = swordResult.logs.filter(l => l.text.includes('剑气'))
 console.log(`剑气日志: ${swordQiLogs.length} 条`)
 for (const l of swordQiLogs.slice(0, 6)) console.log('  ' + l.text)
 
-console.log('\n=== v2 验证 2：刀狂套（PvP）— 期待非暴击叠加 / 暴击清零 ===')
+console.log('\n=== v2 验证 2：刀狂套（PvP）— 期待非会心叠加 / 会心清零 ===')
 const bladeResult = runPvpBattle(
   [mkInput('刀狂', { setCounts: { blade_madness: 5 }, weaponType: 'blade' })],
   [mkInput('靶', { element: 'fire' })],

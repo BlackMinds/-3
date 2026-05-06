@@ -63,7 +63,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'bat_13', name: '修为如山', desc: '累计获得100万修为', category: 'battle', type: 'counter', target: 1000000, event: 'total_exp', reward: { spirit_stone: 10000, skill_box: 'normal', skill_box_count: 1 } },
   { id: 'bat_14', name: '五行克敌', desc: '利用五行相克获胜100次', category: 'battle', type: 'counter', target: 100, event: 'element_win', reward: { spirit_stone: 8000 }, title: '五行道人' },
   { id: 'bat_15', name: '起死回生', desc: '战斗中吸血回满血', category: 'battle', type: 'counter', target: 1, event: 'lifesteal_full', reward: { spirit_stone: 3000 } },
-  { id: 'bat_16', name: '暴击风暴', desc: '单场暴击5次以上', category: 'battle', type: 'counter', target: 1, event: 'crit_storm', reward: { spirit_stone: 2000 } },
+  { id: 'bat_16', name: '会心风暴', desc: '单场会心5次以上', category: 'battle', type: 'counter', target: 1, event: 'crit_storm', reward: { spirit_stone: 2000 } },
   { id: 'bat_17', name: '不死之身', desc: '单场被击中20次不死', category: 'battle', type: 'counter', target: 1, event: 'tank_survive', reward: { spirit_stone: 5000 } },
   { id: 'bat_18', name: '速战速决', desc: '3回合内击杀Boss', category: 'battle', type: 'counter', target: 1, event: 'fast_boss_kill', reward: { spirit_stone: 5000, equip_box: 'normal', equip_box_count: 1 } },
 

@@ -43,12 +43,12 @@ export interface WeaponTypeDef {
 export const WEAPON_TYPES: WeaponTypeDef[] = [
   {
     id: 'sword', name: '剑',
-    description: '攻守兼备,暴击率小幅提升,适合泛用',
+    description: '攻守兼备,会心率小幅提升,适合泛用',
     bonus: { ATK_percent: 5, CRIT_RATE_flat: 3 },
   },
   {
     id: 'blade', name: '刀',
-    description: '高攻高爆发,暴击伤害加成,适合暴击流',
+    description: '高攻高爆发,会心伤害加成,适合会心流',
     bonus: { ATK_percent: 10, CRIT_DMG_flat: 15 },
   },
   {

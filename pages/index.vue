@@ -106,8 +106,8 @@
             <label class="dummy-field"><span>攻击</span><input type="number" min="0" v-model.number="gameStore.dummyStats.atk" /></label>
             <label class="dummy-field"><span>防御</span><input type="number" min="0" v-model.number="gameStore.dummyStats.def" /></label>
             <label class="dummy-field"><span>速度</span><input type="number" min="0" v-model.number="gameStore.dummyStats.spd" /></label>
-            <label class="dummy-field"><span>暴击率</span><input type="number" step="0.01" min="0" max="1" v-model.number="gameStore.dummyStats.crit_rate" /></label>
-            <label class="dummy-field"><span>暴击伤害</span><input type="number" step="0.1" min="1" max="10" v-model.number="gameStore.dummyStats.crit_dmg" /></label>
+            <label class="dummy-field"><span>会心率</span><input type="number" step="0.01" min="0" max="1" v-model.number="gameStore.dummyStats.crit_rate" /></label>
+            <label class="dummy-field"><span>会心伤害</span><input type="number" step="0.1" min="1" max="10" v-model.number="gameStore.dummyStats.crit_dmg" /></label>
             <label class="dummy-field"><span>闪避</span><input type="number" step="0.01" min="0" max="0.9" v-model.number="gameStore.dummyStats.dodge" /></label>
             <label class="dummy-field"><span>破甲</span><input type="number" min="0" max="100" v-model.number="gameStore.dummyStats.armorPen" /></label>
             <label class="dummy-field"><span>命中</span><input type="number" min="0" max="1000" v-model.number="gameStore.dummyStats.accuracy" /></label>
@@ -332,8 +332,8 @@
                   <span>攻击 {{ formatNum(displayedMonsterInfo.atk) }}</span>
                   <span>防御 {{ formatNum(displayedMonsterInfo.def) }}</span>
                   <span>身法 {{ formatNum(displayedMonsterInfo.spd) }}</span>
-                  <span v-if="displayedMonsterInfo.crit_rate">暴击率 {{ ((displayedMonsterInfo.crit_rate || 0) * 100).toFixed(1) }}%</span>
-                  <span v-if="displayedMonsterInfo.crit_dmg">暴伤 {{ ((displayedMonsterInfo.crit_dmg || 0) * 100).toFixed(0) }}%</span>
+                  <span v-if="displayedMonsterInfo.crit_rate">会心率 {{ ((displayedMonsterInfo.crit_rate || 0) * 100).toFixed(1) }}%</span>
+                  <span v-if="displayedMonsterInfo.crit_dmg">会伤 {{ ((displayedMonsterInfo.crit_dmg || 0) * 100).toFixed(0) }}%</span>
                   <span v-if="displayedMonsterInfo.dodge && displayedMonsterInfo.dodge > 0">闪避 {{ ((displayedMonsterInfo.dodge || 0) * 100).toFixed(1) }}%</span>
                   <span v-if="displayedMonsterInfo.lifesteal && displayedMonsterInfo.lifesteal > 0">吸血 {{ ((displayedMonsterInfo.lifesteal || 0) * 100).toFixed(1) }}%</span>
                   <span v-if="displayedMonsterInfo.armorPen && displayedMonsterInfo.armorPen > 0">破甲 {{ displayedMonsterInfo.armorPen }}</span>
@@ -2535,7 +2535,7 @@
               <tr><td style="color: #6baa7d;">束缚</td><td>必定后攻,无法闪避(控制类)</td></tr>
               <tr><td>封印</td><td>无法释放神通(控制类)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px;">8 种增益效果: 攻击提升/防御提升/速度提升/暴击提升/护盾/持续回血/伤害反弹/免疫控制。</p>
+            <p class="help-text" style="margin-top: 4px;">8 种增益效果: 攻击提升/防御提升/速度提升/会心提升/护盾/持续回血/伤害反弹/免疫控制。</p>
           </div>
           <div class="help-section">
             <div class="help-title">怪物技能</div>
@@ -2566,7 +2566,7 @@
               <tr><td>副属性「反伤倍率」</td><td>+3~15% / 条 (多件叠加)</td></tr>
               <tr><td>armor 附灵「明镜甲」</td><td>+6~22% (常驻)</td></tr>
               <tr><td>pendant 附灵「玄镜佩」</td><td>+5~18% (常驻)</td></tr>
-              <tr><td>armor 附灵「荆棘」</td><td>+15~50% (仅暴击触发，单独通道)</td></tr>
+              <tr><td>armor 附灵「荆棘」</td><td>+15~50% (仅会心触发，单独通道)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">堆满需放弃 armor/pendant 其他附灵 (金刚/磐石/疾风/玄冥…), 是真流派 build。</p>
           </div>
@@ -2591,7 +2591,7 @@
             <p class="help-text">头部「斗法台」按钮入口。输入对手道号即可发起 1v1 切磋,无需对方在线(基于角色快照异步模拟)。</p>
             <table class="help-table"><tbody>
               <tr><td>每日次数</td><td>主动挑战上限 <b>10 次</b>/日(自然日,凌晨重置)</td></tr>
-              <tr><td>战斗修正</td><td>HP×1.8 / 伤害×0.6 / DOT×0.5 / 暴伤-35%(与宗门战 1v1 同套)</td></tr>
+              <tr><td>战斗修正</td><td>HP×1.8 / 伤害×0.6 / DOT×0.5 / 会伤-35%(与宗门战 1v1 同套)</td></tr>
               <tr><td>积分变化</td><td>胜方加分 / 败方扣分(初始 1000,跨境界加权,详见下表)</td></tr>
               <tr><td>扣分保护</td><td>同一玩家单日最多被扣 <b>10 次</b>积分,超出免扣(战报照写)</td></tr>
               <tr><td>对手限制</td><td>不能挑战自己;无境界差/战力差限制(任何人都可挑战)</td></tr>
@@ -2664,10 +2664,10 @@
             <p class="help-text" style="margin-top: 6px;"><b>押注系统:</b>所有玩家可在周一晚~周二晚押注"宗门胜方",单场上限 5 万灵石。<span style="color: #c45c4a;">⚠ 禁止押注自家宗门(防内部套利)</span>。手续费 5%。</p>
             <p class="help-text" style="margin-top: 6px;"><b>PvP 平衡系数</b>(区别于单人历练,让战斗更有策略深度):</p>
             <table class="help-table"><tbody>
-              <tr><td>单挑 1v1</td><td>角色 HP ×1.3,伤害 ×0.7,DOT ×0.6,暴伤 -15%。战斗约 4~8 回合</td></tr>
-              <tr><td>团战 3v3</td><td>角色 HP ×1.5,伤害 ×0.5,DOT ×0.5,暴伤 -20%。战斗约 5~10 回合</td></tr>
+              <tr><td>单挑 1v1</td><td>角色 HP ×1.3,伤害 ×0.7,DOT ×0.6,会伤 -15%。战斗约 4~8 回合</td></tr>
+              <tr><td>团战 3v3</td><td>角色 HP ×1.5,伤害 ×0.5,DOT ×0.5,会伤 -20%。战斗约 5~10 回合</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px; color: #8a8a7a;">※ 同一角色在宗门战和历练中看到的血量会不同:宗门战下的 HP 会放大,让单次暴击 AoE 不再一击制胜,给神通 CD、debuff 持续、灵根相克等策略留出博弈空间。</p>
+            <p class="help-text" style="margin-top: 4px; color: #8a8a7a;">※ 同一角色在宗门战和历练中看到的血量会不同:宗门战下的 HP 会放大,让单次会心 AoE 不再一击制胜,给神通 CD、debuff 持续、灵根相克等策略留出博弈空间。</p>
           </div>
           <div class="help-section">
             <div class="help-title">灵脉潮汐 · 节点争夺</div>
@@ -2747,11 +2747,11 @@
             <p class="help-text" style="margin-top: 4px;">技能类型: 群攻(全体)/多目标(2-3只)/多段(溢出到下一只)/治疗/增益/控制。</p>
             <p class="help-text" style="margin-top: 4px;"><b>掉落爆率：</b>普通战斗每只怪独立 roll —— T1-T3 普通怪 <b>1.5%</b> / Boss <b>15%</b>(前期慷慨,便于凑齐 3 个槽位);T4+ 普通怪 <b>0.8%</b> / Boss <b>10%</b>。秘境固定 普通怪 <b>6%</b> / Boss <b>40%</b>(高产)。已拥有的同名功法权重每多一本减半,池内会自动倾向"还没爆过"的。</p>
             <p class="help-text" style="margin-top: 6px; color: #c45c4a;">⚠ 被动百分比加成上限: 多个被动功法叠加的 ATK%/HP%/DEF%/SPD% 各自最高 +40%（超出部分截断）。建议搭配不同方向的被动(如攻+防+血各一个),而非单项堆到满。</p>
-            <p class="help-text" style="margin-top: 4px;">不受上限影响: 五行抗性/控制抗性/暴击率/暴击伤害/闪避/吸血/免死/反弹/每回合回血/破甲/命中/CD 缩减等特殊效果仍可叠加。</p>
+            <p class="help-text" style="margin-top: 4px;">不受上限影响: 五行抗性/控制抗性/会心率/会心伤害/闪避/吸血/免死/反弹/每回合回血/破甲/命中/CD 缩减等特殊效果仍可叠加。</p>
             <p class="help-text" style="margin-top: 6px;"><b>紫色被动 build 配合（T5-T6 掉落）：</b></p>
             <table class="help-table"><tbody>
-              <tr><td>万毒归一</td><td>DOT 流核心：你造成的灼烧/中毒/流血伤害+25%,附带攻击+6%/暴击率+3%。配合 v3.6 新神通<b>毒液冲击</b>(3 段中毒)/<b>血雨腥风</b>(AOE 流血)/<b>焚天烈魂</b>(AOE 灼烧+自身 atk_up) + 剑雨纷飞/双焰斩/连环掌/九天玄火阵 + 副属性<b>DOT伤害</b> + 元素灵戒(金鸣戒/木灵戒/<b>焚天烬戒</b>)</td></tr>
-              <tr><td>飘渺神行</td><td>闪避反击流：闪避+8%、速度+8%，闪避后下次攻击必暴击。搭配速度装备/吸血神通形成"闪→暴→吸血"循环</td></tr>
+              <tr><td>万毒归一</td><td>DOT 流核心：你造成的灼烧/中毒/流血伤害+25%,附带攻击+6%/会心率+3%。配合 v3.6 新神通<b>毒液冲击</b>(3 段中毒)/<b>血雨腥风</b>(AOE 流血)/<b>焚天烈魂</b>(AOE 灼烧+自身 atk_up) + 剑雨纷飞/双焰斩/连环掌/九天玄火阵 + 副属性<b>DOT伤害</b> + 元素灵戒(金鸣戒/木灵戒/<b>焚天烬戒</b>)</td></tr>
+              <tr><td>飘渺神行</td><td>闪避反击流：闪避+8%、速度+8%，闪避后下次攻击必会心。搭配速度装备/吸血神通形成"闪→暴→吸血"循环</td></tr>
               <tr><td>春风化雨</td><td>持久回血流：你受到的所有治疗(神通/被动 regen)+30%，自身每回合回血+1%，水/木抗+10%。搭配灵泉术/生生不息/天地归元</td></tr>
             </tbody></table>
           </div>
@@ -2878,7 +2878,7 @@
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">紫品主修共 5 本(金/木/水/火/土 五行各一),倍率 1.50,自带主修向被动,系统按"已拥有越多权重越低"加权随机,确保最终能凑齐。残页通过功法升级界面合成。</p>
             <table class="help-table" style="margin-top: 4px;"><tbody>
-              <tr><td style="color: #c0c0c0;">罡风斩(金)</td><td>主修暴击率 +5%,流血 60%/3 回合</td></tr>
+              <tr><td style="color: #c0c0c0;">罡风斩(金)</td><td>主修会心率 +5%,流血 60%/3 回合</td></tr>
               <tr><td style="color: #6dd070;">万木枯荣诀(木)</td><td>主修命中回 1.5% 最大气血,中毒 70%/4 回合</td></tr>
               <tr><td style="color: #5b8eaa;">玄冰诀(水)</td><td>主修命中 10% 概率额外冻结 1 回合,冻结 40%/1 回合</td></tr>
               <tr><td style="color: #c45c4a;">焚天烈焰诀(火)</td><td>灼烧每跳伤害 +15%,灼烧 70%/4 回合</td></tr>
@@ -3107,7 +3107,7 @@
           <template v-if="pkTab === 'challenge'">
             <p class="pk-rules">
               ① 输入对手道号即可挑战，每日 <b>{{ pkQuota.limit }}</b> 次
-              ② 1v1 模式：HP×1.8 / 伤害×0.6 / DOT×0.5 / 暴伤-35%
+              ② 1v1 模式：HP×1.8 / 伤害×0.6 / DOT×0.5 / 会伤-35%
               ③ 胜负计入斗法积分（同境界 +20/-10，跨境界加权），单日最多被扣 10 次积分（超出免扣）
               ④ 每日 12:00 前 10 名邮件发奖
             </p>
@@ -5578,10 +5578,22 @@ function getScaledSkillDesc(skill: any, level: number): string {
     }
     // 回血
     if (skill.healAtkRatio) parts.push(`回复${Math.round(skill.healAtkRatio * m * 100)}%攻击力气血`);
-    // v3.9 主修内蕴被动（不随等级 scaling，紫品主修自带）
+    // v3.9 紫品主修自带的常驻被动（active.effect，与玩家面板属性同步）
+    if (skill.type === 'active' && skill.effect) {
+      const e = skill.effect;
+      if (e.ATK_percent)    parts.push(`攻击+${(e.ATK_percent * m).toFixed(0)}%`);
+      if (e.DEF_percent)    parts.push(`防御+${(e.DEF_percent * m).toFixed(0)}%`);
+      if (e.HP_percent)     parts.push(`气血+${(e.HP_percent * m).toFixed(0)}%`);
+      if (e.SPD_percent)    parts.push(`身法+${(e.SPD_percent * m).toFixed(0)}%`);
+      if (e.CRIT_RATE_flat) parts.push(`会心率+${(e.CRIT_RATE_flat * m * 100).toFixed(0)}%`);
+      if (e.CRIT_DMG_flat)  parts.push(`会心伤害+${(e.CRIT_DMG_flat * m * 100).toFixed(0)}%`);
+      if (e.DODGE_flat)     parts.push(`闪避+${(e.DODGE_flat * m * 100).toFixed(0)}%`);
+      if (e.LIFESTEAL_flat) parts.push(`吸血+${(e.LIFESTEAL_flat * m * 100).toFixed(0)}%`);
+    }
+    // v3.9 主修内蕴被动（不随等级 scaling，仅主修攻击触发）
     if (skill.type === 'active' && skill.innateMain) {
       const im = skill.innateMain;
-      if (im.mainSkillCritRate)          parts.push(`主修暴击率+${(im.mainSkillCritRate * 100).toFixed(0)}%`);
+      if (im.mainSkillCritRate)          parts.push(`主修会心率+${(im.mainSkillCritRate * 100).toFixed(0)}%`);
       if (im.mainSkillLifesteal)         parts.push(`主修命中回${(im.mainSkillLifesteal * 100).toFixed(1)}%最大气血`);
       if (im.mainSkillArmorPen)          parts.push(`主修破甲+${(im.mainSkillArmorPen * 100).toFixed(0)}%`);
       if (im.mainSkillBurnAmp)           parts.push(`主修灼烧每跳+${(im.mainSkillBurnAmp * 100).toFixed(0)}%`);
@@ -5599,8 +5611,8 @@ function getScaledSkillDesc(skill: any, level: number): string {
     if (e.DEF_percent) parts.push(`防御+${(e.DEF_percent * m).toFixed(0)}%`);
     if (e.HP_percent) parts.push(`气血+${(e.HP_percent * m).toFixed(0)}%`);
     if (e.SPD_percent) parts.push(`身法+${(e.SPD_percent * m).toFixed(0)}%`);
-    if (e.CRIT_RATE_flat) parts.push(`暴击率+${(e.CRIT_RATE_flat * m * 100).toFixed(0)}%`);
-    if (e.CRIT_DMG_flat) parts.push(`暴伤+${(e.CRIT_DMG_flat * m * 100).toFixed(0)}%`);
+    if (e.CRIT_RATE_flat) parts.push(`会心率+${(e.CRIT_RATE_flat * m * 100).toFixed(0)}%`);
+    if (e.CRIT_DMG_flat) parts.push(`会伤+${(e.CRIT_DMG_flat * m * 100).toFixed(0)}%`);
     if (e.DODGE_flat) parts.push(`闪避+${(e.DODGE_flat * m * 100).toFixed(0)}%`);
     if (e.LIFESTEAL_flat) parts.push(`吸血+${(e.LIFESTEAL_flat * m * 100).toFixed(0)}%`);
     if (e.damage_reduction_flat) parts.push(`减伤${(e.damage_reduction_flat * m * 100).toFixed(0)}%`);
@@ -5616,11 +5628,11 @@ function getScaledSkillDesc(skill: any, level: number): string {
     if (e.RESIST_CTRL) parts.push(`控抗+${(e.RESIST_CTRL * m * 100).toFixed(0)}%`);
     if (e.poison_on_hit_taken_chance) parts.push(`被打${(e.poison_on_hit_taken_chance * m * 100).toFixed(0)}%中毒`);
     if (e.burn_on_hit_taken_chance) parts.push(`被打${(e.burn_on_hit_taken_chance * m * 100).toFixed(0)}%灼烧`);
-    if (e.reflect_on_crit_taken) parts.push(`被暴击反弹${(e.reflect_on_crit_taken * m * 100).toFixed(0)}%`);
+    if (e.reflect_on_crit_taken) parts.push(`被会心反弹${(e.reflect_on_crit_taken * m * 100).toFixed(0)}%`);
     if (e.revive_once) parts.push('免死1次保留20%血');
     if (e.skill_cd_reduction_turns) parts.push(`所有神通CD-${e.skill_cd_reduction_turns}`);
     if (e.atk_per_kill_percent) parts.push(`每击杀+${(e.atk_per_kill_percent * m).toFixed(0)}%攻击,最多${e.max_stacks || 8}层`);
-    if (e.crit_after_dodge) parts.push('闪避后下次攻击必暴击');
+    if (e.crit_after_dodge) parts.push('闪避后下次攻击必会心');
   }
 
   return parts.join(',') || skill.description;
@@ -5668,6 +5680,28 @@ function syncEquippedSkills() {
   // 触发型/特殊
   let poisonOnHitTaken = 0, burnOnHitTaken = 0, reflectOnCrit = 0;
   let reviveOnce = false, skillCdReduction = 0, atkPerKill = 0, maxStacks = 0;
+
+  // v3.9 紫品主修自带的常驻被动（active.effect）也并入面板属性
+  // 等级缩放与被动一致（每级 +15%，Lv5 = 1.6x）
+  const activeEffectSources: { effect: any; lv: number }[] = [];
+  if (equippedActive.value && (equippedActive.value as any).effect) {
+    activeEffectSources.push({
+      effect: (equippedActive.value as any).effect,
+      lv: getSkillLevel('active', 0, equippedActive.value.id),
+    });
+  }
+  for (const src of activeEffectSources) {
+    const e = src.effect;
+    const lvMul = 1 + (src.lv - 1) * 0.15;
+    if (e.ATK_percent)            atkPercent          += e.ATK_percent * lvMul;
+    if (e.DEF_percent)            defPercent          += e.DEF_percent * lvMul;
+    if (e.HP_percent)             hpPercent           += e.HP_percent * lvMul;
+    if (e.SPD_percent)            spdPercent          += e.SPD_percent * lvMul;
+    if (e.CRIT_RATE_flat)         critRate            += e.CRIT_RATE_flat * lvMul;
+    if (e.CRIT_DMG_flat)          critDmg             += e.CRIT_DMG_flat * lvMul;
+    if (e.DODGE_flat)             dodge               += e.DODGE_flat * lvMul;
+    if (e.LIFESTEAL_flat)         lifesteal           += e.LIFESTEAL_flat * lvMul;
+  }
 
   for (let i = 0; i < equippedPassives.value.length; i++) {
     const p = equippedPassives.value[i];
