@@ -63,14 +63,19 @@ export const RARITY_SUB_COUNT: Record<string, number> = {
 
 /**
  * 副属性 tier 浮动系数（v3.5：让 t 级在副属性上真正分档）
- *   FLAT     — +10%/tier，t10 = 1.9×（已有）
- *   GOOD     — +4%/tier， t10 = 1.36×（暴击/暴伤/吸血/闪避/破甲，防引擎 cap 撞顶）
+ *   FLAT     — +10%/tier，t10 = 1.9×（满档继续按 tier 缩放，flat 后期靠 tier 撑）
+ *   GOOD     — +4%/tier， t10 = 1.36×（暴击/暴伤/吸血/闪避/破甲）
  *   其余 PCT — +6%/tier， t10 = 1.54×（PCT/五行/命中/SPIRIT_DENSITY/LUCK）
+ *
+ * v3.8.4 (2026-05-06)：百分比类（GOOD + PCT）T11+ 截断在 T10 上限
+ *   背景：T11~T15 加入后单条破甲飙到 18、火系强化到 13，百分比叠在角色属性上膨胀过快；
+ *   FLAT 仍按 tier 缩放（这是 flat 后期翻身的唯一杠杆，不能动）。
  */
 function getTierMul(stat: string, tier: number): number {
   if (SUB_STAT_FLAT.has(stat)) return 1 + (tier - 1) * 0.10
-  if (SUB_STAT_GOOD.has(stat)) return 1 + (tier - 1) * 0.04
-  return 1 + (tier - 1) * 0.06
+  const capped = Math.min(tier, 10)
+  if (SUB_STAT_GOOD.has(stat)) return 1 + (capped - 1) * 0.04
+  return 1 + (capped - 1) * 0.06
 }
 
 /**
