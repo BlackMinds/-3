@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
     const charId = charRows[0].id
 
     // 一次性消费火候 token: 校验 charId + pillId + 未过期
-    if (!consumeCraftToken(token, charId, pill_id)) {
+    if (!(await consumeCraftToken(token, charId, pill_id))) {
       return { code: 400, message: '炼丹会话失效,请重新开火' }
     }
 

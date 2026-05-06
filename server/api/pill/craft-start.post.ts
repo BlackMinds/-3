@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
   const craftRate = pillRoomLevel > 0 ? 5 + 3 * (pillRoomLevel - 1) : 0
   const successRate = Math.min(0.95, recipe.successRate * (1 + craftRate / 100))
 
-  const token = issueCraftToken(charId, pill_id)
+  const token = await issueCraftToken(charId, pill_id)
 
   return {
     code: 200,

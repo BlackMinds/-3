@@ -1,33 +1,33 @@
 import { randomBytes } from 'crypto'
-
-interface CraftSession {
-  charId: number
-  pillId: string
-  expiresAt: number
-}
+import { getPool } from '~/server/database/db'
 
 const TTL_MS = 60_000
-const sessions = new Map<string, CraftSession>()
 
-function sweep() {
-  const now = Date.now()
-  for (const [token, s] of sessions) {
-    if (s.expiresAt <= now) sessions.delete(token)
-  }
-}
-
-export function issueCraftToken(charId: number, pillId: string): string {
-  if (sessions.size > 5000) sweep()
+export async function issueCraftToken(charId: number, pillId: string): Promise<string> {
   const token = randomBytes(16).toString('hex')
-  sessions.set(token, { charId, pillId, expiresAt: Date.now() + TTL_MS })
+  const expiresAt = new Date(Date.now() + TTL_MS)
+  const pool = getPool()
+  await pool.query(
+    'INSERT INTO craft_sessions (token, character_id, pill_id, expires_at) VALUES ($1, $2, $3, $4)',
+    [token, charId, pillId, expiresAt]
+  )
+  // 偶发性清理过期会话（5% 概率，避开热路径）
+  if (Math.random() < 0.05) {
+    pool.query('DELETE FROM craft_sessions WHERE expires_at < NOW()').catch(() => {})
+  }
   return token
 }
 
-export function consumeCraftToken(token: string, charId: number, pillId: string): boolean {
-  const s = sessions.get(token)
-  if (!s) return false
-  sessions.delete(token)
-  if (s.charId !== charId || s.pillId !== pillId) return false
-  if (s.expiresAt <= Date.now()) return false
-  return true
+/**
+ * 一次性消费 token：DELETE … RETURNING 实现"校验+消费"原子操作。
+ * 即使并发同 token 也只有一行成功。
+ */
+export async function consumeCraftToken(token: string, charId: number, pillId: string): Promise<boolean> {
+  if (!token || typeof token !== 'string') return false
+  const pool = getPool()
+  const { rowCount } = await pool.query(
+    'DELETE FROM craft_sessions WHERE token = $1 AND character_id = $2 AND pill_id = $3 AND expires_at > NOW()',
+    [token, charId, pillId]
+  )
+  return (rowCount ?? 0) > 0
 }

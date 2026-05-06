@@ -1395,3 +1395,17 @@ CREATE TABLE IF NOT EXISTS tower_purple_drops (
 );
 ALTER TABLE tower_purple_drops ADD COLUMN IF NOT EXISTS count SMALLINT NOT NULL DEFAULT 1;
 CREATE INDEX IF NOT EXISTS idx_tower_purple_drops_char ON tower_purple_drops(character_id, drop_date);
+
+-- ========================================
+-- 炼丹会话凭证 (2026-05-07)
+-- ========================================
+-- 一次性 token，绑定 character_id + pill_id，60 秒过期；
+-- 防客户端伪造 fire_position / 重放炼丹请求。Vercel serverless 多实例必须落库。
+CREATE TABLE IF NOT EXISTS craft_sessions (
+  token         VARCHAR(64) PRIMARY KEY,
+  character_id  INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  pill_id       VARCHAR(64) NOT NULL,
+  expires_at    TIMESTAMP NOT NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_craft_sessions_expires ON craft_sessions(expires_at);
