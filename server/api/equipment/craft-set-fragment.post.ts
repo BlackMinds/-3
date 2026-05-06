@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     // 4条副属性（金品 rarityIdx=4）
     const subs = rollSubStats(4, tier, 4)
 
-    const tierReqLevels: Record<number, number> = { 1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195, 11: 215, 12: 240 }
+    const tierReqLevels: Record<number, number> = { 1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195, 11: 215, 12: 240, 13: 260, 14: 285, 15: 310 }
     const weaponType = slot === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
 
     // 宗门套装碎片合成：从全部已激活套装中随机抽一套（保底必出套装）
