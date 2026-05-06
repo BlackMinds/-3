@@ -3023,12 +3023,12 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '鱼鱼' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚' }]"
                 >
                   <div class="rank-num">
                     <span v-if="item.rank === 1" class="rank-crown">👑</span>
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-bolt">⚡</span>
-                    <span v-if="item.name === '鱼鱼'" class="yuyu-bolt">🔬</span>
+                    <span v-if="item.name === '魚魚'" class="yuyu-bolt">🔬</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
@@ -3036,7 +3036,7 @@
                   <div class="rank-name">
                     {{ item.name }}
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-badge">影帝</span>
-                    <span v-if="item.name === '鱼鱼'" class="yuyu-badge">科研家</span>
+                    <span v-if="item.name === '魚魚'" class="yuyu-badge">科研家</span>
                     <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
                   </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
@@ -6463,6 +6463,7 @@ const fireRunning = ref(false);   // 指示器是否运行中
 const fireLocked = ref(false);    // 是否已凝丹(锁定)
 const fireSafeMode = ref(false);  // 保守模式(固定文火位)
 const fireResult = ref<any>(null); // 炼制结果
+const craftToken = ref<string | null>(null); // 一次性炼丹会话凭证
 let fireAnimHandle: number | null = null;
 let fireDirection = 1;
 const FIRE_SPEED = 0.9;           // 每帧位置变化(基础)
@@ -6483,8 +6484,21 @@ function getFireTierInfo(tier: 'explode'|'gentle'|'strong'|'true') {
   }
 }
 
-function openFireMeter(recipe: PillRecipe) {
+async function openFireMeter(recipe: PillRecipe) {
   if (crafting.value || !canCraft(recipe)) return;
+  // 先向服务端申请一次性 token（同时把成功率/cost 收为权威值）
+  try {
+    const res: any = await $fetch('/api/pill/craft-start', { method: 'POST', body: { pill_id: recipe.id }, headers: getAuthHeaders() });
+    if (res.code !== 200) {
+      showToast(res.message || '开火失败', 'error');
+      return;
+    }
+    craftToken.value = res.data.token;
+  } catch (err) {
+    console.error('开火失败', err);
+    showToast('网络错误', 'error');
+    return;
+  }
   fireRecipe.value = recipe;
   firePosition.value = 0;
   fireDirection = 1;
@@ -6525,6 +6539,7 @@ function closeFireMeter() {
   fireRecipe.value = null;
   fireResult.value = null;
   fireLocked.value = false;
+  craftToken.value = null;
 }
 
 async function confirmFire() {
@@ -6545,14 +6560,20 @@ async function executeCraft(recipe: PillRecipe, fire_position: number) {
     count: hc.count,
   }));
 
+  const token = craftToken.value;
+  craftToken.value = null; // 一次性
+  if (!token) {
+    fireResult.value = { error: '炼丹会话已失效,请重新开火' };
+    return;
+  }
+
   crafting.value = true;
   try {
     const res: any = await $fetch('/api/pill/craft', { method: 'POST', body: {
       pill_id: recipe.id,
-      cost: recipe.cost,
-      success_rate: Math.min(0.95, recipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100)),
       herbs_used,
       fire_position,
+      token,
     }, headers: getAuthHeaders() });
     if (res.code === 200) {
       gameStore.character!.spirit_stone = res.data.new_spirit_stone;
