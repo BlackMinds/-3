@@ -21,7 +21,14 @@ export default defineEventHandler(async (event) => {
     if (q.tier)   { args.push(Number(q.tier));    where.push(`(item_snapshot->>'tier')::int = $${args.length}`) }
     if (q.slot)   { args.push(String(q.slot));    where.push(`item_snapshot->>'base_slot' = $${args.length}`) }
     if (q.weapon_type) { args.push(String(q.weapon_type)); where.push(`item_snapshot->>'weapon_type' = $${args.length}`) }
-    if (q.set_id) { args.push(String(q.set_id));  where.push(`item_snapshot->>'set_id' = $${args.length}`) }
+    if (q.set_id) {
+      const setVal = String(q.set_id)
+      if (setVal === 'none') {
+        where.push(`(item_snapshot->>'set_id' IS NULL OR item_snapshot->>'set_id' = '')`)
+      } else {
+        args.push(setVal); where.push(`item_snapshot->>'set_id' = $${args.length}`)
+      }
+    }
     if (q.enhance_min != null) { args.push(Number(q.enhance_min)); where.push(`(item_snapshot->>'enhance_level')::int >= $${args.length}`) }
     if (q.enhance_max != null) { args.push(Number(q.enhance_max)); where.push(`(item_snapshot->>'enhance_level')::int <= $${args.length}`) }
 
