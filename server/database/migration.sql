@@ -1343,3 +1343,39 @@ BEGIN
     INSERT INTO _schema_migrations (id) VALUES ('v3_8_3_equip_tier_weight');
   END IF;
 END $$;
+
+-- ========================================
+-- 通天塔系统 (2026-05-06)
+-- ========================================
+-- 单人 PvE 阶梯挑战，100 层固定塔（MVP 阶段先做 1-25 层）。
+-- 大乘起步（realm_tier ≥ 7 + Lv 140），每层独立战斗（重置满血+CD），
+-- 每日失败 3 次锁，跨日重置。MVP 仅发"称号 + 一次性永久属性"（不发循环物品）。
+
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_max_floor   SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_fail  SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_date  DATE     DEFAULT NULL;
+
+-- 战斗记录（保留所有场次，可用于战斗历史/复盘）
+CREATE TABLE IF NOT EXISTS tower_battles (
+  id            SERIAL PRIMARY KEY,
+  character_id  INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  floor         SMALLINT NOT NULL,
+  result        VARCHAR(10) NOT NULL,                     -- victory / defeat
+  total_turns   INT NOT NULL DEFAULT 0,
+  damage_dealt  BIGINT NOT NULL DEFAULT 0,
+  damage_taken  BIGINT NOT NULL DEFAULT 0,
+  battle_log    JSONB,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_tower_battles_char ON tower_battles(character_id, created_at DESC);
+
+-- 首通记录（幂等控制：每个角色每层最多一条；用于发奖判定）
+CREATE TABLE IF NOT EXISTS tower_clears (
+  id            SERIAL PRIMARY KEY,
+  character_id  INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  floor         SMALLINT NOT NULL,
+  cleared_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  battle_id     INT REFERENCES tower_battles(id),
+  UNIQUE(character_id, floor)
+);
+CREATE INDEX IF NOT EXISTS idx_tower_clears_char ON tower_clears(character_id, floor);

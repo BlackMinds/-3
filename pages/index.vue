@@ -173,6 +173,96 @@
           </div>
         </div>
 
+        <!-- ===== 通天塔模块（内嵌于历练页） ===== -->
+        <div class="tower-module" v-if="!gameStore.isBattling && !isOffline">
+          <div v-if="towerStore.isFighting" class="tower-fighting-bar">
+            <span class="tower-label">通天塔战斗中</span>
+            <span class="tower-floor-name">第 {{ towerStore.selectedFloor }} 层</span>
+            <span class="tower-hint">服务端结算中…</span>
+          </div>
+
+          <div v-else-if="towerStore.showResultBar && towerStore.lastResult?.result === 'victory'" class="tower-result-bar tower-victory">
+            <span class="tower-tag-victory">通关</span>
+            <span class="tower-floor-text">第 {{ towerStore.lastResult.floor }} 层</span>
+            <span v-if="towerStore.lastResult.is_first_clear" class="tower-firstclear">★首通★</span>
+            <span class="tower-meta">{{ towerStore.lastResult.total_turns }} 回合</span>
+            <span v-if="towerStore.lastResult.unlocked_title" class="tower-reward-title">称号「{{ towerStore.lastResult.unlocked_title }}」已解锁（去成就页领取并佩戴）</span>
+            <span v-if="towerStore.lastResult.permanent_bonus_pct > 0" class="tower-reward-stat">+{{ towerStore.lastResult.permanent_bonus_pct }}% 全属性永久加成</span>
+            <span v-if="towerStore.autoChallengeCountdown > 0 && towerStore.canChallenge" class="tower-countdown">
+              {{ towerStore.autoChallengeCountdown }} 秒后自动挑战第 {{ towerStore.nextFloor }} 层…
+            </span>
+            <button class="ctrl-btn tower-stop" @click="cancelAutoChallenge">暂停下塔</button>
+          </div>
+
+          <div v-else-if="towerStore.showResultBar && towerStore.lastResult?.result === 'defeat'" class="tower-result-bar tower-defeat">
+            <span class="tower-tag-defeat">失败</span>
+            <span class="tower-floor-text">第 {{ towerStore.lastResult.floor }} 层</span>
+            <span class="tower-meta">{{ towerStore.lastResult.total_turns }} 回合</span>
+            <span class="tower-fail-info">今日剩余 {{ Math.max(0, towerStore.dailyFailMax - towerStore.dailyFailUsed) }} 次</span>
+            <button v-if="towerStore.canChallenge"
+              class="ctrl-btn tower-retry"
+              @click="towerChallenge(towerStore.lastResult!.floor); towerStore.dismissResultBar()"
+            >再战 第 {{ towerStore.lastResult.floor }} 层</button>
+            <button class="ctrl-btn tower-stop" @click="towerStore.dismissResultBar()">下塔</button>
+          </div>
+
+          <div v-else class="tower-row">
+            <span class="tower-label">通天塔</span>
+            <span class="tower-stat">最高 {{ towerStore.maxFloor }}/{{ towerStore.implementedFloors }}</span>
+
+            <select
+              v-model.number="towerStore.selectedFloor"
+              class="tower-select"
+              :disabled="!towerStore.eligible"
+            >
+              <option
+                v-for="f in towerStore.selectableFloors"
+                :key="f.floor"
+                :value="f.floor"
+              >
+                第 {{ f.floor }} 层{{ f.cleared ? ' ✅ 已通关' : (f.isNext ? ' 🔥 下一关' : '') }}
+              </option>
+            </select>
+
+            <button
+              class="ctrl-btn tower-challenge-btn"
+              :disabled="!towerStore.eligible || towerStore.isFighting || (towerStore.selectedFloor === towerStore.nextFloor && !towerStore.canChallenge)"
+              :title="!towerStore.eligible ? `大乘后开启（当前境界 ${towerStore.info?.current_realm_tier ?? '?'} / 等级 ${towerStore.info?.current_level ?? '?'}）` : ''"
+              @click="towerChallenge(towerStore.selectedFloor)"
+            >
+              {{
+                !towerStore.eligible ? '大乘后开启'
+                : towerStore.selectedFloor <= towerStore.maxFloor ? `重温 第 ${towerStore.selectedFloor} 层`
+                : `挑战 第 ${towerStore.selectedFloor} 层`
+              }}
+            </button>
+
+            <button class="ctrl-btn tower-sweep-btn" disabled title="Phase 4 开放">扫荡</button>
+
+            <span
+              class="tower-fail-tag"
+              :class="{ 'tower-fail-full': towerStore.dailyFailUsed >= towerStore.dailyFailMax }"
+              :title="`今日已失败 ${towerStore.dailyFailUsed} 次，剩余 ${Math.max(0, towerStore.dailyFailMax - towerStore.dailyFailUsed)} 次。每日 00:00 重置。`"
+            >{{ towerStore.dailyFailUsed }}/{{ towerStore.dailyFailMax }} 失败</span>
+
+            <button class="tower-history-btn" @click="openTowerHistory" title="战斗历史">📜</button>
+          </div>
+
+          <div v-if="!towerStore.isFighting && !towerStore.showResultBar && towerStore.eligible && towerStore.previewByFloor[towerStore.selectedFloor]" class="tower-preview">
+            <span class="tower-preview-name">{{ towerStore.previewByFloor[towerStore.selectedFloor].name }}</span>
+            <span
+              v-for="(m, i) in towerStore.previewByFloor[towerStore.selectedFloor].monsters"
+              :key="i"
+              class="tower-preview-monster"
+            >
+              <span class="tower-monster-name">{{ m.name }}</span>
+              <span class="tower-monster-element" v-if="m.element">[{{ elementName(m.element) }}]</span>
+              <span class="tower-monster-power">战力 {{ formatNum(m.power) }}</span>
+              <span v-for="t in m.traits" :key="t.id" class="tower-trait-chip" :title="t.desc">{{ t.name }}</span>
+            </span>
+          </div>
+        </div>
+
         <!-- ===== 战斗状态栏：玩家 VS 怪物 ===== -->
         <div class="battle-hud" v-if="gameStore.inFight || gameStore.deathCooldown > 0">
           <!-- 玩家侧 -->
@@ -3142,6 +3232,31 @@
     <!-- 秘境组队弹窗 -->
     <SecretRealmModal :open="showSecretRealm" @close="showSecretRealm = false" />
 
+    <!-- 通天塔战斗历史浮层 -->
+    <div v-if="showTowerHistory" class="modal-overlay" @click.self="showTowerHistory = false">
+      <div class="modal tower-history-modal">
+        <div class="modal-title">
+          通天塔战斗历史（最近 {{ towerStore.recentBattles.length }} 场）
+          <button class="modal-close" @click="showTowerHistory = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="towerStore.recentBattles.length === 0" class="tower-empty">暂无战斗记录</div>
+          <ul v-else class="tower-history-list">
+            <li v-for="b in towerStore.recentBattles" :key="b.id" class="tower-history-item">
+              <span class="tower-h-floor">第 {{ b.floor }} 层</span>
+              <span :class="b.result === 'victory' ? 'tower-h-win' : 'tower-h-lose'">
+                {{ b.result === 'victory' ? '✅ 胜利' : '❌ 失败' }}
+              </span>
+              <span class="tower-h-turns">{{ b.total_turns }} 回合</span>
+              <span class="tower-h-dmg">输出 {{ formatNum(b.damage_dealt) }}</span>
+              <span class="tower-h-dmg">承伤 {{ formatNum(b.damage_taken) }}</span>
+              <span class="tower-h-time">{{ new Date(b.created_at).toLocaleString() }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <!-- 天道造化：中奖弹窗 + 风云阁面板 -->
     <EventPopup />
 
@@ -3190,6 +3305,74 @@ function getAuthHeaders() {
 const userStore = useUserStore();
 const eventStore = useEventStore();
 const gameStore = useGameStore();
+const towerStore = useTowerStore();
+
+// 通天塔 UI 状态
+const showTowerHistory = ref(false);
+const towerCountdownTimer = ref<number | null>(null);
+function startAutoChallengeCountdown() {
+  if (towerCountdownTimer.value) {
+    clearInterval(towerCountdownTimer.value);
+    towerCountdownTimer.value = null;
+  }
+  towerStore.autoChallengeCountdown = 3;
+  towerCountdownTimer.value = window.setInterval(() => {
+    towerStore.autoChallengeCountdown -= 1;
+    if (towerStore.autoChallengeCountdown <= 0) {
+      if (towerCountdownTimer.value) {
+        clearInterval(towerCountdownTimer.value);
+        towerCountdownTimer.value = null;
+      }
+      autoChallengeNextFloor();
+    }
+  }, 1000) as unknown as number;
+}
+function cancelAutoChallenge() {
+  if (towerCountdownTimer.value) {
+    clearInterval(towerCountdownTimer.value);
+    towerCountdownTimer.value = null;
+  }
+  towerStore.autoChallengeCountdown = 0;
+  towerStore.dismissResultBar();
+}
+async function autoChallengeNextFloor() {
+  if (!towerStore.canChallenge) {
+    towerStore.dismissResultBar();
+    return;
+  }
+  towerStore.dismissResultBar();
+  await towerChallenge(towerStore.nextFloor);
+}
+async function towerChallenge(floor: number) {
+  if (towerStore.isFighting) return;
+  const res = await towerStore.challenge(floor);
+  if (res.code !== 200) {
+    showToast(res.message || '通天塔挑战失败', 'error');
+    return;
+  }
+  const battle = towerStore.lastResult;
+  if (battle && battle.result === 'victory' && !towerStore.isReplay) {
+    if (towerStore.canChallenge) {
+      startAutoChallengeCountdown();
+    }
+  }
+}
+async function openTowerHistory() {
+  await towerStore.fetchBattles();
+  showTowerHistory.value = true;
+}
+onMounted(() => {
+  towerStore.fetchInfo().then(() => {
+    if (towerStore.info && towerStore.info.next_floor > 0) {
+      towerStore.fetchFloor(towerStore.info.next_floor);
+    }
+  });
+});
+watch(() => towerStore.selectedFloor, (n) => {
+  if (n > 0 && n <= (towerStore.info?.implemented_floors || 0)) {
+    towerStore.fetchFloor(n);
+  }
+});
 
 const logContainer = ref<HTMLElement | null>(null);
 const showMonsterTip = ref(false);
@@ -7631,6 +7814,152 @@ onUnmounted(() => {
 .secret-realm-btn:hover {
   background: rgba(163, 201, 114, 0.18);
 }
+
+/* ===== 通天塔模块（内嵌历练页） ===== */
+.tower-module {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(180, 140, 90, 0.35);
+  border-radius: 6px;
+  background: rgba(40, 28, 18, 0.30);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tower-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tower-label {
+  font-weight: bold;
+  color: #d8b075;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.tower-stat {
+  color: #c8c0a8;
+  font-size: 13px;
+}
+.tower-select {
+  background: rgba(20, 14, 10, 0.6);
+  color: #e8d8b0;
+  border: 1px solid rgba(180, 140, 90, 0.40);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 200px;
+}
+.tower-select:disabled {
+  opacity: 0.40;
+  cursor: not-allowed;
+}
+.tower-challenge-btn {
+  background: rgba(216, 176, 117, 0.20);
+  border-color: rgba(216, 176, 117, 0.50);
+  color: #f0d8a0;
+}
+.tower-challenge-btn:hover:not(:disabled) {
+  background: rgba(216, 176, 117, 0.32);
+}
+.tower-challenge-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.tower-sweep-btn {
+  background: rgba(120, 110, 90, 0.10);
+  border-color: rgba(120, 110, 90, 0.30);
+  color: #888070;
+}
+.tower-sweep-btn:disabled {
+  cursor: not-allowed;
+}
+.tower-fail-tag {
+  font-size: 13px;
+  color: #b0a890;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.20);
+  border-radius: 3px;
+}
+.tower-fail-tag.tower-fail-full {
+  color: #d97070;
+  background: rgba(180, 50, 50, 0.18);
+}
+.tower-history-btn {
+  background: transparent;
+  border: 1px solid rgba(180, 140, 90, 0.40);
+  color: #d8b075;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.tower-history-btn:hover {
+  background: rgba(180, 140, 90, 0.18);
+}
+.tower-fighting-bar {
+  display: flex; align-items: center; gap: 12px; padding: 4px 0; color: #d8b075;
+}
+.tower-floor-name { font-weight: bold; color: #f0d8a0; }
+.tower-hint { color: #b0a890; font-size: 12px; }
+.tower-result-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: 4px; flex-wrap: wrap;
+}
+.tower-result-bar.tower-victory {
+  background: rgba(120, 180, 100, 0.12);
+  border: 1px solid rgba(140, 200, 110, 0.45);
+}
+.tower-result-bar.tower-defeat {
+  background: rgba(200, 80, 80, 0.10);
+  border: 1px solid rgba(220, 100, 100, 0.40);
+}
+.tower-tag-victory, .tower-tag-defeat {
+  color: #fff; padding: 2px 8px; border-radius: 3px;
+  font-weight: bold; font-size: 12px;
+}
+.tower-tag-victory { background: #4a8838; }
+.tower-tag-defeat { background: #a84040; }
+.tower-floor-text { font-weight: bold; color: #f0d8a0; }
+.tower-firstclear { color: #ffd800; font-weight: bold; }
+.tower-meta { color: #b0a890; font-size: 12px; }
+.tower-reward-title { color: #c0a060; font-size: 13px; }
+.tower-reward-stat { color: #6dd070; font-weight: bold; font-size: 13px; }
+.tower-countdown { color: #f0d090; font-size: 13px; margin-left: auto; }
+.tower-fail-info { color: #c0a070; font-size: 13px; }
+.tower-stop, .tower-retry { font-size: 12px; padding: 4px 10px; }
+.tower-preview {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 4px 0; font-size: 12px; color: #c8c0a8;
+  border-top: 1px dashed rgba(180, 140, 90, 0.20); padding-top: 6px;
+}
+.tower-preview-name { font-weight: bold; color: #d8b075; margin-right: 6px; }
+.tower-preview-monster {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px; background: rgba(0, 0, 0, 0.20); border-radius: 3px;
+}
+.tower-monster-name { color: #e8d8b0; }
+.tower-monster-element { color: #6090d0; }
+.tower-monster-power { color: #b0a890; }
+.tower-trait-chip {
+  background: rgba(216, 176, 117, 0.15); color: #d8b075;
+  padding: 1px 5px; border-radius: 2px; font-size: 11px;
+}
+.tower-history-modal { max-width: 720px; max-height: 80vh; }
+.tower-history-list { list-style: none; padding: 0; margin: 0; }
+.tower-history-item {
+  display: flex; gap: 12px; padding: 6px 8px;
+  border-bottom: 1px solid rgba(180, 140, 90, 0.20);
+  font-size: 13px; align-items: center;
+}
+.tower-h-floor { font-weight: bold; color: #d8b075; min-width: 80px; }
+.tower-h-win { color: #6dd070; }
+.tower-h-lose { color: #d97070; }
+.tower-h-turns, .tower-h-dmg { color: #b0a890; font-size: 12px; }
+.tower-h-time { color: #807868; font-size: 11px; margin-left: auto; }
+.tower-empty { text-align: center; padding: 20px; color: #807868; }
 
 .offline-summary {
   text-align: center;

@@ -139,6 +139,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'sect_war_win_10', name: '百战宗师', desc: '参与宗门战并获胜 10 次', category: 'sect', type: 'counter', target: 10, event: 'sect_war_win', reward: { spirit_stone: 80000 }, title: '百战宗师' },
   { id: 'spirit_vein_raid_1', name: '灵脉行者', desc: '灵脉偷袭首胜', category: 'sect', type: 'counter', target: 1, event: 'spirit_vein_raid_win', reward: { spirit_stone: 5000 } },
   { id: 'spirit_vein_raid_20', name: '灵脉霸主', desc: '灵脉偷袭累计胜利 20 次', category: 'sect', type: 'counter', target: 20, event: 'spirit_vein_raid_win', reward: { spirit_stone: 50000 }, title: '灵脉霸主' },
+
+  // ===== 通天塔（threshold 类型，event = 'tower_clear_floor'，传入当前 max_floor）=====
+  // MVP 阶段：5/15/25/50 层成就；75/100 层在 Phase 3 后续开放
+  { id: 'tower_floor_15', name: '塔下行者',  desc: '通关通天塔第 15 层', category: 'battle', type: 'threshold', target: 15,  event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '塔下行者' },
+  { id: 'tower_floor_25', name: '塔中过客',  desc: '通关通天塔第 25 层', category: 'battle', type: 'threshold', target: 25,  event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '塔中过客' },
+  { id: 'tower_floor_50', name: '半塔之主',  desc: '通关通天塔第 50 层', category: 'battle', type: 'threshold', target: 50,  event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '半塔之主' },
+  { id: 'tower_floor_75', name: '塔顶遥望',  desc: '通关通天塔第 75 层', category: 'battle', type: 'threshold', target: 75,  event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '塔顶遥望' },
+  { id: 'tower_floor_100', name: '通天塔主', desc: '通关通天塔第 100 层', category: 'battle', type: 'threshold', target: 100, event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '通天塔主' },
 ];
 
 // 按事件名索引，加速查找
@@ -199,6 +207,12 @@ export const TITLES: Record<string, TitleDef> = {
   '灵脉霸主': { id: '灵脉霸主', name: '灵脉霸主', quality: 'purple' },
   '论道魁首': { id: '论道魁首', name: '论道魁首', quality: 'gold' },
   '斗法翘楚': { id: '斗法翘楚', name: '斗法翘楚', quality: 'purple' },
+  // 通天塔
+  '塔下行者': { id: '塔下行者', name: '塔下行者', quality: 'green' },
+  '塔中过客': { id: '塔中过客', name: '塔中过客', quality: 'purple' },
+  '半塔之主': { id: '半塔之主', name: '半塔之主', quality: 'gold' },
+  '塔顶遥望': { id: '塔顶遥望', name: '塔顶遥望', quality: 'gold' },
+  '通天塔主': { id: '通天塔主', name: '通天塔主', quality: 'gold' },
 };
 
 // ========== 等级 → Tier 映射 ==========
