@@ -1957,10 +1957,6 @@
               <span class="stats-val">{{ battleMinutes > 0 ? formatNum(Math.floor(gameStore.sessionExp / battleMinutes)) : '-' }}</span>
             </div>
             <div class="stats-row">
-              <span class="stats-label">每分钟灵石</span>
-              <span class="stats-val">{{ battleMinutes > 0 ? formatNum(Math.floor(gameStore.sessionStone / battleMinutes)) : '-' }}</span>
-            </div>
-            <div class="stats-row">
               <span class="stats-label">历练时间</span>
               <span class="stats-val">{{ battleTimeStr }}</span>
             </div>
