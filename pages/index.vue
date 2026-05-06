@@ -2862,6 +2862,7 @@
                   :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3 }]"
                 >
                   <div class="rank-num">
+                    <span v-if="item.rank === 1" class="rank-crown">👑</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
@@ -2900,6 +2901,7 @@
                   :class="['ranking-row sect-row', { 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3 }]"
                 >
                   <div class="rank-num">
+                    <span v-if="item.rank === 1" class="rank-crown">👑</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
@@ -11957,8 +11959,28 @@ onUnmounted(() => {
 
 /* === 前三名特效：渐变背景 + 边光带 + 外发光呼吸 + 双流光 + 旋转光晕 + 文字金光 === */
 .ranking-row.rank-1 {
-  background: linear-gradient(90deg, rgba(255, 215, 0, 0.28) 0%, rgba(255, 215, 0, 0.08) 55%, transparent 100%);
+  padding-top: 20px;
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.32) 0%, rgba(255, 215, 0, 0.1) 55%, transparent 100%);
   animation: rank-bg-pulse-gold 2.4s ease-in-out infinite;
+}
+
+/* 皇冠装饰（仅第 1 名） */
+.rank-crown {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  font-size: 14px;
+  line-height: 1;
+  z-index: 4;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.95)) drop-shadow(0 0 10px rgba(255, 215, 0, 0.55));
+  animation: rank-crown-float 1.8s ease-in-out infinite;
+}
+
+@keyframes rank-crown-float {
+  0%, 100% { transform: translateX(-50%) translateY(0) rotate(-12deg) scale(1); }
+  50% { transform: translateX(-50%) translateY(-3px) rotate(12deg) scale(1.15); }
 }
 
 .ranking-row.rank-2 {
@@ -11972,8 +11994,20 @@ onUnmounted(() => {
 }
 
 @keyframes rank-bg-pulse-gold {
-  0%, 100% { box-shadow: inset 4px 0 0 0 rgba(255, 215, 0, 0.85), inset 0 0 0 1px rgba(255, 215, 0, 0.35), 0 0 14px rgba(255, 215, 0, 0.22); }
-  50% { box-shadow: inset 4px 0 0 0 rgba(255, 240, 120, 1), inset 0 0 0 1px rgba(255, 215, 0, 0.7), 0 0 30px rgba(255, 215, 0, 0.6); }
+  0%, 100% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(255, 215, 0, 0.9),
+      inset 0 0 0 1px rgba(255, 215, 0, 0.4),
+      0 0 18px rgba(255, 215, 0, 0.35),
+      0 0 36px rgba(255, 215, 0, 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(255, 240, 120, 1),
+      inset 0 0 0 1px rgba(255, 215, 0, 0.85),
+      0 0 36px rgba(255, 215, 0, 0.75),
+      0 0 70px rgba(255, 215, 0, 0.4);
+  }
 }
 @keyframes rank-bg-pulse-silver {
   0%, 100% { box-shadow: inset 3px 0 0 0 rgba(220, 220, 230, 0.7), inset 0 0 0 1px rgba(220, 220, 230, 0.28), 0 0 10px rgba(220, 220, 230, 0.16); }
