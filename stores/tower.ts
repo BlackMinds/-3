@@ -170,29 +170,35 @@ export const useTowerStore = defineStore('tower', () => {
           info.value.next_floor = Math.min(info.value.implemented_floors, info.value.max_floor + 1)
         }
 
-        // 播放日志：勾选"快速战斗"则跳过；否则把日志逐条 push 到 gameStore.battleLogs
+        // 播放日志：勾选"快速战斗"则跳过；否则复用 game store 的 HUD + 日志播放机制
         if (!fastBattle.value && Array.isArray(battle.logs) && battle.logs.length > 0) {
-          // 用 useGameStore() 访问 game store；放在这里而非顶层避免 SSR 问题
           const gs = useGameStore() as any
           if (gs?.clearLogs) gs.clearLogs()
-          // 第一条立即播
-          const first = battle.logs[0]
-          gs?.addLog?.(first.turn || 0, first.text || '', first.type || 'normal')
-          if (battle.logs.length > 1) {
-            await new Promise<void>(resolve => {
-              let i = 1
-              logPlayTimer = window.setInterval(() => {
-                // 任意时刻 isFighting 被置 false（如玩家点了暂停/下塔）则停止
-                if (i >= battle.logs.length || !isFighting.value) {
-                  clearLogPlayTimer()
-                  resolve()
-                  return
-                }
-                const l = battle.logs[i++]
-                gs?.addLog?.(l.turn || 0, l.text || '', l.type || 'normal')
-              }, 1000) as unknown as number
-            })
-          }
+
+          // 构造 game store 期望的 battle entry：把通天塔的 monsters_info 映射成 hud 字段
+          const monstersInfo = (battle as any).monsters_info || []
+          const monsterNames = monstersInfo.map((m: any) => m.name)
+          const monstersMaxHp = monstersInfo.map((m: any) => m.maxHp)
+          const monsterInfo = monstersInfo[0] || null
+          gs.applyTowerBattleEntry({
+            monsterNames,
+            monstersMaxHp,
+            monsterInfo,
+            monstersInfo,
+            logs: battle.logs,
+          })
+
+          // 等播放完毕（onBattleLogsFinished 会清 inFight）
+          await new Promise<void>(resolve => {
+            const tick = window.setInterval(() => {
+              // 玩家中途取消 / 战斗未在进行 → 停
+              if (!gs.inFight || !isFighting.value) {
+                clearInterval(tick)
+                resolve()
+              }
+            }, 200)
+            logPlayTimer = tick as unknown as number
+          })
         }
 
         lastResult.value = battle

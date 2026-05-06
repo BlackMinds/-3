@@ -321,6 +321,34 @@ export const useGameStore = defineStore('game', () => {
     drainLogQueue()
   }
 
+  // 通天塔模式标记：drainLogQueue 跳过 !isBattling 早退，onBattleLogsFinished 早退后清空
+  const _towerMode = ref(false)
+
+  /**
+   * 通天塔专用：触发 HUD 显示 + 日志逐条播放，但不发奖励、不调度下一场。
+   * 与 applyBattleEntry 区别：pendingResult 始终为 null，onBattleLogsFinished 会早退。
+   * b 形状：{ monsterNames, monstersMaxHp, monsterInfo, monstersInfo, logs }
+   */
+  function applyTowerBattleEntry(b: any) {
+    if (!character.value) return
+    waveMonsterNames.value = b.monsterNames || []
+    waveMonsterMaxHps.value = (b.monsterNames || []).map((_: string, i: number) => b.monstersMaxHp?.[i] ?? (b.monsterInfo?.maxHp ?? 0))
+    waveMonsterHps.value = [...waveMonsterMaxHps.value]
+    currentMonsterInfo.value = b.monsterInfo || null
+    waveMonstersInfo.value = Array.isArray(b.monstersInfo) ? b.monstersInfo : (b.monsterInfo ? [b.monsterInfo] : [])
+    displayPlayerHp.value = character.value.max_hp
+    displayPlayerMaxHp.value = character.value.max_hp
+    displayMonsterHp.value = b.monsterInfo?.maxHp || 0
+    displayMonsterMaxHp.value = b.monsterInfo?.maxHp || 0
+
+    // 关键：不设 pendingResult，避免 onBattleLogsFinished 触发奖励/调度
+    pendingResult.value = null
+    logQueue.value = b.logs || []
+    inFight.value = true
+    _towerMode.value = true   // 让 drainLogQueue 跳过 !isBattling 早退
+    drainLogQueue()
+  }
+
   async function executeFight() {
     if (!character.value || !currentMap.value) return
     inFight.value = true
@@ -453,7 +481,8 @@ export const useGameStore = defineStore('game', () => {
 
     if (logQueue.value.length > 0) {
       logTimer.value = window.setInterval(() => {
-        if (logQueue.value.length === 0 || !isBattling.value) {
+        // 通天塔模式（_towerMode）跳过 isBattling 早退（通天塔不走 startBattle）
+        if (logQueue.value.length === 0 || (!_towerMode.value && !isBattling.value)) {
           if (logTimer.value) clearInterval(logTimer.value)
           logTimer.value = null
           onBattleLogsFinished()
@@ -472,7 +501,12 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function onBattleLogsFinished() {
-    if (!character.value || !pendingResult.value) return
+    // 通天塔模式（pendingResult=null）：播完只清 inFight + _towerMode，不触发奖励/调度
+    if (!character.value || !pendingResult.value) {
+      inFight.value = false
+      _towerMode.value = false
+      return
+    }
 
     const result = pendingResult.value
     pendingResult.value = null
@@ -582,5 +616,6 @@ export const useGameStore = defineStore('game', () => {
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
     loadGameData, changeMap, startBattle, stopBattle, resumeBattleIfStalled, clearLogs, addLog, flushSave, tryBreakthrough,
+    applyTowerBattleEntry,
   }
 })
