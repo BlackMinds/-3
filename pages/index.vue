@@ -2408,9 +2408,9 @@
             <p class="help-text">回合制自动战斗,每波 1-5 只怪同时出现。玩家每回合攻击血量最低的怪,所有存活怪每回合攻击玩家。主修功法每回合施展,神通按 CD 自动释放(优先级更高)。</p>
             <p class="help-text" style="margin-top: 4px;">10 种异常状态:</p>
             <table class="help-table"><tbody>
-              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×25%火伤</td></tr>
-              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受攻击力×25%毒伤</td></tr>
-              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×18%物伤</td></tr>
+              <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×20%火伤</td></tr>
+              <tr><td style="color: #6baa7d;">中毒</td><td>每回合受攻击力×20%毒伤</td></tr>
+              <tr><td style="color: #c9a85c;">流血</td><td>每回合受攻击力×15%物伤</td></tr>
               <tr><td style="color: #5b8eaa;">冻结</td><td>无法行动(控制类,受控抗影响)</td></tr>
               <tr><td style="color: #c9a85c;">眩晕</td><td>无法行动(控制类,受控抗影响)</td></tr>
               <tr><td style="color: #5b8eaa;">减速</td><td>必定后攻</td></tr>
@@ -2432,9 +2432,9 @@
             <div class="help-title">DOT 流派 (持续伤害)</div>
             <p class="help-text">三种 DOT 公式 (v3.9 中毒改为攻击系):</p>
             <table class="help-table"><tbody>
-              <tr><td>灼烧 (火)</td><td>攻击力 × 25% / 回合</td></tr>
-              <tr><td>中毒 (木)</td><td>攻击力 × 25% / 回合</td></tr>
-              <tr><td>流血 (金)</td><td>攻击力 × 18% / 回合</td></tr>
+              <tr><td>灼烧 (火)</td><td>攻击力 × 20% / 回合</td></tr>
+              <tr><td>中毒 (木)</td><td>攻击力 × 20% / 回合</td></tr>
+              <tr><td>流血 (金)</td><td>攻击力 × 15% / 回合</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;"><b>DOT 加成链:</b>装备副属性「DOT伤害 +5~25%」 → 功法「万毒归一」+25% → 主修元素灵戒 (金鸣戒+流血/木灵戒+中毒/<b>焚天烬戒+灼烧</b>) → 神通基础 dot duration。多源叠加。</p>
             <p class="help-text" style="margin-top: 4px;">紫色 DOT 神通: <b>毒液冲击</b> (3 段中毒)、<b>血雨腥风</b> (AOE 流血)、<b>焚天烈魂</b> (AOE 灼烧 + 自身 atk +20%)、剑雨纷飞、双焰斩、连环掌、九天玄火阵。</p>

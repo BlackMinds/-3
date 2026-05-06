@@ -191,10 +191,11 @@ export const BATTLE_FORMULA = {
 
 // DOT 伤害公式
 // v3.7: 基础 DOT 再上调约 35%，让裸值 DOT 至少与 1 次普攻持平（3 回合总伤），不再依赖养成栈才"能用"
+// v3.9.1: 整体下调 — 灼烧/中毒 0.25→0.20, 流血 0.18→0.15（DOT 套+万毒归一+元素戒已经把上限堆得过高，裸值削回更接近其他流派）
 export const DOT_FORMULA = {
-  poisonPerTurnAtkRatio: 0.25, // v3.9: 改为攻击系 DOT，公式与灼烧一致（原 maxHp×3% 在高血量怪 / 木桩面板下过 OP）
-  burnPerTurnAtkRatio: 0.25,   // 0.18→0.25（+39%）每回合扣 25% atk
-  bleedPerTurnAtkRatio: 0.18,  // 0.13→0.18（+38%）每回合扣 18% atk
+  poisonPerTurnAtkRatio: 0.20, // v3.9: 改为攻击系 DOT，公式与灼烧一致；v3.9.1: 0.25→0.20
+  burnPerTurnAtkRatio: 0.20,   // v3.9.1: 0.25→0.20
+  bleedPerTurnAtkRatio: 0.15,  // v3.9.1: 0.18→0.15
 } as const
 
 // =====================================================================
