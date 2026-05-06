@@ -68,6 +68,7 @@ export interface TowerBattleResult {
   is_first_clear: boolean
   unlocked_title: string | null
   permanent_bonus_pct: number
+  purple_skill_drop?: { skill_id: string; name: string; element: string | null } | null
 }
 
 export const useTowerStore = defineStore('tower', () => {
@@ -75,8 +76,8 @@ export const useTowerStore = defineStore('tower', () => {
   const previewByFloor = ref<Record<number, TowerFloorPreview>>({})
   const recentBattles = ref<TowerBattleHistory[]>([])
 
-  // 当前选择的层（默认 = next_floor，玩家可以重温已通关层）
-  const selectedFloor = ref<number>(1)
+  // 当前选择的层（0 = 未初始化；首次 fetchInfo 后会被设为 next_floor）
+  const selectedFloor = ref<number>(0)
 
   // 战斗中状态
   const isFighting = ref(false)
