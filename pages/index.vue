@@ -188,6 +188,9 @@
             <span class="tower-meta">{{ towerStore.lastResult.total_turns }} 回合</span>
             <span v-if="towerStore.lastResult.unlocked_title" class="tower-reward-title">称号「{{ towerStore.lastResult.unlocked_title }}」已解锁（去成就页领取并佩戴）</span>
             <span v-if="towerStore.lastResult.permanent_bonus_pct > 0" class="tower-reward-stat">+{{ towerStore.lastResult.permanent_bonus_pct }}% 全属性永久加成</span>
+            <span v-if="towerStore.lastResult.purple_skill_drops && towerStore.lastResult.purple_skill_drops.length > 0" class="tower-reward-purple">
+              ★紫品功法残页 ×{{ towerStore.lastResult.purple_skill_drops.length }}：{{ towerStore.lastResult.purple_skill_drops.map(d => d.name).join('、') }} 已收入背包
+            </span>
             <!-- 倒计时（满足"非重温 + 可挑战 + 还有未通关层"才启动） -->
             <span v-if="towerStore.autoChallengeCountdown > 0 && towerStore.canChallenge" class="tower-countdown">
               {{ towerStore.autoChallengeCountdown }} 秒后自动挑战第 {{ towerStore.nextFloor }} 层…
@@ -2459,6 +2462,7 @@
           <button :class="['help-tab', { active: helpTab === 'growth' }]" @click="helpTab = 'growth'">养成</button>
           <button :class="['help-tab', { active: helpTab === 'pvp' }]" @click="helpTab = 'pvp'">宗门/PvP</button>
           <button :class="['help-tab', { active: helpTab === 'realm' }]" @click="helpTab = 'realm'">秘境</button>
+          <button :class="['help-tab', { active: helpTab === 'tower' }]" @click="helpTab = 'tower'">通天塔</button>
           <button :class="['help-tab', { active: helpTab === 'misc' }]" @click="helpTab = 'misc'">其他</button>
         </div>
         <div class="modal-body">
@@ -2832,6 +2836,54 @@
               <tr><td>B 评级</td><td>经验/灵石/积分 ×1.0</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px; color: var(--cinnabar);"><b>★ S 评级额外奖励：</b>通关评级 S 时额外掉落 <b>1 件固定红色装备</b>(不受难度影响,普通难度打出 S 也能拿红装)。红装按贡献分配给队内贡献最高的成员。</p>
+          </div>
+          </div>
+          <div v-show="helpTab === 'tower'">
+          <div class="help-section">
+            <div class="help-title">通天塔 · 单人极限挑战</div>
+            <p class="help-text">大乘起步的单人 100 层阶梯塔（当前开放 1-25 层）。每层独立战斗,进入即满血满 CD,每层只算一波怪物。仅有大乘 (T7) 境界且等级 ≥ 140 可入塔。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">入口：「历练」标签页内（或主城右上角直达）。离线挂机时不能挑战。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">挑战规则</div>
+            <table class="help-table"><tbody>
+              <tr><td>跳层</td><td>不能跳层,只能挑战「最高已通关层 + 1」或重温任意已通关层</td></tr>
+              <tr><td>失败配额</td><td>挑战未通关层失败:扣 1 次配额,每日上限 <b>3 次</b>,跨日 00:00 重置</td></tr>
+              <tr><td>重温</td><td>挑战已通关层(无论胜负):不扣配额,不更新进度,不发首通奖,但仍发 v3.9 紫品功法</td></tr>
+              <tr><td>战斗超时</td><td>单层 100 回合内未分胜负判定为失败</td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">怪物特性 (Trait)</div>
+            <p class="help-text">通天塔怪物携带特殊词条,层数越高词条越多越复杂。包含<b style="color: var(--cinnabar);">狂暴/爆发</b>(打输出)、<b style="color: #6dd070;">再生/护盾/圣盾</b>(吃伤害)、<b style="color: #5b8eaa;">群冻/群眩/沉默/束缚</b>(控制)、<b style="color: #c45c4a;">附烧/附毒/附流血</b>(DOT)、<b>反伤/反击/元素免疫</b>等十余种。挑战前先在塔下查询当前层 trait,针对性配 build。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">首通奖励</div>
+            <p class="help-text">首次通关某层永久领取一次,重温不再发。包括:</p>
+            <table class="help-table"><tbody>
+              <tr><td><b>永久全属性 +%</b></td><td>关键层(每 5 层 / 中 Boss / 塔主)首通时永久增加攻击/防御/气血百分比,叠加无上限</td></tr>
+              <tr><td><b>称号</b></td><td>第 15 层「塔下行者」/ 25 层「塔中过客」/ 50 层「半塔之主」/ 75 层「塔顶遥望」/ 100 层「通天塔主」(去成就页佩戴)</td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">★ 紫品主修功法残页 (v3.9)</div>
+            <p class="help-text" style="color: #b87dff;">通天塔是<b>紫品五行主修功法的唯一获取渠道</b>,秘境/离线/商店/成就箱均不掉。</p>
+            <table class="help-table"><tbody>
+              <tr><td>触发节点</td><td>每 10 层(<b>10 / 20 / 30 / … / 100</b>)</td></tr>
+              <tr><td>单节点掉落</td><td>每次随机 <b>1-2 本</b></td></tr>
+              <tr><td>同节点同日</td><td>仅触发 1 次,重新刷该层不再掉</td></tr>
+              <tr><td>全日上限</td><td><b>20 本</b>(达到上限即停发,跨日 00:00 重置)</td></tr>
+              <tr><td>触发条件</td><td>战斗胜利(首通/重温通用),失败不掉</td></tr>
+              <tr><td>触满前提</td><td>当日打通到 100 层(10 节点 × 上限 2 本)</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">紫品主修共 5 本(金/木/水/火/土 五行各一),倍率 1.50,自带主修向被动,系统按"已拥有越多权重越低"加权随机,确保最终能凑齐。残页通过功法升级界面合成。</p>
+            <table class="help-table" style="margin-top: 4px;"><tbody>
+              <tr><td style="color: #c0c0c0;">罡风斩(金)</td><td>主修暴击率 +5%,流血 60%/3 回合</td></tr>
+              <tr><td style="color: #6dd070;">万木枯荣诀(木)</td><td>主修命中回 1.5% 最大气血,中毒 70%/4 回合</td></tr>
+              <tr><td style="color: #5b8eaa;">玄冰诀(水)</td><td>主修命中 10% 概率额外冻结 1 回合,冻结 40%/1 回合</td></tr>
+              <tr><td style="color: #c45c4a;">焚天烈焰诀(火)</td><td>灼烧每跳伤害 +15%,灼烧 70%/4 回合</td></tr>
+              <tr><td style="color: #a08a60;">撼山印(土)</td><td>主修破甲 +8%,脆弱 60%/3 回合(减防 25%)</td></tr>
+            </tbody></table>
           </div>
           </div>
           <div v-show="helpTab === 'misc'">
@@ -3424,7 +3476,7 @@ const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showRedeemCode = ref(false);
 const showHelpDoc = ref(false);
-const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'misc'>('basic');
+const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'misc'>('basic');
 const showSettings = ref(false);
 
 async function copyQqGroup() {
@@ -7985,6 +8037,7 @@ onUnmounted(() => {
 .tower-meta { color: #b0a890; font-size: 12px; }
 .tower-reward-title { color: #c0a060; font-size: 13px; }
 .tower-reward-stat { color: #6dd070; font-weight: bold; font-size: 13px; }
+.tower-reward-purple { color: #b87dff; font-weight: bold; font-size: 13px; text-shadow: 0 0 6px rgba(184, 125, 255, 0.45); }
 .tower-countdown { color: #f0d090; font-size: 13px; margin-left: auto; }
 .tower-no-auto-hint { color: #8a8070; font-size: 12px; margin-left: auto; font-style: italic; }
 .tower-fail-info { color: #c0a070; font-size: 13px; }

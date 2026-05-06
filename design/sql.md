@@ -189,3 +189,6 @@ UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.5;
 
 -- 火灵根: 1.7 → 1.0 (统一去掉火属性的 +0.2 基础特色)
 UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.7;
+
+重置通天塔
+ UPDATE characters SET tower_max_floor = 0, tower_daily_fail = 0 WHERE id = <你的角色id>;
