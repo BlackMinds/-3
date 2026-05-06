@@ -245,6 +245,11 @@
               :title="`今日已失败 ${towerStore.dailyFailUsed} 次，剩余 ${Math.max(0, towerStore.dailyFailMax - towerStore.dailyFailUsed)} 次。每日 00:00 重置。`"
             >{{ towerStore.dailyFailUsed }}/{{ towerStore.dailyFailMax }} 失败</span>
 
+            <label class="tower-fast-toggle" title="勾选后跳过日志播放，直接看战斗结果">
+              <input type="checkbox" v-model="towerStore.fastBattle" />
+              <span>快速战斗</span>
+            </label>
+
             <button class="tower-history-btn" @click="openTowerHistory" title="战斗历史">📜</button>
           </div>
 
@@ -7899,6 +7904,20 @@ onUnmounted(() => {
 .tower-history-btn:hover {
   background: rgba(180, 140, 90, 0.18);
 }
+.tower-fast-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #b0a890;
+  cursor: pointer;
+  user-select: none;
+}
+.tower-fast-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+.tower-fast-toggle:hover { color: #d8b075; }
 .tower-fighting-bar {
   display: flex; align-items: center; gap: 12px; padding: 4px 0; color: #d8b075;
 }

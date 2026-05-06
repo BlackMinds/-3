@@ -1,6 +1,6 @@
 // 通天塔状态管理
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 export interface TowerInfo {
   max_floor: number
@@ -87,6 +87,23 @@ export const useTowerStore = defineStore('tower', () => {
   // 胜利后倒计时（秒）
   const autoChallengeCountdown = ref(0)
 
+  // 快速战斗（勾上 = 跳过日志播放直接结算；不勾 = 战斗后逐条播放日志到 game.battleLogs）
+  // 持久化到 localStorage，玩家偏好跨会话保留
+  const fastBattle = ref<boolean>(loadFastBattle())
+  function loadFastBattle(): boolean {
+    if (typeof window === 'undefined') return false
+    try { return localStorage.getItem('xiantu_tower_fast_battle') === '1' } catch { return false }
+  }
+  watch(fastBattle, (v) => {
+    try { localStorage.setItem('xiantu_tower_fast_battle', v ? '1' : '0') } catch {}
+  })
+
+  // 日志播放定时器（避免重复挂载）
+  let logPlayTimer: number | null = null
+  function clearLogPlayTimer() {
+    if (logPlayTimer != null) { clearInterval(logPlayTimer); logPlayTimer = null }
+  }
+
   function getAuthHeaders() {
     const userStore = useUserStore()
     return { Authorization: userStore.token ? `Bearer ${userStore.token}` : '' }
@@ -134,14 +151,16 @@ export const useTowerStore = defineStore('tower', () => {
 
   async function challenge(floor: number): Promise<{ code: number; data?: any; message?: string }> {
     if (isFighting.value) return { code: 429, message: '战斗进行中' }
+    clearLogPlayTimer()
     isFighting.value = true
+    showResultBar.value = false
     try {
       const res = await fetchApi<{ code: number; data?: any; message?: string }>('/tower/challenge', {
         method: 'POST',
         body: { floor },
       })
       if (res.code === 200 && res.data) {
-        lastResult.value = res.data.battle as TowerBattleResult
+        const battle = res.data.battle as TowerBattleResult
         isReplay.value = !!res.data.is_replay
         // 同步状态
         if (info.value) {
@@ -150,6 +169,33 @@ export const useTowerStore = defineStore('tower', () => {
           info.value.can_challenge = res.data.state_after.can_challenge
           info.value.next_floor = Math.min(info.value.implemented_floors, info.value.max_floor + 1)
         }
+
+        // 播放日志：勾选"快速战斗"则跳过；否则把日志逐条 push 到 gameStore.battleLogs
+        if (!fastBattle.value && Array.isArray(battle.logs) && battle.logs.length > 0) {
+          // 用 useGameStore() 访问 game store；放在这里而非顶层避免 SSR 问题
+          const gs = useGameStore() as any
+          if (gs?.clearLogs) gs.clearLogs()
+          // 第一条立即播
+          const first = battle.logs[0]
+          gs?.addLog?.(first.turn || 0, first.text || '', first.type || 'normal')
+          if (battle.logs.length > 1) {
+            await new Promise<void>(resolve => {
+              let i = 1
+              logPlayTimer = window.setInterval(() => {
+                // 任意时刻 isFighting 被置 false（如玩家点了暂停/下塔）则停止
+                if (i >= battle.logs.length || !isFighting.value) {
+                  clearLogPlayTimer()
+                  resolve()
+                  return
+                }
+                const l = battle.logs[i++]
+                gs?.addLog?.(l.turn || 0, l.text || '', l.type || 'normal')
+              }, 1000) as unknown as number
+            })
+          }
+        }
+
+        lastResult.value = battle
         showResultBar.value = true
       }
       return res
@@ -157,6 +203,7 @@ export const useTowerStore = defineStore('tower', () => {
       console.error('challenge 失败', e)
       return { code: 500, message: e?.message || '请求失败' }
     } finally {
+      clearLogPlayTimer()
       isFighting.value = false
     }
   }
@@ -176,6 +223,7 @@ export const useTowerStore = defineStore('tower', () => {
     showResultBar.value = false
     lastResult.value = null
     autoChallengeCountdown.value = 0
+    clearLogPlayTimer()
   }
 
   // ===== 派生状态 =====
@@ -207,6 +255,7 @@ export const useTowerStore = defineStore('tower', () => {
     selectedFloor,
     isFighting, lastResult, isReplay,
     showResultBar, autoChallengeCountdown,
+    fastBattle,
     fetchInfo, fetchFloor, challenge, fetchBattles,
     dismissResultBar,
     eligible, canChallenge, maxFloor, nextFloor, implementedFloors,
