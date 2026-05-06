@@ -2859,16 +2859,18 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3 }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号' }]"
                 >
                   <div class="rank-num">
                     <span v-if="item.rank === 1" class="rank-crown">👑</span>
+                    <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-bolt">⚡</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
                   <div class="rank-root" :style="{ color: rootColorMap[item.spiritualRoot] }">{{ item.rootName }}</div>
                   <div class="rank-name">
                     {{ item.name }}
+                    <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-badge">影帝</span>
                     <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
                   </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
@@ -12196,6 +12198,145 @@ onUnmounted(() => {
 @keyframes medal-glow-bronze {
   0%, 100% { text-shadow: 0 0 7px rgba(205, 127, 50, 0.5), 0 0 12px rgba(205, 127, 50, 0.25); transform: scale(1) rotate(0deg); }
   50% { text-shadow: 0 0 14px rgba(255, 180, 100, 0.95), 0 0 26px rgba(205, 127, 50, 0.55), 0 0 40px rgba(205, 127, 50, 0.3); transform: scale(1.1) rotate(-2deg); }
+}
+
+/* ==================== 「吴彦祖1号」专属影帝特效 ==================== */
+.ranking-row.wuyanzu-row {
+  padding-top: 20px;
+  background: linear-gradient(90deg,
+    rgba(255, 80, 220, 0.28) 0%,
+    rgba(160, 100, 255, 0.2) 25%,
+    rgba(80, 180, 255, 0.2) 50%,
+    rgba(80, 255, 200, 0.13) 75%,
+    rgba(255, 200, 80, 0.1) 100%);
+  background-size: 220% 100%;
+  animation: wuyanzu-bg-flow 4.5s linear infinite, wuyanzu-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes wuyanzu-bg-flow {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+
+@keyframes wuyanzu-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(255, 100, 230, 0.9),
+      inset -3px 0 0 0 rgba(100, 210, 255, 0.65),
+      inset 0 0 0 1px rgba(200, 140, 255, 0.45),
+      0 0 20px rgba(180, 100, 255, 0.45),
+      0 0 42px rgba(255, 80, 200, 0.22);
+  }
+  50% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(255, 150, 240, 1),
+      inset -3px 0 0 0 rgba(150, 235, 255, 1),
+      inset 0 0 0 1px rgba(230, 180, 255, 0.8),
+      0 0 42px rgba(180, 100, 255, 0.9),
+      0 0 80px rgba(255, 80, 200, 0.55);
+  }
+}
+
+/* 流光：彩虹色 */
+.ranking-row.wuyanzu-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 60%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 130, 240, 0.7) 30%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(140, 230, 255, 0.7) 70%,
+    transparent 100%);
+  animation: rank-shimmer 2.2s ease-in-out infinite;
+}
+
+/* 旋转光环：彩虹 conic */
+.ranking-row.wuyanzu-row::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  width: 80px;
+  height: 80px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(5px);
+  background: conic-gradient(from 0deg,
+    rgba(255, 80, 220, 0.65) 0deg,
+    rgba(180, 100, 255, 0.6) 72deg,
+    rgba(80, 180, 255, 0.6) 144deg,
+    rgba(80, 255, 200, 0.55) 216deg,
+    rgba(255, 220, 80, 0.55) 288deg,
+    rgba(255, 80, 220, 0.65) 360deg);
+  animation: rank-halo-rotate 3.2s linear infinite;
+}
+
+/* 名字文字：彩虹流光（覆盖金/银/铜） */
+.ranking-row.wuyanzu-row .rank-name {
+  background: linear-gradient(90deg,
+    #ff5cd2 0%, #c66bff 18%, #6bb3ff 36%,
+    #6bffc1 54%, #ffe26b 72%, #ff8c5c 86%, #ff5cd2 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rank-text-shimmer 2.4s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 6px rgba(255, 100, 230, 0.55)) drop-shadow(0 0 12px rgba(120, 100, 255, 0.35));
+}
+
+/* 闪电装饰（仅吴彦祖1号） */
+.wuyanzu-bolt {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 5px rgba(255, 220, 80, 0.95)) drop-shadow(0 0 10px rgba(180, 100, 255, 0.6));
+  animation: wuyanzu-bolt-zap 1.4s ease-in-out infinite;
+}
+
+@keyframes wuyanzu-bolt-zap {
+  0%, 100% { transform: translateX(-50%) rotate(-15deg) scale(1); opacity: 0.9; }
+  35% { transform: translateX(-50%) rotate(-25deg) scale(1.18); opacity: 1; }
+  50% { transform: translateX(-50%) rotate(15deg) scale(1.28); opacity: 1; }
+  65% { transform: translateX(-50%) rotate(25deg) scale(1.18); opacity: 1; }
+}
+
+/* 影帝徽章 */
+.wuyanzu-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #ff5cd2 0%, #c66bff 35%, #6bb3ff 70%, #ff5cd2 100%);
+  background-size: 220% 100%;
+  border-radius: 3px;
+  animation: wuyanzu-badge-shine 2.2s linear infinite;
+  box-shadow: 0 0 6px rgba(255, 100, 230, 0.7), 0 0 12px rgba(120, 100, 255, 0.4);
+  vertical-align: middle;
+  letter-spacing: 1px;
+  filter: none;
+}
+
+@keyframes wuyanzu-badge-shine {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
 }
 
 .rank-plain {
