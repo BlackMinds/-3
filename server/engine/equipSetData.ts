@@ -28,6 +28,8 @@ export interface EquipSet {
 // ===== 一期 7 套（按设计文档 ✅ 标记中挑出最稳的 7 套，覆盖 7 大流派）=====
 export const EQUIP_SETS: EquipSet[] = [
   // 1. 刷新套 — 主修/神通周转流
+  // v3.8.5: 削弱 — 触发后那次额外神通伤害打折（3件 -40% / 5件 -30% / 7件 -25%），
+  //   去掉原 7 件「起手所有神通 CD-1」效果，让刷新套与 DOT 套差距收敛
   {
     setKey: 'refresh',
     name: '刷新套',
@@ -35,12 +37,12 @@ export const EQUIP_SETS: EquipSet[] = [
     desc: '神通周转流，与高 CD 红/金品神通配合最佳',
     rarity: 'blue',
     tiers: [
-      { count: 3, desc: '释放主修或神通后，5% 概率重置当前 CD 最短的神通',
-        hooks: { onSkillCast: { resetShortestCd: { chance: 0.05 } } } },
-      { count: 5, desc: '上述概率提升至 12%',
-        hooks: { onSkillCast: { resetShortestCd: { chance: 0.12 } } } },
-      { count: 7, desc: '上述概率提升至 22%；战斗第 1 回合所有神通 CD -1',
-        hooks: { onSkillCast: { resetShortestCd: { chance: 0.22 } }, onBattleStart: { allCdReduce: 1 } } },
+      { count: 3, desc: '释放主修或神通后，5% 概率重置当前 CD 最短的神通；触发后下次神通伤害 -40%',
+        hooks: { onSkillCast: { resetShortestCd: { chance: 0.05, extraDmgMul: 0.6 } } } },
+      { count: 5, desc: '上述概率提升至 12%；触发后下次神通伤害 -30%',
+        hooks: { onSkillCast: { resetShortestCd: { chance: 0.12, extraDmgMul: 0.7 } } } },
+      { count: 7, desc: '上述概率提升至 20%；触发后下次神通伤害 -25%',
+        hooks: { onSkillCast: { resetShortestCd: { chance: 0.20, extraDmgMul: 0.75 } } } },
     ],
   },
 
@@ -62,6 +64,7 @@ export const EQUIP_SETS: EquipSet[] = [
   },
 
   // 3. 火神套 — 灼烧爆发
+  // v3.8.5: 加入 dmgMul（玩家施加灼烧每跳伤害 ×N），让套装在养成轴上有"跳数 × 跳伤"双轴提升
   {
     setKey: 'fire_god',
     name: '火神套',
@@ -69,12 +72,12 @@ export const EQUIP_SETS: EquipSet[] = [
     desc: '灼烧爆发流，配焚天烈魂、焚体诀',
     rarity: 'purple',
     tiers: [
-      { count: 3, desc: '附加灼烧时，立即额外结算 1 跳灼烧伤害',
-        hooks: { onApplyBurn: { instantMul: 2 } } },
-      { count: 5, desc: '附加灼烧时，立即额外结算 2 跳灼烧伤害',
-        hooks: { onApplyBurn: { instantMul: 3 } } },
-      { count: 7, desc: '附加灼烧时，立即额外结算 4 跳灼烧伤害；目标已灼烧时额外延长 1 回合（持续 cap 6 回合）',
-        hooks: { onApplyBurn: { instantMul: 5, extendIfStacked: 1, durationCap: 6 } } },
+      { count: 3, desc: '附加灼烧时，立即额外结算 1 跳灼烧伤害；玩家施加灼烧每跳 ×1.2',
+        hooks: { onApplyBurn: { instantMul: 2, dmgMul: 1.2 } } },
+      { count: 5, desc: '附加灼烧时，立即额外结算 2 跳灼烧伤害；玩家施加灼烧每跳 ×1.4',
+        hooks: { onApplyBurn: { instantMul: 3, dmgMul: 1.4 } } },
+      { count: 7, desc: '附加灼烧时，立即额外结算 4 跳灼烧伤害；玩家施加灼烧每跳 ×1.6；目标已灼烧时额外延长 1 回合（持续 cap 6 回合）',
+        hooks: { onApplyBurn: { instantMul: 5, dmgMul: 1.6, extendIfStacked: 1, durationCap: 6 } } },
     ],
   },
 
@@ -86,12 +89,12 @@ export const EQUIP_SETS: EquipSet[] = [
     desc: '中毒爆发流，配毒液冲击、百毒不侵',
     rarity: 'purple',
     tiers: [
-      { count: 3, desc: '附加中毒时，立即额外结算 1 跳中毒伤害',
-        hooks: { onApplyPoison: { instantMul: 2 } } },
-      { count: 5, desc: '附加中毒时，立即额外结算 2 跳中毒伤害',
-        hooks: { onApplyPoison: { instantMul: 3 } } },
-      { count: 7, desc: '附加中毒时，立即额外结算 4 跳中毒伤害；目标中毒状态下，对其造成的伤害 +15%',
-        hooks: { onApplyPoison: { instantMul: 5 }, conditional: { ifTargetPoisoned: { dmgAmp: 0.15 } } } },
+      { count: 3, desc: '附加中毒时，立即额外结算 1 跳中毒伤害；玩家施加中毒每跳 ×1.2',
+        hooks: { onApplyPoison: { instantMul: 2, dmgMul: 1.2 } } },
+      { count: 5, desc: '附加中毒时，立即额外结算 2 跳中毒伤害；玩家施加中毒每跳 ×1.4',
+        hooks: { onApplyPoison: { instantMul: 3, dmgMul: 1.4 } } },
+      { count: 7, desc: '附加中毒时，立即额外结算 4 跳中毒伤害；玩家施加中毒每跳 ×1.6；目标中毒状态下，对其造成的伤害 +15%',
+        hooks: { onApplyPoison: { instantMul: 5, dmgMul: 1.6 }, conditional: { ifTargetPoisoned: { dmgAmp: 0.15 } } } },
     ],
   },
 
@@ -103,12 +106,12 @@ export const EQUIP_SETS: EquipSet[] = [
     desc: '流血爆发流，配剑雨纷飞、血雨腥风、十三枪',
     rarity: 'purple',
     tiers: [
-      { count: 3, desc: '附加流血时，立即额外结算 1 跳流血伤害',
-        hooks: { onApplyBleed: { instantMul: 2 } } },
-      { count: 5, desc: '附加流血时，立即额外结算 2 跳流血伤害',
-        hooks: { onApplyBleed: { instantMul: 3 } } },
-      { count: 7, desc: '附加流血时，立即额外结算 4 跳流血伤害；目标流血状态下你的吸血 +10%',
-        hooks: { onApplyBleed: { instantMul: 5 }, conditional: { ifTargetBleeding: { LIFESTEAL_flat: 0.10 } } } },
+      { count: 3, desc: '附加流血时，立即额外结算 1 跳流血伤害；玩家施加流血每跳 ×1.2',
+        hooks: { onApplyBleed: { instantMul: 2, dmgMul: 1.2 } } },
+      { count: 5, desc: '附加流血时，立即额外结算 2 跳流血伤害；玩家施加流血每跳 ×1.4',
+        hooks: { onApplyBleed: { instantMul: 3, dmgMul: 1.4 } } },
+      { count: 7, desc: '附加流血时，立即额外结算 4 跳流血伤害；玩家施加流血每跳 ×1.6；目标流血状态下你的吸血 +10%',
+        hooks: { onApplyBleed: { instantMul: 5, dmgMul: 1.6 }, conditional: { ifTargetBleeding: { LIFESTEAL_flat: 0.10 } } } },
     ],
   },
 

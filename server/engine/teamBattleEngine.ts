@@ -23,7 +23,18 @@ import {
 import type { SecretRealmDef, SecretRealmDifficultyConfig, SecretRealmWave } from './secretRealmData'
 import { scaleMonsterTemplate } from './secretRealmData'
 import type { DebuffType, BuffType } from './skillData'
-import { DOT_FORMULA, PLAYER_CAPS } from '~/shared/balance'
+import { DOT_FORMULA, PLAYER_CAPS, BATTLE_FORMULA } from '~/shared/balance'
+
+// 五行相克（与 battleEngine.ts:getElementMultiplier 对齐）
+const ELEMENT_ADVANTAGE_TBE: Record<string, string> = {
+  metal: 'wood', wood: 'earth', earth: 'water', water: 'fire', fire: 'metal',
+}
+function elementMul(atkEl: string | null, defEl: string | null): number {
+  if (!atkEl || !defEl) return 1.0
+  if (ELEMENT_ADVANTAGE_TBE[atkEl] === defEl) return BATTLE_FORMULA.elementCounterMul
+  if (ELEMENT_ADVANTAGE_TBE[defEl] === atkEl) return BATTLE_FORMULA.elementResistedMul
+  return 1.0
+}
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -253,6 +264,32 @@ function applyDebuffDps(
   if (debuff.type === 'burn') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio))
   if (debuff.type === 'poison') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.poisonPerTurnAtkRatio))
   if (debuff.type === 'bleed') d.damagePerTurn = Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.bleedPerTurnAtkRatio))
+  // v3.8.5 玩家施加 DOT 享受元素强化 + 元素克制 + 目标抗性 + 套装 dmgMul（仅 inflictor 是 player 时生效）
+  const isDotTypeForBoost = debuff.type === 'burn' || debuff.type === 'poison' || debuff.type === 'bleed'
+  if (isDotTypeForBoost && d.damagePerTurn > 0 && inflictor) {
+    const dotElem: Record<string, string> = { burn: 'fire', poison: 'wood', bleed: 'metal' }
+    const el = dotElem[debuff.type]
+    if (el) {
+      // 元素强化
+      const ed = (inflictor.stats.elementDmg as any)?.[el] || 0
+      if (ed > 0) d.damagePerTurn = Math.max(1, Math.floor(d.damagePerTurn * (1 + ed / 100)))
+      // 元素克制
+      const targetElem = (target as any).stats?.element || null
+      const em = elementMul(el, targetElem)
+      if (em !== 1.0) d.damagePerTurn = Math.max(1, Math.floor(d.damagePerTurn * em))
+      // 目标抗性
+      const resistRaw = (target as any).stats?.resists?.[el] ?? 0
+      const resist = Math.min(BATTLE_FORMULA.maxResistRate, resistRaw)
+      if (resist > 0) d.damagePerTurn = Math.max(1, Math.floor(d.damagePerTurn * (1 - resist)))
+    }
+    // 套装 dmgMul（火神/万毒/血魔）
+    const se = inflictor.setEffects
+    let dmgMul = 1
+    if (debuff.type === 'burn'   && (se as any).burnDmgMul   > 1) dmgMul = (se as any).burnDmgMul
+    if (debuff.type === 'poison' && (se as any).poisonDmgMul > 1) dmgMul = (se as any).poisonDmgMul
+    if (debuff.type === 'bleed'  && (se as any).bleedDmgMul  > 1) dmgMul = (se as any).bleedDmgMul
+    if (dmgMul > 1) d.damagePerTurn = Math.max(1, Math.floor(d.damagePerTurn * dmgMul))
+  }
   // 冻结/眩晕：锁定行动回合
   if (debuff.type === 'freeze' || debuff.type === 'stun') {
     ;(target as any).frozenTurns = Math.max((target as any).frozenTurns || 0, debuff.duration)
@@ -673,6 +710,13 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     rootMatched = true
   }
   if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.001
+  // v3.8.5 刷新套：触发后下次「攻击型神通/主修」伤害打折（buff/治疗 mul=0 不消费）
+  let refreshDmgPenaltyApplied = false
+  if (mul > 0 && (p as any)._refreshNextDmgMul != null && (p as any)._refreshNextDmgMul < 1) {
+    mul *= (p as any)._refreshNextDmgMul
+    ;(p as any)._refreshNextDmgMul = null
+    refreshDmgPenaltyApplied = true
+  }
 
   // 治疗 / buff 技能
   if (mul === 0) {
@@ -894,8 +938,15 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     if (minIdx >= 0) {
       p.divineCds[minIdx] = 0
       const sk = (p.equippedSkills?.divineSkills || [])[minIdx]
+      // v3.8.5 一次性削弱标记
+      if ((se as any).refreshExtraDmgMul && (se as any).refreshExtraDmgMul < 1) {
+        (p as any)._refreshNextDmgMul = (se as any).refreshExtraDmgMul
+      }
       logs.push({ turn, text: `  ❖【刷新套】${p.name} 神通【${sk?.name || '?'}】CD 重置`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
     }
+  }
+  if (refreshDmgPenaltyApplied) {
+    logs.push({ turn, text: `  ❖【刷新套】${p.name} 此次伤害削弱（CD 重置代价已扣除）`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
   }
   // 多重施法套：单体神通追加一个新目标（不是再次释放神通，所以不结算 buff/debuff）
   const isSingleTarget = isDivine && !used.isAoe && (!used.targetCount || used.targetCount <= 1)

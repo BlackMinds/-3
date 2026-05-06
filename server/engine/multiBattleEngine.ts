@@ -31,7 +31,18 @@ import {
   type SetEffectsState,
 } from './battleEngine'
 import type { DebuffType, BuffType } from './skillData'
-import { DOT_FORMULA, PLAYER_CAPS } from '~/shared/balance'
+import { DOT_FORMULA, PLAYER_CAPS, BATTLE_FORMULA } from '~/shared/balance'
+
+// 五行相克（与 battleEngine.ts:getElementMultiplier 对齐）
+const ELEMENT_ADVANTAGE_MBE: Record<string, string> = {
+  metal: 'wood', wood: 'earth', earth: 'water', water: 'fire', fire: 'metal',
+}
+function elementMulMbe(atkEl: string | null, defEl: string | null): number {
+  if (!atkEl || !defEl) return 1.0
+  if (ELEMENT_ADVANTAGE_MBE[atkEl] === defEl) return BATTLE_FORMULA.elementCounterMul
+  if (ELEMENT_ADVANTAGE_MBE[defEl] === atkEl) return BATTLE_FORMULA.elementResistedMul
+  return 1.0
+}
 
 // ========== 类型 ==========
 
@@ -510,6 +521,27 @@ export function runPvpBattle(
     let dmg = Math.max(1, Math.floor(rawDot * balance.dotMultiplier))
     if (debuff.type === 'bleed' && bleedAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * bleedAmpMul))
     if (debuff.type === 'poison' && poisonAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * poisonAmpMul))
+    // v3.8.5 玩家施加 DOT 享受元素强化 + 元素克制 + 目标抗性 + 套装 dmgMul（PvP 双方都是玩家，inflictor 必须存在）
+    const isDotTypeMbe = debuff.type === 'burn' || debuff.type === 'poison' || debuff.type === 'bleed'
+    if (isDotTypeMbe && inflictor) {
+      const dotElem: Record<string, string> = { burn: 'fire', poison: 'wood', bleed: 'metal' }
+      const el = dotElem[debuff.type]
+      if (el) {
+        const ed = (inflictor.elementDmg as any)?.[el] || 0
+        if (ed > 0) dmg = Math.max(1, Math.floor(dmg * (1 + ed / 100)))
+        const em = elementMulMbe(el, target.element)
+        if (em !== 1.0) dmg = Math.max(1, Math.floor(dmg * em))
+        const resistRaw = (target.resists as any)?.[el] ?? 0
+        const resist = Math.min(BATTLE_FORMULA.maxResistRate, resistRaw)
+        if (resist > 0) dmg = Math.max(1, Math.floor(dmg * (1 - resist)))
+      }
+      const se = inflictor.setEffects
+      let dmgMul = 1
+      if (debuff.type === 'burn'   && (se as any).burnDmgMul   > 1) dmgMul = (se as any).burnDmgMul
+      if (debuff.type === 'poison' && (se as any).poisonDmgMul > 1) dmgMul = (se as any).poisonDmgMul
+      if (debuff.type === 'bleed'  && (se as any).bleedDmgMul  > 1) dmgMul = (se as any).bleedDmgMul
+      if (dmgMul > 1) dmg = Math.max(1, Math.floor(dmg * dmgMul))
+    }
     const exists = target.debuffs.find(d => d.type === debuff.type)
     if (exists) {
       exists.remaining = duration
@@ -784,6 +816,13 @@ export function runPvpBattle(
     if (isMainSkill && attacker.awakenState?.mainSkillMultBonus) {
       mul *= 1 + attacker.awakenState.mainSkillMultBonus
     }
+    // v3.8.5 刷新套：触发后下次「攻击型神通/主修」伤害打折（buff/治疗 mul=0 不消费）
+    let refreshDmgPenaltyApplied = false
+    if (mul > 0 && (attacker as any)._refreshNextDmgMul != null && (attacker as any)._refreshNextDmgMul < 1) {
+      mul *= (attacker as any)._refreshNextDmgMul
+      ;(attacker as any)._refreshNextDmgMul = null
+      refreshDmgPenaltyApplied = true
+    }
 
     const prefix = isDivine
       ? (rootMatched ? '神通发动！ ✦灵根共鸣' : '神通发动！')
@@ -842,6 +881,9 @@ export function runPvpBattle(
         turn, type: isDivine ? 'crit' : 'normal',
         text: `[第${turn}回合] ${prefix}${attacker.name} 施展【${usedSkill.name}】(${skillLabel})`,
       })
+    }
+    if (refreshDmgPenaltyApplied) {
+      log({ turn, type: 'set', text: `  ❖【刷新套】${attacker.name} 此次伤害削弱（CD 重置代价已扣除）` })
     }
 
     // 注意：dealDamage 不在内部 push 吸血日志，由调用方在伤害日志后 push，
@@ -1050,6 +1092,10 @@ export function runPvpBattle(
       if (minIdx >= 0) {
         attacker.divineCds[minIdx] = 0
         const sk = attacker.divineSkills[minIdx]
+        // v3.8.5 一次性削弱标记
+        if ((se as any).refreshExtraDmgMul && (se as any).refreshExtraDmgMul < 1) {
+          (attacker as any)._refreshNextDmgMul = (se as any).refreshExtraDmgMul
+        }
         log({ turn, type: 'set', text: `  ❖【刷新套】${attacker.name} 神通【${sk?.name || '?'}】CD 重置` })
       }
     }

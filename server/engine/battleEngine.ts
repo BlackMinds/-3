@@ -7,21 +7,25 @@ import { EQUIP_SET_MAP, getActiveTier } from './equipSetData';
 export interface SetEffectsState {
   // 1. refresh 刷新套
   refreshChance: number;       // 释放主修/神通后概率重置 CD 最短的神通
-  refreshOpenCdReduce: number; // 战斗第 1 回合所有神通 CD -N（仅 7 件套）
+  refreshOpenCdReduce: number; // 保留字段以兼容老 build（新 hooks 不再设值，默认 0）
+  refreshExtraDmgMul: number;  // v3.8.5: 触发后下次神通伤害 ×N（< 1 即削弱，0.6/0.7/0.75）
   // 2. multicast 多重施法套
   multicastChance: number;     // 神通额外释放概率
   multicastMul: number;        // 额外释放伤害倍率（占原伤害百分比）
   multicastMaxPerTurn: number; // 每回合最多额外释放次数
   // 3. fire_god 火神套
   burnInstantMul: number;      // 施加灼烧时立即多结算 N-1 次（mul=2 → 立即 1 次额外，总共 2 次）
+  burnDmgMul: number;          // v3.8.5: 玩家施加灼烧每跳伤害 ×N（1.2/1.4/1.6）
   burnExtendIfStacked: number; // 已灼烧再施加时延长 +N 回合（仅 7 件套）
   burnDurationCap: number;     // 持续 cap（默认 6）
   // 4. venom 万毒套
   poisonInstantMul: number;
+  poisonDmgMul: number;        // v3.8.5: 玩家施加中毒每跳伤害 ×N
   poisonMaxStacks: number;     // 中毒可叠加层数（仅 7 件套）
   poisonDmgAmpVsTarget: number; // 蚀骨：目标中毒时对其造成的伤害 +X（仅 7 件套）
   // 5. blood_demon 血魔套
   bleedInstantMul: number;
+  bleedDmgMul: number;         // v3.8.5: 玩家施加流血每跳伤害 ×N
   bleedLifestealIfBleeding: number; // 目标流血时玩家吸血 +X（仅 7 件套）
   // 6. frost 极寒套
   freezeChanceBonus: number;
@@ -63,11 +67,11 @@ export interface SetEffectsState {
 
 export function buildSetEffects(equipSetCounts: Record<string, number> | undefined, weaponType: string | null): SetEffectsState {
   const state: SetEffectsState = {
-    refreshChance: 0, refreshOpenCdReduce: 0,
+    refreshChance: 0, refreshOpenCdReduce: 0, refreshExtraDmgMul: 1,
     multicastChance: 0, multicastMul: 0, multicastMaxPerTurn: 0,
-    burnInstantMul: 1, burnExtendIfStacked: 0, burnDurationCap: 99,
-    poisonInstantMul: 1, poisonMaxStacks: 1, poisonDmgAmpVsTarget: 0,
-    bleedInstantMul: 1, bleedLifestealIfBleeding: 0,
+    burnInstantMul: 1, burnDmgMul: 1, burnExtendIfStacked: 0, burnDurationCap: 99,
+    poisonInstantMul: 1, poisonDmgMul: 1, poisonMaxStacks: 1, poisonDmgAmpVsTarget: 0,
+    bleedInstantMul: 1, bleedDmgMul: 1, bleedLifestealIfBleeding: 0,
     freezeChanceBonus: 0, dmgVsFrozen: 0, frozenCannotDodge: false,
     spearActive: false, spearArmorPen: 0, spearLifesteal: 0,
     spearStackPerHit: 0, spearStackDmgPerLevel: 0, spearMaxStacks: 0,
@@ -91,6 +95,7 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
       case 'refresh': {
         state.refreshChance = hooks.onSkillCast?.resetShortestCd?.chance || 0;
         state.refreshOpenCdReduce = hooks.onBattleStart?.allCdReduce || 0;
+        state.refreshExtraDmgMul = hooks.onSkillCast?.resetShortestCd?.extraDmgMul ?? 1;
         break;
       }
       case 'multicast': {
@@ -102,18 +107,21 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
       }
       case 'fire_god': {
         state.burnInstantMul = hooks.onApplyBurn?.instantMul || 1;
+        state.burnDmgMul = hooks.onApplyBurn?.dmgMul ?? 1;
         state.burnExtendIfStacked = hooks.onApplyBurn?.extendIfStacked || 0;
         state.burnDurationCap = hooks.onApplyBurn?.durationCap || 99;
         break;
       }
       case 'venom': {
         state.poisonInstantMul = hooks.onApplyPoison?.instantMul || 1;
+        state.poisonDmgMul = hooks.onApplyPoison?.dmgMul ?? 1;
         state.poisonMaxStacks = hooks.onApplyPoison?.maxStacks || 1;
         state.poisonDmgAmpVsTarget = hooks.conditional?.ifTargetPoisoned?.dmgAmp || 0;
         break;
       }
       case 'blood_demon': {
         state.bleedInstantMul = hooks.onApplyBleed?.instantMul || 1;
+        state.bleedDmgMul = hooks.onApplyBleed?.dmgMul ?? 1;
         state.bleedLifestealIfBleeding = hooks.conditional?.ifTargetBleeding?.LIFESTEAL_flat || 0;
         break;
       }
@@ -1220,7 +1228,8 @@ export function runWaveBattle(
     logs.push({ turn: 0, text: `❖ 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
     logs.push({ turn: 0, text: `  ${s.desc}`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
   }
-  // 刷新套 7 件套：战斗第 1 回合所有神通 CD -1
+  // v3.8.5: 原 7 件套「开局所有神通 CD-1」效果已移除（refreshOpenCdReduce 字段保留作兼容）
+  // 老存档兼容：若仍设有该值（旧 hooks），按原逻辑执行
   if (setEffects.refreshOpenCdReduce > 0 && divineCds.length > 0) {
     for (let i = 0; i < divineCds.length; i++) {
       divineCds[i] = Math.max(0, divineCds[i] - setEffects.refreshOpenCdReduce);
@@ -1344,6 +1353,26 @@ export function runWaveBattle(
     if (isDotType && target !== player && (player as any).dotAmpPct) {
       dmg = Math.max(1, Math.floor(dmg * (1 + (player as any).dotAmpPct / 100)));
     }
+    // v3.8.5 玩家施加 DOT 享受元素强化（FIRE_DMG/WOOD_DMG/METAL_DMG 副词条）+ 元素克制 + 目标五行抗性
+    //   元素映射：burn=fire / poison=wood / bleed=metal（与游戏内"灼烧火/中毒木/流血金"一致）
+    //   仅 inflictor === 'player' 时生效，怪给玩家 DOT 不享受任何加成（保持前期挨打体感不变）
+    if (isDotType && inflictor === 'player' && target !== player) {
+      const dotElem: Record<string, string> = { burn: 'fire', poison: 'wood', bleed: 'metal' };
+      const el = dotElem[debuff.type];
+      if (el) {
+        // 1) 元素强化（玩家副词条 +N% 火/木/金）
+        const ed = (player.elementDmg as any)?.[el] || 0;
+        if (ed > 0) dmg = Math.max(1, Math.floor(dmg * (1 + ed / 100)));
+        // 2) 元素克制（火克金 ×1.15 / 被克 ×0.88 / 中性 ×1.0）
+        const targetElem = target.stats?.element || null;
+        const elemMul = getElementMultiplier(el, targetElem);
+        if (elemMul !== 1.0) dmg = Math.max(1, Math.floor(dmg * elemMul));
+        // 3) 目标五行抗性（target.resists.fire 等，cap 70%）
+        const resistRaw = target.stats?.resists?.[el] ?? target.resists?.[el] ?? 0;
+        const resist = Math.min(BATTLE_FORMULA.maxResistRate, resistRaw);
+        if (resist > 0) dmg = Math.max(1, Math.floor(dmg * (1 - resist)));
+      }
+    }
     // v1.3 主修元素附灵：流血/中毒每跳伤害放大
     if (debuff.type === 'bleed' && bleedAmpMul > 1) {
       dmg = Math.max(1, Math.floor(dmg * bleedAmpMul));
@@ -1354,6 +1383,17 @@ export function runWaveBattle(
     // v3.6 主修元素附灵·火焚烬戒：灼烧每跳伤害放大
     if (debuff.type === 'burn' && burnAmpMul > 1) {
       dmg = Math.max(1, Math.floor(dmg * burnAmpMul));
+    }
+    // v3.8.5 套装跳伤倍率（火神/万毒/血魔套，仅玩家施加生效）
+    if (isDotType && inflictor === 'player' && target !== player) {
+      const se = (player as any).setEffects as SetEffectsState | undefined;
+      if (se) {
+        let dmgMul = 1;
+        if (debuff.type === 'burn'   && se.burnDmgMul   > 1) dmgMul = se.burnDmgMul;
+        if (debuff.type === 'poison' && se.poisonDmgMul > 1) dmgMul = se.poisonDmgMul;
+        if (debuff.type === 'bleed'  && se.bleedDmgMul  > 1) dmgMul = se.bleedDmgMul;
+        if (dmgMul > 1) dmg = Math.max(1, Math.floor(dmg * dmgMul));
+      }
     }
     const exists = target.debuffs.find(d => d.type === debuff.type);
     if (exists) { exists.remaining = duration; exists.value = effValue; exists.damagePerTurn = dmg; }
@@ -1916,6 +1956,14 @@ export function runWaveBattle(
       mul *= 1.2;
       rootMatched = true;
     }
+    // v3.8.5 刷新套：触发后下次「攻击型神通/主修」伤害打折（buff/治疗 mul=0 不消费标记）
+    let refreshDmgPenaltyApplied = false;
+    if (mul > 0 && (player as any)._refreshNextDmgMul != null && (player as any)._refreshNextDmgMul < 1) {
+      const refreshMul = (player as any)._refreshNextDmgMul;
+      mul *= refreshMul;
+      (player as any)._refreshNextDmgMul = null;
+      refreshDmgPenaltyApplied = true;
+    }
     // 神识加成神通伤害: 每点神识+0.1% (2026-04-25: 0.5%→0.1% — 神识 216 时旧 +108% 神通伤害过强)
     if (isDivine && player.spirit && player.spirit > 0) {
       mul *= 1 + player.spirit * 0.001;
@@ -1988,6 +2036,10 @@ export function runWaveBattle(
       const skillLabel = [targetLabel, hitsLabel].filter(Boolean).join('·');
       if (skillLabel) {
         logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】(${skillLabel})`, type: isDivine ? 'crit' : 'normal', ...snap() });
+      }
+      // v3.8.5 刷新套：本次神通受削弱（在标题之后插一行说明，避免日志看起来"莫名其妙伤害变低"）
+      if (refreshDmgPenaltyApplied) {
+        logs.push({ turn, text: `  ❖【刷新套】此次伤害削弱（CD 重置代价已扣除）`, type: 'set', ...snap() });
       }
 
       // v1.3 主修噬灵：主修命中即触发（与暴击无关），按最大气血百分比回复
@@ -2223,6 +2275,10 @@ export function runWaveBattle(
           if (minIdx >= 0) {
             divineCds[minIdx] = 0;
             const sk = (equippedSkills?.divineSkills || [])[minIdx];
+            // v3.8.5 给玩家打个一次性标记：下次施放攻击型神通/主修时伤害 ×refreshExtraDmgMul（buff/治疗 mul=0 不消费）
+            if (setEffects.refreshExtraDmgMul < 1) {
+              (player as any)._refreshNextDmgMul = setEffects.refreshExtraDmgMul;
+            }
             logs.push({ turn, text: `  ❖【刷新套】神通【${sk?.name || '?'}】CD 重置`, type: 'set', ...snap() });
           }
         }
