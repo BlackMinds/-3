@@ -8,6 +8,7 @@ export interface TowerInfo {
   daily_fail_used: number
   daily_fail_max: number
   can_challenge: boolean
+  can_sweep: boolean
   total_floors: number
   implemented_floors: number
   eligible: boolean
@@ -225,6 +226,19 @@ export const useTowerStore = defineStore('tower', () => {
     }
   }
 
+  async function sweep(): Promise<{ code: number; data?: any; message?: string }> {
+    try {
+      const res = await fetchApi<{ code: number; data?: any; message?: string }>('/tower/sweep', { method: 'POST' })
+      if (res.code === 200 && info.value) {
+        info.value.can_sweep = false
+      }
+      return res
+    } catch (e: any) {
+      console.error('sweep 失败', e)
+      return { code: 500, message: e?.message || '请求失败' }
+    }
+  }
+
   function dismissResultBar() {
     showResultBar.value = false
     lastResult.value = null
@@ -256,15 +270,17 @@ export const useTowerStore = defineStore('tower', () => {
     return list
   })
 
+  const canSweep = computed(() => info.value?.can_sweep || false)
+
   return {
     info, previewByFloor, recentBattles,
     selectedFloor,
     isFighting, lastResult, isReplay,
     showResultBar, autoChallengeCountdown,
     fastBattle,
-    fetchInfo, fetchFloor, challenge, fetchBattles,
+    fetchInfo, fetchFloor, challenge, fetchBattles, sweep,
     dismissResultBar,
-    eligible, canChallenge, maxFloor, nextFloor, implementedFloors,
+    eligible, canChallenge, canSweep, maxFloor, nextFloor, implementedFloors,
     dailyFailUsed, dailyFailMax, selectableFloors,
   }
 })

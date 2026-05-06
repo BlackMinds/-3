@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     // 取角色（不写入，仅读）
     const { rows: charRows } = await pool.query(
       `SELECT id, name, realm_tier, level,
-              tower_max_floor, tower_daily_fail, tower_daily_date
+              tower_max_floor, tower_daily_fail, tower_daily_date, tower_last_sweep_date
          FROM characters WHERE user_id = $1`,
       [event.context.userId]
     )
@@ -42,6 +42,10 @@ export default defineEventHandler(async (event) => {
     const nextFloor = Math.min(IMPLEMENTED_FLOORS, maxFloor + 1)
     const canChallenge = eligible && dailyFail < DAILY_FAIL_LIMIT && maxFloor < IMPLEMENTED_FLOORS
 
+    // 是否能扫荡：达到大乘 + 已通关至少 1 层 + 今日未领取
+    const lastSweepDate = c.tower_last_sweep_date ? formatDate(c.tower_last_sweep_date) : null
+    const canSweep = eligible && maxFloor > 0 && lastSweepDate !== todayStr
+
     return {
       code: 200,
       data: {
@@ -50,6 +54,7 @@ export default defineEventHandler(async (event) => {
         daily_fail_used: dailyFail,
         daily_fail_max: DAILY_FAIL_LIMIT,
         can_challenge: canChallenge,
+        can_sweep: canSweep,
         total_floors: TOTAL_FLOORS,
         implemented_floors: IMPLEMENTED_FLOORS,
         eligible,

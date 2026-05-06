@@ -248,7 +248,13 @@
               }}
             </button>
 
-            <button class="ctrl-btn tower-sweep-btn" disabled title="Phase 4 开放">扫荡</button>
+            <button
+              class="ctrl-btn tower-sweep-btn"
+              :class="{ 'tower-sweep-active': towerStore.canSweep }"
+              :disabled="!towerStore.eligible || !towerStore.canSweep"
+              :title="towerSweepTooltip"
+              @click="onTowerSweep"
+            >扫荡</button>
 
             <span
               class="tower-fail-tag"
@@ -3377,6 +3383,20 @@ async function openTowerHistory() {
   await towerStore.fetchBattles();
   showTowerHistory.value = true;
 }
+async function onTowerSweep() {
+  const res = await towerStore.sweep();
+  if (res.code === 200) {
+    showToast(res.message || '扫荡完成', 'success');
+  } else {
+    showToast(res.message || '扫荡失败', 'error');
+  }
+}
+const towerSweepTooltip = computed(() => {
+  if (!towerStore.eligible) return '大乘后开启';
+  if (towerStore.maxFloor === 0) return '请先通关至少 1 层';
+  if (!towerStore.canSweep) return '今日已领取，明日 00:00 重置';
+  return '领取每日扫荡奖励（暂未启用物品发放）';
+});
 onMounted(() => {
   towerStore.fetchInfo().then(() => {
     if (towerStore.info && towerStore.info.next_floor > 0) {
@@ -7891,6 +7911,14 @@ onUnmounted(() => {
 }
 .tower-sweep-btn:disabled {
   cursor: not-allowed;
+}
+.tower-sweep-btn.tower-sweep-active {
+  background: rgba(91, 142, 170, 0.15);
+  border-color: rgba(91, 142, 170, 0.45);
+  color: #84b2db;
+}
+.tower-sweep-btn.tower-sweep-active:hover {
+  background: rgba(91, 142, 170, 0.25);
 }
 .tower-fail-tag {
   font-size: 13px;

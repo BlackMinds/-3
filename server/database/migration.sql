@@ -1351,9 +1351,10 @@ END $$;
 -- 大乘起步（realm_tier ≥ 7 + Lv 140），每层独立战斗（重置满血+CD），
 -- 每日失败 3 次锁，跨日重置。MVP 仅发"称号 + 一次性永久属性"（不发循环物品）。
 
-ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_max_floor   SMALLINT NOT NULL DEFAULT 0;
-ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_fail  SMALLINT NOT NULL DEFAULT 0;
-ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_date  DATE     DEFAULT NULL;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_max_floor       SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_fail      SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_date      DATE     DEFAULT NULL;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_last_sweep_date DATE     DEFAULT NULL;  -- 上次领取每日扫荡的日期
 
 -- 战斗记录（保留所有场次，可用于战斗历史/复盘）
 CREATE TABLE IF NOT EXISTS tower_battles (
