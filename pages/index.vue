@@ -11929,6 +11929,7 @@ onUnmounted(() => {
 }
 
 .ranking-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11937,6 +11938,12 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.02);
   transition: background 0.2s;
   font-size: 13px;
+  overflow: hidden;
+}
+
+.ranking-row > * {
+  position: relative;
+  z-index: 1;
 }
 
 .ranking-row:hover {
@@ -11948,16 +11955,143 @@ onUnmounted(() => {
   border-left: 2px solid var(--jade);
 }
 
+/* === 前三名特效：渐变背景 + 边光带 + 外发光呼吸 + 双流光 + 旋转光晕 + 文字金光 === */
 .ranking-row.rank-1 {
-  background: linear-gradient(90deg, rgba(255, 215, 0, 0.08) 0%, transparent 100%);
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.28) 0%, rgba(255, 215, 0, 0.08) 55%, transparent 100%);
+  animation: rank-bg-pulse-gold 2.4s ease-in-out infinite;
 }
 
 .ranking-row.rank-2 {
-  background: linear-gradient(90deg, rgba(192, 192, 192, 0.06) 0%, transparent 100%);
+  background: linear-gradient(90deg, rgba(220, 220, 230, 0.22) 0%, rgba(220, 220, 230, 0.06) 55%, transparent 100%);
+  animation: rank-bg-pulse-silver 2.8s ease-in-out infinite;
 }
 
 .ranking-row.rank-3 {
-  background: linear-gradient(90deg, rgba(205, 127, 50, 0.06) 0%, transparent 100%);
+  background: linear-gradient(90deg, rgba(205, 127, 50, 0.22) 0%, rgba(205, 127, 50, 0.06) 55%, transparent 100%);
+  animation: rank-bg-pulse-bronze 3.2s ease-in-out infinite;
+}
+
+@keyframes rank-bg-pulse-gold {
+  0%, 100% { box-shadow: inset 4px 0 0 0 rgba(255, 215, 0, 0.85), inset 0 0 0 1px rgba(255, 215, 0, 0.35), 0 0 14px rgba(255, 215, 0, 0.22); }
+  50% { box-shadow: inset 4px 0 0 0 rgba(255, 240, 120, 1), inset 0 0 0 1px rgba(255, 215, 0, 0.7), 0 0 30px rgba(255, 215, 0, 0.6); }
+}
+@keyframes rank-bg-pulse-silver {
+  0%, 100% { box-shadow: inset 3px 0 0 0 rgba(220, 220, 230, 0.7), inset 0 0 0 1px rgba(220, 220, 230, 0.28), 0 0 10px rgba(220, 220, 230, 0.16); }
+  50% { box-shadow: inset 3px 0 0 0 rgba(245, 245, 255, 1), inset 0 0 0 1px rgba(220, 220, 230, 0.55), 0 0 22px rgba(220, 220, 230, 0.42); }
+}
+@keyframes rank-bg-pulse-bronze {
+  0%, 100% { box-shadow: inset 3px 0 0 0 rgba(205, 127, 50, 0.7), inset 0 0 0 1px rgba(205, 127, 50, 0.28), 0 0 10px rgba(205, 127, 50, 0.16); }
+  50% { box-shadow: inset 3px 0 0 0 rgba(255, 165, 80, 1), inset 0 0 0 1px rgba(205, 127, 50, 0.55), 0 0 22px rgba(205, 127, 50, 0.42); }
+}
+
+/* === ::before 主流光（亮带横扫） === */
+.ranking-row.rank-1::before,
+.ranking-row.rank-2::before,
+.ranking-row.rank-3::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 55%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transform: skewX(-18deg);
+  animation: rank-shimmer 2.6s ease-in-out infinite;
+}
+
+.ranking-row.rank-1::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 245, 180, 0.7) 45%, rgba(255, 255, 220, 0.95) 50%, rgba(255, 245, 180, 0.7) 55%, transparent 100%);
+}
+
+.ranking-row.rank-2::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(245, 245, 255, 0.5) 45%, rgba(255, 255, 255, 0.7) 50%, rgba(245, 245, 255, 0.5) 55%, transparent 100%);
+  animation-duration: 3.4s;
+  animation-delay: 0.5s;
+}
+
+.ranking-row.rank-3::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 200, 130, 0.45) 45%, rgba(255, 220, 160, 0.65) 50%, rgba(255, 200, 130, 0.45) 55%, transparent 100%);
+  animation-duration: 4s;
+  animation-delay: 1s;
+}
+
+@keyframes rank-shimmer {
+  0%, 20% { left: -60%; opacity: 0; }
+  30% { opacity: 1; }
+  70%, 100% { left: 140%; opacity: 0; }
+}
+
+/* === ::after 旋转光晕（左侧奖牌后方光环） === */
+.ranking-row.rank-1::after,
+.ranking-row.rank-2::after,
+.ranking-row.rank-3::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  width: 70px;
+  height: 70px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(4px);
+  animation: rank-halo-rotate 5s linear infinite;
+}
+
+.ranking-row.rank-1::after {
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 215, 0, 0.6) 40deg, transparent 90deg, transparent 180deg, rgba(255, 240, 130, 0.55) 220deg, transparent 270deg, transparent 360deg);
+}
+.ranking-row.rank-2::after {
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(245, 245, 255, 0.45) 40deg, transparent 90deg, transparent 180deg, rgba(220, 220, 230, 0.4) 220deg, transparent 270deg, transparent 360deg);
+  animation-duration: 6.5s;
+}
+.ranking-row.rank-3::after {
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 165, 80, 0.45) 40deg, transparent 90deg, transparent 180deg, rgba(205, 127, 50, 0.4) 220deg, transparent 270deg, transparent 360deg);
+  animation-duration: 8s;
+}
+
+@keyframes rank-halo-rotate {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* === 名字文字金光流转（仅前三名） === */
+.ranking-row.rank-1 .rank-name {
+  background: linear-gradient(90deg, #FFD700 0%, #FFF6B0 25%, #FFFFFF 50%, #FFF6B0 75%, #FFD700 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rank-text-shimmer 2.6s linear infinite;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+  filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.35));
+}
+.ranking-row.rank-2 .rank-name {
+  background: linear-gradient(90deg, #C0C0C0 0%, #F0F0F8 25%, #FFFFFF 50%, #F0F0F8 75%, #C0C0C0 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rank-text-shimmer 3.2s linear infinite;
+  font-weight: 700;
+  filter: drop-shadow(0 0 5px rgba(220, 220, 230, 0.3));
+}
+.ranking-row.rank-3 .rank-name {
+  background: linear-gradient(90deg, #CD7F32 0%, #FFB060 25%, #FFE0B0 50%, #FFB060 75%, #CD7F32 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rank-text-shimmer 3.8s linear infinite;
+  font-weight: 700;
+  filter: drop-shadow(0 0 5px rgba(205, 127, 50, 0.3));
+}
+
+@keyframes rank-text-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .rank-num {
@@ -11967,13 +12101,68 @@ onUnmounted(() => {
 }
 
 .rank-medal {
-  font-size: 16px;
+  position: relative;
+  display: inline-block;
+  font-size: 18px;
   font-weight: bold;
 }
 
-.rank-medal.gold { color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
-.rank-medal.silver { color: #C0C0C0; text-shadow: 0 0 8px rgba(192, 192, 192, 0.3); }
-.rank-medal.bronze { color: #CD7F32; text-shadow: 0 0 8px rgba(205, 127, 50, 0.3); }
+/* 奖牌数字背后的圆形发光底盘 */
+.rank-medal::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  pointer-events: none;
+  animation: medal-halo-pulse 1.6s ease-in-out infinite;
+}
+.rank-medal.gold::before {
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.55) 0%, rgba(255, 215, 0, 0.2) 50%, transparent 75%);
+}
+.rank-medal.silver::before {
+  background: radial-gradient(circle, rgba(220, 220, 230, 0.5) 0%, rgba(220, 220, 230, 0.18) 50%, transparent 75%);
+  animation-duration: 2s;
+}
+.rank-medal.bronze::before {
+  background: radial-gradient(circle, rgba(205, 127, 50, 0.5) 0%, rgba(205, 127, 50, 0.18) 50%, transparent 75%);
+  animation-duration: 2.4s;
+}
+
+@keyframes medal-halo-pulse {
+  0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.85); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+.rank-medal.gold {
+  color: #FFD700;
+  animation: medal-glow-gold 1.6s ease-in-out infinite;
+}
+.rank-medal.silver {
+  color: #E8E8F0;
+  animation: medal-glow-silver 2s ease-in-out infinite;
+}
+.rank-medal.bronze {
+  color: #FFA060;
+  animation: medal-glow-bronze 2.4s ease-in-out infinite;
+}
+
+@keyframes medal-glow-gold {
+  0%, 100% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 14px rgba(255, 215, 0, 0.3); transform: scale(1) rotate(0deg); }
+  50% { text-shadow: 0 0 18px rgba(255, 235, 100, 1), 0 0 32px rgba(255, 215, 0, 0.7), 0 0 50px rgba(255, 215, 0, 0.4); transform: scale(1.15) rotate(-3deg); }
+}
+@keyframes medal-glow-silver {
+  0%, 100% { text-shadow: 0 0 7px rgba(220, 220, 230, 0.5), 0 0 12px rgba(220, 220, 230, 0.25); transform: scale(1) rotate(0deg); }
+  50% { text-shadow: 0 0 14px rgba(245, 245, 255, 0.95), 0 0 26px rgba(220, 220, 230, 0.55), 0 0 40px rgba(220, 220, 230, 0.3); transform: scale(1.1) rotate(-2deg); }
+}
+@keyframes medal-glow-bronze {
+  0%, 100% { text-shadow: 0 0 7px rgba(205, 127, 50, 0.5), 0 0 12px rgba(205, 127, 50, 0.25); transform: scale(1) rotate(0deg); }
+  50% { text-shadow: 0 0 14px rgba(255, 180, 100, 0.95), 0 0 26px rgba(205, 127, 50, 0.55), 0 0 40px rgba(205, 127, 50, 0.3); transform: scale(1.1) rotate(-2deg); }
+}
 
 .rank-plain {
   color: var(--ink-faint);
