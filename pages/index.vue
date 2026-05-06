@@ -604,13 +604,15 @@
 
             <!-- 装备选择 -->
             <div v-if="sectItemDialog.type === 'equip'" class="sect-dialog-equip-list">
-              <div v-for="eq in sectItemDialog.equipFilter ? bagEquipList.filter(sectItemDialog.equipFilter) : bagEquipList" :key="eq.id"
+              <div v-for="eq in (sectItemDialog.equipSource === 'equipped' ? equippedEquipList : bagEquipList).filter(sectItemDialog.equipFilter || (() => true))" :key="eq.id"
                 class="sect-dialog-equip-item" :style="{ borderColor: getEquipColor(eq) }"
                 @click="sectItemDialog.onSelect(eq.id)">
                 <span :style="{ color: getEquipColor(eq) }">{{ eq.name }}</span>
                 <span class="sect-dialog-equip-tier">T{{ eq.tier }} · {{ getRarityName(eq.rarity) }}</span>
               </div>
-              <div v-if="bagEquipList.length === 0" class="inventory-hint">背包无装备</div>
+              <div v-if="(sectItemDialog.equipSource === 'equipped' ? equippedEquipList : bagEquipList).length === 0" class="inventory-hint">
+                {{ sectItemDialog.equipSource === 'equipped' ? '身上无装备' : '背包无装备' }}
+              </div>
             </div>
 
             <!-- 功法选择 -->
@@ -4584,6 +4586,27 @@ const secondaryStats = computed(() => {
   const spiritTotalBeforeWeapon = Number(c.spirit || 0) + (eb.SPIRIT || 0) + (ab.spirit || 0);
   const spiritWeaponBonus = Math.floor(spiritTotalBeforeWeapon * (wb.SPIRIT_percent || 0) / 100);
 
+  // 宗门心法：spirit_percent（按"基础+装备主+副+附灵+武器%加成后"乘）, armor_pen_percent（平加破甲）
+  let sectSpiritBonus = 0;
+  let sectArmorPen = 0;
+  const sectSpiritSrcs: string[] = [];
+  const sectArmorPenSrcs: string[] = [];
+  for (const s of sectSkillsList.value) {
+    if (!s || !s.learned || s.frozen) continue;
+    const eff = s.currentEffects;
+    if (!eff) continue;
+    if (eff.spirit_percent) {
+      const base = spiritTotalBeforeWeapon + spiritWeaponBonus;
+      const add = Math.floor(base * eff.spirit_percent / 100);
+      sectSpiritBonus += add;
+      sectSpiritSrcs.push(`${s.name} +${eff.spirit_percent.toFixed(1)}%`);
+    }
+    if (eff.armor_pen_percent) {
+      sectArmorPen += Math.floor(eff.armor_pen_percent);
+      sectArmorPenSrcs.push(`${s.name} +${Math.floor(eff.armor_pen_percent)}`);
+    }
+  }
+
   // 通用 builder：base + 一组 contributions（百分数加法）+ 可选 cap
   const buildStat = (label: string, base: number, baseSrc: string, items: { source: string; value: number }[], cap: number | null, digits: number, suffix = '%') => {
     const steps: StatStep[] = [];
@@ -4636,10 +4659,12 @@ const secondaryStats = computed(() => {
       { source: '装备 主+副', value: eb.SPIRIT || 0 },
       { source: '附灵', value: ab.spirit || 0 },
       { source: `武器类型 +${(wb.SPIRIT_percent || 0)}%`, value: spiritWeaponBonus },
+      { source: sectSpiritSrcs.length ? `宗门心法（${sectSpiritSrcs.join(' / ')}）` : '宗门心法', value: sectSpiritBonus },
     ], null, 0, ''),
     buildStat('破甲', 0, '基础', [
       { source: '装备 副属性', value: xb.ARMOR_PEN || 0 },
       { source: '附灵', value: ab.armorPen * 100 },
+      { source: sectArmorPenSrcs.length ? `宗门心法（${sectArmorPenSrcs.join(' / ')}）` : '宗门心法', value: sectArmorPen },
     ], PLAYER_CAPS.armorPen, 1),
     buildStat('命中', 0, '基础', [
       { source: '装备 副属性', value: xb.ACCURACY || 0 },
@@ -6305,6 +6330,7 @@ const sectItemDialog = ref<{
   title: string;
   message: string;
   equipFilter?: (eq: any) => boolean;
+  equipSource?: 'bag' | 'equipped';
   onSelect: (val: any) => void;
 }>({
   show: false,
@@ -6369,7 +6395,8 @@ async function useSectItem(item: any) {
     sectItemDialog.value = {
       show: true, type: 'equip',
       title: '装备鉴定符',
-      message: '选择一件装备(仅有副属性的装备可用)',
+      message: '选择身上一件装备(仅有副属性的装备可用)',
+      equipSource: 'equipped',
       equipFilter: (eq: any) => eq.rarity !== 'white',
       onSelect: async (equipId: number) => {
         try {
@@ -6959,6 +6986,7 @@ const activeSetSummaries = computed(() => {
 });
 
 const bagEquipList = computed(() => equipList.value.filter(e => !e.slot));
+const equippedEquipList = computed(() => equipList.value.filter(e => !!e.slot));
 const bagForSlot = computed(() => {
   const slotDef = EQUIP_SLOTS.find(s => s.slot === currentPickSlot.value);
   if (!slotDef) return [];

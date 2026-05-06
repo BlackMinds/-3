@@ -690,8 +690,8 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       // spirit 不在 4 项主属性加法池里，保留原乘法（spirit 没经历多轮乘子，影响很小）
       if (effects.spirit_percent) spirit += Math.floor(spirit * effects.spirit_percent / 100)
       if (effects.hp_percent) nonPassiveHpPct += effects.hp_percent / 100
-      // armorPen 不在 4 项池里
-      if (effects.armor_pen_percent) armorPen += Math.floor(armorPen * effects.armor_pen_percent / 100) + Math.floor(effects.armor_pen_percent)
+      // armorPen 不在 4 项池里 — 按 PvP/快照口径，仅平加（破甲数值本身就是百分点）
+      if (effects.armor_pen_percent) armorPen += Math.floor(effects.armor_pen_percent)
       if (effects.all_percent) {
         nonPassiveAtkPct += effects.all_percent / 100
         nonPassiveDefPct += effects.all_percent / 100

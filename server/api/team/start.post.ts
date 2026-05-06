@@ -174,7 +174,7 @@ async function buildPlayerBattleStats(char: any): Promise<{
       const effects = calcSectSkillEffect(skillCfg, ss.level)
       if (effects.spirit_percent) spirit += Math.floor(spirit * effects.spirit_percent / 100)
       if (effects.hp_percent) nonPassiveHpPct += effects.hp_percent / 100
-      if (effects.armor_pen_percent) armorPen += Math.floor(armorPen * effects.armor_pen_percent / 100) + Math.floor(effects.armor_pen_percent)
+      if (effects.armor_pen_percent) armorPen += Math.floor(effects.armor_pen_percent)
       if (effects.all_percent) {
         nonPassiveAtkPct += effects.all_percent / 100
         nonPassiveDefPct += effects.all_percent / 100
