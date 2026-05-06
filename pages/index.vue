@@ -203,7 +203,7 @@
               （已通关当前开放的全部 {{ towerStore.implementedFloors }} 层，等待新内容上线）
             </span>
             <span v-else-if="towerStore.dailyFailUsed >= towerStore.dailyFailMax" class="tower-no-auto-hint">
-              （今日 {{ towerStore.dailyFailMax }} 次失败已用完，明日 00:00 重置）
+              （今日 {{ towerStore.dailyFailMax }} 次失败已用完，明日 8:00 重置）
             </span>
             <button class="ctrl-btn tower-stop" @click="cancelAutoChallenge">暂停下塔</button>
           </div>
@@ -262,7 +262,7 @@
             <span
               class="tower-fail-tag"
               :class="{ 'tower-fail-full': towerStore.dailyFailUsed >= towerStore.dailyFailMax }"
-              :title="`今日已失败 ${towerStore.dailyFailUsed} 次，剩余 ${Math.max(0, towerStore.dailyFailMax - towerStore.dailyFailUsed)} 次。每日 00:00 重置。`"
+              :title="`今日已失败 ${towerStore.dailyFailUsed} 次，剩余 ${Math.max(0, towerStore.dailyFailMax - towerStore.dailyFailUsed)} 次。每日 8:00 重置。`"
             >{{ towerStore.dailyFailUsed }}/{{ towerStore.dailyFailMax }} 失败</span>
 
             <label class="tower-fast-toggle" title="勾选后跳过日志播放，直接看战斗结果">
@@ -2848,7 +2848,7 @@
             <div class="help-title">挑战规则</div>
             <table class="help-table"><tbody>
               <tr><td>跳层</td><td>不能跳层,只能挑战「最高已通关层 + 1」或重温任意已通关层</td></tr>
-              <tr><td>失败配额</td><td>挑战未通关层失败:扣 1 次配额,每日上限 <b>3 次</b>,跨日 00:00 重置</td></tr>
+              <tr><td>失败配额</td><td>挑战未通关层失败:扣 1 次配额,每日上限 <b>3 次</b>,每日 8:00 重置</td></tr>
               <tr><td>重温</td><td>挑战已通关层(无论胜负):不扣配额,不更新进度,不发首通奖,但仍发 v3.9 紫品功法</td></tr>
               <tr><td>战斗超时</td><td>单层 100 回合内未分胜负判定为失败</td></tr>
             </tbody></table>
@@ -2872,7 +2872,7 @@
               <tr><td>触发节点</td><td>每 10 层(<b>10 / 20 / 30 / … / 100</b>)</td></tr>
               <tr><td>单节点掉落</td><td>每次随机 <b>1-2 本</b></td></tr>
               <tr><td>同节点同日</td><td>仅触发 1 次,重新刷该层不再掉</td></tr>
-              <tr><td>全日上限</td><td><b>20 本</b>(达到上限即停发,跨日 00:00 重置)</td></tr>
+              <tr><td>全日上限</td><td><b>20 本</b>(达到上限即停发,每日 8:00 重置)</td></tr>
               <tr><td>触发条件</td><td>战斗胜利(首通/重温通用),失败不掉</td></tr>
               <tr><td>触满前提</td><td>当日打通到 100 层(10 节点 × 上限 2 本)</td></tr>
             </tbody></table>
@@ -3448,7 +3448,7 @@ async function onTowerSweep() {
 const towerSweepTooltip = computed(() => {
   if (!towerStore.eligible) return '大乘后开启';
   if (towerStore.maxFloor === 0) return '请先通关至少 1 层';
-  if (!towerStore.canSweep) return '今日已领取，明日 00:00 重置';
+  if (!towerStore.canSweep) return '今日已领取，明日 8:00 重置';
   return '领取每日扫荡奖励（暂未启用物品发放）';
 });
 onMounted(() => {

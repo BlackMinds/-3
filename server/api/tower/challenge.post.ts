@@ -18,6 +18,7 @@ import {
 } from '~/server/engine/towerData'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { ACTIVE_SKILLS } from '~/server/engine/skillData'
+// "今日"判定全部走 SQL 层 (NOW() AT TIME ZONE 'UTC')::DATE，北京时间 8:00 重置（与秘境一致）
 
 // v3.9 紫品主修池（仅通天塔每 10 层节点掉落）
 const TOWER_PURPLE_ACTIVE_IDS = ['gale_blade', 'wither_bloom', 'frost_art', 'sky_inferno', 'mountain_seal']
@@ -40,8 +41,12 @@ export default defineEventHandler(async (event) => {
     const floorDef = getFloorDef(floor)
     if (!floorDef) return { code: 400, message: '层数据不存在' }
 
+    // 取角色 + 用 SQL 表达式同时算"今日是否已重置过失败次数"
     const { rows: charRows } = await pool.query(
-      'SELECT * FROM characters WHERE user_id = $1', [event.context.userId]
+      `SELECT *,
+              (tower_daily_date = (NOW() AT TIME ZONE 'UTC')::DATE) AS fail_today
+         FROM characters WHERE user_id = $1`,
+      [event.context.userId]
     )
     if (charRows.length === 0) return { code: 400, message: '角色不存在' }
     const char = charRows[0]
@@ -54,13 +59,14 @@ export default defineEventHandler(async (event) => {
       return { code: 403, message: '通天塔需大乘境界且等级 ≥ 140' }
     }
 
-    // 跨日懒重置（在校验失败次数前必须先做）
-    const todayStr = todayString()
-    const lastDate = char.tower_daily_date ? formatDate(char.tower_daily_date) : null
+    // 跨日懒重置（必须在校验失败次数前；与秘境一致按 UTC 日期 → 北京时间每日 8:00 重置）
     let dailyFail = char.tower_daily_fail || 0
-    if (lastDate !== todayStr) {
+    if (!char.fail_today) {
       await pool.query(
-        'UPDATE characters SET tower_daily_fail = 0, tower_daily_date = CURRENT_DATE WHERE id = $1',
+        `UPDATE characters
+            SET tower_daily_fail = 0,
+                tower_daily_date = (NOW() AT TIME ZONE 'UTC')::DATE
+          WHERE id = $1`,
         [char.id]
       )
       dailyFail = 0
@@ -75,7 +81,7 @@ export default defineEventHandler(async (event) => {
     }
 
     if (isAdvance && dailyFail >= DAILY_FAIL_LIMIT) {
-      return { code: 403, message: '今日挑战次数已用尽，明日 00:00 重置' }
+      return { code: 403, message: '今日挑战次数已用尽，明日 8:00 重置' }
     }
 
     // 战斗锁（轻量）
@@ -160,7 +166,7 @@ export default defineEventHandler(async (event) => {
           // 当日已累计本数（SUM(count)），用于上限校验
           const { rows: capRows } = await client.query(
             `SELECT COALESCE(SUM(count), 0) AS dropped FROM tower_purple_drops
-              WHERE character_id = $1 AND drop_date = CURRENT_DATE`,
+              WHERE character_id = $1 AND drop_date = (NOW() AT TIME ZONE 'UTC')::DATE`,
             [char.id]
           )
           const droppedToday = Number(capRows[0]?.dropped || 0)
@@ -204,7 +210,7 @@ export default defineEventHandler(async (event) => {
             // 节点级幂等 INSERT：成功才发奖；冲突则该节点同日已掉过，跳过
             const dropRes = await client.query(
               `INSERT INTO tower_purple_drops (character_id, drop_date, floor, skill_id, count)
-               VALUES ($1, CURRENT_DATE, $2, $3, $4)
+               VALUES ($1, (NOW() AT TIME ZONE 'UTC')::DATE, $2, $3, $4)
                ON CONFLICT (character_id, drop_date, floor) DO NOTHING RETURNING id`,
               [char.id, floor, chosenList[0], grantCount]
             )
@@ -262,7 +268,10 @@ export default defineEventHandler(async (event) => {
         if (isAdvance) {
           dailyFail += 1
           await client.query(
-            'UPDATE characters SET tower_daily_fail = $1, tower_daily_date = CURRENT_DATE WHERE id = $2',
+            `UPDATE characters
+                SET tower_daily_fail = $1,
+                    tower_daily_date = (NOW() AT TIME ZONE 'UTC')::DATE
+              WHERE id = $2`,
             [dailyFail, char.id]
           )
         }
@@ -320,15 +329,3 @@ export default defineEventHandler(async (event) => {
     }
   }
 })
-
-function todayString(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-function formatDate(d: any): string {
-  if (d instanceof Date) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }
-  if (typeof d === 'string') return d.slice(0, 10)
-  return ''
-}
