@@ -3,7 +3,7 @@ import { getCharByUserId, weekStartStr } from '~/server/utils/sect'
 import { rand } from '~/server/utils/random'
 import { getSectBoss } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, getEquipTierWeight } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
       const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
       const tier = Math.min(10, Math.max(1, rewardBase + 2))
       const ps = primaryStats[slots[slotIdx]]
-      const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * RARITY_STAT_MUL[rarityIdx] * 1.10))
+      const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * RARITY_STAT_MUL[rarityIdx] * 1.10))
 
       // 宗门专属: 自带2-4条随机副属性
       const subStatPool = [

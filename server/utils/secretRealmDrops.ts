@@ -4,7 +4,7 @@
 import { generateEquipName } from '../engine/equipNameData'
 import { rollEquipSet } from '../engine/equipSetData'
 import { rollSubStats } from './equipment'
-import { EQUIP_PRIMARY_BASE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, getEquipTierWeight } from '~/shared/balance'
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -68,7 +68,7 @@ export function generateSecretRealmEquip(
   }
   const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
   const ps = primaryStats[slots[slotIdx]]
-  const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * statMuls[rarityIdx]))
+  const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * statMuls[rarityIdx]))
   const tierReqLevels: Record<number, number> = {
     1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195, 11: 215, 12: 240,
     13: 260, 14: 285, 15: 310,

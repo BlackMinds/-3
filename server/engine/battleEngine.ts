@@ -820,11 +820,16 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   //   T11-T15 MUL 收紧到每 tier 跳幅约 ×1.5 (HP/ATK/DEF 同步)
   //   T11 ×0.30 / T12 ×0.10 / T13 ×0.05 / T14 ×0.025 / T15 ×0.012
   if (tier >= 5) { MONSTER_ATK_MUL *= 0.80; MONSTER_HP_MUL *= 1.10; }
-  if (tier === 11) { MONSTER_HP_MUL *= 0.30;  MONSTER_ATK_MUL *= 0.30;  MONSTER_DEF_MUL *= 0.30;  }
-  if (tier === 12) { MONSTER_HP_MUL *= 0.10;  MONSTER_ATK_MUL *= 0.10;  MONSTER_DEF_MUL *= 0.10;  }
-  if (tier === 13) { MONSTER_HP_MUL *= 0.05;  MONSTER_ATK_MUL *= 0.05;  MONSTER_DEF_MUL *= 0.05;  }
-  if (tier === 14) { MONSTER_HP_MUL *= 0.025; MONSTER_ATK_MUL *= 0.025; MONSTER_DEF_MUL *= 0.025; }
-  if (tier === 15) { MONSTER_HP_MUL *= 0.012; MONSTER_ATK_MUL *= 0.012; MONSTER_DEF_MUL *= 0.012; }
+  // v3.8.3 (2026-05-06): T11-T15 MUL 上调，每 tier 综合跨幅 ~×1.85（旧版 ~×1.5 太扁，
+  //   导致 T10 装备能蹭到 T14 地图）。配合 shared/balance.ts:getEquipTierWeight 装备 T11+
+  //   主属性加陡 (T10→T14 ×1.4 → ×1.8) 协同抵消。
+  // 系数按 ALL_MAPS 各 tier power 实际跨度反推，让 T12→T13/T14/T15 实际跨幅都落到 ~×1.85
+  // （而不是按等比例 0.30/0.10/0.05/0.025/0.012 — 那个老系数没考虑 power 本身在 T13 跳很猛）。
+  if (tier === 11) { MONSTER_HP_MUL *= 0.319; MONSTER_ATK_MUL *= 0.319; MONSTER_DEF_MUL *= 0.319; }
+  if (tier === 12) { MONSTER_HP_MUL *= 0.148; MONSTER_ATK_MUL *= 0.148; MONSTER_DEF_MUL *= 0.148; }
+  if (tier === 13) { MONSTER_HP_MUL *= 0.063; MONSTER_ATK_MUL *= 0.063; MONSTER_DEF_MUL *= 0.063; }
+  if (tier === 14) { MONSTER_HP_MUL *= 0.037; MONSTER_ATK_MUL *= 0.037; MONSTER_DEF_MUL *= 0.037; }
+  if (tier === 15) { MONSTER_HP_MUL *= 0.022; MONSTER_ATK_MUL *= 0.022; MONSTER_DEF_MUL *= 0.022; }
 
   return {
     name: template.name,

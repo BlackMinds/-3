@@ -1253,3 +1253,93 @@ INSERT INTO redeem_codes (code, attachments, description) VALUES
 ON CONFLICT (code) DO UPDATE SET
   attachments = EXCLUDED.attachments,
   description = EXCLUDED.description;
+
+-- ========================================
+-- 一次性数据迁移记账表（避免重复执行 UPDATE 类迁移）
+-- ========================================
+CREATE TABLE IF NOT EXISTS _schema_migrations (
+  id VARCHAR(80) PRIMARY KEY,
+  applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- v3.8.3 (2026-05-06): T11+ 装备主属性 tier 权重重算
+-- ========================================
+-- 配合 shared/balance.ts:getEquipTierWeight 改动 (tier <= 10 ? tier : 10 + (tier-10)*2):
+--   T11 ×12/11 / T12 ×14/12 / T13 ×16/13 / T14 ×18/14 / T15 ×20/15
+-- 涉及三处持久化数据：
+--   1. character_equipment           — 玩家持有的装备
+--   2. market_listings.item_snapshot — 市场挂单中的装备快照（status='active'）
+--   3. mails.attachments[].snapshot  — 邮件附件中的装备快照（市场退回/系统奖励等）
+-- 用 _schema_migrations 表保证幂等，跑过一次后再次执行不会再缩。
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM _schema_migrations WHERE id = 'v3_8_3_equip_tier_weight') THEN
+
+    -- 1. character_equipment
+    UPDATE character_equipment
+       SET primary_value = GREATEST(
+             1,
+             FLOOR(primary_value::numeric * (10 + (tier - 10) * 2) / tier)::int
+           )
+     WHERE tier >= 11;
+
+    -- 2. market_listings 挂单中的装备快照
+    UPDATE market_listings
+       SET item_snapshot = jsonb_set(
+             item_snapshot,
+             '{primary_value}',
+             to_jsonb(GREATEST(
+               1,
+               FLOOR((item_snapshot->>'primary_value')::numeric
+                     * (10 + ((item_snapshot->>'tier')::int - 10) * 2)
+                     / (item_snapshot->>'tier')::int)::int
+             ))
+           )
+     WHERE category = 'equipment'
+       AND status = 'active'
+       AND (item_snapshot ? 'tier')
+       AND (item_snapshot->>'tier')::int >= 11;
+
+    -- 3. mails.attachments 数组里 type='equipment' 且 tier>=11 的快照
+    UPDATE mails m
+       SET attachments = sub.new_atts
+      FROM (
+        SELECT m2.id,
+               jsonb_agg(
+                 CASE
+                   WHEN att->>'type' = 'equipment'
+                    AND (att->'snapshot' ? 'tier')
+                    AND (att->'snapshot'->>'tier')::int >= 11
+                   THEN jsonb_set(
+                          att,
+                          '{snapshot,primary_value}',
+                          to_jsonb(GREATEST(
+                            1,
+                            FLOOR((att->'snapshot'->>'primary_value')::numeric
+                                  * (10 + ((att->'snapshot'->>'tier')::int - 10) * 2)
+                                  / (att->'snapshot'->>'tier')::int)::int
+                          ))
+                        )
+                   ELSE att
+                 END
+                 ORDER BY ord
+               ) AS new_atts
+          FROM mails m2
+          CROSS JOIN LATERAL jsonb_array_elements(m2.attachments)
+                     WITH ORDINALITY AS x(att, ord)
+         WHERE jsonb_typeof(m2.attachments) = 'array'
+           AND jsonb_array_length(m2.attachments) > 0
+           AND EXISTS (
+             SELECT 1 FROM jsonb_array_elements(m2.attachments) a
+              WHERE a->>'type' = 'equipment'
+                AND (a->'snapshot' ? 'tier')
+                AND (a->'snapshot'->>'tier')::int >= 11
+           )
+         GROUP BY m2.id
+      ) sub
+     WHERE m.id = sub.id;
+
+    INSERT INTO _schema_migrations (id) VALUES ('v3_8_3_equip_tier_weight');
+  END IF;
+END $$;

@@ -44,6 +44,15 @@ export const EQUIP_PRIMARY_BASE: Record<string, number> = {
 // 品质对主属性的乘子 (白/绿/蓝/紫/金/红)
 export const RARITY_STAT_MUL = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5] as const
 
+// v3.8.3 (2026-05-06): 装备主属性 tier 权重（仅 T11+ 加陡，T1-T10 保持原线性）
+// 背景：T11-T15 怪物属性跨幅被 MUL 压扁后（每 tier ~×1.5），装备主属性
+// 仍是 base × tier 线性，T10→T14 仅 ×1.4，导致 T10 装备能蹭到 T14 地图。
+// 改成 T11+ 段每 tier 权重 +2，T10→T14 装备主属性提升到 ×1.8。
+// 配合 battleEngine.ts T11-T15 MUL 上调（每 tier 跨幅 ~×1.85）。
+export function getEquipTierWeight(tier: number): number {
+  return tier <= 10 ? tier : 10 + (tier - 10) * 2
+}
+
 // 强化曲线: 每级 +10%, +10 满强化 = +100%
 export const ENHANCE_MUL_PER_LEVEL = 0.10
 

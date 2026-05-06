@@ -1,3 +1,100 @@
+## ✅ v3.8.3 (2026-05-06) — T11-T15 跨幅修复（怪物 MUL 上调 + 装备 tier 权重加陡）
+
+### 背景
+
+实战观察：拿 T10 装备就能蹭着打 T14 地图。根因有三条叠加：
+
+1. **怪物 T11-T15 综合属性跨幅被压扁**。原 MUL 系数（×0.30 / ×0.10 / ×0.05 / ×0.025 / ×0.012）配合 power 增长，每 tier 实际跨幅只有 ~×1.5。
+2. **装备主属性 `base × tier` 严格线性**。T10 → T14 装备主属性仅 ×1.4。
+3. **入口无境界/装备 tier 准入**。fight.post.ts 不校验 tier，玩家随便点。
+
+第 3 条暂不动（保持自由探索），用前两条联动让数值自然形成"装备追不上就打不过"。
+
+### 改动
+
+#### A. 怪物 T11-T15 MUL（每 tier 综合跨幅 ~×1.85，全链均匀）
+
+`server/engine/battleEngine.ts:823-827`：
+
+| tier | 旧 MUL | 新 MUL | 倍率 |
+|---|---|---|---|
+| T11 | 0.300 | **0.319** | ×1.06 |
+| T12 | 0.100 | **0.148** | ×1.48 |
+| T13 | 0.050 | **0.063** | ×1.26 |
+| T14 | 0.025 | **0.037** | ×1.48 |
+| T15 | 0.012 | **0.022** | ×1.83 |
+
+系数按 ALL_MAPS 各 tier power 实际跨度反推（不是按等比例缩），让 T12→T13/T14/T15 实际综合跨幅都落到 ~×1.85。
+sim 验证 (Boss)：T10→T11 ×1.20 / T11→T12 ×1.67 / T12→T13 ×1.81 / T13→T14 ×1.89 / T14→T15 ×1.85，全链均匀。
+T10→T15 累计跨幅 ×12.78（旧版 ×7.5）。
+
+#### B. 装备主属性 tier 权重加陡（仅 T11+，T1-T10 完全不变）
+
+`shared/balance.ts` 新增 `getEquipTierWeight(tier)`：
+
+```ts
+export function getEquipTierWeight(tier: number): number {
+  return tier <= 10 ? tier : 10 + (tier - 10) * 2
+}
+```
+
+| tier | 旧 weight | 新 weight | 倍率 |
+|---|---|---|---|
+| T10 | 10 | 10 | 不变 |
+| T11 | 11 | 12 | ×1.091 |
+| T12 | 12 | 14 | ×1.167 |
+| T13 | 13 | 16 | ×1.231 |
+| T14 | 14 | 18 | ×1.286 |
+| T15 | 15 | 20 | ×1.333 |
+
+T10→T14 装备主属性从 ×1.4 提升到 **×1.8**。
+
+8 处装备生成入口已统一改用 `getEquipTierWeight`：
+- `server/api/battle/fight.post.ts:284`
+- `server/utils/secretRealmDrops.ts:71`
+- `server/api/game/offline-claim.post.ts:228`
+- `server/api/equipment/craft-set-fragment.post.ts:43`
+- `server/engine/achievementData.ts:254`
+- `server/api/sect/tasks/weekly/claim.post.ts:77`
+- `server/api/sect/shop/buy.post.ts:185`
+- `server/api/sect/boss/claim/[bossId].post.ts:76`
+
+#### C. 线上数据迁移（一次性）
+
+`server/database/migration.sql` 末尾追加 `v3_8_3_equip_tier_weight` DO 块，按 `tierWeight/tier` 比例 (T11×12/11、T12×14/12、T13×16/13、T14×18/14、T15×20/15) 缩放：
+
+1. `character_equipment.primary_value` (T11+)
+2. `market_listings.item_snapshot.primary_value` (active + T11+)
+3. `mails.attachments[].snapshot.primary_value` (type='equipment' + T11+)
+
+幂等保护：新增 `_schema_migrations` 表，跑过一次后再次执行直接跳过。验证脚本 `tools/verify-tier-weight-migration.mjs`，结果 7/7 全通过。
+
+### 联动效果（玩家穿 T14 装备 vs 怪物 T14）
+
+假设玩家其他成长（境界/等级/觉醒/套装）T10→T14 给 ×3：
+
+| 项 | 旧 | 新 |
+|---|---|---|
+| 怪物 T10→T14 综合属性 | ×4.83 | **×11.7** |
+| 装备主属性 T10→T14 | ×1.4 | **×1.8** |
+| 玩家总成长（×3 其他 × 装备） | ×4.2 | **×5.4** |
+| 拿 T10 装备打 T14 体感 | 勉强能蹭 | 装备明显不够，必须升 |
+
+### 涉及文件
+
+- `shared/balance.ts` — 新增 `getEquipTierWeight`
+- `server/engine/battleEngine.ts:823-827` — T11-T15 MUL
+- `server/api/battle/fight.post.ts` 等 8 处装备生成入口
+- `server/database/migration.sql` 末尾 — `_schema_migrations` 表 + v3.8.3 DO 块
+- `tools/verify-tier-weight-migration.mjs` — 一次性验证脚本
+
+### 已知遗留
+
+- 副词条 tier 系数 (`server/utils/equipment.ts:getTierMul`) 暂未同步加陡（FLAT +10%/tier 已经较陡，先观察）。如果实战 T11+ 装备副属性还是不够拉开档次，再单独调一次。
+- 因 power 在普通怪/boss 上结构不同（boss role 占比 0.30/0.30/0.25 比 tank 0.15/0.35 平衡），单 tier 跨幅会随 role 浮动。整体均值 ~×1.85，单点 ±20% 可接受。
+
+---
+
 ## ✅ v3.8.2 (2026-05-06) — 怪物整体加强 5%（HP/ATK +5%，DEF -5%）
 
 把怪物三个全局系数等比微调，让中后期略硬一点，玩家攻防互动更紧。

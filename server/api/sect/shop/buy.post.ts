@@ -3,7 +3,7 @@ import { getCharByUserId, getMembership, weekStartStr } from '~/server/utils/sec
 import { rand } from '~/server/utils/random'
 import { SHOP_ITEMS } from '~/server/engine/sectData'
 import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE } from '~/shared/balance'
+import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE, getEquipTierWeight } from '~/shared/balance'
 import { rollSubStats } from '~/server/utils/equipment'
 
 export default defineEventHandler(async (event) => {
@@ -182,7 +182,7 @@ export default defineEventHandler(async (event) => {
         const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
         const tier = rand(6, 9)
         const ps = primaryStats[slots[slotIdx]]
-        const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * tier * RARITY_STAT_MUL[rarityIdx] * 1.10))
+        const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * RARITY_STAT_MUL[rarityIdx] * 1.10))
         const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
         const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
         const equipName = generateEquipName(rarity, slots[slotIdx], weaponType, tier, ps, null, '宝箱')
