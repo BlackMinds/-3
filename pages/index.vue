@@ -3023,11 +3023,12 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '鱼鱼' }]"
                 >
                   <div class="rank-num">
                     <span v-if="item.rank === 1" class="rank-crown">👑</span>
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-bolt">⚡</span>
+                    <span v-if="item.name === '鱼鱼'" class="yuyu-bolt">🔬</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
@@ -3035,6 +3036,7 @@
                   <div class="rank-name">
                     {{ item.name }}
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-badge">影帝</span>
+                    <span v-if="item.name === '鱼鱼'" class="yuyu-badge">科研家</span>
                     <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
                   </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
@@ -12822,6 +12824,144 @@ onUnmounted(() => {
 }
 
 @keyframes wuyanzu-badge-shine {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+
+/* ==================== 「鱼鱼」专属科研家特效 ==================== */
+.ranking-row.yuyu-row {
+  padding-top: 20px;
+  background: linear-gradient(90deg,
+    rgba(80, 220, 255, 0.22) 0%,
+    rgba(60, 200, 200, 0.18) 25%,
+    rgba(120, 180, 255, 0.18) 50%,
+    rgba(100, 240, 200, 0.14) 75%,
+    rgba(80, 220, 255, 0.1) 100%);
+  background-size: 220% 100%;
+  animation: yuyu-bg-flow 5s linear infinite, yuyu-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes yuyu-bg-flow {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+
+@keyframes yuyu-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(80, 220, 255, 0.85),
+      inset -3px 0 0 0 rgba(120, 240, 200, 0.6),
+      inset 0 0 0 1px rgba(140, 210, 255, 0.45),
+      0 0 18px rgba(80, 200, 255, 0.4),
+      0 0 38px rgba(60, 220, 200, 0.2);
+  }
+  50% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(140, 240, 255, 1),
+      inset -3px 0 0 0 rgba(160, 255, 220, 0.95),
+      inset 0 0 0 1px rgba(180, 230, 255, 0.8),
+      0 0 38px rgba(80, 200, 255, 0.85),
+      0 0 70px rgba(60, 220, 200, 0.5);
+  }
+}
+
+/* 流光：青蓝色 */
+.ranking-row.yuyu-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 60%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(120, 230, 255, 0.65) 30%,
+    rgba(220, 255, 250, 0.95) 50%,
+    rgba(140, 255, 220, 0.65) 70%,
+    transparent 100%);
+  animation: rank-shimmer 2.4s ease-in-out infinite;
+}
+
+/* 旋转光环：青蓝绿 conic */
+.ranking-row.yuyu-row::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  width: 80px;
+  height: 80px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(5px);
+  background: conic-gradient(from 0deg,
+    rgba(80, 220, 255, 0.6) 0deg,
+    rgba(100, 240, 220, 0.55) 90deg,
+    rgba(140, 200, 255, 0.55) 180deg,
+    rgba(120, 255, 200, 0.5) 270deg,
+    rgba(80, 220, 255, 0.6) 360deg);
+  animation: rank-halo-rotate 3.6s linear infinite;
+}
+
+/* 名字文字：青蓝绿流光 */
+.ranking-row.yuyu-row .rank-name {
+  background: linear-gradient(90deg,
+    #5cdcff 0%, #6be0d2 22%, #6bb8ff 44%,
+    #8cffd0 66%, #b0e8ff 84%, #5cdcff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rank-text-shimmer 2.6s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 6px rgba(80, 220, 255, 0.55)) drop-shadow(0 0 12px rgba(100, 240, 200, 0.35));
+}
+
+/* 显微镜装饰（仅鱼鱼） */
+.yuyu-bolt {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 5px rgba(140, 240, 255, 0.95)) drop-shadow(0 0 10px rgba(100, 240, 200, 0.6));
+  animation: yuyu-bolt-bob 2.4s ease-in-out infinite;
+}
+
+@keyframes yuyu-bolt-bob {
+  0%, 100% { transform: translateX(-50%) translateY(0) rotate(-6deg) scale(1); opacity: 0.95; }
+  25% { transform: translateX(-50%) translateY(-3px) rotate(4deg) scale(1.08); opacity: 1; }
+  50% { transform: translateX(-50%) translateY(0) rotate(8deg) scale(1.14); opacity: 1; }
+  75% { transform: translateX(-50%) translateY(-3px) rotate(2deg) scale(1.08); opacity: 1; }
+}
+
+/* 科研家徽章 */
+.yuyu-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #4ec8ff 0%, #5cd8c0 35%, #6bb8ff 70%, #4ec8ff 100%);
+  background-size: 220% 100%;
+  border-radius: 3px;
+  animation: yuyu-badge-shine 2.4s linear infinite;
+  box-shadow: 0 0 6px rgba(80, 220, 255, 0.7), 0 0 12px rgba(100, 240, 200, 0.4);
+  vertical-align: middle;
+  letter-spacing: 1px;
+  filter: none;
+}
+
+@keyframes yuyu-badge-shine {
   0% { background-position: 0% 0; }
   100% { background-position: 220% 0; }
 }
