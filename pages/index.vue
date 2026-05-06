@@ -5578,6 +5578,18 @@ function getScaledSkillDesc(skill: any, level: number): string {
     }
     // 回血
     if (skill.healAtkRatio) parts.push(`回复${Math.round(skill.healAtkRatio * m * 100)}%攻击力气血`);
+    // v3.9 主修内蕴被动（不随等级 scaling，紫品主修自带）
+    if (skill.type === 'active' && skill.innateMain) {
+      const im = skill.innateMain;
+      if (im.mainSkillCritRate)          parts.push(`主修暴击率+${(im.mainSkillCritRate * 100).toFixed(0)}%`);
+      if (im.mainSkillLifesteal)         parts.push(`主修命中回${(im.mainSkillLifesteal * 100).toFixed(1)}%最大气血`);
+      if (im.mainSkillArmorPen)          parts.push(`主修破甲+${(im.mainSkillArmorPen * 100).toFixed(0)}%`);
+      if (im.mainSkillBurnAmp)           parts.push(`主修灼烧每跳+${(im.mainSkillBurnAmp * 100).toFixed(0)}%`);
+      if (im.mainSkillExtraFreezeChance) parts.push(`主修命中${(im.mainSkillExtraFreezeChance * 100).toFixed(0)}%概率额外冻结1回合`);
+      if (im.mainSkillBrittleAmp)        parts.push(`主修脆弱减防加深+${(im.mainSkillBrittleAmp * 100).toFixed(0)}%`);
+      if (im.mainSkillBleedAmp)          parts.push(`主修流血每跳+${(im.mainSkillBleedAmp * 100).toFixed(0)}%`);
+      if (im.mainSkillPoisonAmp)         parts.push(`主修中毒每跳+${(im.mainSkillPoisonAmp * 100).toFixed(0)}%`);
+    }
   }
 
   // 被动
