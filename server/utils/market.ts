@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import type { PoolClient } from 'pg'
 import { sendMail, type EquipmentSnapshot, type MailAttachment } from '~/server/utils/mail'
+import { getEnhanceSellMul } from '~/server/utils/equipment'
 
 // ============================================
 // 坊市常量（与 design/system-market.md §八 对应）
@@ -40,17 +41,18 @@ export function buildCategoryKey(eq: {
 
 // ============================================
 // 基础参考价（按归一化键查表，未命中则按公式兜底）
-// 规则简化：base = 售价系数 × tier × (1 + enh × 0.10) × 8
+// 规则简化：base = 售价系数 × tier × 强化阶梯倍率 × 8
 // 之所以乘 8：装备售价是回收价（玩家卖给系统），坊市流通价应显著高于回收价
+// 强化倍率与系统回收一致（getEnhanceSellMul），保证两边比例稳定
 // ============================================
 const RARITY_SELL_BASE: Record<string, number> = {
-  purple: 300, gold: 1500, red: 6000,
+  purple: 400, gold: 1000, red: 3000,
 }
 
 export function computeBasePrice(rarity: string, tier: number, enhance: number): number {
   const base = RARITY_SELL_BASE[rarity]
   if (!base) return 0
-  return Math.floor(base * tier * (1 + enhance * 0.10) * 8)
+  return Math.floor(base * tier * getEnhanceSellMul(enhance) * 8)
 }
 
 // 取参考价：先查 market_reference_price，未命中则查 market_base_price，最后兜底公式

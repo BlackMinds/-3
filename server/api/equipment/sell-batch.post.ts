@@ -1,10 +1,9 @@
 import { getPool } from '~/server/database/db'
-import { getCharId } from '~/server/utils/equipment'
+import { getCharId, EQUIP_SELL_PRICES, getEnhanceSellMul } from '~/server/utils/equipment'
 import { updateSectDailyTask } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 
 const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
-const SELL_PRICES: Record<string, number> = { white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000 } // v3.4.2: -70%
 const VALID_BASE_SLOTS = new Set(['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant'])
 
 export default defineEventHandler(async (event) => {
@@ -111,7 +110,7 @@ export default defineEventHandler(async (event) => {
     const ids: number[] = []
     for (const eq of filteredRows) {
       const enhLv = eq.enhance_level || 0
-      total += Math.floor((SELL_PRICES[eq.rarity] || 10) * eq.tier * (1 + enhLv * 0.1))
+      total += Math.floor((EQUIP_SELL_PRICES[eq.rarity] || 10) * eq.tier * getEnhanceSellMul(enhLv))
       ids.push(eq.id)
     }
 

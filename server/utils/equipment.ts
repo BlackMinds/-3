@@ -132,11 +132,25 @@ export async function getCharId(userId: any): Promise<{ id: number } | null> {
   return rows.length > 0 ? rows[0] : null
 }
 
-// 装备出售基础价（v3.4.2: -70%）
-// 实际价 = base × tier × (1 + enhance_level × 0.1)
+// 装备出售基础价
+// 实际价 = base × tier × getEnhanceSellMul(enhance_level)
 // 自动出售/背包满转售/团队战利品转售时 enhance_level 为 0，可忽略加成
+// 阶差 ×3.33/×3/×2.67/×2.5/×3，跨度 200×；高端不再暴利、低端不再废柴
 export const EQUIP_SELL_PRICES: Record<string, number> = {
-  white: 3, green: 15, blue: 60, purple: 300, gold: 1500, red: 6000,
+  white: 15, green: 50, blue: 150, purple: 400, gold: 1000, red: 3000,
+}
+
+// 强化售价倍率（阶梯）：+0~+5 每级 +0.10，+5~+10 每级 +0.20，+10~+15 每级 +0.30
+// WHY: 原线性 (1+enh×0.10) 满级仅 ×2.5，远低于 +15 装备实际属性增益；中后段加速以贴近真实价值
+const ENHANCE_SELL_MUL = [
+  1.0, 1.1, 1.2, 1.3, 1.4, 1.5,
+  1.7, 1.9, 2.1, 2.3, 2.5,
+  2.8, 3.1, 3.4, 3.7, 4.0,
+]
+export function getEnhanceSellMul(enh: number | null | undefined): number {
+  if (!Number.isFinite(enh as number) || (enh as number) <= 0) return 1.0
+  const i = Math.min(Math.floor(enh as number), 15)
+  return ENHANCE_SELL_MUL[i]
 }
 
 // ============================================
