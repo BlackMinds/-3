@@ -808,9 +808,10 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   // v3.8 (2026-05-05): 怪物血量 ×2 / 攻击 ×0.6 — 让战斗回合数翻倍，给长战 BD（DOT/吸血/回血/斩杀）
   //   更大发挥窗口；攻击守恒玩家承伤（实测 sim ATK×0.60 让 T1-T7 承伤 0.93~1.07× baseline）。
   //   见 test/sim-hp2x-atk065.ts 验证脚本与 design/numerical-balance.md v3.8。
-  let MONSTER_HP_MUL  = 0.88;  // v3.8: 0.44 × 2
-  let MONSTER_ATK_MUL = 0.372; // v3.8: 0.62 × 0.6
-  let MONSTER_DEF_MUL = 0.44;
+  // 2026-05-06: 怪物整体加强 — HP/ATK ×1.05，DEF ×0.95
+  let MONSTER_HP_MUL  = 0.924;  // v3.8: 0.44 × 2 → ×1.05
+  let MONSTER_ATK_MUL = 0.3906; // v3.8: 0.62 × 0.6 → ×1.05
+  let MONSTER_DEF_MUL = 0.418;  // 0.44 × 0.95
   const MONSTER_SPD_MUL = 0.96;
   // v3.7.1 二次微调：
   //   - T5+ 攻击 ×0.80（中后期玩家被怪压太狠，整体降攻）
