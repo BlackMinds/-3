@@ -461,12 +461,12 @@
                 <span>法宝装备</span>
                 <div class="loadout-switcher">
                   <button
-                    v-for="n in 3" :key="n"
+                    v-for="n in 5" :key="n"
                     class="loadout-btn"
                     :class="{ active: activeLoadout === n, switching: loadoutSwitching }"
                     :disabled="loadoutSwitching || activeLoadout === n"
                     @click="switchLoadout(n)"
-                    :title="`切换到装备方案 ${n}（如 PvE / PvP / 秘境）`"
+                    :title="`切换到装备方案 ${n}（如 PvE / PvP / 秘境 / 团战 / 备用）`"
                   >{{ n }}</button>
                 </div>
               </div>
@@ -719,14 +719,14 @@
 
             <!-- 装备选择 -->
             <div v-if="sectItemDialog.type === 'equip'" class="sect-dialog-equip-list">
-              <div v-for="eq in (sectItemDialog.equipSource === 'equipped' ? equippedEquipList : bagEquipList).filter(sectItemDialog.equipFilter || (() => true))" :key="eq.id"
+              <div v-for="eq in (sectItemDialog.equipSource === 'equipped' ? equippedEquipList : sectItemDialog.equipSource === 'all' ? equipList : bagEquipList).filter(sectItemDialog.equipFilter || (() => true))" :key="eq.id"
                 class="sect-dialog-equip-item" :style="{ borderColor: getEquipColor(eq) }"
                 @click="sectItemDialog.onSelect(eq.id)">
                 <span :style="{ color: getEquipColor(eq) }">{{ eq.name }}</span>
-                <span class="sect-dialog-equip-tier">T{{ eq.tier }} · {{ getRarityName(eq.rarity) }}</span>
+                <span class="sect-dialog-equip-tier">T{{ eq.tier }} · {{ getRarityName(eq.rarity) }}{{ eq.slot ? ' · 已穿戴' : '' }}</span>
               </div>
-              <div v-if="(sectItemDialog.equipSource === 'equipped' ? equippedEquipList : bagEquipList).length === 0" class="inventory-hint">
-                {{ sectItemDialog.equipSource === 'equipped' ? '身上无装备' : '背包无装备' }}
+              <div v-if="(sectItemDialog.equipSource === 'equipped' ? equippedEquipList : sectItemDialog.equipSource === 'all' ? equipList : bagEquipList).filter(sectItemDialog.equipFilter || (() => true)).length === 0" class="inventory-hint">
+                没有符合条件的装备
               </div>
             </div>
 
@@ -736,6 +736,32 @@
                 class="sect-dialog-btn" @click="sectItemDialog.onSelect(sid)">
                 {{ getSkillNameById(sid) }}
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 套装重铸：第二阶段（选目标套装） -->
+      <div v-if="setReforgeDialog.show" class="modal-overlay" @click="setReforgeDialog.show = false">
+        <div class="modal-content" @click.stop style="max-width: 520px;">
+          <div class="modal-header">
+            <h3>选择目标套装</h3>
+            <button class="modal-close" @click="setReforgeDialog.show = false">×</button>
+          </div>
+          <div class="modal-body">
+            <p style="color: var(--ink-medium); margin-bottom: 12px;" v-if="setReforgeDialog.equip">
+              将【<span :style="{ color: getEquipColor(setReforgeDialog.equip) }">{{ setReforgeDialog.equip.name }}</span>】
+              的套装身份重铸为：
+            </p>
+            <div class="sect-dialog-options">
+              <button v-for="s in reforgeCandidateSets" :key="s.setKey"
+                class="sect-dialog-btn" :title="s.desc"
+                @click="confirmSetReforge(s.setKey)">
+                {{ s.name }}（{{ s.prefix }}）
+              </button>
+              <div v-if="reforgeCandidateSets.length === 0" class="inventory-hint">
+                没有可重铸的目标套装（武器装备需匹配武器类型）
+              </div>
             </div>
           </div>
         </div>
@@ -930,7 +956,19 @@
         <div class="skills-layout">
           <!-- 左侧:已装备 -->
           <div class="skills-equipped">
-            <div class="panel-title">已装备功法</div>
+            <div class="panel-title equip-title-row">
+              <span>已装备功法</span>
+              <div class="loadout-switcher">
+                <button
+                  v-for="n in 3" :key="'sl' + n"
+                  class="loadout-btn"
+                  :class="{ active: activeSkillLoadout === n, switching: skillLoadoutSwitching }"
+                  :disabled="skillLoadoutSwitching || activeSkillLoadout === n"
+                  @click="switchSkillLoadout(n)"
+                  :title="`切换到功法方案 ${n}（如 PvE 输出 / PvP 控制 / 团战支援）`"
+                >{{ n }}</button>
+              </div>
+            </div>
 
             <!-- 主修 -->
             <div class="skill-group">
@@ -1727,6 +1765,14 @@
             @click="openAwakenDialog(clickedEquip); clickedEquip = null"
           >
             {{ clickedEquip.awaken_effect ? '洗练 ✦' : '附灵 ✦' }}
+          </button>
+          <button
+            v-if="clickedEquip.set_id && getItemCount('set_reforge_voucher') >= 1"
+            class="equip-action-btn-gold"
+            :title="`套装重铸符 ×${getItemCount('set_reforge_voucher')}`"
+            @click="openReforgeFromEquip(clickedEquip)"
+          >
+            重铸套装 ❖
           </button>
           <button v-if="clickedEquip.slot" class="equip-action-btn-red" @click="quickUnequip(clickedEquip)">卸下</button>
           <button v-if="!clickedEquip.slot" class="equip-action-btn-red" @click="quickSell(clickedEquip)" :disabled="clickedEquip.locked" :title="clickedEquip.locked ? '装备已锁定，请先解锁' : ''">出售</button>
@@ -6865,7 +6911,7 @@ const sectItemDialog = ref<{
   title: string;
   message: string;
   equipFilter?: (eq: any) => boolean;
-  equipSource?: 'bag' | 'equipped';
+  equipSource?: 'bag' | 'equipped' | 'all';
   onSelect: (val: any) => void;
 }>({
   show: false,
@@ -6874,6 +6920,52 @@ const sectItemDialog = ref<{
   message: '',
   onSelect: () => {},
 });
+
+// 套装重铸第二阶段：选目标套装
+const setReforgeDialog = ref<{
+  show: boolean;
+  equip: any | null;
+}>({ show: false, equip: null });
+
+// 套装重铸：从装备点击面板入口打开
+function openReforgeFromEquip(eq: any) {
+  if (!eq?.set_id) return;
+  setReforgeDialog.value = { show: true, equip: eq };
+  clickedEquip.value = null;
+}
+
+const reforgeCandidateSets = computed(() => {
+  const eq = setReforgeDialog.value.equip;
+  if (!eq) return [];
+  return EQUIP_SETS.filter(s => {
+    const req = (s.tiers[0] as any)?.hooks?.weaponRequired;
+    if (!req) return s.setKey !== eq.set_id;
+    return eq.base_slot === 'weapon' && eq.weapon_type === req && s.setKey !== eq.set_id;
+  });
+});
+
+async function confirmSetReforge(setKey: string) {
+  const eq = setReforgeDialog.value.equip;
+  if (!eq) return;
+  try {
+    const res: any = await $fetch('/api/equipment/reforge-set', {
+      method: 'POST',
+      body: { equip_id: eq.id, set_key: setKey },
+      headers: getAuthHeaders(),
+    });
+    if (res.code === 200) {
+      showToast(res.message, 'success');
+      await loadPills();
+      await loadEquipList();
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch {
+    showToast('重铸失败', 'error');
+  }
+  setReforgeDialog.value.show = false;
+  setReforgeDialog.value.equip = null;
+}
 
 async function useSectItem(item: any) {
   const id = item.pill_id;
@@ -6963,17 +7055,8 @@ async function useSectItem(item: any) {
     return;
   }
 
-  if (id === 'set_fragment') {
-    if (item.count < 5) {
-      showToast(`套装碎片不足,需要5个(当前${item.count})`, 'error');
-      return;
-    }
-    if (!confirm('消耗5个套装碎片合成一件金品装备?')) return;
-    try {
-      const res: any = await $fetch('/api/equipment/craft-set-fragment', { method: 'POST', headers: getAuthHeaders() });
-      if (res.code === 200) { showToast(res.message, 'success'); await loadPills(); await loadEquipList(); }
-      else showToast(res.message, 'error');
-    } catch {}
+  if (id === 'set_reforge_voucher') {
+    showToast('请在装备点击面板的「重铸套装 ❖」按钮使用', 'info');
     return;
   }
 
@@ -7431,11 +7514,11 @@ const showEquipPicker = ref(false);
 const currentPickSlot = ref('');
 const currentPickSlotName = computed(() => getSlotName(currentPickSlot.value));
 
-// 装备方案切换（PvE / PvP / 秘境 三套预设）
+// 装备方案切换（5 套预设）
 const loadoutSwitching = ref(false);
 const activeLoadout = computed<number>(() => {
   const v = Number(gameStore.character?.active_loadout);
-  return v >= 1 && v <= 3 ? v : 1;
+  return v >= 1 && v <= 5 ? v : 1;
 });
 async function switchLoadout(n: number) {
   if (loadoutSwitching.value) return;
@@ -7464,6 +7547,48 @@ async function switchLoadout(n: number) {
     showToast('切换装备方案失败', 'error');
   } finally {
     loadoutSwitching.value = false;
+  }
+}
+
+// 功法方案切换（3 套预设：如 PvE 输出 / PvP 控制 / 团战支援）
+const skillLoadoutSwitching = ref(false);
+const activeSkillLoadout = computed<number>(() => {
+  const v = Number(gameStore.character?.active_skill_loadout);
+  return v >= 1 && v <= 3 ? v : 1;
+});
+async function switchSkillLoadout(n: number) {
+  if (skillLoadoutSwitching.value) return;
+  if (activeSkillLoadout.value === n) return;
+  skillLoadoutSwitching.value = true;
+  try {
+    const res: any = await $fetch('/api/skill/loadout/switch', {
+      method: 'POST',
+      body: { loadout_id: n },
+      headers: getAuthHeaders(),
+    });
+    if (res.code === 200) {
+      // 切换前清空旧方案的本地装备状态（loadSkillInventory 只填充非空槽，不会清空）
+      _skipSave = true;
+      equippedActive.value = null;
+      equippedDivines.value = [null, null, null];
+      equippedPassives.value = [null, null, null];
+      _skipSave = false;
+      // 刷新角色（active_skill_loadout）+ 已装备功法列表
+      await Promise.all([gameStore.loadGameData(), loadSkillInventory()]);
+      const skipped = Array.isArray(res.data?.skipped) ? res.data.skipped : [];
+      if (skipped.length > 0) {
+        showToast(`已切到功法方案 ${n}，${skipped.length} 项因功法已售出或槽位未解锁未装备`, 'info');
+      } else {
+        showToast(`已切换到功法方案 ${n}`, 'success');
+      }
+    } else {
+      showToast(res.message || '切换失败', 'error');
+    }
+  } catch (err) {
+    console.error('切换功法方案失败', err);
+    showToast('切换功法方案失败', 'error');
+  } finally {
+    skillLoadoutSwitching.value = false;
   }
 }
 
