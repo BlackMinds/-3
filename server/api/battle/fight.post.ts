@@ -334,8 +334,8 @@ function generateSkillDrop(tier: number, isBoss: boolean, luckMul: number = 1, o
 function generateEnhanceStoneDrop(tier: number, isBoss: boolean, luckMul: number = 1): string | null {
   if (tier < 4) return null
   const base: Record<number, number> = {
-    4: 0.020, 5: 0.018, 6: 0.015, 7: 0.012, 8: 0.010, 9: 0.008, 10: 0.006,
-    11: 0.004, 12: 0.003, 13: 0.0025, 14: 0.0020, 15: 0.0015,
+    4: 0.020, 5: 0.018, 6: 0.015, 7: 0.012, 8: 0.010, 9: 0.008, 10: 0.012,
+    11: 0.010, 12: 0.008, 13: 0.007, 14: 0.0060, 15: 0.0050,
   }
   let rate = (base[tier] ?? 0) * luckMul
   if (isBoss) rate *= 4
