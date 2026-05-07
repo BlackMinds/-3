@@ -80,13 +80,13 @@ export default defineEventHandler(async (event) => {
       where.push(`set_id = $${params.length}`)
     }
 
-    const sql = `SELECT id, rarity, tier, enhance_level, primary_stat, sub_stats
+    const sql = `SELECT id, rarity, tier, enhance_level, primary_stat, primary_stat_2, sub_stats
                  FROM character_equipment
                  WHERE ${where.join(' AND ')}
                  FOR UPDATE`
     const { rows } = await client.query(sql, params)
 
-    // 内存里再做 attr 过滤（主属性 / 副属性命中，多选需全部命中）
+    // 内存里再做 attr 过滤（属性1 / 属性2 / 副属性命中，多选需全部命中）
     let filteredRows = rows
     if (useAttr) {
       filteredRows = rows.filter(eq => {
@@ -97,7 +97,7 @@ export default defineEventHandler(async (event) => {
         const subStats: string[] = Array.isArray(subs)
           ? subs.map((s: any) => s?.stat).filter((v: any) => typeof v === 'string')
           : []
-        return attrList.every(a => eq.primary_stat === a || subStats.includes(a))
+        return attrList.every(a => eq.primary_stat === a || eq.primary_stat_2 === a || subStats.includes(a))
       })
     }
 

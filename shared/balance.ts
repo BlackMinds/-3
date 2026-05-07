@@ -169,6 +169,170 @@ export const PILL_PCT_CAP = 0.40
 // =====================================================================
 export const PASSIVE_PCT_CAP = 40 // atkPercent/defPercent/hpPercent/spdPercent 各独立 cap
 
+// =====================================================================
+// 装备 v4.0（2026-05-07）— 神兵锻造总纲 PDF 落地
+// =====================================================================
+// 主属性双轨：属性1（受强化，每级 +10%）+ 属性2（不受强化，固定值）
+// 副词条按"部位 × 词条位"分桶，稀有度决定开放到第几位
+// 词条权重双轴乘积：%类:固定值 = 4:6，伤害:生存功能 = 4:6
+//
+// 老装备：primary_stat_2 = NULL，行为不变；只对新生成装备生效
+
+// 五行强化 — 饰品/护符主属性 base
+// base 0.4 → T10 红+10 = 0.4 × 10 × 2.5 × 2.0 = 20%（PDF 上沿）
+//          T14 红+10 = 0.4 × 18 × 2.5 × 2.0 = 36%（PDF 30~50% 中段）
+// 加进 EQUIP_PRIMARY_BASE 同一张表，复用现有公式
+;(EQUIP_PRIMARY_BASE as any).METAL_DMG = 0.4
+;(EQUIP_PRIMARY_BASE as any).WOOD_DMG  = 0.4
+;(EQUIP_PRIMARY_BASE as any).WATER_DMG = 0.4
+;(EQUIP_PRIMARY_BASE as any).FIRE_DMG  = 0.4
+;(EQUIP_PRIMARY_BASE as any).EARTH_DMG = 0.4
+
+// 属性2 base 表（不参与 enhanceMul，只受 tier × rarity 影响）
+// 校准目标：T14 红 ≈ 30 数值/百分比（剑/枪破甲、刀斧 ATK% 等量级一致）
+//          base 0.667 → T14 红 = 0.667 × 18 × 2.5 = 30
+// SPIRIT 是 flat 类，base 略高补偿（扇乐器属性2 神识 T14 红 ≈ 100）
+export const EQUIP_PRIMARY_BASE_2: Record<string, number> = {
+  ATK_PCT:    0.667,  // 兵器·刀斧 / 法宝·法术向
+  ARMOR_PEN:  0.667,  // 兵器·剑枪
+  SPIRIT:     2.22,   // 兵器·扇乐器（flat）
+  SPIRIT_PCT: 0.667,  // 法宝·物理向
+}
+
+// 计算属性2 数值（不受强化影响）
+export function getEquipPrimaryValue2(stat: string, tier: number, rarityIdx: number): number {
+  const base = EQUIP_PRIMARY_BASE_2[stat] ?? 0
+  return Math.max(1, Math.floor(base * getEquipTierWeight(tier) * RARITY_STAT_MUL[rarityIdx]))
+}
+
+// 部位 × 子类 → 双主属性配置
+// 槽位维度（用 DB base_slot）: weapon / armor / helmet / boots / treasure / ring / pendant
+//   - ring 槽 = PDF 的"饰品"，5 个子类（metal/wood/water/fire/earth）决定五行强化主属性 + 装备名词缀
+//   - pendant 槽 = PDF 的"护符"，2 个子类（crit_rate/crit_dmg）决定主属性
+// 子类维度: 兵器按 weaponType / 法宝按 treasureType（phys/magic）/ ring 按五行 / pendant 按 crit / 其他 '_'
+export interface EquipPrimaryConfig {
+  primary1: string
+  primary2: string | null
+}
+
+export const EQUIP_PRIMARY_V4: Record<string, Record<string, EquipPrimaryConfig>> = {
+  weapon: {
+    blade: { primary1: 'ATK', primary2: 'ATK_PCT'   },  // 刀（含斧）
+    sword: { primary1: 'ATK', primary2: 'ARMOR_PEN' },  // 剑
+    spear: { primary1: 'ATK', primary2: 'ARMOR_PEN' },  // 枪
+    fan:   { primary1: 'ATK', primary2: 'SPIRIT'    },  // 扇（含乐器）
+  },
+  armor:  { _: { primary1: 'DEF', primary2: null } },
+  helmet: { _: { primary1: 'HP',  primary2: null } },
+  boots:  { _: { primary1: 'SPD', primary2: null } },
+  treasure: {
+    phys:  { primary1: 'SPIRIT', primary2: 'SPIRIT_PCT' }, // 物理向（紫金葫/乾坤袋/聚灵珠/河图洛书）
+    magic: { primary1: 'ATK',    primary2: 'ATK_PCT'    }, // 法术向（太极印/镇魂铃/浑天仪/九幽鼎）
+  },
+  // 饰品（DB ring 槽）：按五行子类决定主属性 + 装备名词缀
+  ring: {
+    metal: { primary1: 'METAL_DMG', primary2: null }, // 金项链
+    wood:  { primary1: 'WOOD_DMG',  primary2: null }, // 玉佩
+    water: { primary1: 'WATER_DMG', primary2: null }, // 蓝宝石戒指
+    fire:  { primary1: 'FIRE_DMG',  primary2: null }, // 红宝石戒指
+    earth: { primary1: 'EARTH_DMG', primary2: null }, // 琥珀手镯
+  },
+  // 护符（DB pendant 槽）：随机会心率/会心伤害二选一作为主属性，名字仍用现有"灵佩"系
+  pendant: {
+    crit_rate: { primary1: 'CRIT_RATE', primary2: null },
+    crit_dmg:  { primary1: 'CRIT_DMG',  primary2: null },
+  },
+}
+
+// 副词条池（部位 → 词条1/2/3/4，每个词条位是候选 stat 数组）
+// 稀有度截断：白0/绿1/蓝2/紫2/金3/红4 — 即决定"开放到第几个词条位"
+// 五行强化/抗性已展开为 5 种独立条目（金木水火土），抽中时不会全 5 种叠出
+const FIVE_DMG  = ['METAL_DMG','WOOD_DMG','WATER_DMG','FIRE_DMG','EARTH_DMG']
+const FIVE_RES  = ['METAL_RES','WOOD_RES','WATER_RES','FIRE_RES','EARTH_RES']
+
+export const EQUIP_SUB_POOL_V4: Record<string, [string[], string[], string[], string[]]> = {
+  // 兵器
+  weapon: [
+    ['ATK','ATK_PCT'],
+    ['CRIT_RATE','CRIT_DMG'],
+    ['ARMOR_PEN','SPIRIT_PCT','ATK_PCT'],
+    [...FIVE_DMG],
+  ],
+  // 法袍
+  armor: [
+    ['HP','HP_PCT','DEF','DEF_PCT'],
+    ['DEF','DEF_PCT'],
+    ['CTRL_RES','DEF','HP','HP_PCT'],
+    [...FIVE_RES],
+  ],
+  // 法冠
+  helmet: [
+    ['HP','HP_PCT','DEF','DEF_PCT'],
+    ['DEF_PCT','SPD_PCT'],
+    ['SPIRIT','CRIT_RATE','CRIT_DMG'],
+    [...FIVE_DMG, ...FIVE_RES],
+  ],
+  // 云履
+  boots: [
+    ['ATK','SPD','CRIT_RATE','CRIT_DMG'],
+    ['ACCURACY','DODGE','CTRL_RES','CTRL_CHANCE'],
+    ['SPIRIT','SPIRIT_PCT','CRIT_RATE','CRIT_DMG'],
+    ['SPD','SPD_PCT', ...FIVE_DMG, ...FIVE_RES],
+  ],
+  // 法宝
+  treasure: [
+    ['SPIRIT','ATK','SPIRIT_PCT','ATK_PCT'],
+    ['DODGE','ACCURACY','SPD','SPIRIT'],
+    ['SPD_PCT','LUCK','SPIRIT_DENSITY','LIFESTEAL'],
+    ['CRIT_RATE','CRIT_DMG','ARMOR_PEN', ...FIVE_DMG],
+  ],
+  // 饰品（DB ring 槽，5 子类共享词条池）
+  ring: [
+    [...FIVE_DMG, ...FIVE_RES],
+    ['CRIT_RATE','CRIT_DMG','CTRL_CHANCE','CTRL_RES'],
+    ['LIFESTEAL','ARMOR_PEN','LUCK','SPIRIT_DENSITY'],
+    ['ATK_PCT','SPIRIT_PCT'],
+  ],
+  // 护符（DB pendant 槽）
+  pendant: [
+    ['ATK_PCT','SPIRIT_PCT','HP_PCT','DEF_PCT'],
+    ['SPIRIT','ATK','LIFESTEAL','ARMOR_PEN'],
+    ['DODGE','ACCURACY','LUCK','SPIRIT_DENSITY'],
+    [...FIVE_DMG, ...FIVE_RES],
+  ],
+}
+
+// 稀有度 → 副词条数（v4.0 修订版，对齐 PDF 表头"金/红装备具有词条3/4"）
+export const RARITY_SUB_COUNT_V4: Record<string, number> = {
+  white: 0, green: 1, blue: 2, purple: 2, gold: 3, red: 4,
+}
+
+// 双轴权重分类
+// 轴 A：百分比类(P) vs 固定值类(F) = 40:60
+// 轴 B：伤害类(D) vs 生存功能类(S) = 40:60
+// 单条权重 = A × B：PD=0.16  PS=0.24  FD=0.24  FS=0.36
+// 桶内按权重抽取后归一化
+const AXIS_PCT = new Set([
+  'ATK_PCT','DEF_PCT','HP_PCT','SPD_PCT','SPIRIT_PCT',
+  'CRIT_RATE','CRIT_DMG','DODGE','LIFESTEAL',
+  'CTRL_CHANCE','CTRL_RES',
+  'LUCK','SPIRIT_DENSITY',
+  ...FIVE_DMG, ...FIVE_RES,
+])
+const AXIS_DMG = new Set([
+  'ATK','ATK_PCT','SPIRIT','SPIRIT_PCT',
+  'CRIT_RATE','CRIT_DMG','ARMOR_PEN','ACCURACY',
+  ...FIVE_DMG,
+])
+
+export function getSubStatAxisWeight(stat: string): number {
+  const isPct = AXIS_PCT.has(stat)
+  const isDmg = AXIS_DMG.has(stat)
+  const a = isPct ? 0.4 : 0.6  // %类:固定 = 4:6
+  const b = isDmg ? 0.4 : 0.6  // 伤害:生存功能 = 4:6
+  return a * b
+}
+
 // 装备背包上限（仅统计 slot IS NULL 的"背包内"装备，已穿戴 7 件不计入）
 // 满后新装备直接按基础售价转灵石返还，套装件也不例外
 export const EQUIP_BAG_LIMIT = 400

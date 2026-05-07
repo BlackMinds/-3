@@ -25,11 +25,12 @@ export default defineEventHandler(async (event) => {
     const used = await consumeSpecialItem(charId, 'equip_upgrade')
     if (!used) return { code: 400, message: '没有太古精魂' }
 
-    // 主属性按倍率提升
+    // 主属性按倍率提升（v4.0：属性1 + 属性2 同步提升，因为两者都受稀有度影响）
     const newRarity = eq.rarity === 'purple' ? 'gold' : 'red'
     const oldMul = eq.rarity === 'purple' ? 1.18 : 1.25
     const newMul = newRarity === 'gold' ? 1.25 : 1.35
     const newPrimary = Math.floor(eq.primary_value * newMul / oldMul)
+    const newPrimary2 = eq.primary_value_2 ? Math.floor(eq.primary_value_2 * newMul / oldMul) : null
 
     // 副属性数量+1
     let subStats = eq.sub_stats
@@ -52,11 +53,11 @@ export default defineEventHandler(async (event) => {
     const newName = generateEquipName(newRarity, eq.base_slot || 'weapon', eq.weapon_type, tier, eq.primary_stat, null, '升品', eq.set_id || null)
 
     await pool.query(
-      'UPDATE character_equipment SET rarity = $1, primary_value = $2, sub_stats = $3, name = $4 WHERE id = $5',
-      [newRarity, newPrimary, JSON.stringify(subStats), newName, equip_id]
+      'UPDATE character_equipment SET rarity = $1, primary_value = $2, primary_value_2 = $3, sub_stats = $4, name = $5 WHERE id = $6',
+      [newRarity, newPrimary, newPrimary2, JSON.stringify(subStats), newName, equip_id]
     )
 
-    return { code: 200, message: `升品成功! ${eq.rarity} → ${newRarity}`, data: { newRarity, newPrimary, newName, subStats } }
+    return { code: 200, message: `升品成功! ${eq.rarity} → ${newRarity}`, data: { newRarity, newPrimary, newPrimary2, newName, subStats } }
   } catch (error) {
     console.error('升品失败:', error)
     return { code: 500, message: '服务器错误' }

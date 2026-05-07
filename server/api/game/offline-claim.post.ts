@@ -3,8 +3,8 @@ import { ALL_MAPS } from '~/server/api/battle/fight.post'
 import { generateMonsterStats, runWaveBattle, makeHealerTemplate, type BattlerStats, type MonsterTemplate, type EquippedSkillInfo } from '~/server/engine/battleEngine'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
-import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE, EQUIP_BAG_LIMIT, getEquipTierWeight } from '~/shared/balance'
-import { rollSubStats, EQUIP_SELL_PRICES } from '~/server/utils/equipment'
+import { EQUIP_BAG_LIMIT } from '~/shared/balance'
+import { decideEquipPrimariesV4, rollSubStatsV4, EQUIP_SELL_PRICES } from '~/server/utils/equipment'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { rollEquipSet } from '~/server/engine/equipSetData'
@@ -197,7 +197,7 @@ export default defineEventHandler(async (event) => {
     const skillCount = Math.floor(totalKills * 0.02 * luckMul)
     const herbCount = Math.floor(totalKills * 0.10 * luckMul)
 
-    // 装备掉落
+    // 装备掉落（v4.0：双主属性 + 部位分桶副词条）
     const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
     const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
     const weights: Record<number, number[]> = {
@@ -207,8 +207,25 @@ export default defineEventHandler(async (event) => {
       11: [0,0,0,5,55,40], 12: [0,0,0,0,45,55],
       13: [0,0,0,0,35,65], 14: [0,0,0,0,25,75], 15: [0,0,0,0,15,85],
     }
-    const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
     const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
+
+    // v4.0 槽位映射（与 fight.post.ts pickV4SlotInfo 对齐）
+    // ring = 饰品（5 种五行子类），pendant = 护符（会心率/会心伤害二选一）
+    function pickV4SlotInfo(slot: string, weaponType: string | null): { slotKey: string; subType: string } {
+      switch (slot) {
+        case 'weapon':   return { slotKey: 'weapon', subType: weaponType || 'sword' }
+        case 'armor':    return { slotKey: 'armor', subType: '_' }
+        case 'helmet':   return { slotKey: 'helmet', subType: '_' }
+        case 'boots':    return { slotKey: 'boots', subType: '_' }
+        case 'treasure': return { slotKey: 'treasure', subType: Math.random() < 0.5 ? 'phys' : 'magic' }
+        case 'ring': {
+          const elements = ['metal', 'wood', 'water', 'fire', 'earth']
+          return { slotKey: 'ring', subType: elements[rand(0, 4)] }
+        }
+        case 'pendant':  return { slotKey: 'pendant', subType: Math.random() < 0.5 ? 'crit_rate' : 'crit_dmg' }
+        default:         return { slotKey: 'weapon', subType: 'sword' }
+      }
+    }
 
     const actualEquipCount = Math.min(equipCount, 25)
     // 背包容量基线 + 满后转灵石返还（按基础售价）
@@ -224,24 +241,24 @@ export default defineEventHandler(async (event) => {
       let r = Math.random() * total, idx = 0
       for (let j = 0; j < w.length; j++) { r -= w[j]; if (r <= 0) { idx = j; break } }
       const slotIdx = Math.floor(Math.random() * slots.length)
-      const ps = primaryStats[slots[slotIdx]]
-      const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(mapData.tier) * RARITY_STAT_MUL[idx]))
-      const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[idx] || [0, 0]
-      const subCount = rand(minSubs, maxSubs)
-      const subStats = subCount > 0 ? rollSubStats(idx, mapData.tier, subCount) : []
-      const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null
+      const slot = slots[slotIdx]
+      const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null
+      // v4.0：双主属性 + 部位分桶副词条
+      const v4 = pickV4SlotInfo(slot, weaponType)
+      const primaries = decideEquipPrimariesV4(v4.slotKey, v4.subType, rarities[idx], mapData.tier)
+      const subStats = rollSubStatsV4(v4.slotKey, rarities[idx], mapData.tier)
       // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率）
-      const setKey = rollEquipSet(rarities[idx], 1.0, slots[slotIdx], weaponType, mapData.tier)
+      const setKey = rollEquipSet(rarities[idx], 1.0, slot, weaponType, mapData.tier)
       // 背包满 → 转灵石返还
       if (bagCount >= EQUIP_BAG_LIMIT) {
         bagOverflowGain += Math.floor((EQUIP_SELL_PRICES[rarities[idx]] || 10) * mapData.tier)
         continue
       }
-      const equipName = generateEquipName(rarities[idx], slots[slotIdx], weaponType, mapData.tier, ps, null, '', setKey)
+      const equipName = generateEquipName(rarities[idx], slot, weaponType, mapData.tier, primaries.primary_stat, null, '', setKey)
       await pool.query(
-        `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
-        [char.id, equipName, rarities[idx], ps, pv, JSON.stringify(subStats), setKey, mapData.tier, weaponType, slots[slotIdx], tierReqLevels[mapData.tier] || 1]
+        `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 0)`,
+        [char.id, equipName, rarities[idx], primaries.primary_stat, primaries.primary_value, primaries.primary_stat_2 || null, primaries.primary_value_2 || null, JSON.stringify(subStats), setKey, mapData.tier, weaponType, slot, tierReqLevels[mapData.tier] || 1]
       )
       bagCount++
     }

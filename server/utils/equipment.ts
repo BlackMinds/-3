@@ -1,6 +1,11 @@
 import { getPool } from '~/server/database/db'
 
 import { rand } from '~/server/utils/random'
+import {
+  EQUIP_PRIMARY_BASE, EQUIP_PRIMARY_V4, EQUIP_SUB_POOL_V4,
+  RARITY_STAT_MUL, ENHANCE_MUL_PER_LEVEL, RARITY_SUB_COUNT_V4,
+  getEquipTierWeight, getEquipPrimaryValue2, getSubStatAxisWeight,
+} from '~/shared/balance'
 
 export async function consumeSpecialItem(charId: number, pillId: string): Promise<boolean> {
   const pool = getPool()
@@ -117,6 +122,120 @@ export function rollSubStats(rarityIdx: number, tier: number, count: number): { 
     const pick = weightedPick(available)
     if (!SUB_STAT_FLAT.has(pick.stat)) used.add(pick.stat)
     subs.push({ stat: pick.stat, value: rollSubStatValue(pick.stat, pick.min, pick.max, rarityIdx, tier) })
+  }
+  return subs
+}
+
+// =====================================================================
+// v4.0 装备生成（神兵锻造总纲 PDF）
+// =====================================================================
+// - 主属性双轨：属性1 受强化 / 属性2 不受强化
+// - 副词条按"部位 × 词条位"分桶，稀有度决定开放到第几位
+// - 双轴权重：%类:固定 = 4:6，伤害:生存功能 = 4:6
+// - 老装备走老路（rollSubStats / 单 primary_stat）；v4.0 函数仅用于新装备
+
+export const RARITY_IDX_MAP: Record<string, number> = {
+  white: 0, green: 1, blue: 2, purple: 3, gold: 4, red: 5,
+}
+
+// v4.0 副词条数值范围（min/max）
+// 老池里有的复用，新增 SPIRIT_PCT、CTRL_*、STATUS_*、五行抗性 5 种
+export const SUB_STAT_RANGE_V4: Record<string, [number, number]> = {
+  ATK: [3, 20], DEF: [2, 15], HP: [30, 200], SPD: [1, 8], SPIRIT: [1, 6],
+  ATK_PCT: [1, 3], DEF_PCT: [1, 3], HP_PCT: [2, 8], SPD_PCT: [1, 2], SPIRIT_PCT: [1, 3],
+  ACCURACY: [1, 2], DODGE: [1, 1], LIFESTEAL: [1, 1], ARMOR_PEN: [2, 5],
+  CRIT_RATE: [2, 3], CRIT_DMG: [2, 6],
+  LUCK: [1, 4], SPIRIT_DENSITY: [1, 4],
+  METAL_DMG: [2, 4], WOOD_DMG: [2, 4], WATER_DMG: [2, 4], FIRE_DMG: [2, 4], EARTH_DMG: [2, 4],
+  METAL_RES: [2, 4], WOOD_RES: [2, 4], WATER_RES: [2, 4], FIRE_RES: [2, 4], EARTH_RES: [2, 4],
+  CTRL_CHANCE: [1, 2], CTRL_RES: [1, 2],
+}
+
+const FLAT_V4 = new Set(['ATK','DEF','HP','SPD','SPIRIT'])
+const GOOD_V4 = new Set(['CRIT_RATE','CRIT_DMG','LIFESTEAL','DODGE','ARMOR_PEN'])
+
+function getTierMulV4(stat: string, tier: number): number {
+  if (FLAT_V4.has(stat)) return 1 + (tier - 1) * 0.10
+  const capped = Math.min(tier, 10)
+  if (GOOD_V4.has(stat)) return 1 + (capped - 1) * 0.04
+  return 1 + (capped - 1) * 0.06
+}
+
+function rollSubValueV4(stat: string, rarityIdx: number, tier: number): number {
+  const range = SUB_STAT_RANGE_V4[stat] || [1, 3]
+  const qualityMul = 1 + rarityIdx * 0.15
+  const tierMul = getTierMulV4(stat, tier)
+  const base = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]
+  return Math.max(1, Math.ceil(base * qualityMul * tierMul))
+}
+
+/**
+ * v4.0 装备主属性生成（属性1 + 属性2）
+ * @param slotKey   v4.0 槽位 key（weapon/armor/helmet/boots/treasure/amulet/necklace/pendant/ring_water/ring_fire/bracelet）
+ * @param subType   子类（武器=weaponType / 法宝='phys'|'magic' / 护符='crit_rate'|'crit_dmg' / 其他='_'）
+ * @param rarity    白/绿/蓝/紫/金/红
+ * @param tier      装备 T 级
+ */
+export function decideEquipPrimariesV4(
+  slotKey: string,
+  subType: string,
+  rarity: string,
+  tier: number,
+): { primary_stat: string; primary_value: number; primary_stat_2: string | null; primary_value_2: number | null } {
+  const config = EQUIP_PRIMARY_V4[slotKey]?.[subType]
+  if (!config) {
+    // 兜底（不该走到，外层应已传对 slotKey/subType）
+    return { primary_stat: 'ATK', primary_value: 1, primary_stat_2: null, primary_value_2: null }
+  }
+  const rarityIdx = RARITY_IDX_MAP[rarity] ?? 0
+  const rarityMul = RARITY_STAT_MUL[rarityIdx] || 1
+  const tierWeight = getEquipTierWeight(tier)
+
+  // 属性1：受强化（生成时 enhance_level=0，强化由 enhance.post.ts 推动）
+  const base1 = EQUIP_PRIMARY_BASE[config.primary1] ?? 1
+  const value1 = Math.max(1, Math.floor(base1 * tierWeight * rarityMul))
+
+  // 属性2：不受强化
+  let stat2: string | null = null
+  let value2: number | null = null
+  if (config.primary2) {
+    stat2 = config.primary2
+    value2 = getEquipPrimaryValue2(stat2, tier, rarityIdx)
+  }
+  return { primary_stat: config.primary1, primary_value: value1, primary_stat_2: stat2, primary_value_2: value2 }
+}
+
+/**
+ * v4.0 副词条生成
+ * 按部位 × 词条位分桶，稀有度截断（白0/绿1/蓝2/紫2/金3/红4）
+ * 双轴权重抽取：%类:固定 = 4:6，伤害:生存功能 = 4:6
+ * 同件装备允许同名词条重复（PDF "支持基础属性堆叠"）
+ */
+export function rollSubStatsV4(
+  slotKey: string,
+  rarity: string,
+  tier: number,
+): { stat: string; value: number }[] {
+  const subCount = RARITY_SUB_COUNT_V4[rarity] ?? 0
+  if (subCount === 0) return []
+  const pool = EQUIP_SUB_POOL_V4[slotKey]
+  if (!pool) return []
+  const rarityIdx = RARITY_IDX_MAP[rarity] ?? 0
+
+  const subs: { stat: string; value: number }[] = []
+  for (let i = 0; i < subCount; i++) {
+    const candidates = pool[i]
+    if (!candidates || candidates.length === 0) continue
+    // 双轴权重抽取
+    const weights = candidates.map(s => getSubStatAxisWeight(s))
+    const total = weights.reduce((a, b) => a + b, 0)
+    let r = Math.random() * total
+    let stat = candidates[0]
+    for (let j = 0; j < candidates.length; j++) {
+      r -= weights[j]
+      if (r <= 0) { stat = candidates[j]; break }
+    }
+    subs.push({ stat, value: rollSubValueV4(stat, rarityIdx, tier) })
   }
   return subs
 }

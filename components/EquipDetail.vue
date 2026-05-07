@@ -19,6 +19,10 @@
         (强化+{{ formatValue(equip.primary_stat, enhanceBonus) }})
       </span>
     </div>
+    <div v-if="equip.primary_stat_2 && equip.primary_value_2" class="tooltip-main" style="color: var(--gold-ink); opacity: 0.85;">
+      {{ statName(equip.primary_stat_2) }} +{{ formatValue(equip.primary_stat_2, equip.primary_value_2) }}
+      <span style="color: var(--ink-faint); font-size: 11px;">（固定）</span>
+    </div>
     <div v-for="(sub, i) in subs" :key="i" class="tooltip-sub">
       {{ statName(sub.stat) }} +{{ formatValue(sub.stat, sub.value) }}
     </div>

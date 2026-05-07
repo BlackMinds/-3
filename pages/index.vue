@@ -1967,6 +1967,10 @@
                   (强化+{{ formatStatValue(getEquippedItem(currentPickSlot).primary_stat, getEnhanceBonus(getEquippedItem(currentPickSlot).primary_value, getEquippedItem(currentPickSlot).enhance_level)) }})
                 </span>
               </span>
+              <span v-if="getEquippedItem(currentPickSlot).primary_stat_2 && getEquippedItem(currentPickSlot).primary_value_2" class="picker-desc" style="color: var(--gold-ink); opacity: 0.85;">
+                {{ getStatName(getEquippedItem(currentPickSlot).primary_stat_2) }} +{{ formatStatValue(getEquippedItem(currentPickSlot).primary_stat_2, getEquippedItem(currentPickSlot).primary_value_2) }}
+                <span style="color: var(--ink-faint); font-size: 11px;">（固定）</span>
+              </span>
               <span v-for="(sub, i) in parseSubs(getEquippedItem(currentPickSlot).sub_stats)" :key="i" class="picker-sub">
                 {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
               </span>
@@ -2000,6 +2004,10 @@
                 <span v-if="eq.enhance_level > 0" style="color: var(--jade); font-size: 12px;">
                   (强化+{{ formatStatValue(eq.primary_stat, getEnhanceBonus(eq.primary_value, eq.enhance_level)) }})
                 </span>
+              </span>
+              <span v-if="eq.primary_stat_2 && eq.primary_value_2" class="picker-desc" style="color: var(--gold-ink); opacity: 0.85;">
+                {{ getStatName(eq.primary_stat_2) }} +{{ formatStatValue(eq.primary_stat_2, eq.primary_value_2) }}
+                <span style="color: var(--ink-faint); font-size: 11px;">（固定）</span>
               </span>
               <span v-for="(sub, i) in parseSubs(eq.sub_stats)" :key="i" class="picker-sub">
                 {{ getStatName(sub.stat) }} +{{ formatStatValue(sub.stat, sub.value) }}
@@ -2215,6 +2223,11 @@
             <div class="enhance-equip-stat">
               {{ getStatName(enhanceTarget.primary_stat) }}
               +{{ formatStatValue(enhanceTarget.primary_stat, getEnhancedPrimaryValue(enhanceTarget.primary_value, enhanceTarget.enhance_level || 0)) }}
+            </div>
+            <div v-if="enhanceTarget.primary_stat_2 && enhanceTarget.primary_value_2" class="enhance-equip-stat" style="color: var(--gold-ink); opacity: 0.85; font-size: 13px;">
+              {{ getStatName(enhanceTarget.primary_stat_2) }}
+              +{{ formatStatValue(enhanceTarget.primary_stat_2, enhanceTarget.primary_value_2) }}
+              <span style="color: var(--ink-faint); font-size: 11px;">（固定，不受强化影响）</span>
             </div>
           </div>
 
@@ -3256,6 +3269,7 @@
                 </div>
                 <div class="heaven-tip-stats">
                   <span class="heaven-tip-stat-main">{{ eq.primaryText }}</span>
+                  <span v-if="eq.primaryText2" class="heaven-tip-stat-main" style="opacity: 0.85;">· {{ eq.primaryText2 }}</span>
                   <span v-for="(s, i) in eq.subTexts" :key="i" class="heaven-tip-stat-sub">· {{ s }}</span>
                   <span v-if="eq.awakenName" class="heaven-tip-stat-awaken">✦ 附灵·{{ eq.awakenName }}</span>
                 </div>
@@ -4999,12 +5013,16 @@ const mainStats = computed(() => {
 });
 
 // 装备总加成 (含强化)
+// v4.0: 属性1 受强化、属性2 不受强化（老装备 primary_stat_2 = NULL，不影响）
 const equipBonus = computed(() => {
   const bonus: Record<string, number> = { ATK: 0, DEF: 0, HP: 0, SPD: 0, CRIT_RATE: 0, CRIT_DMG: 0, SPIRIT: 0 };
   for (const eq of equipList.value) {
     if (!eq.slot) continue;
     const enhLv = eq.enhance_level || 0;
     bonus[eq.primary_stat] = (bonus[eq.primary_stat] || 0) + getEnhancedPrimaryValue(eq.primary_value, enhLv);
+    if (eq.primary_stat_2 && eq.primary_value_2) {
+      bonus[eq.primary_stat_2] = (bonus[eq.primary_stat_2] || 0) + eq.primary_value_2;
+    }
     const subs = typeof eq.sub_stats === 'string' ? JSON.parse(eq.sub_stats) : (eq.sub_stats || []);
     for (const sub of subs) {
       bonus[sub.stat] = (bonus[sub.stat] || 0) + sub.value;
@@ -7472,7 +7490,7 @@ const filteredBagList = computed(() => {
       const subStats = Array.isArray(subs)
         ? subs.map((s: any) => s?.stat).filter(Boolean)
         : [];
-      return wants.every(a => e.primary_stat === a || subStats.includes(a));
+      return wants.every(a => e.primary_stat === a || e.primary_stat_2 === a || subStats.includes(a));
     });
   }
   return list;

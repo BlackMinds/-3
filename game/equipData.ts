@@ -10,6 +10,9 @@ export interface Equipment {
   rarity: string;
   primary_stat: string;
   primary_value: number;
+  // v4.0 双主属性：属性2 不受强化（老装备 = null）
+  primary_stat_2?: string | null;
+  primary_value_2?: number | null;
   sub_stats: { stat: string; value: number }[];
   set_id: string | null;
   enhance_level: number;

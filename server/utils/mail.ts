@@ -18,6 +18,9 @@ export interface EquipmentSnapshot {
   rarity: 'white' | 'green' | 'blue' | 'purple' | 'gold' | 'red'
   primary_stat: string
   primary_value: number
+  // v4.0 双主属性：属性2 不受强化（老装备 / 老挂单 = null）
+  primary_stat_2?: string | null
+  primary_value_2?: number | null
   sub_stats?: Array<{ stat: string; value: number }> | null
   awaken_effect?: any
   set_id?: string | null
@@ -248,10 +251,10 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
       await client.query(
         `INSERT INTO character_equipment
           (character_id, slot, base_slot, weapon_type, name, rarity,
-           primary_stat, primary_value, sub_stats, awaken_effect, set_id,
+           primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, awaken_effect, set_id,
            enhance_level, req_level, tier, locked, is_bound)
-         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10,
-                 $11, $12, $13, FALSE, FALSE)`,
+         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12,
+                 $13, $14, $15, FALSE, FALSE)`,
         [
           characterId,
           s.base_slot || null,
@@ -260,6 +263,8 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
           s.rarity,
           s.primary_stat,
           s.primary_value,
+          s.primary_stat_2 || null,
+          s.primary_value_2 || null,
           s.sub_stats ? JSON.stringify(s.sub_stats) : null,
           s.awaken_effect ? JSON.stringify(s.awaken_effect) : null,
           s.set_id || null,

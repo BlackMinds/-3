@@ -150,6 +150,8 @@ export function snapshotEquipment(eq: any): EquipmentSnapshot {
     rarity: eq.rarity,
     primary_stat: eq.primary_stat,
     primary_value: eq.primary_value,
+    primary_stat_2: eq.primary_stat_2 || null,
+    primary_value_2: eq.primary_value_2 || null,
     sub_stats: eq.sub_stats || null,
     awaken_effect: eq.awaken_effect || null,
     set_id: eq.set_id || null,

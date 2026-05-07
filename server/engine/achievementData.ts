@@ -3,8 +3,7 @@
  */
 import { getPool } from '~/server/database/db';
 import { generateEquipName } from './equipNameData';
-import { EQUIP_PRIMARY_BASE, getEquipTierWeight } from '~/shared/balance';
-import { rollSubStats } from '~/server/utils/equipment';
+import { decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment';
 
 // ========== 类型定义 ==========
 export interface AchievementReward {
@@ -239,14 +238,22 @@ const EQUIP_BOX_WEIGHTS: Record<string, number[]> = {
 
 function rand(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-// 副属性数量按品质区间随机（与 RARITY_SUB_COUNT 固定值不同，箱子保留范围抽奖手感）
-const SUB_COUNT_RANGE: [number, number][] = [[0,0],[0,1],[1,2],[2,3],[3,4],[4,5]];
-
-function generateSubStats(rarityIdx: number, tier: number): any[] {
-  const [minSubs, maxSubs] = SUB_COUNT_RANGE[rarityIdx] || [0, 0];
-  const count = rand(minSubs, maxSubs);
-  if (count === 0) return [];
-  return rollSubStats(rarityIdx, tier, count);
+// v4.0 槽位映射（与 fight.post.ts pickV4SlotInfo 对齐）
+// ring = 饰品（5 种五行子类），pendant = 护符（会心率/会心伤害二选一）
+function pickV4SlotInfo(slot: string, weaponType: string | null): { slotKey: string; subType: string } {
+  switch (slot) {
+    case 'weapon':   return { slotKey: 'weapon', subType: weaponType || 'sword' };
+    case 'armor':    return { slotKey: 'armor', subType: '_' };
+    case 'helmet':   return { slotKey: 'helmet', subType: '_' };
+    case 'boots':    return { slotKey: 'boots', subType: '_' };
+    case 'treasure': return { slotKey: 'treasure', subType: Math.random() < 0.5 ? 'phys' : 'magic' };
+    case 'ring': {
+      const elements = ['metal', 'wood', 'water', 'fire', 'earth'];
+      return { slotKey: 'ring', subType: elements[rand(0, 4)] };
+    }
+    case 'pendant':  return { slotKey: 'pendant', subType: Math.random() < 0.5 ? 'crit_rate' : 'crit_dmg' };
+    default:         return { slotKey: 'weapon', subType: 'sword' };
+  }
 }
 
 export function generateEquipBox(boxType: 'normal' | 'fine' | 'legend', charLevel: number): any {
@@ -260,21 +267,24 @@ export function generateEquipBox(boxType: 'normal' | 'fine' | 'legend', charLeve
 
   const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant'];
   const slotIdx = rand(0, slots.length - 1);
-  const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' };
-  const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5];
+  const slot = slots[slotIdx];
   const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 };
-
-  const ps = primaryStats[slots[slotIdx]];
-  const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * statMuls[idx]));
-  const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null;
-  const subStats = generateSubStats(idx, tier);
+  const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null;
+  // v4.0：双主属性 + 副词条按部位分桶
+  const v4 = pickV4SlotInfo(slot, weaponType);
+  const primaries = decideEquipPrimariesV4(v4.slotKey, v4.subType, rarities[idx], tier);
+  const subStats = rollSubStatsV4(v4.slotKey, rarities[idx], tier);
 
   return {
-    name: generateEquipName(rarities[idx], slots[slotIdx], weaponType, tier, ps, null),
+    name: generateEquipName(rarities[idx], slot, weaponType, tier, primaries.primary_stat, null),
     rarity: rarities[idx],
-    primary_stat: ps, primary_value: pv, sub_stats: JSON.stringify(subStats),
+    primary_stat: primaries.primary_stat,
+    primary_value: primaries.primary_value,
+    primary_stat_2: primaries.primary_stat_2,
+    primary_value_2: primaries.primary_value_2,
+    sub_stats: JSON.stringify(subStats),
     set_id: null, tier, weapon_type: weaponType,
-    base_slot: slots[slotIdx], req_level: tierReqLevels[tier] || 1, enhance_level: 0,
+    base_slot: slot, req_level: tierReqLevels[tier] || 1, enhance_level: 0,
   };
 }
 

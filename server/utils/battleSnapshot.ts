@@ -140,17 +140,36 @@ export async function buildCharacterSnapshot(
   // v3.7 加法池：所有非功法被动 % 累加（小数, 0.10=10%），最后统一一次乘
   let nonPassiveAtkPct = 0, nonPassiveDefPct = 0, nonPassiveHpPct = 0, nonPassiveSpdPct = 0
 
+  // v4.0: 主属性 stat → 各累加器（支持 primary_stat_1 受强化、primary_stat_2 不受强化）
+  // 含五行强化、SPIRIT_PCT、ATK_PCT 等新增 stat key
+  const applyPrimary = (stat: string, value: number) => {
+    if (stat === 'ATK') atk += value
+    else if (stat === 'DEF') def += value
+    else if (stat === 'HP') maxHp += value
+    else if (stat === 'SPD') spd += value
+    else if (stat === 'CRIT_RATE') critRate += value / 100
+    else if (stat === 'CRIT_DMG') critDmg += value / 100
+    else if (stat === 'SPIRIT') spirit += value
+    else if (stat === 'ATK_PCT') equipAtkPct += value         // v4.0 兵器/法宝属性2
+    else if (stat === 'SPIRIT_PCT') weaponSpiritPct += value  // v4.0 法宝物理向属性2
+    else if (stat === 'ARMOR_PEN') armorPen += value          // v4.0 兵器剑枪属性2
+    else if (stat === 'METAL_DMG') elementDmg.metal += value  // v4.0 饰品（金项链）主属性
+    else if (stat === 'WOOD_DMG')  elementDmg.wood  += value  // v4.0 饰品（玉佩）主属性
+    else if (stat === 'WATER_DMG') elementDmg.water += value
+    else if (stat === 'FIRE_DMG')  elementDmg.fire  += value
+    else if (stat === 'EARTH_DMG') elementDmg.earth += value
+  }
+
   for (const eq of equipRows) {
     if (!eq.slot) continue
     const enhLv = eq.enhance_level || 0
-    const primary = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
-    if (eq.primary_stat === 'ATK') atk += primary
-    else if (eq.primary_stat === 'DEF') def += primary
-    else if (eq.primary_stat === 'HP') maxHp += primary
-    else if (eq.primary_stat === 'SPD') spd += primary
-    else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
-    else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
-    else if (eq.primary_stat === 'SPIRIT') spirit += primary
+    // 属性1：受强化（base × (1 + 0.10 × enhLv)）
+    const primary1 = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
+    applyPrimary(eq.primary_stat, primary1)
+    // 属性2：不受强化（v4.0 新增，老装备 NULL）
+    if (eq.primary_stat_2 && eq.primary_value_2) {
+      applyPrimary(eq.primary_stat_2, eq.primary_value_2)
+    }
 
     if (eq.weapon_type && WEAPON_BONUS[eq.weapon_type]) {
       const wb = WEAPON_BONUS[eq.weapon_type]
@@ -184,7 +203,10 @@ export async function buildCharacterSnapshot(
       else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
       else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
       else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
+      else if (sub.stat === 'SPIRIT_PCT') weaponSpiritPct += sub.value     // v4.0 神识%
       else if (sub.stat === 'REFLECT_PCT') equipReflectPct += sub.value / 100
+      // v4.0 新增词条（控制/异常 概率/抗性、五行抗性）：暂不参与战斗计算，
+      // 留待战斗引擎扩展异常管线 + 五行抗性管线时接入。
     }
 
     // v3.7 反伤附灵：reflectPct (明镜甲/玄镜佩) 汇入同池

@@ -103,6 +103,9 @@
             </div>
             <div class="item-stats">
               <span>{{ statLabel(l.item_snapshot.primary_stat) }} +{{ l.item_snapshot.primary_value }}</span>
+              <span v-if="l.item_snapshot.primary_stat_2 && l.item_snapshot.primary_value_2" style="opacity: 0.85;">
+                · {{ statLabel(l.item_snapshot.primary_stat_2) }} +{{ l.item_snapshot.primary_value_2 }}
+              </span>
               <template v-if="l.item_snapshot.sub_stats && l.item_snapshot.sub_stats.length">
                 <span v-for="(s, i) in l.item_snapshot.sub_stats" :key="i" class="sub">
                   · {{ statLabel(s.stat) }} +{{ s.value }}
@@ -436,7 +439,7 @@ const filteredListings = computed(() => {
     const snap = l.item_snapshot || {}
     const subs = Array.isArray(snap.sub_stats) ? snap.sub_stats : []
     const subStats = subs.map((s: any) => s?.stat).filter(Boolean)
-    return wants.every(a => snap.primary_stat === a || subStats.includes(a))
+    return wants.every(a => snap.primary_stat === a || snap.primary_stat_2 === a || subStats.includes(a))
   })
 })
 

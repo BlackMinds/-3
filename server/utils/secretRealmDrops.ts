@@ -3,18 +3,28 @@
 
 import { generateEquipName } from '../engine/equipNameData'
 import { rollEquipSet } from '../engine/equipSetData'
-import { rollSubStats } from './equipment'
-import { EQUIP_PRIMARY_BASE, getEquipTierWeight } from '~/shared/balance'
+import { decideEquipPrimariesV4, rollSubStatsV4 } from './equipment'
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-// 副属性走统一池（server/utils/equipment.ts）
-function generateSubStats(rarityIdx: number, tier: number): { stat: string; value: number }[] {
-  const counts = [0, 1, 2, 3, 4, 4] // 白/绿/蓝/紫/金/红
-  const n = counts[rarityIdx] || 0
-  return rollSubStats(rarityIdx, tier, n)
+// v4.0 槽位映射（与 fight.post.ts pickV4SlotInfo 对齐）
+// ring = 饰品（5 种五行子类），pendant = 护符（会心率/会心伤害二选一）
+function pickV4SlotInfo(slot: string, weaponType: string | null): { slotKey: string; subType: string } {
+  switch (slot) {
+    case 'weapon':   return { slotKey: 'weapon', subType: weaponType || 'sword' }
+    case 'armor':    return { slotKey: 'armor', subType: '_' }
+    case 'helmet':   return { slotKey: 'helmet', subType: '_' }
+    case 'boots':    return { slotKey: 'boots', subType: '_' }
+    case 'treasure': return { slotKey: 'treasure', subType: Math.random() < 0.5 ? 'phys' : 'magic' }
+    case 'ring': {
+      const elements = ['metal', 'wood', 'water', 'fire', 'earth']
+      return { slotKey: 'ring', subType: elements[rand(0, 4)] }
+    }
+    case 'pendant':  return { slotKey: 'pendant', subType: Math.random() < 0.5 ? 'crit_rate' : 'crit_dmg' }
+    default:         return { slotKey: 'weapon', subType: 'sword' }
+  }
 }
 
 // ========== 装备生成（秘境品质权重） ==========
@@ -62,31 +72,30 @@ export function generateSecretRealmEquip(
   // 槽位
   const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
   const slotIdx = rand(0, slots.length - 1)
-  const primaryStats: Record<string, string> = {
-    weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD',
-    treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT',
-  }
-  const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
-  const ps = primaryStats[slots[slotIdx]]
-  const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * statMuls[rarityIdx]))
+  const slot = slots[slotIdx]
   const tierReqLevels: Record<number, number> = {
     1: 1, 2: 15, 3: 35, 4: 55, 5: 80, 6: 110, 7: 140, 8: 170, 9: 185, 10: 195, 11: 215, 12: 240,
     13: 260, 14: 285, 15: 310,
   }
-  const weaponType = slots[slotIdx] === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
-  const subStats = generateSubStats(rarityIdx, tier)
+  const weaponType = slot === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
+  // v4.0：双主属性 + 副词条按部位分桶
+  const v4 = pickV4SlotInfo(slot, weaponType)
+  const primaries = decideEquipPrimariesV4(v4.slotKey, v4.subType, RARITIES[rarityIdx], tier)
+  const subStats = rollSubStatsV4(v4.slotKey, RARITIES[rarityIdx], tier)
   // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率），BOSS 掉落 ×1.5
-  const setKey = rollEquipSet(RARITIES[rarityIdx], isBoss ? 1.5 : 1.0, slots[slotIdx], weaponType, tier)
+  const setKey = rollEquipSet(RARITIES[rarityIdx], isBoss ? 1.5 : 1.0, slot, weaponType, tier)
   return {
-    name: generateEquipName(RARITIES[rarityIdx], slots[slotIdx], weaponType, tier, ps, monsterElement, '', setKey),
+    name: generateEquipName(RARITIES[rarityIdx], slot, weaponType, tier, primaries.primary_stat, monsterElement, '', setKey),
     rarity: RARITIES[rarityIdx],
-    primary_stat: ps,
-    primary_value: pv,
+    primary_stat: primaries.primary_stat,
+    primary_value: primaries.primary_value,
+    primary_stat_2: primaries.primary_stat_2,
+    primary_value_2: primaries.primary_value_2,
     sub_stats: JSON.stringify(subStats),
     set_id: setKey,
     tier,
     weapon_type: weaponType,
-    base_slot: slots[slotIdx],
+    base_slot: slot,
     req_level: tierReqLevels[tier] || 1,
     enhance_level: 0,
   }

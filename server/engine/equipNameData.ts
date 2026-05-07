@@ -27,9 +27,35 @@ const WEAPON_NAMES: Record<string, string[]> = {
 const ARMOR_NAMES: string[]   = ['法袍', '道袍', '玄衣', '云锦袍', '紫霞衣', '九天法衣', '神圣战袍', '仙羽袍'];
 const HELMET_NAMES: string[]  = ['玄冠', '紫金冠', '道冠', '灵珠冠', '九霄冠', '龙纹冠', '凤翎冠', '天罗冠'];
 const BOOTS_NAMES: string[]   = ['步云靴', '踏风靴', '游龙靴', '追电靴', '九天靴', '踏雪履', '飞羽靴', '凌波靴'];
-const TREASURE_NAMES: string[]= ['紫金葫', '乾坤袋', '镇魂铃', '聚灵珠', '浑天仪', '太极印', '九幽鼎', '河图洛书'];
+// v4.0 法宝按物理向(神识系)/法术向(攻击系)分流：起名决定主属性走向
+const TREASURE_NAMES_PHYS: string[] = ['紫金葫', '乾坤袋', '聚灵珠', '河图洛书']; // 神识 + 神识%
+const TREASURE_NAMES_MAGIC: string[]= ['太极印', '镇魂铃', '浑天仪', '九幽鼎'];   // 攻击 + 攻击%
+const TREASURE_NAMES: string[]= [...TREASURE_NAMES_PHYS, ...TREASURE_NAMES_MAGIC]; // 兜底（旧 API 调用）
+// v4.0 饰品（ring 槽）按五行分名字池，按主属性反推五行决定本体名
+// 同件装备 → 主属性五行 → 名字池：金项链系 / 玉佩系 / 蓝戒系 / 红戒系 / 琥珀镯系
+const RING_NAMES_BY_ELEMENT: Record<string, string[]> = {
+  metal: ['金项链', '黄金颈链', '玄金链', '紫金链', '九阳金链', '炼金颈链', '太极金颈链', '镇煞金链'],
+  wood:  ['玉佩', '碧玉佩', '翠玉环', '青玉珠', '流光玉佩', '凝玉佩', '玉骨佩', '玲珑玉佩'],
+  water: ['蓝宝石戒指', '寒玉戒', '幽蓝戒', '碧海戒', '凝霜戒', '寒潭戒', '玄水戒', '青冥戒'],
+  fire:  ['红宝石戒指', '赤焰戒', '朱火戒', '焚天戒', '红玛瑙戒', '炎魂戒', '烈阳戒', '凤血戒'],
+  earth: ['琥珀手镯', '黄玉镯', '玉髓镯', '蜜蜡镯', '黄金镯', '土灵镯', '厚土镯', '玄黄镯'],
+}
+// 兜底（无五行信息时）：保留旧池作为通用戒指名
 const RING_NAMES: string[]    = ['灵戒', '龙纹戒', '九转戒', '镇魂戒', '星辰指环', '太虚戒', '轮回戒', '天道戒'];
+// 护符（pendant 槽）名字池 — PDF 的"护符"概念，复用现有"灵佩"系不变
 const PENDANT_NAMES: string[] = ['灵佩', '龙纹佩', '紫玉佩', '九霄佩', '星辰佩', '太极玉佩', '乾坤玉佩', '道韵佩'];
+
+// v4.0：根据法宝名判断物理向/法术向（用于装备生成时决定主属性）
+export function getTreasureType(treasureName: string): 'phys' | 'magic' {
+  for (const n of TREASURE_NAMES_PHYS) if (treasureName.includes(n)) return 'phys'
+  return 'magic' // 默认法术向（含未匹配名字）
+}
+
+// v4.0：按指定法宝类型挑名字（装备生成时用，让 name 与主属性走向一致）
+export function pickTreasureName(treasureType: 'phys' | 'magic', tier: number): string {
+  const pool = treasureType === 'phys' ? TREASURE_NAMES_PHYS : TREASURE_NAMES_MAGIC
+  return pickWithTier(pool, tier)
+}
 
 // ===== 后缀词(按主属性偏向) =====
 const STAT_SUFFIXES: Record<string, string[]> = {
@@ -59,8 +85,17 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// v4.0: 主属性 stat key → 五行 element key 的反查（用于 ring 槽起名）
+const PRIMARY_STAT_TO_ELEMENT: Record<string, string> = {
+  METAL_DMG: 'metal', WOOD_DMG: 'wood', WATER_DMG: 'water', FIRE_DMG: 'fire', EARTH_DMG: 'earth',
+}
+
 // 获取槽位本体名
-function getBodyName(slot: string, weaponType: string | null, tier: number): string {
+// v4.0:
+//   - treasure 按 primaryStat 反推物理向/法术向（SPIRIT→phys / ATK→magic）
+//   - ring 按 primaryStat 反推五行（五行强化 stat key → 对应名字池），无匹配时回退通用池
+//   - pendant = 护符，仍用现有 PENDANT_NAMES
+function getBodyName(slot: string, weaponType: string | null, tier: number, primaryStat?: string): string {
   if (slot === 'weapon') {
     // 武器: 有 weaponType 用对应池, 否则用剑名(默认)
     const pool = WEAPON_NAMES[weaponType || 'sword'] || WEAPON_NAMES.sword;
@@ -70,8 +105,15 @@ function getBodyName(slot: string, weaponType: string | null, tier: number): str
     case 'armor':    return pickWithTier(ARMOR_NAMES, tier);
     case 'helmet':   return pickWithTier(HELMET_NAMES, tier);
     case 'boots':    return pickWithTier(BOOTS_NAMES, tier);
-    case 'treasure': return pickWithTier(TREASURE_NAMES, tier);
-    case 'ring':     return pickWithTier(RING_NAMES, tier);
+    case 'treasure': {
+      const pool = primaryStat === 'SPIRIT' ? TREASURE_NAMES_PHYS : TREASURE_NAMES_MAGIC;
+      return pickWithTier(pool, tier);
+    }
+    case 'ring': {
+      const elem = primaryStat ? PRIMARY_STAT_TO_ELEMENT[primaryStat] : null;
+      const pool = elem ? RING_NAMES_BY_ELEMENT[elem] : RING_NAMES;
+      return pickWithTier(pool, tier);
+    }
     case 'pendant':  return pickWithTier(PENDANT_NAMES, tier);
     default: return '神器';
   }
@@ -121,8 +163,8 @@ export function generateEquipName(
     parts.push(ELEMENT_PREFIXES[element] || '');
   }
 
-  // 3. 本体名
-  const body = getBodyName(slot, weaponType, tier);
+  // 3. 本体名（v4.0: 法宝按 primaryStat 反推物理/法术向）
+  const body = getBodyName(slot, weaponType, tier, primaryStat);
   parts.push(body);
 
   // 4. 后缀 (金品/红品必出,其他品质40%概率)

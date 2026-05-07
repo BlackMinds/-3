@@ -55,8 +55,8 @@ export default defineEventHandler(async (event) => {
       for (let i = 0; i < r.equip_box_count; i++) {
         const equip = generateEquipBox(r.equip_box, charLevel)
         await client.query(
-          `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
-          [charId, equip.name, equip.rarity, equip.primary_stat, equip.primary_value, equip.sub_stats, equip.set_id, equip.tier, equip.weapon_type, equip.base_slot, equip.req_level]
+          `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 0)`,
+          [charId, equip.name, equip.rarity, equip.primary_stat, equip.primary_value, equip.primary_stat_2 || null, equip.primary_value_2 || null, equip.sub_stats, equip.set_id, equip.tier, equip.weapon_type, equip.base_slot, equip.req_level]
         )
         rewards.push(`装备【${equip.name}】`)
       }

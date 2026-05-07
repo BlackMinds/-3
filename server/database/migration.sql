@@ -1491,3 +1491,11 @@ CREATE INDEX IF NOT EXISTS idx_craft_sessions_expires ON craft_sessions(expires_
 -- 周常「强化竞赛」金装、Boss 排名装备奖励、craft-set-fragment 合成接口全部移除。
 -- 玩家手上残留的 set_fragment 道具直接清掉（避免 UI 显示无入口的死道具）。
 DELETE FROM character_pills WHERE pill_id = 'set_fragment';
+
+-- ========================================
+-- v4.0 装备双主属性 (2026-05-07) — 神兵锻造总纲
+-- ========================================
+-- 设计：装备主属性拆为属性1（受强化）+ 属性2（不受强化），都受 T 级 + 稀有度影响
+-- 老装备 primary_stat_2/primary_value_2 = NULL，行为不变；只对新生成装备生效
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS primary_stat_2 VARCHAR(20) DEFAULT NULL;
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS primary_value_2 INT DEFAULT NULL;

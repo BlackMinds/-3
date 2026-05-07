@@ -8,8 +8,8 @@ import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/util
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
-import { rollSubStats, EQUIP_SELL_PRICES } from '~/server/utils/equipment'
-import { EQUIP_PRIMARY_BASE, WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, getEquipTierWeight } from '~/shared/balance'
+import { rollSubStats, EQUIP_SELL_PRICES, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
+import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
 // 战斗锁: 防止同一角色并发刷战斗
@@ -240,14 +240,25 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
   ], boss: { name: '终焉道祖', power: 700000000, element: null, exp: 1800000000, stone_min: 3000000000, stone_max: 7000000000, role: 'boss', drop_table: 'boss_t15' } },
 }
 
-// ===== 副属性自动生成（统一走 server/utils/equipment.ts 的共享池）=====
-// 品质 → 保底最大副属性数量，加一点随机让数量有下限变化
-const SUB_COUNT_RANGE: [number, number][] = [[0,0],[0,1],[1,2],[2,3],[3,4],[4,4]]
-function generateSubStats(rarityIdx: number, tier: number): { stat: string; value: number }[] {
-  const [minSubs, maxSubs] = SUB_COUNT_RANGE[rarityIdx] || [0, 0]
-  const count = rand(minSubs, maxSubs)
-  if (count === 0) return []
-  return rollSubStats(rarityIdx, tier, count)
+// ===== v4.0 槽位映射（神兵锻造总纲）=====
+// 7 槽 = DB base_slot：weapon/armor/helmet/boots/treasure/ring/pendant
+// - treasure 按物理向/法术向 50/50 随机决定主属性走向（影响装备名）
+// - ring = PDF 的"饰品"，5 种五行子类决定主属性（金/木/水/火/土），装备名按五行从对应名字池挑
+// - pendant = PDF 的"护符"，随机 会心率/会心伤害 二选一作主属性
+function pickV4SlotInfo(slot: string, weaponType: string | null): { slotKey: string; subType: string } {
+  switch (slot) {
+    case 'weapon':   return { slotKey: 'weapon', subType: weaponType || 'sword' }
+    case 'armor':    return { slotKey: 'armor', subType: '_' }
+    case 'helmet':   return { slotKey: 'helmet', subType: '_' }
+    case 'boots':    return { slotKey: 'boots', subType: '_' }
+    case 'treasure': return { slotKey: 'treasure', subType: Math.random() < 0.5 ? 'phys' : 'magic' }
+    case 'ring': {
+      const elements = ['metal', 'wood', 'water', 'fire', 'earth']
+      return { slotKey: 'ring', subType: elements[rand(0, 4)] }
+    }
+    case 'pendant':  return { slotKey: 'pendant', subType: Math.random() < 0.5 ? 'crit_rate' : 'crit_dmg' }
+    default:         return { slotKey: 'weapon', subType: 'sword' }
+  }
 }
 
 // ===== 装备掉落 =====
@@ -278,21 +289,23 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) { idx = i; break } }
   const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
   const slotIdx = rand(0, slots.length - 1)
-  const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
-  const statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]
-  const ps = primaryStats[slots[slotIdx]]
-  const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * statMuls[idx]))
+  const slot = slots[slotIdx]
+  const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
   const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
-  const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
-  const subStats = generateSubStats(idx, tier)
+  // v4.0：双主属性 + 副词条按部位分桶
+  const v4 = pickV4SlotInfo(slot, weaponType)
+  const primaries = decideEquipPrimariesV4(v4.slotKey, v4.subType, rarities[idx], tier)
+  const subStats = rollSubStatsV4(v4.slotKey, rarities[idx], tier)
   // 套装注入：白/绿不出套装；蓝~红按品质有概率获得套装碎片身份；boss luck ×1.5
-  const setKey = rollEquipSet(rarities[idx], isBoss ? 1.5 : 1.0, slots[slotIdx], weaponType, tier)
+  const setKey = rollEquipSet(rarities[idx], isBoss ? 1.5 : 1.0, slot, weaponType, tier)
   return {
-    name: generateEquipName(rarities[idx], slots[slotIdx], weaponType, tier, ps, monsterElement, '', setKey),
+    name: generateEquipName(rarities[idx], slot, weaponType, tier, primaries.primary_stat, monsterElement, '', setKey),
     rarity: rarities[idx],
-    primary_stat: ps, primary_value: pv, sub_stats: JSON.stringify(subStats),
+    primary_stat: primaries.primary_stat, primary_value: primaries.primary_value,
+    primary_stat_2: primaries.primary_stat_2, primary_value_2: primaries.primary_value_2,
+    sub_stats: JSON.stringify(subStats),
     set_id: setKey, tier, weapon_type: weaponType,
-    base_slot: slots[slotIdx], req_level: tierReqLevels[tier] || 1, enhance_level: 0,
+    base_slot: slot, req_level: tierReqLevels[tier] || 1, enhance_level: 0,
   }
 }
 
@@ -1031,9 +1044,9 @@ export default defineEventHandler(async (event) => {
                 continue
               }
               await client.query(
-                `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
-                [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
+                `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 0)`,
+                [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.primary_stat_2 || null, d.primary_value_2 || null, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
               )
               bagCount++
               keptDropNames.push(d.name)

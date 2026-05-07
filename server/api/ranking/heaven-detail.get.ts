@@ -51,8 +51,8 @@ export default defineEventHandler(async (event) => {
 
     const { rows: equipRows } = await pool.query(
       `SELECT slot, base_slot, weapon_type, name, rarity,
-              primary_stat, primary_value, sub_stats, awaken_effect,
-              enhance_level, tier
+              primary_stat, primary_value, primary_stat_2, primary_value_2,
+              sub_stats, awaken_effect, enhance_level, tier
          FROM character_equipment
         WHERE character_id = $1 AND slot IS NOT NULL
         ORDER BY slot ASC`,
@@ -71,6 +71,8 @@ export default defineEventHandler(async (event) => {
         tier: r.tier || 1,
         enhance: r.enhance_level || 0,
         primaryText: statText(r.primary_stat, r.primary_value),
+        // v4.0: 属性2（固定，不受强化影响）
+        primaryText2: r.primary_stat_2 ? statText(r.primary_stat_2, r.primary_value_2) : null,
         subTexts: Array.isArray(subs) ? subs.map((s: any) => statText(s.stat, s.value)) : [],
         awakenName: awaken?.name || null,
       }

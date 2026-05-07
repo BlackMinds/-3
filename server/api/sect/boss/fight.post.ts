@@ -55,16 +55,23 @@ export default defineEventHandler(async (event) => {
       else { maxHp += 80; atk += 15; def += 8 }
     }
 
-    // 装备加成
+    // 装备加成（v4.0：属性1 受强化、属性2 不受强化）
+    const applyEquipPrimary = (stat: string, value: number) => {
+      if (stat === 'ATK') atk += value
+      else if (stat === 'DEF') def += value
+      else if (stat === 'HP') maxHp += value
+      else if (stat === 'CRIT_RATE') critRate += value / 100
+      else if (stat === 'CRIT_DMG') critDmg += value / 100
+      else if (stat === 'ATK_PCT') atk = Math.floor(atk * (1 + value / 100))
+      else if (stat === 'ARMOR_PEN') {} // boss 战简化估算，破甲暂不计入
+    }
     for (const eq of equipRows) {
       if (!eq.slot) continue
       const enhLv = eq.enhance_level || 0
-      const primary = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
-      if (eq.primary_stat === 'ATK') atk += primary
-      else if (eq.primary_stat === 'DEF') def += primary
-      else if (eq.primary_stat === 'HP') maxHp += primary
-      else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
-      else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
+      applyEquipPrimary(eq.primary_stat, Math.floor(eq.primary_value * (1 + enhLv * 0.10)))
+      if (eq.primary_stat_2 && eq.primary_value_2) {
+        applyEquipPrimary(eq.primary_stat_2, eq.primary_value_2)
+      }
     }
 
     // 宗门加成
