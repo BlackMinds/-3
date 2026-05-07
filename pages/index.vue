@@ -7397,6 +7397,7 @@ const ATTR_FILTER_GROUPS: Array<{ label: string; items: Array<{ value: string; l
       { value: 'DEF_PCT', label: '防御%' },
       { value: 'HP_PCT', label: '气血%' },
       { value: 'SPD_PCT', label: '身法%' },
+      { value: 'SPIRIT_PCT', label: '神识%' },
     ],
   },
   {
@@ -7420,6 +7421,23 @@ const ATTR_FILTER_GROUPS: Array<{ label: string; items: Array<{ value: string; l
       { value: 'WATER_DMG', label: '水系' },
       { value: 'FIRE_DMG', label: '火系' },
       { value: 'EARTH_DMG', label: '土系' },
+    ],
+  },
+  {
+    label: '五行抗性',
+    items: [
+      { value: 'METAL_RES', label: '金抗' },
+      { value: 'WOOD_RES', label: '木抗' },
+      { value: 'WATER_RES', label: '水抗' },
+      { value: 'FIRE_RES', label: '火抗' },
+      { value: 'EARTH_RES', label: '土抗' },
+    ],
+  },
+  {
+    label: '控制',
+    items: [
+      { value: 'CTRL_CHANCE', label: '控制概率' },
+      { value: 'CTRL_RES', label: '控制抗性' },
     ],
   },
 ];

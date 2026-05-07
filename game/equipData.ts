@@ -253,6 +253,7 @@ export const STAT_NAMES: Record<string, string> = {
   DEF_PCT: '防御',
   HP_PCT: '气血',
   SPD_PCT: '身法',
+  SPIRIT_PCT: '神识',           // v4.0 法宝物理向 / 副词条
   CRIT_RATE: '会心率',
   CRIT_DMG: '会心伤害',
   SPIRIT: '神识',
@@ -263,6 +264,15 @@ export const STAT_NAMES: Record<string, string> = {
   WATER_DMG: '水系强化',
   FIRE_DMG: '火系强化',
   EARTH_DMG: '土系强化',
+  // v4.0 五行抗性
+  METAL_RES: '金系抗性',
+  WOOD_RES: '木系抗性',
+  WATER_RES: '水系抗性',
+  FIRE_RES: '火系抗性',
+  EARTH_RES: '土系抗性',
+  // v4.0 控制概率/抗性（"控制" = 上异常状态，含 burn/poison/bleed/freeze/stun）
+  CTRL_CHANCE: '控制概率',
+  CTRL_RES: '控制抗性',
   SPIRIT_DENSITY: '灵气浓度',
   LUCK: '福缘',
   DODGE: '闪避',
@@ -276,6 +286,9 @@ export const PERCENT_STATS = new Set([
   'CRIT_RATE', 'CRIT_DMG',
   'ARMOR_PEN', 'ACCURACY',
   'METAL_DMG', 'WOOD_DMG', 'WATER_DMG', 'FIRE_DMG', 'EARTH_DMG',
+  'METAL_RES', 'WOOD_RES', 'WATER_RES', 'FIRE_RES', 'EARTH_RES', // v4.0 五行抗性
+  'CTRL_CHANCE', 'CTRL_RES',                                      // v4.0 控制概率/抗性
+  'SPIRIT_PCT',                                                   // v4.0 神识%
   'SPIRIT_DENSITY', 'LUCK',
   'DODGE', 'LIFESTEAL',
   'ATK_PCT', 'DEF_PCT', 'HP_PCT', 'SPD_PCT',

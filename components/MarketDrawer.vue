@@ -448,12 +448,15 @@ const RARITY_LABEL: Record<string, string> = {
 }
 const STAT_LABEL: Record<string, string> = {
   ATK: '攻击', DEF: '防御', HP: '气血', SPD: '身法',
-  ATK_PCT: '攻击%', DEF_PCT: '防御%', HP_PCT: '气血%', SPD_PCT: '身法%',
+  ATK_PCT: '攻击%', DEF_PCT: '防御%', HP_PCT: '气血%', SPD_PCT: '身法%', SPIRIT_PCT: '神识%',
   CRIT_RATE: '会心率', CRIT_DMG: '会心伤害',
   DODGE: '闪避', LIFESTEAL: '吸血',
   ARMOR_PEN: '破甲', ACCURACY: '命中', SPIRIT: '神识',
   SPIRIT_DENSITY: '灵气浓度', LUCK: '福缘',
   METAL_DMG: '金系', WOOD_DMG: '木系', WATER_DMG: '水系', FIRE_DMG: '火系', EARTH_DMG: '土系',
+  // v4.0 五行抗性 + 控制概率/抗性
+  METAL_RES: '金抗', WOOD_RES: '木抗', WATER_RES: '水抗', FIRE_RES: '火抗', EARTH_RES: '土抗',
+  CTRL_CHANCE: '控制概率', CTRL_RES: '控制抗性',
   DOT_DMG_PCT: 'DOT伤害', REFLECT_PCT: '反伤倍率',
 }
 const SLOT_ICON: Record<string, string> = {

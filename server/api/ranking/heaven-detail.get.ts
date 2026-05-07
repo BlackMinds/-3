@@ -9,11 +9,16 @@ const SKILL_TYPE_LABEL: Record<string, string> = {
 
 const STAT_LABEL: Record<string, string> = {
   ATK: '攻击', DEF: '防御', HP: '气血', SPD: '身法',
-  ATK_PCT: '攻击', DEF_PCT: '防御', HP_PCT: '气血', SPD_PCT: '身法',
+  ATK_PCT: '攻击', DEF_PCT: '防御', HP_PCT: '气血', SPD_PCT: '身法', SPIRIT_PCT: '神识',
   CRIT_RATE: '会心率', CRIT_DMG: '会心伤害',
   SPIRIT: '神识', ARMOR_PEN: '破甲', ACCURACY: '命中',
   METAL_DMG: '金系强化', WOOD_DMG: '木系强化', WATER_DMG: '水系强化',
   FIRE_DMG: '火系强化', EARTH_DMG: '土系强化',
+  // v4.0 五行抗性
+  METAL_RES: '金系抗性', WOOD_RES: '木系抗性', WATER_RES: '水系抗性',
+  FIRE_RES: '火系抗性', EARTH_RES: '土系抗性',
+  // v4.0 控制概率/抗性
+  CTRL_CHANCE: '控制概率', CTRL_RES: '控制抗性',
   SPIRIT_DENSITY: '灵气浓度', LUCK: '福缘',
   DODGE: '闪避', LIFESTEAL: '吸血',
   DOT_DMG_PCT: 'DOT伤害', REFLECT_PCT: '反伤倍率',
@@ -21,6 +26,8 @@ const STAT_LABEL: Record<string, string> = {
 const PERCENT_STATS = new Set([
   'CRIT_RATE','CRIT_DMG','ARMOR_PEN','ACCURACY',
   'METAL_DMG','WOOD_DMG','WATER_DMG','FIRE_DMG','EARTH_DMG',
+  'METAL_RES','WOOD_RES','WATER_RES','FIRE_RES','EARTH_RES',
+  'CTRL_CHANCE','CTRL_RES','SPIRIT_PCT',
   'SPIRIT_DENSITY','LUCK','DODGE','LIFESTEAL',
   'ATK_PCT','DEF_PCT','HP_PCT','SPD_PCT','DOT_DMG_PCT','REFLECT_PCT',
 ])
