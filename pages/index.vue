@@ -3092,9 +3092,13 @@
                       <span class="arena-rank-chip" :style="{ color: item.arenaRankColor, borderColor: item.arenaRankColor }">{{ item.arenaRankName }}</span>
                       {{ formatNum(item.arenaScore) }}
                     </span>
-                    <span v-else-if="rankingTab === 'heaven'" class="rank-power">
-                      <span class="rank-power-num">{{ formatNum(item.power) }}</span>
-                      <span class="rank-power-label">战力</span>
+                    <span v-else-if="rankingTab === 'heaven'" :class="['rank-power', { 'rank-power-zero': item.floor === 0 }]">
+                      <template v-if="item.floor > 0">
+                        <span class="rank-power-label">第</span>
+                        <span class="rank-power-num">{{ item.floor }}</span>
+                        <span class="rank-power-label">层</span>
+                      </template>
+                      <span v-else class="rank-power-empty">— 未登塔</span>
                     </span>
                     <span v-else>Lv.{{ item.level }}</span>
                   </div>
@@ -3179,11 +3183,18 @@
               <div
                 v-for="eq in heavenHoverDetail.equipments"
                 :key="eq.slot"
-                class="heaven-tip-row"
+                class="heaven-tip-equip"
               >
-                <span class="heaven-tip-tag" :style="{ borderColor: getRarityColor(eq.rarity), color: getRarityColor(eq.rarity) }">{{ getSlotName(eq.baseSlot) }}</span>
-                <span class="heaven-tip-name" :style="{ color: getRarityColor(eq.rarity) }">{{ eq.name }}</span>
-                <span class="heaven-tip-lv">T{{ eq.tier }}<span v-if="eq.enhance > 0"> +{{ eq.enhance }}</span></span>
+                <div class="heaven-tip-row">
+                  <span class="heaven-tip-tag" :style="{ borderColor: getRarityColor(eq.rarity), color: getRarityColor(eq.rarity) }">{{ getSlotName(eq.baseSlot) }}</span>
+                  <span class="heaven-tip-name" :style="{ color: getRarityColor(eq.rarity) }">{{ eq.name }}</span>
+                  <span class="heaven-tip-lv">T{{ eq.tier }}<span v-if="eq.enhance > 0"> +{{ eq.enhance }}</span></span>
+                </div>
+                <div class="heaven-tip-stats">
+                  <span class="heaven-tip-stat-main">{{ eq.primaryText }}</span>
+                  <span v-for="(s, i) in eq.subTexts" :key="i" class="heaven-tip-stat-sub">· {{ s }}</span>
+                  <span v-if="eq.awakenName" class="heaven-tip-stat-awaken">✦ 附灵·{{ eq.awakenName }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -3740,12 +3751,13 @@ function onHeavenRowLeave() {
   heavenHoverChar.value = null;
 }
 function positionHeavenTip(e: MouseEvent) {
-  const TIP_W = 320;
-  const TIP_H = 360;
+  const TIP_W = 360;
+  const TIP_H = 520;
   const margin = 12;
   let x = e.clientX + 16;
   let y = e.clientY + 12;
   if (x + TIP_W + margin > window.innerWidth) x = e.clientX - TIP_W - 16;
+  if (x < margin) x = margin;
   if (y + TIP_H + margin > window.innerHeight) y = window.innerHeight - TIP_H - margin;
   if (y < margin) y = margin;
   heavenTipX.value = x;
@@ -13353,6 +13365,11 @@ onUnmounted(() => {
   color: var(--ink-faint);
   font-size: 11px;
 }
+.rank-power-empty {
+  color: rgba(184, 154, 90, 0.45);
+  font-size: 12px;
+  font-style: italic;
+}
 .heaven-tip-hint {
   margin-top: 8px;
   text-align: center;
@@ -13365,8 +13382,10 @@ onUnmounted(() => {
 .heaven-tooltip {
   position: fixed;
   z-index: 9999;
-  width: 320px;
-  max-width: 320px;
+  width: 360px;
+  max-width: 360px;
+  max-height: 80vh;
+  overflow-y: auto;
   padding: 10px 12px;
   background: rgba(20, 16, 10, 0.96);
   border: 1px solid rgba(184, 154, 90, 0.55);
@@ -13439,6 +13458,31 @@ onUnmounted(() => {
   flex: 0 0 auto;
   color: var(--ink-faint);
   font-size: 11px;
+}
+.heaven-tip-equip {
+  padding: 4px 0 5px;
+}
+.heaven-tip-equip + .heaven-tip-equip {
+  border-top: 1px dotted rgba(184, 154, 90, 0.18);
+}
+.heaven-tip-stats {
+  margin: 2px 0 0 38px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  line-height: 1.45;
+  font-size: 11px;
+}
+.heaven-tip-stat-main {
+  color: var(--gold-ink);
+}
+.heaven-tip-stat-sub {
+  color: var(--ink-faint);
+}
+.heaven-tip-stat-awaken {
+  width: 100%;
+  color: #c490e0;
+  font-style: italic;
 }
 
 /* ===== 成就弹窗 ===== */

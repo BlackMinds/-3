@@ -21,20 +21,6 @@ const ROOT_NAMES: Record<string, string> = {
   metal: '金', wood: '木', water: '水', fire: '火', earth: '土',
 }
 
-// 简化战力公式 —— 与 battleSnapshot.ts powerScore 的结构一致
-// 用 character 表已持久化的基础属性（含升级/突破/培养加成），不含装备/功法 buff
-// 适合榜单近似排序，不强求与实战 powerScore 完全一致
-function calcPower(row: any): number {
-  const atk = Number(row.atk || 0)
-  const def = Number(row.def || 0)
-  const maxHp = Number(row.max_hp || 0)
-  const spd = Number(row.spd || 0)
-  const spirit = Number(row.spirit || 0)
-  const critRate = Number(row.crit_rate || 0)
-  const critDmg = Number(row.crit_dmg || 0)
-  return Math.floor(atk * 2 + def * 2 + maxHp * 0.3 + spd * 1.5 + spirit + critRate * 500 + critDmg * 200)
-}
-
 function formatRow(row: any, rank: number) {
   return {
     rank,
@@ -46,7 +32,7 @@ function formatRow(row: any, rank: number) {
     realmStage: row.realm_stage,
     realmDisplay: getRealmDisplay(row.realm_tier, row.realm_stage),
     level: row.level || 1,
-    power: calcPower(row),
+    floor: Number(row.tower_max_floor || 0),
     sectName: row.sect_name || null,
     title: row.title || null,
   }
@@ -55,19 +41,19 @@ function formatRow(row: any, rank: number) {
 export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
-    // 先按基础属性的线性组合排序（DB 直接算可走索引扫描全表，但量级 < 几千足够快）
-    // SQL 排序公式与 calcPower 严格一致，避免取 top 50 时漏掉
+    // 通天榜：按通天塔最高层数排
+    // 并列时以境界 → 等级为次序，让"同层数高境界更费力"排在前
+    // 不过滤 floor=0：保持上榜规模，方便大家看到自己潜在排名
     const { rows } = await pool.query(`
       SELECT c.id, c.name, c.spiritual_root, c.realm_tier, c.realm_stage,
-             c.level, c.max_hp, c.atk, c.def, c.spd, c.spirit,
-             c.crit_rate, c.crit_dmg, c.title,
-             s.name AS sect_name,
-             (c.atk * 2 + c.def * 2 + c.max_hp * 0.3 + c.spd * 1.5 + c.spirit
-              + c.crit_rate * 500 + c.crit_dmg * 200) AS power_calc
+             c.level, c.title, c.tower_max_floor,
+             s.name AS sect_name
       FROM characters c
       LEFT JOIN sect_members sm ON sm.character_id = c.id
       LEFT JOIN sects s ON s.id = sm.sect_id
-      ORDER BY power_calc DESC, c.realm_tier DESC, c.realm_stage DESC
+      ORDER BY c.tower_max_floor DESC,
+               c.realm_tier DESC, c.realm_stage DESC,
+               c.level DESC, c.id ASC
       LIMIT 50
     `)
 
@@ -75,18 +61,25 @@ export default defineEventHandler(async (event) => {
 
     // 我的排名
     const { rows: charRows } = await pool.query(
-      `SELECT id, max_hp, atk, def, spd, spirit, crit_rate, crit_dmg
+      `SELECT id, tower_max_floor, realm_tier, realm_stage, level
          FROM characters WHERE user_id = $1`,
       [event.context.userId]
     )
     let myRank: number | null = null
     if (charRows.length > 0) {
-      const myPower = calcPower(charRows[0])
+      const me = charRows[0]
+      const myFloor = Number(me.tower_max_floor || 0)
       const { rows: countRows } = await pool.query(
         `SELECT COUNT(*) AS cnt FROM characters
-           WHERE (atk * 2 + def * 2 + max_hp * 0.3 + spd * 1.5 + spirit
-                  + crit_rate * 500 + crit_dmg * 200) > $1`,
-        [myPower]
+           WHERE tower_max_floor > $1
+              OR (tower_max_floor = $2 AND realm_tier > $3)
+              OR (tower_max_floor = $4 AND realm_tier = $5 AND realm_stage > $6)
+              OR (tower_max_floor = $7 AND realm_tier = $8 AND realm_stage = $9 AND level > $10)
+              OR (tower_max_floor = $11 AND realm_tier = $12 AND realm_stage = $13 AND level = $14 AND id < $15)`,
+        [myFloor, myFloor, me.realm_tier,
+         myFloor, me.realm_tier, me.realm_stage,
+         myFloor, me.realm_tier, me.realm_stage, me.level,
+         myFloor, me.realm_tier, me.realm_stage, me.level, me.id]
       )
       myRank = Number(countRows[0]?.cnt || 0) + 1
     }

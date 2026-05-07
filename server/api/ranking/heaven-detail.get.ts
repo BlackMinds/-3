@@ -7,6 +7,38 @@ const SKILL_TYPE_LABEL: Record<string, string> = {
   passive: '被动',
 }
 
+const STAT_LABEL: Record<string, string> = {
+  ATK: '攻击', DEF: '防御', HP: '气血', SPD: '身法',
+  ATK_PCT: '攻击', DEF_PCT: '防御', HP_PCT: '气血', SPD_PCT: '身法',
+  CRIT_RATE: '会心率', CRIT_DMG: '会心伤害',
+  SPIRIT: '神识', ARMOR_PEN: '破甲', ACCURACY: '命中',
+  METAL_DMG: '金系强化', WOOD_DMG: '木系强化', WATER_DMG: '水系强化',
+  FIRE_DMG: '火系强化', EARTH_DMG: '土系强化',
+  SPIRIT_DENSITY: '灵气浓度', LUCK: '福缘',
+  DODGE: '闪避', LIFESTEAL: '吸血',
+  DOT_DMG_PCT: 'DOT伤害', REFLECT_PCT: '反伤倍率',
+}
+const PERCENT_STATS = new Set([
+  'CRIT_RATE','CRIT_DMG','ARMOR_PEN','ACCURACY',
+  'METAL_DMG','WOOD_DMG','WATER_DMG','FIRE_DMG','EARTH_DMG',
+  'SPIRIT_DENSITY','LUCK','DODGE','LIFESTEAL',
+  'ATK_PCT','DEF_PCT','HP_PCT','SPD_PCT','DOT_DMG_PCT','REFLECT_PCT',
+])
+
+function statText(stat: string, value: number): string {
+  const label = STAT_LABEL[stat] || stat
+  const pct = PERCENT_STATS.has(stat) ? '%' : ''
+  return `${label} +${value}${pct}`
+}
+
+function parseJson(raw: any): any {
+  if (raw == null) return null
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) } catch { return null }
+  }
+  return raw
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event)
@@ -17,9 +49,9 @@ export default defineEventHandler(async (event) => {
 
     const pool = getPool()
 
-    // 已穿戴装备（slot 不为空）
     const { rows: equipRows } = await pool.query(
-      `SELECT slot, base_slot, weapon_type, name, rarity, primary_stat, primary_value,
+      `SELECT slot, base_slot, weapon_type, name, rarity,
+              primary_stat, primary_value, sub_stats, awaken_effect,
               enhance_level, tier
          FROM character_equipment
         WHERE character_id = $1 AND slot IS NOT NULL
@@ -27,19 +59,23 @@ export default defineEventHandler(async (event) => {
       [characterId]
     )
 
-    const equipments = equipRows.map(r => ({
-      slot: r.slot,
-      baseSlot: r.base_slot || r.slot,
-      weaponType: r.weapon_type || null,
-      name: r.name,
-      rarity: r.rarity,
-      tier: r.tier || 1,
-      enhance: r.enhance_level || 0,
-      primaryStat: r.primary_stat,
-      primaryValue: r.primary_value,
-    }))
+    const equipments = equipRows.map(r => {
+      const subs = parseJson(r.sub_stats) || []
+      const awaken = parseJson(r.awaken_effect)
+      return {
+        slot: r.slot,
+        baseSlot: r.base_slot || r.slot,
+        weaponType: r.weapon_type || null,
+        name: r.name,
+        rarity: r.rarity,
+        tier: r.tier || 1,
+        enhance: r.enhance_level || 0,
+        primaryText: statText(r.primary_stat, r.primary_value),
+        subTexts: Array.isArray(subs) ? subs.map((s: any) => statText(s.stat, s.value)) : [],
+        awakenName: awaken?.name || null,
+      }
+    })
 
-    // 已装备功法
     const { rows: skillRows } = await pool.query(
       `SELECT cs.skill_id, cs.skill_type, cs.slot_index,
               COALESCE(csi.level, cs.level, 1) AS level
