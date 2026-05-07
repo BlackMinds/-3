@@ -62,23 +62,44 @@ async function buildPlayerBattleStats(char: any): Promise<{
 
   let armorPen = 0, accuracy = 0, spirit = Number(char.spirit || 10), spiritDensity = 0, luck = 0
   const elementDmg = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
+  // v4.0 装备贡献的五行抗性 + 控制抗性 + 控制概率（小数 0.05 = 5%）
+  const equipResist = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: 0 }
+  let equipCtrlChance = 0
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
   // v3.7 加法池：所有非功法被动 % 累加（小数, 0.10=10%），最后一次乘
   let nonPassiveAtkPct = 0, nonPassiveDefPct = 0, nonPassiveHpPct = 0, nonPassiveSpdPct = 0
 
+  // v4.0 主属性 stat → 累加器分发（属性1 受强化 / 属性2 不受强化）
+  // 含五行强化（饰品主属性）、SPIRIT_PCT（法宝物理向）、ATK_PCT/ARMOR_PEN（兵器属性2）等
+  const applyEquipPrimary = (stat: string, value: number) => {
+    if (stat === 'ATK') atk += value
+    else if (stat === 'DEF') def += value
+    else if (stat === 'HP') maxHp += value
+    else if (stat === 'SPD') spd += value
+    else if (stat === 'CRIT_RATE') critRate += value / 100
+    else if (stat === 'CRIT_DMG') critDmg += value / 100
+    else if (stat === 'SPIRIT') spirit += value
+    else if (stat === 'ATK_PCT') equipAtkPct += value
+    else if (stat === 'SPIRIT_PCT') weaponSpiritPct += value
+    else if (stat === 'ARMOR_PEN') armorPen += value
+    else if (stat === 'METAL_DMG') elementDmg.metal += value
+    else if (stat === 'WOOD_DMG')  elementDmg.wood  += value
+    else if (stat === 'WATER_DMG') elementDmg.water += value
+    else if (stat === 'FIRE_DMG')  elementDmg.fire  += value
+    else if (stat === 'EARTH_DMG') elementDmg.earth += value
+  }
+
   for (const eq of equipRows) {
     if (!eq.slot) continue
     const enhLv = eq.enhance_level || 0
-    const primary = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
-    if (eq.primary_stat === 'ATK') atk += primary
-    else if (eq.primary_stat === 'DEF') def += primary
-    else if (eq.primary_stat === 'HP') maxHp += primary
-    else if (eq.primary_stat === 'SPD') spd += primary
-    else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
-    else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
-    else if (eq.primary_stat === 'SPIRIT') spirit += primary
+    // 属性1：受强化
+    applyEquipPrimary(eq.primary_stat, Math.floor(eq.primary_value * (1 + enhLv * 0.10)))
+    // 属性2：不受强化（v4.0 新增，老装备 NULL 跳过）
+    if (eq.primary_stat_2 && eq.primary_value_2) {
+      applyEquipPrimary(eq.primary_stat_2, eq.primary_value_2)
+    }
 
     if (eq.weapon_type && WEAPON_BONUS[eq.weapon_type]) {
       const wb = WEAPON_BONUS[eq.weapon_type]
@@ -114,6 +135,17 @@ async function buildPlayerBattleStats(char: any): Promise<{
       else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
       else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
       else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
+      else if (sub.stat === 'SPIRIT_PCT') weaponSpiritPct += sub.value      // v4.0 神识%
+      // v4.0 五行抗性 → resists.{metal/wood/water/fire/earth}（teamBattleEngine 已用作 DOT/元素减伤）
+      else if (sub.stat === 'METAL_RES') equipResist.metal += sub.value / 100
+      else if (sub.stat === 'WOOD_RES')  equipResist.wood  += sub.value / 100
+      else if (sub.stat === 'WATER_RES') equipResist.water += sub.value / 100
+      else if (sub.stat === 'FIRE_RES')  equipResist.fire  += sub.value / 100
+      else if (sub.stat === 'EARTH_RES') equipResist.earth += sub.value / 100
+      // v4.0 控制抗性 → resists.ctrl（teamBattleEngine 已用作 freeze/stun/root 抵抗）
+      else if (sub.stat === 'CTRL_RES') equipResist.ctrl += sub.value / 100
+      // v4.0 控制概率 → ctrlChance（teamBattleEngine.applyDebuffDps 处加成）
+      else if (sub.stat === 'CTRL_CHANCE') equipCtrlChance += sub.value / 100
     }
   }
 
@@ -199,11 +231,17 @@ async function buildPlayerBattleStats(char: any): Promise<{
     dodge: Math.min(PLAYER_CAPS.dodge, dodge),
     lifesteal: Math.min(PLAYER_CAPS.lifesteal, lifesteal),
     element: char.spiritual_root,
+    // v4.0：DB 字段 + 装备副词条汇总（cap 70% 在 teamBattleEngine 内做）
     resists: {
-      metal: Number(char.resist_metal || 0), wood: Number(char.resist_wood || 0),
-      water: Number(char.resist_water || 0), fire: Number(char.resist_fire || 0),
-      earth: Number(char.resist_earth || 0), ctrl: Number(char.resist_ctrl || 0),
+      metal: Number(char.resist_metal || 0) + equipResist.metal,
+      wood:  Number(char.resist_wood  || 0) + equipResist.wood,
+      water: Number(char.resist_water || 0) + equipResist.water,
+      fire:  Number(char.resist_fire  || 0) + equipResist.fire,
+      earth: Number(char.resist_earth || 0) + equipResist.earth,
+      ctrl:  Number(char.resist_ctrl  || 0) + equipResist.ctrl,
     },
+    // v4.0：装备 CTRL_CHANCE 副词条 → 玩家施加 status 时加成
+    ctrlChance: equipCtrlChance,
     spiritualRoot: char.spiritual_root,
     armorPen: Math.min(PLAYER_CAPS.armorPen, armorPen),
     accuracy: Math.min(PLAYER_CAPS.accuracy, accuracy),

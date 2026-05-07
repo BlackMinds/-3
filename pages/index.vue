@@ -5127,8 +5127,11 @@ const secondaryStats = computed(() => {
   }
 
   // 神识：v3.4 武器 SPIRIT_percent 作用于"基础 + 装备主+副 + 附灵"
+  // v4.0: 装备 SPIRIT_PCT（法宝物理向属性2 / 副词条）也并入同一乘段，与战斗引擎对齐
   const spiritTotalBeforeWeapon = Number(c.spirit || 0) + (eb.SPIRIT || 0) + (ab.spirit || 0);
-  const spiritWeaponBonus = Math.floor(spiritTotalBeforeWeapon * (wb.SPIRIT_percent || 0) / 100);
+  const equipSpiritPct = (eb as any).SPIRIT_PCT || 0;
+  const totalSpiritPct = (wb.SPIRIT_percent || 0) + equipSpiritPct;
+  const spiritWeaponBonus = Math.floor(spiritTotalBeforeWeapon * totalSpiritPct / 100);
 
   // 宗门心法：spirit_percent（按"基础+装备主+副+附灵+武器%加成后"乘）, armor_pen_percent（平加破甲）
   let sectSpiritBonus = 0;
@@ -5202,7 +5205,7 @@ const secondaryStats = computed(() => {
     buildStat('神识', Number(c.spirit || 0), '基础', [
       { source: '装备 主+副', value: eb.SPIRIT || 0 },
       { source: '附灵', value: ab.spirit || 0 },
-      { source: `武器类型 +${(wb.SPIRIT_percent || 0)}%`, value: spiritWeaponBonus },
+      { source: `武器+装备% +${totalSpiritPct.toFixed(0)}%`, value: spiritWeaponBonus },
       { source: sectSpiritSrcs.length ? `宗门心法（${sectSpiritSrcs.join(' / ')}）` : '宗门心法', value: sectSpiritBonus },
     ], null, 0, ''),
     buildStat('破甲', 0, '基础', [
@@ -5222,6 +5225,10 @@ const secondaryStats = computed(() => {
       { source: '装备 副属性', value: xb.LUCK || 0 },
       { source: '附灵', value: ab.luck * 100 },
     ], null, 1),
+    // v4.0 控制概率：玩家施加 burn/poison/bleed/freeze/stun 等异常状态时的命中加成
+    buildStat('控制概率', 0, '基础', [
+      { source: '装备 副属性', value: (eb as any).CTRL_CHANCE || 0 },
+    ], null, 1),
   ];
 });
 
@@ -5230,6 +5237,7 @@ const resistStats = computed(() => {
   const c = gameStore.character;
   if (!c) return [];
   const ab = awakenBonus.value;
+  const eb = equipBonus.value;
   // 纯被动功法对各抗性的贡献（lvMul 0.15，结果是 0-1 小数）
   let passMetal = 0, passWood = 0, passWater = 0, passFire = 0, passEarth = 0, passCtrl = 0;
   for (let i = 0; i < equippedPassives.value.length; i++) {
@@ -5244,34 +5252,44 @@ const resistStats = computed(() => {
     if (pp.effect.RESIST_EARTH) passEarth += pp.effect.RESIST_EARTH * lvMul;
     if (pp.effect.RESIST_CTRL) passCtrl += pp.effect.RESIST_CTRL * lvMul;
   }
-  const buildResist = (label: string, baseVal: number, passVal: number, allResistVal: number, color: string) => {
+  // v4.0: 装备副词条贡献的抗性（值是百分比 5 = 5%，引擎 /100 后并入 resists.*）
+  const equipMetalRes = ((eb as any).METAL_RES || 0) / 100;
+  const equipWoodRes  = ((eb as any).WOOD_RES  || 0) / 100;
+  const equipWaterRes = ((eb as any).WATER_RES || 0) / 100;
+  const equipFireRes  = ((eb as any).FIRE_RES  || 0) / 100;
+  const equipEarthRes = ((eb as any).EARTH_RES || 0) / 100;
+  const equipCtrlRes  = ((eb as any).CTRL_RES  || 0) / 100;
+  const buildResist = (label: string, baseVal: number, passVal: number, allResistVal: number, equipVal: number, color: string) => {
     const steps: StatStep[] = [];
     let raw = baseVal;
     if (baseVal !== 0) steps.push({ source: '基础', delta: baseVal * 100 });
     if (passVal !== 0) { steps.push({ source: '功法被动', delta: passVal * 100 }); raw += passVal; }
     if (allResistVal !== 0) { steps.push({ source: '附灵 全抗', delta: allResistVal * 100 }); raw += allResistVal; }
+    if (equipVal !== 0) { steps.push({ source: '装备 副属性', delta: equipVal * 100 }); raw += equipVal; }
     return {
       label, value: (raw * 100).toFixed(1) + '%', percent: raw * 100 / 0.7, color,
       base: baseVal * 100, total: raw * 100, bonus: (raw - baseVal) * 100, steps, capped: false, capLabel: '', unit: '%',
     };
   };
   return [
-    buildResist('金抗', Number(c.resist_metal || 0), passMetal, ab.allResist, '#c9a85c'),
-    buildResist('木抗', Number(c.resist_wood || 0), passWood, ab.allResist, '#6baa7d'),
-    buildResist('水抗', Number(c.resist_water || 0), passWater, ab.allResist, '#5b8eaa'),
-    buildResist('火抗', Number(c.resist_fire || 0), passFire, ab.allResist, '#c45c4a'),
-    buildResist('土抗', Number(c.resist_earth || 0), passEarth, ab.allResist, '#a08a60'),
-    buildResist('控制抗性', Number(c.resist_ctrl || 0), passCtrl, ab.ctrlResist, '#9f7fb8'),
+    buildResist('金抗', Number(c.resist_metal || 0), passMetal, ab.allResist, equipMetalRes, '#c9a85c'),
+    buildResist('木抗', Number(c.resist_wood || 0), passWood, ab.allResist, equipWoodRes, '#6baa7d'),
+    buildResist('水抗', Number(c.resist_water || 0), passWater, ab.allResist, equipWaterRes, '#5b8eaa'),
+    buildResist('火抗', Number(c.resist_fire || 0), passFire, ab.allResist, equipFireRes, '#c45c4a'),
+    buildResist('土抗', Number(c.resist_earth || 0), passEarth, ab.allResist, equipEarthRes, '#a08a60'),
+    buildResist('控制抗性', Number(c.resist_ctrl || 0), passCtrl, ab.ctrlResist, equipCtrlRes, '#9f7fb8'),
   ];
 });
 
 // 元素强化
+// v4.0: 改用 equipBonus（含主属性 + 副词条），原 equipExtendedBonus 仅统计 sub_stats，
+// 会漏掉饰品（戒指槽）以 METAL_DMG~EARTH_DMG 作主属性的贡献
 const elementDmgStats = computed(() => {
-  const xb = equipExtendedBonus.value;
+  const eb = equipBonus.value;
   const ab = awakenBonus.value;
   const buildElem = (label: string, eq: number, aw: number, color: string) => {
     const steps: StatStep[] = [];
-    if (eq !== 0) steps.push({ source: '装备 副属性', delta: eq });
+    if (eq !== 0) steps.push({ source: '装备 主+副', delta: eq });
     if (aw !== 0) steps.push({ source: '附灵', delta: aw });
     const total = eq + aw;
     return {
@@ -5280,11 +5298,11 @@ const elementDmgStats = computed(() => {
     };
   };
   return [
-    buildElem('金系强化', xb.METAL_DMG || 0, ab.metalDmg * 100, '#c9a85c'),
-    buildElem('木系强化', xb.WOOD_DMG  || 0, ab.woodDmg  * 100, '#6baa7d'),
-    buildElem('水系强化', xb.WATER_DMG || 0, ab.waterDmg * 100, '#5b8eaa'),
-    buildElem('火系强化', xb.FIRE_DMG  || 0, ab.fireDmg  * 100, '#c45c4a'),
-    buildElem('土系强化', xb.EARTH_DMG || 0, ab.earthDmg * 100, '#a08a60'),
+    buildElem('金系强化', (eb as any).METAL_DMG || 0, ab.metalDmg * 100, '#c9a85c'),
+    buildElem('木系强化', (eb as any).WOOD_DMG  || 0, ab.woodDmg  * 100, '#6baa7d'),
+    buildElem('水系强化', (eb as any).WATER_DMG || 0, ab.waterDmg * 100, '#5b8eaa'),
+    buildElem('火系强化', (eb as any).FIRE_DMG  || 0, ab.fireDmg  * 100, '#c45c4a'),
+    buildElem('土系强化', (eb as any).EARTH_DMG || 0, ab.earthDmg * 100, '#a08a60'),
   ];
 });
 
@@ -6972,9 +6990,10 @@ const reforgeCandidateSets = computed(() => {
   const eq = setReforgeDialog.value.equip;
   if (!eq) return [];
   return EQUIP_SETS.filter(s => {
-    const req = (s.tiers[0] as any)?.hooks?.weaponRequired;
-    if (!req) return s.setKey !== eq.set_id;
-    return eq.base_slot === 'weapon' && eq.weapon_type === req && s.setKey !== eq.set_id;
+    if (s.setKey === eq.set_id) return false;
+    const req = s.weaponRequired;
+    if (!req) return true;
+    return eq.base_slot === 'weapon' && eq.weapon_type === req;
   });
 });
 
