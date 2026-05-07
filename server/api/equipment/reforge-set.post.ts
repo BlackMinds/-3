@@ -28,11 +28,9 @@ export default defineEventHandler(async (event) => {
     if (eq.set_id === setKey) return { code: 400, message: '该装备已是此套装' }
 
     const weaponRequired = (targetSet.tiers[0]?.hooks as any)?.weaponRequired
-    if (weaponRequired) {
-      if (eq.base_slot !== 'weapon' || eq.weapon_type !== weaponRequired) {
-        const weaponLabel: Record<string, string> = { sword: '剑', blade: '刀', spear: '枪', fan: '扇' }
-        return { code: 400, message: `${targetSet.name} 仅可重铸到「${weaponLabel[weaponRequired] || weaponRequired}」类武器装备` }
-      }
+    if (weaponRequired && eq.base_slot === 'weapon' && eq.weapon_type !== weaponRequired) {
+      const weaponLabel: Record<string, string> = { sword: '剑', blade: '刀', spear: '枪', fan: '扇' }
+      return { code: 400, message: `${targetSet.name} 的武器槽仅可重铸到「${weaponLabel[weaponRequired] || weaponRequired}」类武器` }
     }
 
     const used = await consumeSpecialItem(charId, 'set_reforge_voucher')
