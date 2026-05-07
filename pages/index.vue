@@ -6993,7 +6993,9 @@ const reforgeCandidateSets = computed(() => {
     if (s.setKey === eq.set_id) return false;
     const req = s.weaponRequired;
     if (!req) return true;
-    return eq.base_slot === 'weapon' && eq.weapon_type === req;
+    // 武器流套装：仅武器槽强制类型一致；非武器槽允许自由凑件套（与掉落规则一致）
+    if (eq.base_slot !== 'weapon') return true;
+    return eq.weapon_type === req;
   });
 });
 
