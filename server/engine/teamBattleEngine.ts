@@ -251,6 +251,10 @@ function applyDebuffDps(
   if (inflictor && inflictor.setEffects?.basicBackDebuffMul > 1) {
     effChance = Math.min(1, effChance * inflictor.setEffects.basicBackDebuffMul)
   }
+  // v4.0 装备控制概率：施加方任何 status 加成（inflictor.stats.ctrlChance 来自 buildCharacterSnapshot）
+  if (inflictor?.stats && (inflictor.stats as any).ctrlChance) {
+    effChance = Math.min(1, effChance + (inflictor.stats as any).ctrlChance)
+  }
   if (Math.random() >= effChance) return false
   const d: ActiveDebuff = {
     type: debuff.type,

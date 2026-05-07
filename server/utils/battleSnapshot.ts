@@ -109,6 +109,9 @@ export async function buildCharacterSnapshot(
   let spirit = 10
   let armorPen = 0, accuracy = 0
   const elementDmg = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
+  // v4.0 装备贡献的五行抗性 + 控制抗性 + 控制概率（小数 0.05 = 5%）
+  const equipResist = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: 0 }
+  let equipCtrlChance = 0
 
   // 等级加成
   const lv = char.level || 1
@@ -205,8 +208,16 @@ export async function buildCharacterSnapshot(
       else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
       else if (sub.stat === 'SPIRIT_PCT') weaponSpiritPct += sub.value     // v4.0 神识%
       else if (sub.stat === 'REFLECT_PCT') equipReflectPct += sub.value / 100
-      // v4.0 新增词条（控制/异常 概率/抗性、五行抗性）：暂不参与战斗计算，
-      // 留待战斗引擎扩展异常管线 + 五行抗性管线时接入。
+      // v4.0 五行抗性 → resists.{metal/wood/water/fire/earth}（battleEngine 已用作 DOT/元素减伤）
+      else if (sub.stat === 'METAL_RES') equipResist.metal += sub.value / 100
+      else if (sub.stat === 'WOOD_RES')  equipResist.wood  += sub.value / 100
+      else if (sub.stat === 'WATER_RES') equipResist.water += sub.value / 100
+      else if (sub.stat === 'FIRE_RES')  equipResist.fire  += sub.value / 100
+      else if (sub.stat === 'EARTH_RES') equipResist.earth += sub.value / 100
+      // v4.0 控制抗性 → resists.ctrl（battleEngine 已用作 freeze/stun/root 抵抗）
+      else if (sub.stat === 'CTRL_RES') equipResist.ctrl += sub.value / 100
+      // v4.0 控制概率 → ctrlChance（battleEngine status apply 处加成）
+      else if (sub.stat === 'CTRL_CHANCE') equipCtrlChance += sub.value / 100
     }
 
     // v3.7 反伤附灵：reflectPct (明镜甲/玄镜佩) 汇入同池
@@ -329,14 +340,17 @@ export async function buildCharacterSnapshot(
     crit_rate: critRate, crit_dmg: critDmg,
     dodge, lifesteal,
     element: char.spiritual_root,
+    // v4.0：DB 字段 + 装备副词条汇总（cap 70% 在 battleEngine 内做）
     resists: {
-      metal: Number(char.resist_metal || 0),
-      wood: Number(char.resist_wood || 0),
-      water: Number(char.resist_water || 0),
-      fire: Number(char.resist_fire || 0),
-      earth: Number(char.resist_earth || 0),
-      ctrl: Number(char.resist_ctrl || 0),
+      metal: Number(char.resist_metal || 0) + equipResist.metal,
+      wood:  Number(char.resist_wood  || 0) + equipResist.wood,
+      water: Number(char.resist_water || 0) + equipResist.water,
+      fire:  Number(char.resist_fire  || 0) + equipResist.fire,
+      earth: Number(char.resist_earth || 0) + equipResist.earth,
+      ctrl:  Number(char.resist_ctrl  || 0) + equipResist.ctrl,
     },
+    // v4.0：装备 CTRL_CHANCE 副词条 → 玩家施加 status 时加成
+    ctrlChance: equipCtrlChance,
     spiritualRoot: char.spiritual_root,
     armorPen, accuracy, elementDmg,
     spirit,

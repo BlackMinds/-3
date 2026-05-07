@@ -258,6 +258,9 @@ export interface BattlerStats {
   accuracy?: number;
   elementDmg?: { metal: number; wood: number; water: number; fire: number; earth: number };
   spirit?: number; // 神识: 每点+0.1%神通伤害
+  // v4.0 控制概率（玩家装备 CTRL_CHANCE 副词条贡献，小数 0.05=5%）
+  // 在 status apply 处加成 effChance（仅施加方为玩家时生效）
+  ctrlChance?: number;
   awaken?: PlayerAwakenState; // 装备附灵运行时状态（v1.2 新增）
   _towerTraits?: string[]; // 通天塔特有 trait 列表（B01/B04/B05 真版 hook 触发用，主图战斗为 undefined）
 }
@@ -1339,6 +1342,12 @@ export function runWaveBattle(
     if (inflictor === 'player' && debuff.type === 'freeze' && (player as any).setEffects?.freezeChanceBonus > 0) {
       effChance = Math.min(1, effChance + (player as any).setEffects.freezeChanceBonus);
       resonanceTag += ` ❖极寒+${((player as any).setEffects.freezeChanceBonus * 100).toFixed(0)}%`;
+    }
+    // v4.0 装备控制概率：玩家施加任何 status（freeze/stun/burn/poison/bleed/...）时加成
+    if (inflictor === 'player' && (player as any).ctrlChance) {
+      const cc = (player as any).ctrlChance;
+      effChance = Math.min(1, effChance + cc);
+      resonanceTag += ` ◇控+${(cc * 100).toFixed(0)}%`;
     }
     // ❖ 回归基本功 7 件套：玩家主修攻击触发 debuff 概率 ×1.5
     if (inflictor === 'player' && (player as any)._mainSkillElement && (player as any).setEffects?.basicBackDebuffMul > 1) {

@@ -426,6 +426,9 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   // 装备加成
   let armorPen = 0, accuracy = 0, spirit = 0, spiritDensity = 0, luck = 0
   const elementDmg = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
+  // v4.0 装备贡献的五行抗性 + 控制抗性 + 控制概率（小数 0.05 = 5%）
+  const equipResist = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: 0 }
+  let equipCtrlChance = 0
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
   let weaponCritRateFlat = 0, weaponCritDmgFlat = 0, weaponLifestealFlat = 0
   // 装备副属性百分比（与武器类型百分比合并一次乘法）
@@ -442,6 +445,26 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   const equipSetCounts: Record<string, number> = {}
   let playerWeaponType: string | null = null
 
+  // v4.0 主属性 stat → 累加器分发（属性1 受强化 / 属性2 不受强化）
+  // 含五行强化（饰品主属性）、SPIRIT_PCT（法宝物理向）、ATK_PCT/ARMOR_PEN（兵器属性2）等
+  const applyEquipPrimary = (stat: string, value: number) => {
+    if (stat === 'ATK') atk += value
+    else if (stat === 'DEF') def += value
+    else if (stat === 'HP') maxHp += value
+    else if (stat === 'SPD') spd += value
+    else if (stat === 'CRIT_RATE') critRate += value / 100
+    else if (stat === 'CRIT_DMG') critDmg += value / 100
+    else if (stat === 'SPIRIT') spirit += value
+    else if (stat === 'ATK_PCT') equipAtkPct += value
+    else if (stat === 'SPIRIT_PCT') weaponSpiritPct += value
+    else if (stat === 'ARMOR_PEN') armorPen += value
+    else if (stat === 'METAL_DMG') elementDmg.metal += value
+    else if (stat === 'WOOD_DMG')  elementDmg.wood  += value
+    else if (stat === 'WATER_DMG') elementDmg.water += value
+    else if (stat === 'FIRE_DMG')  elementDmg.fire  += value
+    else if (stat === 'EARTH_DMG') elementDmg.earth += value
+  }
+
   for (const eq of equipRows) {
     if (!eq.slot) continue
     if (eq.set_id) {
@@ -451,14 +474,12 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       playerWeaponType = eq.weapon_type
     }
     const enhLv = eq.enhance_level || 0
-    const primary = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
-    if (eq.primary_stat === 'ATK') atk += primary
-    else if (eq.primary_stat === 'DEF') def += primary
-    else if (eq.primary_stat === 'HP') maxHp += primary
-    else if (eq.primary_stat === 'SPD') spd += primary
-    else if (eq.primary_stat === 'CRIT_RATE') critRate += primary / 100
-    else if (eq.primary_stat === 'CRIT_DMG') critDmg += primary / 100
-    else if (eq.primary_stat === 'SPIRIT') spirit += primary
+    // 属性1：受强化
+    applyEquipPrimary(eq.primary_stat, Math.floor(eq.primary_value * (1 + enhLv * 0.10)))
+    // 属性2：不受强化（v4.0 新增，老装备 NULL 跳过）
+    if (eq.primary_stat_2 && eq.primary_value_2) {
+      applyEquipPrimary(eq.primary_stat_2, eq.primary_value_2)
+    }
 
     // 武器类型加成
     if (eq.weapon_type && WEAPON_BONUS[eq.weapon_type]) {
@@ -495,8 +516,19 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
       else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
       else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
+      else if (sub.stat === 'SPIRIT_PCT') weaponSpiritPct += sub.value      // v4.0 神识%
       else if (sub.stat === 'DOT_DMG_PCT') equipDotDmgPct += sub.value / 100
       else if (sub.stat === 'REFLECT_PCT') equipReflectPct += sub.value / 100
+      // v4.0 五行抗性（接入 stats.resists.* → battleEngine 已用作 DOT 减免 + 元素减伤）
+      else if (sub.stat === 'METAL_RES') equipResist.metal += sub.value / 100
+      else if (sub.stat === 'WOOD_RES')  equipResist.wood  += sub.value / 100
+      else if (sub.stat === 'WATER_RES') equipResist.water += sub.value / 100
+      else if (sub.stat === 'FIRE_RES')  equipResist.fire  += sub.value / 100
+      else if (sub.stat === 'EARTH_RES') equipResist.earth += sub.value / 100
+      // v4.0 控制抗性（接入 stats.resists.ctrl → battleEngine 已用作 freeze/stun/root 抵抗）
+      else if (sub.stat === 'CTRL_RES') equipResist.ctrl += sub.value / 100
+      // v4.0 控制概率（接入 stats.ctrlChance → battleEngine 在 status apply 处加成）
+      else if (sub.stat === 'CTRL_CHANCE') equipCtrlChance += sub.value / 100
     }
 
     // v1.2 附灵聚合（weapon/armor/pendant + v1.3 ring 主修增幅）
@@ -748,14 +780,17 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       crit_rate: cappedCritRate, crit_dmg: cappedCritDmg,
       dodge: cappedDodge, lifesteal: cappedLifesteal,
       element: char.spiritual_root,
+      // v4.0：DB 字段 + 附灵 + 装备副词条三方汇总（cap 70% 在 battleEngine 内做）
       resists: {
-        metal: Number(char.resist_metal || 0) + awakenAllResist,
-        wood: Number(char.resist_wood || 0) + awakenAllResist,
-        water: Number(char.resist_water || 0) + awakenAllResist,
-        fire: Number(char.resist_fire || 0) + awakenAllResist,
-        earth: Number(char.resist_earth || 0) + awakenAllResist,
-        ctrl: Number(char.resist_ctrl || 0) + awakenCtrlResist,
+        metal: Number(char.resist_metal || 0) + awakenAllResist + equipResist.metal,
+        wood:  Number(char.resist_wood  || 0) + awakenAllResist + equipResist.wood,
+        water: Number(char.resist_water || 0) + awakenAllResist + equipResist.water,
+        fire:  Number(char.resist_fire  || 0) + awakenAllResist + equipResist.fire,
+        earth: Number(char.resist_earth || 0) + awakenAllResist + equipResist.earth,
+        ctrl:  Number(char.resist_ctrl  || 0) + awakenCtrlResist + equipResist.ctrl,
       },
+      // v4.0：装备 CTRL_CHANCE 副词条 → 玩家施加 status 时加成
+      ctrlChance: equipCtrlChance,
       spiritualRoot: char.spiritual_root,
       armorPen: cappedArmorPen, accuracy: cappedAccuracy, elementDmg,
       spirit,

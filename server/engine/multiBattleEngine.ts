@@ -114,6 +114,8 @@ export interface PvpFighter {
   armorPen: number
   accuracy: number
   spirit: number
+  // v4.0 控制概率（装备 CTRL_CHANCE 副词条）
+  ctrlChance: number
 
   // 技能
   activeSkill: SkillRefInfo
@@ -240,6 +242,8 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
     armorPen: s.armorPen || 0,
     accuracy: s.accuracy || 0,
     spirit: s.spirit || 10,
+    // v4.0 装备 CTRL_CHANCE 副词条 → 透传到 fighter，status apply 处加成
+    ctrlChance: Number((s as any).ctrlChance) || 0,
 
     activeSkill: eq.activeSkill || { name: '基础剑法', multiplier: 1.0, element: null },
     divineSkills: eq.divineSkills || [],
@@ -499,6 +503,12 @@ export function runPvpBattle(
       const m = inflictor.setEffects.basicBackDebuffMul
       effChance = Math.min(1, effChance * m)
       resonanceTag += ` ❖本源×${m.toFixed(1)}`
+    }
+    // v4.0 装备控制概率：施加方任何 status（freeze/stun/burn/poison/bleed/...）加成
+    if (inflictor && (inflictor as any).ctrlChance) {
+      const cc = (inflictor as any).ctrlChance
+      effChance = Math.min(1, effChance + cc)
+      resonanceTag += ` ◇控+${(cc * 100).toFixed(0)}%`
     }
 
     if (Math.random() >= effChance) return false
