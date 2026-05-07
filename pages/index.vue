@@ -2890,9 +2890,9 @@
             <div class="help-title">挑战规则</div>
             <table class="help-table"><tbody>
               <tr><td>跳层</td><td>不能跳层,只能挑战「最高已通关层 + 1」或重温任意已通关层</td></tr>
-              <tr><td>失败配额</td><td>挑战未通关层失败:扣 1 次配额,每日上限 <b>5 次</b>,每日 8:00 重置</td></tr>
+              <tr><td>失败配额</td><td>挑战未通关层失败:扣 1 次配额,每日上限 <b>3 次</b>,每日 8:00 重置</td></tr>
               <tr><td>重温</td><td>挑战已通关层(无论胜负):不扣配额,不更新进度,不发首通奖,但仍发 v3.9 紫品功法</td></tr>
-              <tr><td>战斗超时</td><td>单层 100 回合内未分胜负判定为失败</td></tr>
+              <tr><td>战斗超时</td><td>单层 150 回合内未分胜负判定为失败</td></tr>
             </tbody></table>
           </div>
           <div class="help-section">
@@ -3155,6 +3155,8 @@
         v-if="heavenHoverChar !== null"
         class="heaven-tooltip"
         :style="{ top: heavenTipY + 'px', left: heavenTipX + 'px' }"
+        @mouseenter="cancelHeavenClose"
+        @mouseleave="onHeavenRowLeave"
       >
         <div v-if="heavenHoverLoading && !heavenHoverDetail" class="heaven-tip-loading">查阅传承…</div>
         <template v-else-if="heavenHoverDetail">
@@ -3738,7 +3740,15 @@ async function loadHeavenDetail(characterId: number) {
   }
 }
 
+let heavenCloseTimer: ReturnType<typeof setTimeout> | null = null;
+function cancelHeavenClose() {
+  if (heavenCloseTimer) {
+    clearTimeout(heavenCloseTimer);
+    heavenCloseTimer = null;
+  }
+}
 function onHeavenRowEnter(e: MouseEvent, characterId: number) {
+  cancelHeavenClose();
   heavenHoverChar.value = characterId;
   positionHeavenTip(e);
   loadHeavenDetail(characterId);
@@ -3748,7 +3758,12 @@ function onHeavenRowMove(e: MouseEvent) {
   positionHeavenTip(e);
 }
 function onHeavenRowLeave() {
-  heavenHoverChar.value = null;
+  cancelHeavenClose();
+  // 留点时间让鼠标可以滑入浮窗滚动
+  heavenCloseTimer = setTimeout(() => {
+    heavenHoverChar.value = null;
+    heavenCloseTimer = null;
+  }, 180);
 }
 function positionHeavenTip(e: MouseEvent) {
   const TIP_W = 360;
@@ -13384,17 +13399,22 @@ onUnmounted(() => {
   z-index: 9999;
   width: 360px;
   max-width: 360px;
-  max-height: 80vh;
+  max-height: 90vh;
   overflow-y: auto;
   padding: 10px 12px;
   background: rgba(20, 16, 10, 0.96);
   border: 1px solid rgba(184, 154, 90, 0.55);
   border-radius: 6px;
   box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55), 0 0 18px rgba(184, 154, 90, 0.15);
-  pointer-events: none;
+  pointer-events: auto;
   font-size: 12px;
   color: var(--ink-light);
   backdrop-filter: blur(2px);
+}
+.heaven-tooltip::-webkit-scrollbar { width: 6px; }
+.heaven-tooltip::-webkit-scrollbar-thumb {
+  background: rgba(184, 154, 90, 0.4);
+  border-radius: 3px;
 }
 .heaven-tip-loading {
   text-align: center;
@@ -13466,11 +13486,11 @@ onUnmounted(() => {
   border-top: 1px dotted rgba(184, 154, 90, 0.18);
 }
 .heaven-tip-stats {
-  margin: 2px 0 0 38px;
+  margin: 1px 0 0 4px;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 10px;
-  line-height: 1.45;
+  gap: 1px 8px;
+  line-height: 1.4;
   font-size: 11px;
 }
 .heaven-tip-stat-main {

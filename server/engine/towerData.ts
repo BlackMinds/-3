@@ -9,8 +9,8 @@
 import type { MonsterTemplate } from './battleEngine'
 
 export const TOTAL_FLOORS = 100
-export const TURN_LIMIT_PER_FLOOR = 100
-export const DAILY_FAIL_LIMIT = 5
+export const TURN_LIMIT_PER_FLOOR = 150
+export const DAILY_FAIL_LIMIT = 3
 export const ENTRY_REALM_TIER = 7   // 大乘
 export const ENTRY_LEVEL = 140
 

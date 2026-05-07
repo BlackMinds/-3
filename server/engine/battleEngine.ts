@@ -1112,10 +1112,11 @@ export interface WaveBattleResult {
 export function runWaveBattle(
   playerStats: BattlerStats,
   monsterList: { stats: BattlerStats; template: MonsterTemplate }[],
-  equippedSkills?: EquippedSkillInfo
+  equippedSkills?: EquippedSkillInfo,
+  maxTurnsOverride?: number,
 ): WaveBattleResult {
   const player: any = { ...playerStats, hp: playerStats.maxHp, buffs: [] as ActiveBuff[], debuffs: [] as ActiveDebuff[], frozenTurns: 0 };
-  const maxTurns = 50 * monsterList.length;
+  const maxTurns = maxTurnsOverride ?? 50 * monsterList.length;
   const logs: BattleLogEntry[] = [];
   let totalExp = 0, totalStone = 0;
   const monstersKilled: { template: MonsterTemplate }[] = [];

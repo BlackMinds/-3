@@ -15,7 +15,7 @@ import {
   type BattleLogEntry,
 } from './battleEngine'
 import { applyTraits } from './towerTraits'
-import { getFloorDef, type FloorDef, type FloorMonster } from './towerData'
+import { getFloorDef, TURN_LIMIT_PER_FLOOR, type FloorDef, type FloorMonster } from './towerData'
 
 export interface TowerBattleSetup {
   floor: number
@@ -84,7 +84,9 @@ export function runTowerBattle(
   // ⚠️ runWaveBattle 内部会用 monsterList[].stats 的副本，
   // 它会把每场玩家 HP 重置为 playerStats.maxHp，buffs/debuffs 清空，
   // 这正好对应通天塔"每层重置"的需求。
-  const result: WaveBattleResult = runWaveBattle(playerStats, monsterList, equippedSkills)
+  // 通天塔单层固定 TURN_LIMIT_PER_FLOOR 回合上限（不随怪数缩放），
+  // 防"龟缩流"无限拖延；超时判失败由 challenge.post.ts 根据 won=false 处理。
+  const result: WaveBattleResult = runWaveBattle(playerStats, monsterList, equippedSkills, TURN_LIMIT_PER_FLOOR)
 
   // 统计伤害（从日志近似计算）
   let damageDealt = 0
