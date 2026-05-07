@@ -1,6 +1,6 @@
 // 装备套装数据 — 前端共享版（与 server/engine/equipSetData.ts 内容对齐）
-// 前端只用到 setKey/name/prefix/desc/tiers.desc，hooks 留空
-// 服务端是单一真实源；前端这份只负责展示
+// 前端只用到 setKey/name/prefix/desc/tiers.desc/weaponRequired，hooks 留空
+// 服务端是单一真实源；前端这份只负责展示与重铸候选过滤
 
 export interface EquipSetTier {
   count: 3 | 5 | 7
@@ -12,6 +12,8 @@ export interface EquipSet {
   name: string
   prefix: string
   desc: string
+  /** 武器流套装：限定主武器类型，仅可重铸到对应武器装备 */
+  weaponRequired?: 'sword' | 'blade' | 'spear' | 'fan'
   tiers: [EquipSetTier, EquipSetTier, EquipSetTier]
 }
 
@@ -55,6 +57,7 @@ export const EQUIP_SETS: EquipSet[] = [
   {
     setKey: 'thirteen_spear', name: '十三枪', prefix: '霸枪',
     desc: '武器流·枪，最终伤害堆叠流（需装备「枪」）',
+    weaponRequired: 'spear',
     tiers: [
       { count: 3, desc: '装备「枪」时，破甲 +10、吸血 +3%；造成伤害后获得 1 层「十三枪」，每层最终伤害 +5%，最多 13 层' },
       { count: 5, desc: '装备「枪」时，破甲 +18、吸血 +5%；每层最终伤害 +7%' },
@@ -73,6 +76,7 @@ export const EQUIP_SETS: EquipSet[] = [
   {
     setKey: 'sword_immortal', name: '剑仙套', prefix: '御剑',
     desc: '武器流·剑，造成伤害额外触发剑气（需装备「剑」）',
+    weaponRequired: 'sword',
     tiers: [
       { count: 3, desc: '装备「剑」时，攻击 +5%、防御 +5%、会心率 +3%；造成伤害额外造成 1 次剑气，倍率 30%' },
       { count: 5, desc: '装备「剑」时，攻击 +8%、防御 +8%、会心率 +5%；造成伤害额外造成 2 次剑气，倍率 45%' },
@@ -82,6 +86,7 @@ export const EQUIP_SETS: EquipSet[] = [
   {
     setKey: 'blade_madness', name: '刀狂套', prefix: '狂刀',
     desc: '武器流·刀，非会心叠加会心/会伤，会心后清零（需装备「刀」）',
+    weaponRequired: 'blade',
     tiers: [
       { count: 3, desc: '装备「刀」时，会心率 +5%、会心伤害 +15%；非会心命中叠加：会心率 +5% / 会心伤害 +15%（会心清零）' },
       { count: 5, desc: '装备「刀」时，会心率 +8%、会心伤害 +25%；非会心叠加：会心率 +10% / 会心伤害 +25%' },
@@ -91,6 +96,7 @@ export const EQUIP_SETS: EquipSet[] = [
   {
     setKey: 'fan_master', name: '天机套', prefix: '机扇',
     desc: '武器流·扇，神通释放后追加额外段（需装备「扇」）',
+    weaponRequired: 'fan',
     tiers: [
       { count: 3, desc: '装备「扇」时，神识 +15%；释放神通后额外释放 1 次，伤害 30%' },
       { count: 5, desc: '装备「扇」时，神识 +25%；释放神通后额外释放 1 次，伤害 50%' },
