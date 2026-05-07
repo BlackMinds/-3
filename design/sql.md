@@ -191,7 +191,7 @@ UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.5;
 UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.7;
 
 重置通天塔
- UPDATE characters SET tower_max_floor = 0, tower_daily_fail = 0 WHERE id = <你的角色id>;
+  UPDATE characters SET tower_max_floor = 0, tower_daily_fail = 0 WHERE name = '你的角色名';
 
 重置套装
   INSERT INTO character_pills (character_id, pill_id, count, quality_factor)
