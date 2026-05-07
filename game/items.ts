@@ -16,7 +16,7 @@ export interface ItemInfo {
 export const ITEM_INFO: Record<string, ItemInfo> = {
   // —— 强化类 ——
   enhance_protect:    { name: '强化保护符', description: '强化失败时不退级（强化时自动消耗）',   category: 'enhance' },
-  enhance_guarantee:  { name: '强化大师符', description: '+7 以下强化必成功（强化时自动消耗）',  category: 'enhance' },
+  enhance_guarantee:  { name: '强化大师符', description: '强化到 +7 时必成功（强化时自动消耗，仅 +7 生效）',  category: 'enhance' },
   // —— 强化石（T4+ 装备强化必备，对应 tier 专用；地图/秘境低概率掉落） ——
   enhance_stone_t4:   { name: '强化石·T4',  description: '强化 T4 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
   enhance_stone_t5:   { name: '强化石·T5',  description: '强化 T5 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },

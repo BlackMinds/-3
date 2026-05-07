@@ -80,7 +80,7 @@ export default defineEventHandler(async (event) => {
     else if (nextLevel === 9) successRate = 0.40
     else if (nextLevel === 10) successRate = 0.25
 
-    // 强化大师符: +7以下强化必成（仅 +7 触发，+6 已默认必成）
+    // 强化大师符: 强化到 +7 时必成（仅 +7 触发；+1~+6 默认必成不需要符；+8 及以上不生效）
     let usedMaster = false
     if (nextLevel === 7 && successRate < 1.0) {
       const { rows: masterRows } = await pool.query(

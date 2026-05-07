@@ -100,7 +100,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   // 稀有 (宗门5级)
   { key: 'sect_skill_page',    name: '宗门秘法残页', description: '随机地品功法残页x1',       cost: 10000, weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'skill_page', quality: 'purple' } },
   { key: 'premium_herb_pack',  name: '仙品灵草包',   description: '随机2种灵草(金品质+)',     cost: 8000,  weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'herb_pack', minQuality: 'gold', count: 2 } },
-  { key: 'enhance_master',     name: '强化大师符',   description: '+7以下强化必成(一次性)',    cost: 6000,  weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'enhance_guarantee', maxLevel: 6 } },
+  { key: 'enhance_master',     name: '强化大师符',   description: '强化到 +7 时必成(一次性,仅 +7 生效)',    cost: 6000,  weeklyLimit: 1,  requiredSectLevel: 5, category: 'rare', effect: { type: 'enhance_guarantee', maxLevel: 6 } },
   { key: 'recipe_elite_atk',   name: '大聚灵丹方',   description: '永久解锁【大聚灵丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_atk_pill' } },
   { key: 'recipe_elite_def',   name: '大铁皮丹方',   description: '永久解锁【大铁皮丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_def_pill' } },
   { key: 'recipe_elite_hp',    name: '大培元丹方',   description: '永久解锁【大培元丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_hp_pill' } },
