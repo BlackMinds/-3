@@ -13031,13 +13031,13 @@ onUnmounted(() => {
       rgba(80, 180, 255, 0.10) 50%,
       rgba(80, 255, 200, 0.07) 75%,
       rgba(255, 200, 80, 0.05) 100%) 0 0 / 220% 100% no-repeat,
-    url('/images/吴彦祖.png') center / cover no-repeat;
+    url('/images/吴彦祖.png') center 28% / cover no-repeat;
   animation: wuyanzu-bg-flow 4.5s linear infinite, wuyanzu-pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes wuyanzu-bg-flow {
-  0% { background-position: 0% 0, center; }
-  100% { background-position: 220% 0, center; }
+  0% { background-position: 0% 0, center 28%; }
+  100% { background-position: 220% 0, center 28%; }
 }
 
 @keyframes wuyanzu-pulse {
