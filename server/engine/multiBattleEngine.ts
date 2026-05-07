@@ -460,6 +460,7 @@ export function runPvpBattle(
     let effValue = debuff.value
     let bleedAmpMul = 1.0
     let poisonAmpMul = 1.0
+    let burnAmpMul = 1.0
     let resonanceTag = ''
     const aState = inflictor?.awakenState
     const mainElem = (inflictor as any)?._mainSkillElement as string | undefined
@@ -468,6 +469,12 @@ export function runPvpBattle(
           aState.mainSkillBurnDurationElem === 'fire' && aState.mainSkillBurnDuration) {
         effDuration += aState.mainSkillBurnDuration
         resonanceTag = ` ✦焚天+${aState.mainSkillBurnDuration}`
+      }
+      // v3.9 焚天烈焰诀 / 焚烬戒：灼烧每跳伤害放大
+      if (debuff.type === 'burn' && mainElem === 'fire' &&
+          aState.mainSkillBurnAmpElem === 'fire' && aState.mainSkillBurnAmp) {
+        burnAmpMul = 1 + aState.mainSkillBurnAmp
+        resonanceTag += ` ✦焚烬+${(aState.mainSkillBurnAmp * 100).toFixed(0)}%`
       }
       if ((debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') && mainElem === 'water' &&
           aState.mainSkillFreezeChanceElem === 'water' && aState.mainSkillFreezeChance) {
@@ -528,6 +535,7 @@ export function runPvpBattle(
     let dmg = Math.max(1, Math.floor(rawDot * balance.dotMultiplier))
     if (debuff.type === 'bleed' && bleedAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * bleedAmpMul))
     if (debuff.type === 'poison' && poisonAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * poisonAmpMul))
+    if (debuff.type === 'burn' && burnAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * burnAmpMul))
     // v3.8.5 玩家施加 DOT 享受元素强化 + 元素克制 + 目标抗性 + 套装 dmgMul（PvP 双方都是玩家，inflictor 必须存在）
     const isDotTypeMbe = debuff.type === 'burn' || debuff.type === 'poison' || debuff.type === 'bleed'
     if (isDotTypeMbe && inflictor) {
@@ -897,7 +905,7 @@ export function runPvpBattle(
     // 避免出现"先吸血、后伤害"乃至跨回合错位的视觉问题
     const mainSkillLifestealRate = (isMainSkill && attacker.awakenState?.mainSkillLifesteal) ? attacker.awakenState.mainSkillLifesteal : 0
     let critCdCutUsedThisTurn = false
-    const dealDamage = (t: PvpFighter, rawDmg: number, isCrit: boolean, opts?: { chained?: boolean }): { final: number; lifestealHeal: number } => {
+    const dealDamage = (t: PvpFighter, rawDmg: number, isCrit: boolean, opts?: { chained?: boolean }): { final: number; lifestealHeal: number; mainSkillHeal: number } => {
       const se = attacker.setEffects
       let dmg = rawDmg
       // ❖ 极寒套：对冰冻状态敌人额外伤害
@@ -924,13 +932,13 @@ export function runPvpBattle(
           attacker.hp += lifestealHeal
         }
       }
-      // v1.3 主修噬灵：按最大气血百分比回血（合并到 lifestealHeal 数字，外层日志保持单一）
+      // v1.3 主修噬灵：按最大气血百分比回血（独立返回，避免与普通吸血混淆）
+      let mainSkillHeal = 0
       if (mainSkillLifestealRate > 0 && final > 0 && attacker.hp > 0 && attacker.hp < attacker.maxHp) {
         const heal = Math.floor(attacker.maxHp * mainSkillLifestealRate)
         if (heal > 0) {
-          const actual = Math.min(heal, attacker.maxHp - attacker.hp)
-          attacker.hp += actual
-          lifestealHeal += actual
+          mainSkillHeal = Math.min(heal, attacker.maxHp - attacker.hp)
+          attacker.hp += mainSkillHeal
         }
       }
 
@@ -945,7 +953,7 @@ export function runPvpBattle(
         }
       }
 
-      return { final, lifestealHeal }
+      return { final, lifestealHeal, mainSkillHeal }
     }
     // v1.3 心剑回响：主修会心时所有神通 CD-1（每回合至多 1 次）
     const tryCritCdCut = (isCrit: boolean) => {
@@ -1021,18 +1029,20 @@ export function runPvpBattle(
         if (dr.damage === 0) {
           log({ turn, type: 'dodge', text: `  第 ${h + 1} 段 被 ${liveTarget.name} 闪避` })
         } else {
-          const { final, lifestealHeal } = dealDamage(liveTarget, dr.damage, dr.isCrit)
+          const { final, lifestealHeal, mainSkillHeal } = dealDamage(liveTarget, dr.damage, dr.isCrit)
           tryCritCdCut(dr.isCrit)
           triggerBladeStack(dr.isCrit)
           const critText = dr.isCrit ? '会心! ' : ''
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `  第 ${h + 1} 段 ${critText}对 ${liveTarget.name} 造成 ${final} 伤害` })
           if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
+          if (mainSkillHeal > 0) log({ turn, type: 'buff', text: `  ✦【噬灵】${attacker.name} 主修命中回复 ${mainSkillHeal} 点气血` })
           if (usedSkill.debuff) tryApplyDebuff(liveTarget, liveTarget.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
           // v3.9 玄冰诀：主修命中独立 roll 额外冻结 1 回合
           if (isMainSkill && liveTarget.hp > 0) {
             const extraFreeze = (attacker.awakenState?.mainSkillExtraFreezeChance) || 0
             if (extraFreeze > 0 && Math.random() < extraFreeze) {
-              tryApplyDebuff(liveTarget, liveTarget.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, attacker.atk, turn, attacker)
+              const ok = tryApplyDebuff(liveTarget, liveTarget.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, attacker.atk, turn, attacker)
+              if (ok) log({ turn, type: 'buff', text: `  ✦【玄冰诀】${attacker.name} 主修触发，${liveTarget.name} 额外冻结 1 回合` })
             }
           }
           triggerAwakenOnHit(attacker, liveTarget, turn)
@@ -1055,7 +1065,7 @@ export function runPvpBattle(
           log({ turn, type: 'dodge', text: `  ${t.name} 闪避了 ${attacker.name} 的攻击` })
           continue
         }
-        const { final, lifestealHeal } = dealDamage(t, dr.damage, dr.isCrit)
+        const { final, lifestealHeal, mainSkillHeal } = dealDamage(t, dr.damage, dr.isCrit)
         tryCritCdCut(dr.isCrit)
         triggerBladeStack(dr.isCrit)
         const critText = dr.isCrit ? '会心! ' : ''
@@ -1065,12 +1075,14 @@ export function runPvpBattle(
           log({ turn, type: dr.isCrit ? 'crit' : 'normal', text: `[第${turn}回合] ${prefix}${critText}${attacker.name} 【${usedSkill.name}】对 ${t.name} 造成 ${final} 伤害` })
         }
         if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
+        if (mainSkillHeal > 0) log({ turn, type: 'buff', text: `  ✦【噬灵】${attacker.name} 主修命中回复 ${mainSkillHeal} 点气血` })
         if (usedSkill.debuff) tryApplyDebuff(t, t.name, usedSkill.debuff as any, attacker.atk, turn, attacker)
         // v3.9 玄冰诀：主修命中独立 roll 额外冻结 1 回合
         if (isMainSkill && t.hp > 0) {
           const extraFreeze = (attacker.awakenState?.mainSkillExtraFreezeChance) || 0
           if (extraFreeze > 0 && Math.random() < extraFreeze) {
-            tryApplyDebuff(t, t.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, attacker.atk, turn, attacker)
+            const ok = tryApplyDebuff(t, t.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, attacker.atk, turn, attacker)
+            if (ok) log({ turn, type: 'buff', text: `  ✦【玄冰诀】${attacker.name} 主修触发，${t.name} 额外冻结 1 回合` })
           }
         }
         triggerAwakenOnHit(attacker, t, turn)
@@ -1089,10 +1101,11 @@ export function runPvpBattle(
           if (chainT) {
             const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(chainT), mul * 0.6, usedSkill.element, usedSkill.ignoreDef, false, false)
             if (dr.damage > 0) {
-              const { final, lifestealHeal } = dealDamage(chainT, dr.damage, dr.isCrit, { chained: true })
+              const { final, lifestealHeal, mainSkillHeal } = dealDamage(chainT, dr.damage, dr.isCrit, { chained: true })
               const chainTag = ringChain > baseChain ? '紫电连华' : '连击'
               log({ turn, type: 'buff', text: `  ✦【${chainTag}】${attacker.name} 再次出手，对 ${chainT.name} 造成 ${final} 伤害` })
               if (lifestealHeal > 0) log({ turn, type: 'buff', text: `  【吸血】${attacker.name} 回复 ${lifestealHeal} 点气血` })
+              if (mainSkillHeal > 0) log({ turn, type: 'buff', text: `  ✦【噬灵】${attacker.name} 主修命中回复 ${mainSkillHeal} 点气血` })
               if (chainT.hp <= 0) chainT.alive = false
             }
           }
