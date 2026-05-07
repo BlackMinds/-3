@@ -1,24 +1,80 @@
 {
   "project": "万界仙途 - 放置修仙RPG",
-  "version": "0.2.0",
-  "last_updated": "2026-03-23",
-  "description": "单角色修仙放置游戏，下拉框选地图，文字log打怪，闭关修炼突破境界",
+  "version": "v3.8.3",
+  "last_updated": "2026-05-07",
+  "description": "Nuxt 3 全栈单角色修仙放置游戏，标签页 + 弹窗式主界面，地图历练、组队秘境、宗门战、灵脉、通天塔、坊市、PvP 等多模块",
 
   "game_type_summary": {
     "character": "单角色，不收集英雄",
-    "map": "下拉框选择地图",
-    "combat": "文字log输出战斗过程",
-    "idle": "离线自动打怪+修炼",
-    "growth": "境界突破为核心成长线",
-    "theme": "东方修仙/玄幻"
+    "map": "标签页 + 下拉框选择地图（25 张地图，T1~T15）",
+    "combat": "服务端权威战斗，文字 log 逐条播放",
+    "idle": "离线挂机最长 10 小时",
+    "growth": "境界突破（练气→飞升）+ 等级 + 装备 + 功法 + 觉醒 + 套装 多线",
+    "social": "宗门、宗门战、组队秘境、坊市、灵脉争夺、PvP 道场",
+    "theme": "东方修仙 / 玄幻"
   },
 
-  "documents": [
-    { "file": "game-overview.json",     "description": "游戏总览、世界观、核心循环、系统列表" },
-    { "file": "system-realm.json",      "description": "境界系统：练气→飞升，灵根，属性成长" },
-    { "file": "system-map.json",        "description": "地图系统：20张地图，怪物配置，掉落表" },
-    { "file": "system-combat.json",     "description": "战斗系统：文字log、伤害公式、离线战斗" },
-    { "file": "system-equipment.json",  "description": "法宝装备：8槽位，品质，强化" },
-    { "file": "system-economy.json",    "description": "经济系统：灵石/仙玉/修为/功德" }
-  ]
+  "stack_snapshot": {
+    "framework": "Nuxt 3 (Vue 3 + Nitro)",
+    "language": "TypeScript",
+    "state": "Pinia (@pinia/nuxt)",
+    "db": "PostgreSQL (本地 / Neon)",
+    "auth": "JWT + bcryptjs",
+    "deploy": "Vercel",
+    "cron": "GitHub Actions → /api/cron/*",
+    "render_mode": "SPA (ssr: false)"
+  },
+
+  "documents": {
+    "总览与进度": [
+      { "file": "game-overview.json",        "description": "游戏总览、世界观、核心循环、系统列表（顶层入口）" },
+      { "file": "project-progress.md",       "description": "项目进度（已完成 / 待开发 / 已知问题）" },
+      { "file": "refactor-nuxt-vercel.md",   "description": "从 Vue3 + Express + MySQL 迁移到 Nuxt3 + Vercel + PostgreSQL 的方案与执行记录" }
+    ],
+
+    "数值平衡": [
+      { "file": "balance-intent-v3.md",      "description": "v3 数值北极星（设计意图源头），shared/balance.ts 由此反推，test/sim.ts 验证此处" },
+      { "file": "balance-audit-v3.md",       "description": "v3 数值散落点审计（13 大类 / 150+ 常量 / 30+ 文件），含 v3.8.3 跨幅修复记录" },
+      { "file": "sim-report-v3.md",          "description": "战斗模拟器基线报告（test/sim.ts 跑出的 T1~T10 胜率）" },
+      { "file": "numerical-balance.md",      "description": "数值平衡补充说明" }
+    ],
+
+    "核心系统（早期 JSON）": [
+      { "file": "system-realm.json",         "description": "境界系统：练气→筑基→金丹→元婴→化神→渡劫→大乘→飞升，灵根，属性成长" },
+      { "file": "system-map.json",           "description": "地图系统：25 张地图，怪物配置，掉落表" },
+      { "file": "system-combat.json",        "description": "战斗系统：文字 log、伤害公式、离线战斗、buff/debuff" },
+      { "file": "system-economy.json",       "description": "经济系统：灵石 / 仙玉 / 修为 / 功德" },
+      { "file": "system-equipment.json",     "description": "法宝装备：7 槽位，6 品质，副属性，强化" }
+    ],
+
+    "进阶玩法（v3 新增）": [
+      { "file": "system-equipment-awaken.md",      "description": "装备附灵系统（兵器 / 法袍 / 灵佩 / 灵戒 4 槽，专属道具洗练）" },
+      { "file": "system-equipment-awaken-ring.md", "description": "灵戒附灵详细稿（增幅主修功法，12 条效果池，已实装 v1.3）" },
+      { "file": "套装.txt",                  "description": "套装系统 v3：对齐 server/engine/equipSetData.ts 的 11 套实装 + 每套 2 个推荐 build" },
+      { "file": "system-herb-pill-rework.md","description": "灵草分级 / 炼丹系统重构（7 灵草 × 6 品质 + 配方解锁）" },
+      { "file": "system-sect.md",            "description": "宗门系统：10 级宗门、贡献、日常 / 周常、Boss、商店、宗门功法" },
+      { "file": "system-sect-war.md",        "description": "宗门战 · 问道大比（赛季对阵 + 押注 + MVP 排行）。§零 定义站内邮件基础设施供其它玩法复用" },
+      { "file": "system-spirit-vein.md",     "description": "灵脉潮汐 · 节点争夺（占领 / 守卫 / 突袭 / 全球奖池）" },
+      { "file": "system-tower.md",           "description": "通天塔（100 层阶梯式 Boss，进度继承 + 每日失败配额）" },
+      { "file": "team-system.md",            "description": "组队秘境（2-4 人协作副本，独占奖励）" },
+      { "file": "system-market.md",          "description": "坊市系统（寄售挂单 + 价格区间护栏 + 交易税，依赖站内邮件）" },
+      { "file": "system-random-events.md",   "description": "随机事件系统（挂机 / 历练 / 闭关穿插小确幸 / 小波折）" }
+    ],
+
+    "数据与运维": [
+      { "file": "sql.md",                    "description": "常用 SQL 片段（重置秘境次数、调整等级 / 境界等运维操作）" },
+      { "file": "test-accounts.txt",         "description": "宗门战 / 灵脉测试账号清单（统一密码 + 种子脚本）" }
+    ]
+  },
+
+  "infrastructure_dependencies": {
+    "站内邮件 (mails)": "system-sect-war.md §零 定义，被 system-spirit-vein.md / system-market.md 引用，凡异步结算类玩法统一走邮件下发，不直写背包",
+    "shared/balance.ts": "全局数值平衡配置，源头是 balance-intent-v3.md，由 test/sim.ts 验证",
+    "server/engine/equipSetData.ts": "套装数据权威源（11 套），套装.txt 与之对齐"
+  },
+
+  "naming_conventions": {
+    "json_vs_md": "早期系统多为 *.json（结构化、易解析），v3 后新增系统改用 *.md（含表格 / 流程图 / 决策记录）",
+    "version_marker": "重要文档头部带 `> 版本: vX.Y` 与 `> 日期: YYYY-MM-DD`，状态分『待开发 / 设计中 / 已实施』"
+  }
 }
