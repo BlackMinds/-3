@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
     // 通天榜：按通天塔最高层数排
     // 并列时以境界 → 等级为次序，让"同层数高境界更费力"排在前
     // 不过滤 floor=0：保持上榜规模，方便大家看到自己潜在排名
+    // 排除 GM 账号「吴彦祖1号」（仅本榜屏蔽，其他榜单保留）
     const { rows } = await pool.query(`
       SELECT c.id, c.name, c.spiritual_root, c.realm_tier, c.realm_stage,
              c.level, c.title, c.tower_max_floor,
@@ -51,6 +52,7 @@ export default defineEventHandler(async (event) => {
       FROM characters c
       LEFT JOIN sect_members sm ON sm.character_id = c.id
       LEFT JOIN sects s ON s.id = sm.sect_id
+      WHERE c.name <> '吴彦祖1号'
       ORDER BY c.tower_max_floor DESC,
                c.realm_tier DESC, c.realm_stage DESC,
                c.level DESC, c.id ASC
@@ -71,11 +73,12 @@ export default defineEventHandler(async (event) => {
       const myFloor = Number(me.tower_max_floor || 0)
       const { rows: countRows } = await pool.query(
         `SELECT COUNT(*) AS cnt FROM characters
-           WHERE tower_max_floor > $1
-              OR (tower_max_floor = $2 AND realm_tier > $3)
-              OR (tower_max_floor = $4 AND realm_tier = $5 AND realm_stage > $6)
-              OR (tower_max_floor = $7 AND realm_tier = $8 AND realm_stage = $9 AND level > $10)
-              OR (tower_max_floor = $11 AND realm_tier = $12 AND realm_stage = $13 AND level = $14 AND id < $15)`,
+           WHERE name <> '吴彦祖1号'
+             AND (tower_max_floor > $1
+                OR (tower_max_floor = $2 AND realm_tier > $3)
+                OR (tower_max_floor = $4 AND realm_tier = $5 AND realm_stage > $6)
+                OR (tower_max_floor = $7 AND realm_tier = $8 AND realm_stage = $9 AND level > $10)
+                OR (tower_max_floor = $11 AND realm_tier = $12 AND realm_stage = $13 AND level = $14 AND id < $15))`,
         [myFloor, myFloor, me.realm_tier,
          myFloor, me.realm_tier, me.realm_stage,
          myFloor, me.realm_tier, me.realm_stage, me.level,
