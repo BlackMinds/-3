@@ -3112,14 +3112,23 @@
                   v-for="item in rankingList"
                   :key="item.characterId"
                   :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'heaven-row': rankingTab === 'heaven' }]"
+                    :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'heaven-row': rankingTab === 'heaven' }]"
                   @mouseenter="rankingTab === 'heaven' && onHeavenRowEnter($event, item.characterId)"
                   @mousemove="rankingTab === 'heaven' && onHeavenRowMove($event)"
                   @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
                 >
+                  <template v-if="item.rank <= 3">
+                    <span class="rank-cn-deco rank-dragon" aria-hidden="true">龍</span>
+                    <span class="rank-cn-deco rank-cloud rank-cloud-a" aria-hidden="true"></span>
+                    <span class="rank-cn-deco rank-cloud rank-cloud-b" aria-hidden="true"></span>
+                    <span class="rank-cn-deco rank-sword rank-sword-a" aria-hidden="true"></span>
+                    <span class="rank-cn-deco rank-sword rank-sword-b" aria-hidden="true"></span>
+                  </template>
                   <div class="rank-num">
                     <span v-if="item.rank === 1" class="rank-crown">👑</span>
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-bolt">⚡</span>
                     <span v-if="item.name === '魚魚'" class="yuyu-bolt">🔬</span>
+                    <span v-if="item.name === '僵尸仙人'" class="jiangshi-bolt">🧟</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
@@ -3128,6 +3137,7 @@
                     {{ item.name }}
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-badge">影帝</span>
                     <span v-if="item.name === '魚魚'" class="yuyu-badge">科研家</span>
+                    <span v-if="item.name === '僵尸仙人'" class="jiangshi-badge">姜尸头子</span>
                     <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
                   </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
@@ -3170,6 +3180,13 @@
                   :key="item.sectId"
                   :class="['ranking-row sect-row', { 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3 }]"
                 >
+                  <template v-if="item.rank <= 3">
+                    <span class="rank-cn-deco rank-dragon" aria-hidden="true">龍</span>
+                    <span class="rank-cn-deco rank-cloud rank-cloud-a" aria-hidden="true"></span>
+                    <span class="rank-cn-deco rank-cloud rank-cloud-b" aria-hidden="true"></span>
+                    <span class="rank-cn-deco rank-sword rank-sword-a" aria-hidden="true"></span>
+                    <span class="rank-cn-deco rank-sword rank-sword-b" aria-hidden="true"></span>
+                  </template>
                   <div class="rank-num">
                     <span v-if="item.rank === 1" class="rank-crown">👑</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
@@ -12951,6 +12968,291 @@ onUnmounted(() => {
   100% { background-position: -200% 0; }
 }
 
+/* === 前三名国风边框：龙纹、飞剑、云气 === */
+.ranking-row.rank-1,
+.ranking-row.rank-2,
+.ranking-row.rank-3 {
+  isolation: isolate;
+  border: 1px solid rgba(214, 183, 92, 0.42);
+  background:
+      radial-gradient(circle at 12% 50%, rgba(255, 236, 164, 0.13), transparent 34%),
+      linear-gradient(90deg, rgba(44, 30, 18, 0.92), rgba(18, 19, 24, 0.86) 62%, rgba(8, 10, 14, 0.72));
+  box-shadow:
+      inset 0 0 0 1px rgba(255, 248, 214, 0.08),
+      inset 0 0 22px rgba(192, 132, 56, 0.13),
+      0 0 16px rgba(212, 174, 92, 0.22);
+  animation: rank-cn-breathe-gold 3.8s ease-in-out infinite;
+}
+
+.ranking-row.rank-2 {
+  border-color: rgba(180, 214, 224, 0.38);
+  background:
+      radial-gradient(circle at 12% 50%, rgba(224, 245, 255, 0.12), transparent 34%),
+      linear-gradient(90deg, rgba(31, 39, 43, 0.9), rgba(18, 21, 27, 0.86) 62%, rgba(8, 10, 14, 0.72));
+  box-shadow:
+      inset 0 0 0 1px rgba(244, 252, 255, 0.08),
+      inset 0 0 20px rgba(160, 204, 220, 0.11),
+      0 0 14px rgba(180, 214, 224, 0.18);
+  animation-name: rank-cn-breathe-silver;
+  animation-duration: 4.2s;
+}
+
+.ranking-row.rank-3 {
+  border-color: rgba(213, 135, 80, 0.38);
+  background:
+      radial-gradient(circle at 12% 50%, rgba(255, 184, 112, 0.12), transparent 34%),
+      linear-gradient(90deg, rgba(46, 28, 20, 0.9), rgba(20, 18, 20, 0.86) 62%, rgba(8, 10, 14, 0.72));
+  box-shadow:
+      inset 0 0 0 1px rgba(255, 228, 205, 0.07),
+      inset 0 0 20px rgba(220, 122, 58, 0.1),
+      0 0 14px rgba(213, 135, 80, 0.17);
+  animation-name: rank-cn-breathe-bronze;
+  animation-duration: 4.6s;
+}
+
+.ranking-row.rank-1::before,
+.ranking-row.rank-2::before,
+.ranking-row.rank-3::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  left: auto;
+  top: auto;
+  width: auto;
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 5px;
+  transform: none;
+  filter: none;
+  background:
+      linear-gradient(115deg, transparent 0%, rgba(255, 249, 211, 0.92) 18%, rgba(209, 46, 42, 0.7) 28%, transparent 44%) border-box,
+      repeating-linear-gradient(90deg, rgba(214, 183, 92, 0.12) 0 8px, transparent 8px 16px);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px;
+  opacity: 0.86;
+  animation: rank-cn-border-flow 5.4s linear infinite;
+}
+
+.ranking-row.rank-2::before {
+  background:
+      linear-gradient(115deg, transparent 0%, rgba(241, 252, 255, 0.84) 18%, rgba(136, 188, 204, 0.62) 28%, transparent 44%) border-box,
+      repeating-linear-gradient(90deg, rgba(180, 214, 224, 0.12) 0 8px, transparent 8px 16px);
+  animation-duration: 6.2s;
+}
+
+.ranking-row.rank-3::before {
+  background:
+      linear-gradient(115deg, transparent 0%, rgba(255, 221, 176, 0.8) 18%, rgba(207, 86, 52, 0.62) 28%, transparent 44%) border-box,
+      repeating-linear-gradient(90deg, rgba(213, 135, 80, 0.12) 0 8px, transparent 8px 16px);
+  animation-duration: 6.8s;
+}
+
+.ranking-row.rank-1::after,
+.ranking-row.rank-2::after,
+.ranking-row.rank-3::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  left: auto;
+  top: auto;
+  width: auto;
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 3px;
+  transform: none;
+  filter: none;
+  background:
+      linear-gradient(90deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) left top / 54px 1px no-repeat,
+      linear-gradient(180deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) left top / 1px 54px no-repeat,
+      linear-gradient(270deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) right top / 54px 1px no-repeat,
+      linear-gradient(180deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) right top / 1px 54px no-repeat,
+      linear-gradient(90deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) left bottom / 54px 1px no-repeat,
+      linear-gradient(0deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) left bottom / 1px 54px no-repeat,
+      linear-gradient(270deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) right bottom / 54px 1px no-repeat,
+      linear-gradient(0deg, rgba(239, 206, 112, 0.82) 0 18px, transparent 18px) right bottom / 1px 54px no-repeat;
+  opacity: 0.72;
+  animation: rank-cn-corners 3.8s ease-in-out infinite;
+}
+
+.ranking-row.rank-2::after {
+  background:
+      linear-gradient(90deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) left top / 54px 1px no-repeat,
+      linear-gradient(180deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) left top / 1px 54px no-repeat,
+      linear-gradient(270deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) right top / 54px 1px no-repeat,
+      linear-gradient(180deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) right top / 1px 54px no-repeat,
+      linear-gradient(90deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) left bottom / 54px 1px no-repeat,
+      linear-gradient(0deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) left bottom / 1px 54px no-repeat,
+      linear-gradient(270deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) right bottom / 54px 1px no-repeat,
+      linear-gradient(0deg, rgba(194, 224, 232, 0.78) 0 18px, transparent 18px) right bottom / 1px 54px no-repeat;
+}
+
+.ranking-row.rank-3::after {
+  background:
+      linear-gradient(90deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) left top / 54px 1px no-repeat,
+      linear-gradient(180deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) left top / 1px 54px no-repeat,
+      linear-gradient(270deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) right top / 54px 1px no-repeat,
+      linear-gradient(180deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) right top / 1px 54px no-repeat,
+      linear-gradient(90deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) left bottom / 54px 1px no-repeat,
+      linear-gradient(0deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) left bottom / 1px 54px no-repeat,
+      linear-gradient(270deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) right bottom / 54px 1px no-repeat,
+      linear-gradient(0deg, rgba(220, 143, 88, 0.74) 0 18px, transparent 18px) right bottom / 1px 54px no-repeat;
+}
+
+.rank-cn-deco {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.rank-dragon {
+  right: 18px;
+  top: 50%;
+  color: rgba(238, 204, 122, 0.2);
+  font-family: "STKaiti", "KaiTi", "SimSun", serif;
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-shadow: 0 0 10px rgba(232, 204, 138, 0.26);
+  transform: translateY(-50%) rotate(-8deg);
+  animation: rank-dragon-float 5.6s ease-in-out infinite;
+}
+
+.ranking-row.rank-2 .rank-dragon {
+  color: rgba(206, 232, 238, 0.18);
+  text-shadow: 0 0 10px rgba(206, 232, 238, 0.2);
+}
+
+.ranking-row.rank-3 .rank-dragon {
+  color: rgba(229, 145, 88, 0.18);
+  text-shadow: 0 0 10px rgba(229, 145, 88, 0.2);
+}
+
+.rank-cloud {
+  width: 78px;
+  height: 24px;
+  border-radius: 999px;
+  opacity: 0.28;
+  filter: blur(0.2px);
+  background:
+      radial-gradient(circle at 18% 62%, rgba(255, 255, 255, 0.52) 0 11px, transparent 12px),
+      radial-gradient(circle at 38% 38%, rgba(255, 255, 255, 0.46) 0 14px, transparent 15px),
+      radial-gradient(circle at 62% 58%, rgba(255, 255, 255, 0.42) 0 12px, transparent 13px),
+      linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+}
+
+.rank-cloud-a {
+  left: 46px;
+  bottom: -2px;
+  animation: rank-cloud-drift 6.8s ease-in-out infinite;
+}
+
+.rank-cloud-b {
+  right: 86px;
+  top: -5px;
+  transform: scale(0.74);
+  animation: rank-cloud-drift 7.6s ease-in-out infinite reverse;
+}
+
+.rank-sword {
+  width: 58px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9) 24%, rgba(238, 202, 120, 0.92) 58%, transparent);
+  box-shadow: 0 0 8px rgba(239, 206, 112, 0.58);
+  transform-origin: 50% 50%;
+}
+
+.rank-sword::before {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid rgba(255, 255, 255, 0.9);
+  border-right: 2px solid rgba(255, 255, 255, 0.9);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.rank-sword::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-left: 2px solid rgba(182, 44, 40, 0.9);
+  border-top: 2px solid rgba(182, 44, 40, 0.78);
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.rank-sword-a {
+  top: 6px;
+  left: -68px;
+  animation: rank-sword-fly-a 4.8s ease-in-out infinite;
+}
+
+.rank-sword-b {
+  right: -58px;
+  bottom: 7px;
+  opacity: 0.72;
+  animation: rank-sword-fly-b 5.6s ease-in-out infinite;
+}
+
+@keyframes rank-cn-border-flow {
+  0% { background-position: -180px 0, 0 0; opacity: 0.58; }
+  45% { opacity: 1; }
+  100% { background-position: 520px 0, 96px 0; opacity: 0.58; }
+}
+
+@keyframes rank-cn-corners {
+  0%, 100% { opacity: 0.58; }
+  50% { opacity: 0.98; }
+}
+
+@keyframes rank-cn-breathe-gold {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 248, 214, 0.08), inset 0 0 22px rgba(192, 132, 56, 0.13), 0 0 16px rgba(212, 174, 92, 0.22); }
+  50% { box-shadow: inset 0 0 0 1px rgba(255, 248, 214, 0.18), inset 0 0 30px rgba(210, 151, 60, 0.22), 0 0 26px rgba(232, 204, 138, 0.34); }
+}
+
+@keyframes rank-cn-breathe-silver {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(244, 252, 255, 0.08), inset 0 0 20px rgba(160, 204, 220, 0.11), 0 0 14px rgba(180, 214, 224, 0.18); }
+  50% { box-shadow: inset 0 0 0 1px rgba(244, 252, 255, 0.18), inset 0 0 28px rgba(160, 204, 220, 0.18), 0 0 22px rgba(180, 214, 224, 0.28); }
+}
+
+@keyframes rank-cn-breathe-bronze {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 228, 205, 0.07), inset 0 0 20px rgba(220, 122, 58, 0.1), 0 0 14px rgba(213, 135, 80, 0.17); }
+  50% { box-shadow: inset 0 0 0 1px rgba(255, 228, 205, 0.15), inset 0 0 28px rgba(220, 122, 58, 0.18), 0 0 22px rgba(213, 135, 80, 0.27); }
+}
+
+@keyframes rank-dragon-float {
+  0%, 100% { transform: translateY(-50%) translateX(0) rotate(-8deg); opacity: 0.62; }
+  50% { transform: translateY(calc(-50% - 3px)) translateX(-5px) rotate(-4deg); opacity: 0.96; }
+}
+
+@keyframes rank-cloud-drift {
+  0%, 100% { translate: 0 0; opacity: 0.18; }
+  50% { translate: 16px -2px; opacity: 0.34; }
+}
+
+@keyframes rank-sword-fly-a {
+  0%, 18% { transform: translateX(0) translateY(0) rotate(-18deg); opacity: 0; }
+  30% { opacity: 0.88; }
+  64%, 100% { transform: translateX(650px) translateY(18px) rotate(-18deg); opacity: 0; }
+}
+
+@keyframes rank-sword-fly-b {
+  0%, 26% { transform: translateX(0) translateY(0) rotate(158deg); opacity: 0; }
+  40% { opacity: 0.72; }
+  70%, 100% { transform: translateX(-620px) translateY(-18px) rotate(158deg); opacity: 0; }
+}
+
 .rank-num {
   width: 32px;
   text-align: center;
@@ -13024,20 +13326,19 @@ onUnmounted(() => {
 /* ==================== 「吴彦祖1号」专属影帝特效 ==================== */
 .ranking-row.wuyanzu-row {
   padding-top: 20px;
-  background:
-    linear-gradient(90deg,
-      rgba(255, 80, 220, 0.14) 0%,
-      rgba(160, 100, 255, 0.10) 25%,
-      rgba(80, 180, 255, 0.10) 50%,
-      rgba(80, 255, 200, 0.07) 75%,
-      rgba(255, 200, 80, 0.05) 100%) 0 0 / 220% 100% no-repeat,
-    url('/images/吴彦祖.png') center 28% / cover no-repeat;
+  background: linear-gradient(90deg,
+  rgba(255, 80, 220, 0.28) 0%,
+  rgba(160, 100, 255, 0.2) 25%,
+  rgba(80, 180, 255, 0.2) 50%,
+  rgba(80, 255, 200, 0.13) 75%,
+  rgba(255, 200, 80, 0.1) 100%);
+  background-size: 220% 100%;
   animation: wuyanzu-bg-flow 4.5s linear infinite, wuyanzu-pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes wuyanzu-bg-flow {
-  0% { background-position: 0% 0, center 28%; }
-  100% { background-position: 220% 0, center 28%; }
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
 }
 
 @keyframes wuyanzu-pulse {
@@ -13070,7 +13371,6 @@ onUnmounted(() => {
   z-index: 0;
   pointer-events: none;
   transform: skewX(-18deg);
-  opacity: 0.45;
   background: linear-gradient(90deg,
     transparent 0%,
     rgba(255, 130, 240, 0.7) 30%,
@@ -13093,7 +13393,6 @@ onUnmounted(() => {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   filter: blur(5px);
-  opacity: 0.5;
   background: conic-gradient(from 0deg,
     rgba(255, 80, 220, 0.65) 0deg,
     rgba(180, 100, 255, 0.6) 72deg,
@@ -13299,6 +13598,155 @@ onUnmounted(() => {
 @keyframes yuyu-badge-shine {
   0% { background-position: 0% 0; }
   100% { background-position: 220% 0; }
+}
+
+/* ==================== 「僵尸仙人」专属姜尸头子特效 ==================== */
+.ranking-row.jiangshi-row {
+  padding-top: 20px;
+  border-color: rgba(154, 220, 92, 0.45);
+  background:
+      radial-gradient(circle at 11% 18%, rgba(255, 224, 92, 0.26) 0 10px, transparent 11px),
+      radial-gradient(circle at 78% 42%, rgba(132, 255, 92, 0.16) 0 6px, transparent 7px),
+      repeating-linear-gradient(90deg, rgba(60, 128, 46, 0.2) 0 26px, rgba(40, 92, 38, 0.2) 26px 52px),
+      linear-gradient(90deg, rgba(34, 76, 30, 0.9) 0%, rgba(24, 48, 31, 0.88) 35%, rgba(46, 28, 66, 0.72) 72%, rgba(18, 16, 24, 0.8) 100%);
+  background-size: 100% 100%, 120% 100%, 104px 100%, 220% 100%;
+  animation: jiangshi-bg-flow 5.2s linear infinite, jiangshi-pulse 2.8s ease-in-out infinite;
+}
+
+.ranking-row.jiangshi-row .rank-cn-deco {
+  display: none;
+}
+
+@keyframes jiangshi-bg-flow {
+  0% { background-position: 0 0, 0 0, 0 0, 0% 0; }
+  100% { background-position: 0 0, 120% 0, 104px 0, 220% 0; }
+}
+
+@keyframes jiangshi-pulse {
+  0%, 100% {
+    box-shadow:
+        inset 4px 0 0 0 rgba(96, 210, 76, 0.88),
+        inset -3px 0 0 0 rgba(136, 78, 190, 0.62),
+        inset 0 0 0 1px rgba(185, 245, 92, 0.45),
+        0 0 18px rgba(96, 210, 76, 0.42),
+        0 0 38px rgba(136, 78, 190, 0.2);
+  }
+  50% {
+    box-shadow:
+        inset 4px 0 0 0 rgba(166, 255, 84, 1),
+        inset -3px 0 0 0 rgba(182, 112, 255, 0.95),
+        inset 0 0 0 1px rgba(220, 255, 104, 0.82),
+        0 0 38px rgba(122, 255, 82, 0.78),
+        0 0 72px rgba(146, 84, 220, 0.5);
+  }
+}
+
+/* 豌豆弹道 */
+.ranking-row.jiangshi-row::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: -36%;
+  width: 48%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transform: skewX(-10deg);
+  background:
+      radial-gradient(circle, rgba(174, 255, 88, 0.95) 0 5px, rgba(102, 220, 60, 0.55) 6px, transparent 8px) 0 14px / 38px 18px repeat-x,
+      linear-gradient(90deg, transparent 0%, rgba(166, 255, 84, 0.4) 42%, rgba(244, 255, 174, 0.75) 52%, transparent 82%);
+  filter: drop-shadow(0 0 6px rgba(142, 255, 82, 0.72));
+  animation: jiangshi-pea-shot 2.2s ease-in-out infinite;
+}
+
+/* 阳光 + 警戒光环 */
+.ranking-row.jiangshi-row::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 24px;
+  width: 86px;
+  height: 86px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(4px);
+  background:
+      radial-gradient(circle, rgba(255, 230, 76, 0.72) 0 18%, rgba(255, 178, 42, 0.32) 30%, transparent 48%),
+      conic-gradient(from 0deg, transparent 0deg, rgba(166, 255, 84, 0.5) 45deg, transparent 95deg, rgba(118, 76, 182, 0.45) 180deg, transparent 245deg, rgba(255, 224, 92, 0.45) 310deg, transparent 360deg);
+  animation: jiangshi-sun-spin 4s linear infinite;
+}
+
+.ranking-row.jiangshi-row .rank-name {
+  background: linear-gradient(90deg,
+  #a7ff5c 0%, #f6ff78 18%, #7fe84c 36%,
+  #b87cff 56%, #f0ff80 76%, #a7ff5c 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rank-text-shimmer 2.4s linear infinite;
+  font-weight: 800;
+  filter:
+      drop-shadow(0 0 6px rgba(142, 255, 82, 0.62))
+      drop-shadow(0 0 12px rgba(162, 92, 220, 0.36));
+}
+
+.jiangshi-bolt {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  font-size: 17px;
+  line-height: 1;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 5px rgba(172, 255, 92, 0.95)) drop-shadow(0 0 10px rgba(142, 84, 220, 0.6));
+  animation: jiangshi-bolt-lurch 1.6s ease-in-out infinite;
+}
+
+@keyframes jiangshi-bolt-lurch {
+  0%, 100% { transform: translateX(-50%) translateY(0) rotate(-8deg) scale(1); opacity: 0.92; }
+  30% { transform: translateX(-58%) translateY(-2px) rotate(-16deg) scale(1.08); opacity: 1; }
+  58% { transform: translateX(-42%) translateY(1px) rotate(10deg) scale(1.16); opacity: 1; }
+  76% { transform: translateX(-50%) translateY(-3px) rotate(2deg) scale(1.08); opacity: 1; }
+}
+
+.jiangshi-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #241600;
+  -webkit-text-fill-color: #241600;
+  background:
+      radial-gradient(circle at 18% 45%, #fff56a 0 4px, transparent 5px),
+      linear-gradient(90deg, #9cff4e 0%, #fff06a 32%, #82df44 58%, #b878ff 82%, #9cff4e 100%);
+  background-size: 120% 100%, 240% 100%;
+  border: 1px solid rgba(255, 245, 112, 0.65);
+  border-radius: 3px;
+  animation: jiangshi-badge-shine 2.3s linear infinite;
+  box-shadow: 0 0 7px rgba(142, 255, 82, 0.72), 0 0 14px rgba(142, 84, 220, 0.42);
+  vertical-align: middle;
+  letter-spacing: 1px;
+  filter: none;
+}
+
+@keyframes jiangshi-pea-shot {
+  0%, 16% { left: -42%; opacity: 0; }
+  30% { opacity: 0.95; }
+  76%, 100% { left: 118%; opacity: 0; }
+}
+
+@keyframes jiangshi-sun-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes jiangshi-badge-shine {
+  0% { background-position: 0 0, 0% 0; }
+  100% { background-position: 0 0, 240% 0; }
 }
 
 .rank-plain {
@@ -14718,6 +15166,14 @@ onUnmounted(() => {
   .ranking-tab { font-size: 12px; padding: 8px 6px; flex: 0 0 auto; white-space: nowrap; min-width: 64px; }
   .ranking-body { padding: 10px 8px 12px; }
   .ranking-row { gap: 5px; padding: 6px 6px; font-size: 12px; }
+  .ranking-row.rank-1, .ranking-row.rank-2, .ranking-row.rank-3 { padding: 8px 6px; }
+  .rank-dragon { right: 8px; font-size: 34px; opacity: 0.75; }
+  .rank-cloud { width: 52px; height: 18px; }
+  .rank-cloud-a { left: 26px; }
+  .rank-cloud-b { right: 54px; }
+  .rank-sword { width: 40px; }
+  .jiangshi-bolt { top: -13px; font-size: 14px; }
+  .jiangshi-badge { padding: 1px 5px; font-size: 9px; letter-spacing: 0; }
   .rank-num { width: 24px; }
   .rank-medal { font-size: 14px; }
   .rank-root { width: 14px; font-size: 11px; }
