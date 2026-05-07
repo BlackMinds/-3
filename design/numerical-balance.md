@@ -49,15 +49,13 @@ export function getEquipTierWeight(tier: number): number {
 
 T10→T14 装备主属性从 ×1.4 提升到 **×1.8**。
 
-8 处装备生成入口已统一改用 `getEquipTierWeight`：
+装备生成入口已统一改用 `getEquipTierWeight`：
 - `server/api/battle/fight.post.ts:284`
 - `server/utils/secretRealmDrops.ts:71`
 - `server/api/game/offline-claim.post.ts:228`
-- `server/api/equipment/craft-set-fragment.post.ts:43`
 - `server/engine/achievementData.ts:254`
-- `server/api/sect/tasks/weekly/claim.post.ts:77`
-- `server/api/sect/shop/buy.post.ts:185`
-- `server/api/sect/boss/claim/[bossId].post.ts:76`
+
+> 注：宗门商店「极品装备宝箱」/「套装碎片」、Boss 排名装备奖励、周常「强化竞赛」金装、`craft-set-fragment` 合成接口已于 2026-05-07 整体下线，宗门不再产出装备。
 
 #### C. 线上数据迁移（一次性）
 

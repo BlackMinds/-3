@@ -192,3 +192,11 @@ UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.7;
 
 重置通天塔
  UPDATE characters SET tower_max_floor = 0, tower_daily_fail = 0 WHERE id = <你的角色id>;
+
+重置套装
+  INSERT INTO character_pills (character_id, pill_id, count, quality_factor)
+  SELECT id, 'set_reforge_voucher', 7, 1.0
+  FROM characters
+  WHERE name IN ('角色名1', '角色名2', '角色名3')
+  ON CONFLICT (character_id, pill_id, quality_factor)
+  DO UPDATE SET count = character_pills.count + EXCLUDED.count;

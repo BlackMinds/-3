@@ -2,9 +2,6 @@ import { getPool } from '~/server/database/db'
 import { getCharByUserId, getMembership, weekStartStr } from '~/server/utils/sect'
 import { rand } from '~/server/utils/random'
 import { SHOP_ITEMS } from '~/server/engine/sectData'
-import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE, RARITY_STAT_MUL, RARITY_SUB_COUNT_RANGE, getEquipTierWeight } from '~/shared/balance'
-import { rollSubStats } from '~/server/utils/equipment'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -147,15 +144,6 @@ export default defineEventHandler(async (event) => {
         resultMsg = '获得强化大师符x1'
         break
 
-      case 'set_fragment':
-        await client.query(
-          `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
-           ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
-          [char.id, 'set_fragment']
-        )
-        resultMsg = '获得宗门套装碎片x1'
-        break
-
       case 'reset_root':
         await client.query(
           `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
@@ -173,29 +161,6 @@ export default defineEventHandler(async (event) => {
         )
         resultMsg = '获得万能功法残页x1'
         break
-
-      case 'random_equip_box': {
-        const rarity = Math.random() < 0.8 ? 'gold' : 'red'
-        const rarityIdx = rarity === 'gold' ? 4 : 5
-        const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
-        const slotIdx = rand(0, slots.length - 1)
-        const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
-        const tier = rand(6, 9)
-        const ps = primaryStats[slots[slotIdx]]
-        const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * RARITY_STAT_MUL[rarityIdx] * 1.10))
-        const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
-        const weaponType = slots[slotIdx] === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
-        const equipName = generateEquipName(rarity, slots[slotIdx], weaponType, tier, ps, null, '宝箱')
-        const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[rarityIdx] || [0, 0]
-        const subCount = rand(minSubs, maxSubs)
-        const subStats = subCount > 0 ? rollSubStats(rarityIdx, tier, subCount) : []
-        await client.query(
-          'INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, base_slot, weapon_type, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)',
-          [char.id, equipName, rarity, ps, pv, JSON.stringify(subStats), tier, slots[slotIdx], weaponType, tierReqLevels[tier] || 1]
-        )
-        resultMsg = `获得【${equipName}】`
-        break
-      }
 
       case 'equip_upgrade':
         await client.query(

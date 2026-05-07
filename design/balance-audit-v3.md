@@ -46,7 +46,7 @@
 | 位置 | 内容 |
 |---|---|
 | `server/api/battle/fight.post.ts:207` | `primaryBases = {ATK:30, DEF:20, HP:200, SPD:15, CRIT_RATE:1, SPIRIT:8}` |
-| **同样的表** 在 7 个其他文件重复 | `offline-claim` / `achievementData` / `sect/boss/claim` / `sect/shop/buy` / `sect/tasks/weekly/claim` / `secretRealmDrops` / `craft-set-fragment` / `game/equipData.ts PRIMARY_BASE` |
+| **同样的表** 在其他文件重复 | `offline-claim` / `achievementData` / `secretRealmDrops` / `game/equipData.ts PRIMARY_BASE`（宗门/套装碎片相关入口已于 2026-05-07 下线） |
 | `server/api/battle/fight.post.ts:208` | `statMuls = [1.0, 1.15, 1.35, 1.6, 2.0, 2.5]` (白/绿/蓝/紫/金/红) |
 | `server/utils/equipment.ts:21-46` (rollSubStatValue) | enhanceCurve: 每级 +10%,满 +10 = +100% |
 

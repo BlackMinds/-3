@@ -1,10 +1,7 @@
 import { getPool } from '~/server/database/db'
-import { getCharByUserId, weekStartStr } from '~/server/utils/sect'
+import { getCharByUserId } from '~/server/utils/sect'
 import { rand } from '~/server/utils/random'
 import { WEEKLY_TASK_TYPES } from '~/server/engine/sectData'
-import { generateEquipName } from '~/server/engine/equipNameData'
-import { EQUIP_PRIMARY_BASE, RARITY_SUB_COUNT_RANGE, RARITY_STAT_MUL, getEquipTierWeight } from '~/shared/balance'
-import { rollSubStats } from '~/server/utils/equipment'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -65,27 +62,14 @@ export default defineEventHandler(async (event) => {
         )
       }
       extraMsg = `，功法残页x${def.allReward.value}`
-    } else if (def.allReward.type === 'gold_equip') {
-      const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant']
-      const primaryStats: Record<string, string> = { weapon: 'ATK', armor: 'DEF', helmet: 'HP', boots: 'SPD', treasure: 'ATK', ring: 'CRIT_DMG', pendant: 'SPIRIT' }
-      const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
-      for (let i = 0; i < def.allReward.value; i++) {
-        const slotIdx = rand(0, slots.length - 1)
-        const slot = slots[slotIdx]
-        const ps = primaryStats[slot]
-        const tier = rand(5, 7)
-        const pv = Math.max(1, Math.floor((EQUIP_PRIMARY_BASE[ps] || 30) * getEquipTierWeight(tier) * RARITY_STAT_MUL[4] * 1.10))
-        const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
-        const equipName = generateEquipName('gold', slot, weaponType, tier, ps, null, '强化竞赛')
-        const [minSubs, maxSubs] = RARITY_SUB_COUNT_RANGE[4] || [0, 0]
-        const subCount = rand(minSubs, maxSubs)
-        const subStats = subCount > 0 ? rollSubStats(4, tier, subCount) : []
-        await pool.query(
-          'INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, sub_stats, tier, base_slot, weapon_type, req_level, enhance_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)',
-          [char.id, equipName, 'gold', ps, pv, JSON.stringify(subStats), tier, slot, weaponType, tierReqLevels[tier] || 1]
-        )
-      }
-      extraMsg = `，金色装备x${def.allReward.value}`
+    } else if (def.allReward.type === 'enhance_protect') {
+      // 2026-05-07：原 gold_equip 改为「强化保护符 x3」，宗门不再产出装备
+      await pool.query(
+        `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, $3, 1.0)
+         ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + EXCLUDED.count`,
+        [char.id, 'enhance_protect', def.allReward.value]
+      )
+      extraMsg = `，强化保护符x${def.allReward.value}`
     }
 
     return { code: 200, message: `领取成功，+${def.baseContribution}贡献${extraMsg}` }

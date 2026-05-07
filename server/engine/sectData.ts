@@ -76,10 +76,8 @@ export type ShopItemEffect =
   | { type: 'reroll_sub_stat'; value: number }
   | { type: 'skill_page'; quality: string }
   | { type: 'enhance_guarantee'; maxLevel: number }
-  | { type: 'set_fragment'; value: number }
   | { type: 'reset_root'; value: number }
   | { type: 'universal_skill_page'; value: number }
-  | { type: 'random_equip_box'; minRarity: string }
   | { type: 'equip_upgrade'; value: number }
   | { type: 'permanent_stat'; value: number }
   | { type: 'unlock_pill_recipe'; pill_id: string }
@@ -105,14 +103,12 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: 'recipe_elite_def',   name: '大铁皮丹方',   description: '永久解锁【大铁皮丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_def_pill' } },
   { key: 'recipe_elite_hp',    name: '大培元丹方',   description: '永久解锁【大培元丹】炼制配方', cost: 8000, weeklyLimit: 1, requiredSectLevel: 5, category: 'rare', effect: { type: 'unlock_pill_recipe', pill_id: 'elite_hp_pill' } },
 
-  // 宗门套装 (宗门6级)
-  { key: 'set_fragment',       name: '宗门套装碎片', description: '收集5个合成宗门套装部件',  cost: 15000, weeklyLimit: 1,  requiredSectLevel: 6, category: 'set', effect: { type: 'set_fragment', value: 1 } },
+  // 进阶丹方 (宗门6级)
   { key: 'recipe_full',        name: '天元丹方',     description: '永久解锁【天元丹】炼制配方',    cost: 15000, weeklyLimit: 1, requiredSectLevel: 6, category: 'set', effect: { type: 'unlock_pill_recipe', pill_id: 'full_pill_1' } },
 
   // 传说 (宗门8级)
   { key: 'reset_root',         name: '天道洗髓丹',   description: '将灵根定向转换为指定属性（五行任选其一）', cost: 30000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'reset_root', value: 1 } },
   { key: 'universal_page',     name: '万能功法残页', description: '可代替任意功法残页x1',      cost: 20000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'universal_skill_page', value: 1 } },
-  { key: 'premium_equip_box',  name: '极品装备宝箱', description: '随机金品/红品装备x1',      cost: 25000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'random_equip_box', minRarity: 'gold' } },
 
   // 至尊 (宗门10级)
   { key: 'equip_upgrade',      name: '太古精魂',     description: '装备升品(紫→金,金→红)',    cost: 50000, weeklyLimit: 1,  requiredSectLevel: 10, category: 'supreme', effect: { type: 'equip_upgrade', value: 1 } },
@@ -187,7 +183,7 @@ export const WEEKLY_TASK_TYPES: WeeklyTaskType[] = [
   { type: 'weekly_battle', name: '万妖讨伐', description: '全宗门累计击杀50000只怪', baseTarget: 50000,  baseContribution: 5000,  allReward: { type: 'spirit_stone', value: 10000 } },
   { type: 'weekly_donate', name: '资源征集', description: '全宗门累计捐献50万灵石', baseTarget: 500000, baseContribution: 8000,  allReward: { type: 'skill_page', value: 1 } },
   { type: 'weekly_pill',   name: '炼丹大会', description: '全宗门累计炼丹2000次',   baseTarget: 2000,   baseContribution: 6000,  allReward: { type: 'pill', value: 2 } },
-  { type: 'weekly_enhance',name: '强化竞赛', description: '全宗门累计强化1500次',   baseTarget: 1500,   baseContribution: 5000,  allReward: { type: 'gold_equip', value: 1 } },
+  { type: 'weekly_enhance',name: '强化竞赛', description: '全宗门累计强化1500次',   baseTarget: 1500,   baseContribution: 5000,  allReward: { type: 'enhance_protect', value: 3 } },
 ];
 
 // ===== 职位权限 =====

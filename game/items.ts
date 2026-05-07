@@ -33,11 +33,10 @@ export const ITEM_INFO: Record<string, ItemInfo> = {
   // —— 装备类 ——
   reroll_sub_stat:    { name: '装备鉴定符', description: '重新随机一件装备的所有副属性',         category: 'equip', needsTarget: 'equip' },
   equip_upgrade:      { name: '太古精魂',   description: '装备升品 紫→金 / 金→红',                 category: 'equip', needsTarget: 'equip' },
+  set_reforge_voucher:{ name: '套装重铸符', description: '将一件已带套装身份的装备重铸为指定套装（武器流套装需对齐武器类型）', category: 'equip', needsTarget: 'equip' },
   // —— 附灵类（新增）——
   awaken_stone:       { name: '附灵石',     description: '为一件蓝+品装备附加一条随机附灵（组队副本掉落）', category: 'awaken', needsTarget: 'equip', awakenMode: 'add' },
   awaken_reroll:      { name: '灵枢玉',     description: '重新随机一件装备的附灵（保证与原附灵不同）',     category: 'awaken', needsTarget: 'equip', awakenMode: 'reroll' },
-  // —— 合成类 ——
-  set_fragment:       { name: '套装碎片',   description: '收集 5 个合成一件金品装备',              category: 'craft' },
   // —— 修为类 ——
   permanent_stat:     { name: '道果结晶',   description: '永久属性 +1%（攻/防/血 三选一）',       category: 'character', needsTarget: 'stat' },
   breakthrough_boost: { name: '宗门突破丹', description: '下次突破成功率 +20%（上限 100%，不论成败消耗一次）', category: 'character' },
