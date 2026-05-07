@@ -3065,7 +3065,10 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'heaven-row': rankingTab === 'heaven' }]"
+                  @mouseenter="rankingTab === 'heaven' && onHeavenRowEnter($event, item.characterId)"
+                  @mousemove="rankingTab === 'heaven' && onHeavenRowMove($event)"
+                  @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
                 >
                   <div class="rank-num">
                     <span v-if="item.rank === 1" class="rank-crown">👑</span>
@@ -3089,11 +3092,18 @@
                       <span class="arena-rank-chip" :style="{ color: item.arenaRankColor, borderColor: item.arenaRankColor }">{{ item.arenaRankName }}</span>
                       {{ formatNum(item.arenaScore) }}
                     </span>
+                    <span v-else-if="rankingTab === 'heaven'" class="rank-power">
+                      <span class="rank-power-num">{{ formatNum(item.power) }}</span>
+                      <span class="rank-power-label">战力</span>
+                    </span>
                     <span v-else>Lv.{{ item.level }}</span>
                   </div>
                   <div class="rank-sect">{{ item.sectName || '—' }}</div>
                 </div>
                 <div v-if="rankingList.length === 0" class="ranking-empty">暂无数据</div>
+              </div>
+              <div v-if="rankingTab === 'heaven'" class="heaven-tip-hint">
+                ✦ 鼠标悬停道友查看其功法与装备
               </div>
               <!-- 我的排名 -->
               <div class="ranking-my" v-if="rankingMyRank">
@@ -3134,6 +3144,52 @@
         </div>
       </div>
     </div>
+
+    <!-- ==================== 通天榜悬浮：装备 + 功法 ==================== -->
+    <Teleport to="body">
+      <div
+        v-if="heavenHoverChar !== null"
+        class="heaven-tooltip"
+        :style="{ top: heavenTipY + 'px', left: heavenTipX + 'px' }"
+      >
+        <div v-if="heavenHoverLoading && !heavenHoverDetail" class="heaven-tip-loading">查阅传承…</div>
+        <template v-else-if="heavenHoverDetail">
+          <!-- 功法 -->
+          <div class="heaven-tip-section">
+            <div class="heaven-tip-title">功法传承</div>
+            <div v-if="heavenHoverDetail.skills.length === 0" class="heaven-tip-empty">未装备功法</div>
+            <div v-else class="heaven-tip-list">
+              <div
+                v-for="sk in heavenHoverDetail.skills"
+                :key="sk.skillType + '-' + sk.slotIndex"
+                class="heaven-tip-row"
+              >
+                <span class="heaven-tip-tag" :style="{ borderColor: skillRarityColor(sk.rarity), color: skillRarityColor(sk.rarity) }">{{ sk.skillTypeLabel }}</span>
+                <span class="heaven-tip-name" :style="{ color: skillRarityColor(sk.rarity) }">{{ sk.name }}</span>
+                <span v-if="sk.element" class="heaven-tip-elem" :style="{ color: rootColorMap[sk.element] }">{{ ROOT_LABEL[sk.element] }}</span>
+                <span class="heaven-tip-lv">Lv.{{ sk.level }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- 装备 -->
+          <div class="heaven-tip-section">
+            <div class="heaven-tip-title">道兵法宝</div>
+            <div v-if="heavenHoverDetail.equipments.length === 0" class="heaven-tip-empty">未穿戴装备</div>
+            <div v-else class="heaven-tip-list">
+              <div
+                v-for="eq in heavenHoverDetail.equipments"
+                :key="eq.slot"
+                class="heaven-tip-row"
+              >
+                <span class="heaven-tip-tag" :style="{ borderColor: getRarityColor(eq.rarity), color: getRarityColor(eq.rarity) }">{{ getSlotName(eq.baseSlot) }}</span>
+                <span class="heaven-tip-name" :style="{ color: getRarityColor(eq.rarity) }">{{ eq.name }}</span>
+                <span class="heaven-tip-lv">T{{ eq.tier }}<span v-if="eq.enhance > 0"> +{{ eq.enhance }}</span></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </Teleport>
 
     <!-- ==================== 斗法台弹窗 ==================== -->
     <div v-if="showPkDojo" class="modal-overlay" @click="showPkDojo = false">
@@ -3489,9 +3545,9 @@ async function onTowerSweep() {
 }
 const towerSweepTooltip = computed(() => {
   if (!towerStore.eligible) return '大乘后开启';
-  if (towerStore.maxFloor === 0) return '请先通关至少 1 层';
-  if (!towerStore.canSweep) return '今日已领取，明日 8:00 重置';
-  return '领取每日扫荡奖励（暂未启用物品发放）';
+  if (towerStore.maxFloor < 10) return '请先通关第 10 层后再扫荡';
+  if (!towerStore.canSweep) return '今日已扫荡，明日 8:00 重置';
+  return '按 10 倍数节点（≤ 最高层）各掉 1-2 本紫品主修，全日 20 本封顶';
 });
 onMounted(() => {
   towerStore.fetchInfo().then(() => {
@@ -3622,7 +3678,8 @@ async function doPkChallenge() {
 
 // ===== 排行榜 =====
 const showRanking = ref(false);
-const rankingTab = ref<'realm' | 'level' | 'wealth' | 'arena' | 'sect'>('realm');
+type RankingTabKey = 'realm' | 'level' | 'wealth' | 'arena' | 'sect' | 'heaven';
+const rankingTab = ref<RankingTabKey>('realm');
 const rankingLoading = ref(false);
 const rankingList = ref<any[]>([]);
 const rankingSectList = ref<any[]>([]);
@@ -3636,7 +3693,66 @@ const rankingTabs = [
   { key: 'wealth' as const, label: '灵石榜' },
   { key: 'arena' as const, label: '斗法榜' },
   { key: 'sect' as const, label: '宗门榜' },
+  { key: 'heaven' as const, label: '通天榜' },
 ];
+
+// ===== 通天榜：hover 详情（装备 + 功法）=====
+const heavenDetailCache = ref<Record<number, { equipments: any[]; skills: any[] }>>({});
+const heavenDetailLoading = ref<Record<number, boolean>>({});
+const heavenHoverChar = ref<number | null>(null);
+const heavenTipX = ref(0);
+const heavenTipY = ref(0);
+
+const heavenHoverDetail = computed(() => {
+  if (heavenHoverChar.value == null) return null;
+  return heavenDetailCache.value[heavenHoverChar.value] || null;
+});
+const heavenHoverLoading = computed(() => {
+  if (heavenHoverChar.value == null) return false;
+  return !!heavenDetailLoading.value[heavenHoverChar.value];
+});
+
+async function loadHeavenDetail(characterId: number) {
+  if (heavenDetailCache.value[characterId] || heavenDetailLoading.value[characterId]) return;
+  heavenDetailLoading.value = { ...heavenDetailLoading.value, [characterId]: true };
+  try {
+    const res: any = await $fetch(`/api/ranking/heaven-detail?characterId=${characterId}`, { headers: getAuthHeaders() });
+    if (res?.code === 200 && res.data) {
+      heavenDetailCache.value = { ...heavenDetailCache.value, [characterId]: res.data };
+    }
+  } catch (e) {
+    console.error('通天榜详情加载失败:', e);
+  } finally {
+    heavenDetailLoading.value = { ...heavenDetailLoading.value, [characterId]: false };
+  }
+}
+
+function onHeavenRowEnter(e: MouseEvent, characterId: number) {
+  heavenHoverChar.value = characterId;
+  positionHeavenTip(e);
+  loadHeavenDetail(characterId);
+}
+function onHeavenRowMove(e: MouseEvent) {
+  if (heavenHoverChar.value == null) return;
+  positionHeavenTip(e);
+}
+function onHeavenRowLeave() {
+  heavenHoverChar.value = null;
+}
+function positionHeavenTip(e: MouseEvent) {
+  const TIP_W = 320;
+  const TIP_H = 360;
+  const margin = 12;
+  let x = e.clientX + 16;
+  let y = e.clientY + 12;
+  if (x + TIP_W + margin > window.innerWidth) x = e.clientX - TIP_W - 16;
+  if (y + TIP_H + margin > window.innerHeight) y = window.innerHeight - TIP_H - margin;
+  if (y < margin) y = margin;
+  heavenTipX.value = x;
+  heavenTipY.value = y;
+}
+
+const ROOT_LABEL: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' };
 
 const rootColorMap: Record<string, string> = {
   metal: '#c9a85c', wood: '#6baa7d', water: '#5b8eaa', fire: '#c45c4a', earth: '#a08a60',
@@ -3649,7 +3765,7 @@ async function openRanking() {
   await fetchRankingData();
 }
 
-async function switchRankingTab(tab: 'realm' | 'level' | 'wealth' | 'arena' | 'sect') {
+async function switchRankingTab(tab: RankingTabKey) {
   rankingTab.value = tab;
   await fetchRankingData();
 }
@@ -3664,6 +3780,7 @@ async function fetchRankingData() {
       case 'wealth': res = await $fetch('/api/ranking/wealth', { headers: getAuthHeaders() }); break;
       case 'arena':  res = await $fetch('/api/ranking/arena',  { headers: getAuthHeaders() }); break;
       case 'sect':   res = await $fetch('/api/ranking/sect', { headers: getAuthHeaders() }); break;
+      case 'heaven': res = await $fetch('/api/ranking/heaven', { headers: getAuthHeaders() }); break;
     }
     if (res?.code === 200 && res.data) {
       if (rankingTab.value === 'sect') {
@@ -13210,6 +13327,118 @@ onUnmounted(() => {
   font-weight: bold;
   font-size: 15px;
   letter-spacing: 1px;
+}
+
+/* ===== 通天榜 ===== */
+.heaven-row {
+  cursor: help;
+}
+.heaven-row:hover {
+  background: rgba(184, 154, 90, 0.10);
+  box-shadow: inset 0 0 0 1px rgba(184, 154, 90, 0.4);
+}
+.rank-power {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+.rank-power-num {
+  color: var(--gold-ink);
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 0 0 6px rgba(232, 204, 138, 0.4);
+}
+.rank-power-label {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+.heaven-tip-hint {
+  margin-top: 8px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 12px;
+  letter-spacing: 1px;
+  font-style: italic;
+}
+
+.heaven-tooltip {
+  position: fixed;
+  z-index: 9999;
+  width: 320px;
+  max-width: 320px;
+  padding: 10px 12px;
+  background: rgba(20, 16, 10, 0.96);
+  border: 1px solid rgba(184, 154, 90, 0.55);
+  border-radius: 6px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55), 0 0 18px rgba(184, 154, 90, 0.15);
+  pointer-events: none;
+  font-size: 12px;
+  color: var(--ink-light);
+  backdrop-filter: blur(2px);
+}
+.heaven-tip-loading {
+  text-align: center;
+  padding: 18px 0;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+.heaven-tip-section + .heaven-tip-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(184, 154, 90, 0.25);
+}
+.heaven-tip-title {
+  color: var(--gold-ink);
+  font-size: 12px;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+.heaven-tip-empty {
+  color: var(--ink-faint);
+  font-size: 11px;
+  font-style: italic;
+  padding: 2px 0;
+}
+.heaven-tip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.heaven-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  line-height: 1.4;
+}
+.heaven-tip-tag {
+  flex: 0 0 auto;
+  min-width: 32px;
+  text-align: center;
+  padding: 0 5px;
+  font-size: 10px;
+  border: 1px solid;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+.heaven-tip-name {
+  flex: 1 1 auto;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.heaven-tip-elem {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: bold;
+}
+.heaven-tip-lv {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  font-size: 11px;
 }
 
 /* ===== 成就弹窗 ===== */
