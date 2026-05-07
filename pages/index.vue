@@ -13024,19 +13024,20 @@ onUnmounted(() => {
 /* ==================== 「吴彦祖1号」专属影帝特效 ==================== */
 .ranking-row.wuyanzu-row {
   padding-top: 20px;
-  background: linear-gradient(90deg,
-    rgba(255, 80, 220, 0.28) 0%,
-    rgba(160, 100, 255, 0.2) 25%,
-    rgba(80, 180, 255, 0.2) 50%,
-    rgba(80, 255, 200, 0.13) 75%,
-    rgba(255, 200, 80, 0.1) 100%);
-  background-size: 220% 100%;
+  background:
+    linear-gradient(90deg,
+      rgba(255, 80, 220, 0.14) 0%,
+      rgba(160, 100, 255, 0.10) 25%,
+      rgba(80, 180, 255, 0.10) 50%,
+      rgba(80, 255, 200, 0.07) 75%,
+      rgba(255, 200, 80, 0.05) 100%) 0 0 / 220% 100% no-repeat,
+    url('/images/吴彦祖.png') center / cover no-repeat;
   animation: wuyanzu-bg-flow 4.5s linear infinite, wuyanzu-pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes wuyanzu-bg-flow {
-  0% { background-position: 0% 0; }
-  100% { background-position: 220% 0; }
+  0% { background-position: 0% 0, center; }
+  100% { background-position: 220% 0, center; }
 }
 
 @keyframes wuyanzu-pulse {
@@ -13069,6 +13070,7 @@ onUnmounted(() => {
   z-index: 0;
   pointer-events: none;
   transform: skewX(-18deg);
+  opacity: 0.45;
   background: linear-gradient(90deg,
     transparent 0%,
     rgba(255, 130, 240, 0.7) 30%,
@@ -13091,6 +13093,7 @@ onUnmounted(() => {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   filter: blur(5px);
+  opacity: 0.5;
   background: conic-gradient(from 0deg,
     rgba(255, 80, 220, 0.65) 0deg,
     rgba(180, 100, 255, 0.6) 72deg,
