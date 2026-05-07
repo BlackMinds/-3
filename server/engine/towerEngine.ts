@@ -31,6 +31,8 @@ export function buildFloorMonsters(floor: number): TowerBattleSetup | null {
   const monsters: TowerBattleSetup['monsters'] = floorDef.monsters.map((fm: FloorMonster) => {
     const stats = generateMonsterStats(fm.template)
     applyTraits(stats, fm.traits)  // 原地修改
+    // 注入 trait 列表，让 battleEngine 主循环能识别 B01/B04/B05 等"回合 hook" trait
+    stats._towerTraits = fm.traits.slice()
     return {
       stats,
       template: fm.template,

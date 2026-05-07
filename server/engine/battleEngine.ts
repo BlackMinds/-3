@@ -282,6 +282,7 @@ export interface BattlerStats {
   elementDmg?: { metal: number; wood: number; water: number; fire: number; earth: number };
   spirit?: number; // 神识: 每点+0.1%神通伤害
   awaken?: PlayerAwakenState; // 装备附灵运行时状态（v1.2 新增）
+  _towerTraits?: string[]; // 通天塔特有 trait 列表（B01/B04/B05 真版 hook 触发用，主图战斗为 undefined）
 }
 
 export interface BattleLogEntry {
@@ -1218,6 +1219,7 @@ export function runWaveBattle(
     mainSkillPoisonAmpElem: aw.mainSkillPoisonAmpElem,
     mainSkillFreezeChance: aw.mainSkillFreezeChance || 0,
     mainSkillFreezeChanceElem: aw.mainSkillFreezeChanceElem,
+    mainSkillExtraFreezeChance: aw.mainSkillExtraFreezeChance || 0,
     mainSkillBurnDuration: aw.mainSkillBurnDuration || 0,
     mainSkillBurnDurationElem: aw.mainSkillBurnDurationElem,
     mainSkillBurnAmp: aw.mainSkillBurnAmp || 0,
@@ -1599,6 +1601,8 @@ export function runWaveBattle(
 
   // 每回合累计玩家吸血汇总
   let turnLifestealTotal = 0;
+  // v3.9 主修噬灵单独累计（与普通吸血分离日志，便于玩家辨识万木枯荣诀生效）
+  let turnMainSkillHealTotal = 0;
 
   // v1.2 附灵工具：命中后 roll 主动触发 DOT（焚魂/淬毒/裂魂）
   function triggerAwakenOnHit(target: any, targetName: string, turn: number) {
@@ -1691,6 +1695,54 @@ export function runWaveBattle(
         }
         b.remaining--;
         if (b.remaining <= 0) m.buffs.splice(bi, 1);
+      }
+
+      // === 通天塔 trait 真版 hook（B01 三阶段 / B04 狂暴计时 / B05 五行轮转）===
+      // 仅 _towerTraits 有值时启用；普通主图战斗为 undefined,跳过
+      const towerTraits = (m.stats as any)._towerTraits as string[] | undefined;
+      if (towerTraits && towerTraits.length > 0) {
+        const ss: any = m.skillState;
+        // B01 三阶段:HP ≤ 70% 进入阶段 2(攻防+20%、速+10%);HP ≤ 35% 进入阶段 3(攻防再 +20-30%、会心爆发)
+        if (towerTraits.includes('B01')) {
+          const hpPct = m.stats.hp / m.stats.maxHp;
+          if (!ss._b01Phase2 && hpPct <= 0.70) {
+            ss._b01Phase2 = true;
+            m.baseAtk = Math.floor(m.baseAtk * 1.20);
+            m.baseDef = Math.floor(m.baseDef * 1.20);
+            m.stats.spd = Math.floor(m.stats.spd * 1.10);
+            logs.push({ turn, text: `[第${turn}回合] ${m.stats.name} 进入【二阶段】!攻防 +20%、速 +10%`, type: 'crit', ...snap() });
+          }
+          if (!ss._b01Phase3 && hpPct <= 0.35) {
+            ss._b01Phase3 = true;
+            m.baseAtk = Math.floor(m.baseAtk * 1.30);
+            m.baseDef = Math.floor(m.baseDef * 1.20);
+            m.stats.crit_rate = Math.min(0.60, m.stats.crit_rate + 0.30);
+            m.stats.crit_dmg = Math.min(2.5, m.stats.crit_dmg + 0.50);
+            logs.push({ turn, text: `[第${turn}回合] ${m.stats.name} 进入【三阶段】!全属性暴涨,会心爆发!`, type: 'crit', ...snap() });
+          }
+        }
+        // B04 狂暴计时:turn ≥ 30 永久狂暴,atk ×2
+        if (towerTraits.includes('B04') && !ss._b04Triggered && turn >= 30) {
+          ss._b04Triggered = true;
+          m.baseAtk = Math.floor(m.baseAtk * 2.0);
+          logs.push({ turn, text: `[第${turn}回合] ${m.stats.name} 触发【狂暴计时】!攻击力 ×2!`, type: 'crit', ...snap() });
+        }
+        // B05 五行轮转:每 3 回合切一次元素+抗性(金→木→水→火→土循环)
+        if (towerTraits.includes('B05')) {
+          const cycle = ['metal', 'wood', 'water', 'fire', 'earth'] as const;
+          const newElem = cycle[Math.floor((turn - 1) / 3) % 5];
+          if (ss._b05Elem !== newElem) {
+            ss._b05Elem = newElem;
+            m.stats.element = newElem;
+            if (m.stats.resists) {
+              m.stats.resists.metal = 0; m.stats.resists.wood = 0;
+              m.stats.resists.water = 0; m.stats.resists.fire = 0; m.stats.resists.earth = 0;
+              (m.stats.resists as any)[newElem] = 0.40;
+            }
+            const elemNames: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' };
+            logs.push({ turn, text: `[第${turn}回合] ${m.stats.name} 切换至【${elemNames[newElem]}】属性`, type: 'buff', ...snap() });
+          }
+        }
       }
 
       let mAtk = m.baseAtk;
@@ -1883,6 +1935,7 @@ export function runWaveBattle(
     if (aliveMonsters.length === 0) break;
 
     turnLifestealTotal = 0;
+    turnMainSkillHealTotal = 0;
     // ❖ 套装：每回合重置多重施法触发计数
     (player as any)._multicastThisTurn = 0;
 
@@ -2138,13 +2191,13 @@ export function runWaveBattle(
             }
           }
         }
-        // v1.3 主修噬灵：按最大气血百分比回血
+        // v1.3 主修噬灵：按最大气血百分比回血（独立累计，避免与普通吸血混淆）
         if (mainSkillLifestealRate > 0 && dmg > 0) {
           const heal = Math.floor(player.maxHp * mainSkillLifestealRate);
           const actualHeal = Math.min(heal, player.maxHp - player.hp);
           if (actualHeal > 0) {
             player.hp += actualHeal;
-            turnLifestealTotal += actualHeal;
+            turnMainSkillHealTotal += actualHeal;
           }
         }
         // ❖ 十三枪：任何主攻伤害 +1 层；满 13 层时设必会心；满层会心触发后清零（爽点节奏）
@@ -2251,7 +2304,8 @@ export function runWaveBattle(
             if (isMainSkill && curTarget.stats.hp > 0) {
               const extraFreeze = (player.awakenState?.mainSkillExtraFreezeChance) || 0;
               if (extraFreeze > 0 && Math.random() < extraFreeze) {
-                tryApplyDebuff(curTarget, curTarget.stats.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, player.atk, turn, 'player');
+                const ok = tryApplyDebuff(curTarget, curTarget.stats.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, player.atk, turn, 'player');
+                if (ok) logs.push({ turn, text: `  ✦【玄冰诀】主修触发，${curTarget.stats.name} 额外冻结 1 回合`, type: 'buff', ...snap() });
               }
             }
             // v1.2 附灵：命中触发 DOT
@@ -2289,7 +2343,8 @@ export function runWaveBattle(
             if (isMainSkill && t.stats.hp > 0) {
               const extraFreeze = (player.awakenState?.mainSkillExtraFreezeChance) || 0;
               if (extraFreeze > 0 && Math.random() < extraFreeze) {
-                tryApplyDebuff(t, t.stats.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, player.atk, turn, 'player');
+                const ok = tryApplyDebuff(t, t.stats.name, { type: 'freeze', chance: 1.0, duration: 1 } as any, player.atk, turn, 'player');
+                if (ok) logs.push({ turn, text: `  ✦【玄冰诀】主修触发，${t.stats.name} 额外冻结 1 回合`, type: 'buff', ...snap() });
               }
             }
             // v1.2 附灵：命中触发 DOT
@@ -2398,6 +2453,10 @@ export function runWaveBattle(
       // 吸血汇总日志
       if (turnLifestealTotal > 0) {
         logs.push({ turn, text: `  【吸血】回复 ${turnLifestealTotal} 点气血`, type: 'buff', ...snap() });
+      }
+      // v3.9 主修噬灵汇总（万木枯荣诀 / 灵戒附灵 mainSkillLifesteal）
+      if (turnMainSkillHealTotal > 0) {
+        logs.push({ turn, text: `  ✦【噬灵】主修命中回复 ${turnMainSkillHealTotal} 点气血`, type: 'buff', ...snap() });
       }
 
       // 检查击杀
