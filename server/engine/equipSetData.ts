@@ -18,52 +18,16 @@ export interface EquipSetTier {
 
 export interface EquipSet {
   setKey: string              // 唯一 ID
-  name: string                // 套装显示名（"刷新套" / "火神套" ...）
-  prefix: string              // 装备名前缀（如"周天"）
+  name: string                // 套装显示名（"火神套" / "万毒套" ...）
+  prefix: string              // 装备名前缀（如"焚天"）
   desc: string                // 流派一句话定位
   rarity: 'blue' | 'purple' | 'gold' | 'red'  // 该套装出现于该品质及以上
   tiers: [EquipSetTier, EquipSetTier, EquipSetTier] // 必须 3 档：3/5/7
 }
 
-// ===== 一期 7 套（按设计文档 ✅ 标记中挑出最稳的 7 套，覆盖 7 大流派）=====
+// ===== 实装套装（9 套）=====
 export const EQUIP_SETS: EquipSet[] = [
-  // 1. 刷新套 — 主修/神通周转流
-  // v3.8.5: 削弱 — 触发后那次额外神通伤害打折（3件 -40% / 5件 -30% / 7件 -25%），
-  //   去掉原 7 件「起手所有神通 CD-1」效果，让刷新套与 DOT 套差距收敛
-  {
-    setKey: 'refresh',
-    name: '刷新套',
-    prefix: '周天',
-    desc: '神通周转流，与高 CD 红/金品神通配合最佳',
-    rarity: 'blue',
-    tiers: [
-      { count: 3, desc: '释放主修或神通后，5% 概率重置当前 CD 最短的神通；触发后下次神通伤害 -40%',
-        hooks: { onSkillCast: { resetShortestCd: { chance: 0.05, extraDmgMul: 0.6 } } } },
-      { count: 5, desc: '上述概率提升至 12%；触发后下次神通伤害 -30%',
-        hooks: { onSkillCast: { resetShortestCd: { chance: 0.12, extraDmgMul: 0.7 } } } },
-      { count: 7, desc: '上述概率提升至 20%；触发后下次神通伤害 -25%',
-        hooks: { onSkillCast: { resetShortestCd: { chance: 0.20, extraDmgMul: 0.75 } } } },
-    ],
-  },
-
-  // 2. 多重施法套 — 神通爆发流
-  {
-    setKey: 'multicast',
-    name: '多重施法套',
-    prefix: '叠浪',
-    desc: '单体神通爆发流，多目标场景下追加波及第二个敌人',
-    rarity: 'purple',
-    tiers: [
-      { count: 3, desc: '释放单体神通时，8% 概率追加波及一个新目标（伤害 100%，每回合最多 1 次）',
-        hooks: { onSkillCast: { extraCast: { chance: 0.08, mul: 1.0, maxPerTurn: 1 } } } },
-      { count: 5, desc: '概率 18%，每回合最多 2 次',
-        hooks: { onSkillCast: { extraCast: { chance: 0.18, mul: 1.0, maxPerTurn: 2 } } } },
-      { count: 7, desc: '概率 30%，每回合最多 2 次（追加目标伤害 100%）',
-        hooks: { onSkillCast: { extraCast: { chance: 0.30, mul: 1.00, maxPerTurn: 2 } } } },
-    ],
-  },
-
-  // 3. 火神套 — 灼烧爆发
+  // 1. 火神套 — 灼烧爆发
   // v3.8.5: 加入 dmgMul（玩家施加灼烧每跳伤害 ×N），让套装在养成轴上有"跳数 × 跳伤"双轴提升
   {
     setKey: 'fire_god',
@@ -81,7 +45,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 4. 万毒套 — 中毒爆发
+  // 2. 万毒套 — 中毒爆发
   {
     setKey: 'venom',
     name: '万毒套',
@@ -98,7 +62,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 5. 血魔套 — 流血爆发
+  // 3. 血魔套 — 流血爆发
   {
     setKey: 'blood_demon',
     name: '血魔套',
@@ -115,7 +79,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 6. 极寒套 — 控制冰冻流
+  // 4. 极寒套 — 控制冰冻流
   {
     setKey: 'frost',
     name: '极寒套',
@@ -132,7 +96,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 7. 十三枪 — 武器流之枪，最终伤害堆叠
+  // 5. 十三枪 — 武器流之枪，最终伤害堆叠
   {
     setKey: 'thirteen_spear',
     name: '十三枪',
@@ -149,7 +113,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 8. 回归基本功套 — 反向流派：放弃神通爆发，主修变 AOE 持续清场
+  // 6. 回归基本功套 — 反向流派：放弃神通爆发，主修变 AOE 持续清场
   {
     setKey: 'basic_back',
     name: '回归基本功',
@@ -166,7 +130,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 9. 剑仙套 — 武器流之剑，每次造成伤害额外触发剑气
+  // 7. 剑仙套 — 武器流之剑，每次造成伤害额外触发剑气
   {
     setKey: 'sword_immortal',
     name: '剑仙套',
@@ -183,7 +147,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 10. 刀狂套 — 武器流之刀，非会心滚雪球会心
+  // 8. 刀狂套 — 武器流之刀，非会心滚雪球会心
   {
     setKey: 'blade_madness',
     name: '刀狂套',
@@ -200,7 +164,7 @@ export const EQUIP_SETS: EquipSet[] = [
     ],
   },
 
-  // 11. 天机套 — 武器流之扇，神通额外段
+  // 9. 天机套 — 武器流之扇，神通额外段
   {
     setKey: 'fan_master',
     name: '天机套',
@@ -282,6 +246,10 @@ export function getActiveTier(count: number): 0 | 3 | 5 | 7 {
  *     —— 避免出现"扇子带刀套"这种永远激活不了的幽灵套装
  *   - 非武器槽不限制：玩家可以自行配合武器激活
  *
+ * 保底（2026-05-07）：tier ≥ 10 且 rarity === 'red' 时必出套装
+ *   背景：套装总数变多后，目标套装难刷；道域以上（T10+）红装必带套装
+ *   让玩家凑套节奏不被纯概率劝退
+ *
  * @returns setKey 或 null
  */
 export function rollEquipSet(
@@ -289,18 +257,23 @@ export function rollEquipSet(
   luckMul: number = 1.0,
   slot?: string,
   weaponType?: string | null,
+  tier: number = 1,
 ): string | null {
-  // 套装爆率（按品质）
-  const baseRate: Record<string, number> = {
-    white: 0,
-    green: 0,
-    blue: 0.05,    // 5%
-    purple: 0.10,  // 10%
-    gold: 0.20,    // 20%
-    red: 0.35,     // 35%
+  // T10+ 红装保底必出套装
+  const guaranteed = rarity === 'red' && tier >= 10
+  if (!guaranteed) {
+    // 套装爆率（按品质）
+    const baseRate: Record<string, number> = {
+      white: 0,
+      green: 0,
+      blue: 0.05,    // 5%
+      purple: 0.10,  // 10%
+      gold: 0.20,    // 20%
+      red: 0.35,     // 35%
+    }
+    const rate = (baseRate[rarity] || 0) * luckMul
+    if (Math.random() >= rate) return null
   }
-  const rate = (baseRate[rarity] || 0) * luckMul
-  if (Math.random() >= rate) return null
 
   // 在该品质允许的池子里随机
   const rarityRank: Record<string, number> = { blue: 1, purple: 2, gold: 3, red: 4 }

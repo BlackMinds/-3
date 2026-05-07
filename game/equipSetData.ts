@@ -17,24 +17,6 @@ export interface EquipSet {
 
 export const EQUIP_SETS: EquipSet[] = [
   {
-    setKey: 'refresh', name: '刷新套', prefix: '周天',
-    desc: '神通周转流，与高 CD 红/金品神通配合最佳',
-    tiers: [
-      { count: 3, desc: '释放主修或神通后，5% 概率重置当前 CD 最短的神通；触发后下次神通伤害 -40%' },
-      { count: 5, desc: '上述概率提升至 12%；触发后下次神通伤害 -30%' },
-      { count: 7, desc: '上述概率提升至 20%；触发后下次神通伤害 -25%' },
-    ],
-  },
-  {
-    setKey: 'multicast', name: '多重施法套', prefix: '叠浪',
-    desc: '单体神通爆发流，多目标场景下追加波及第二个敌人',
-    tiers: [
-      { count: 3, desc: '释放单体神通时，8% 概率追加波及一个新目标（伤害 100%，每回合最多 1 次）' },
-      { count: 5, desc: '概率 18%，每回合最多 2 次' },
-      { count: 7, desc: '概率 30%，每回合最多 2 次（追加目标伤害 100%）' },
-    ],
-  },
-  {
     setKey: 'fire_god', name: '火神套', prefix: '焚天',
     desc: '灼烧爆发流，配焚天烈魂、焚体诀',
     tiers: [

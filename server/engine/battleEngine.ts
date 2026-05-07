@@ -5,33 +5,25 @@ import { EQUIP_SET_MAP, getActiveTier } from './equipSetData';
 
 // 套装运行时效果（从已穿戴件数解析得到）
 export interface SetEffectsState {
-  // 1. refresh 刷新套
-  refreshChance: number;       // 释放主修/神通后概率重置 CD 最短的神通
-  refreshOpenCdReduce: number; // 保留字段以兼容老 build（新 hooks 不再设值，默认 0）
-  refreshExtraDmgMul: number;  // v3.8.5: 触发后下次神通伤害 ×N（< 1 即削弱，0.6/0.7/0.75）
-  // 2. multicast 多重施法套
-  multicastChance: number;     // 神通额外释放概率
-  multicastMul: number;        // 额外释放伤害倍率（占原伤害百分比）
-  multicastMaxPerTurn: number; // 每回合最多额外释放次数
-  // 3. fire_god 火神套
+  // 1. fire_god 火神套
   burnInstantMul: number;      // 施加灼烧时立即多结算 N-1 次（mul=2 → 立即 1 次额外，总共 2 次）
   burnDmgMul: number;          // v3.8.5: 玩家施加灼烧每跳伤害 ×N（1.2/1.4/1.6）
   burnExtendIfStacked: number; // 已灼烧再施加时延长 +N 回合（仅 7 件套）
   burnDurationCap: number;     // 持续 cap（默认 6）
-  // 4. venom 万毒套
+  // 2. venom 万毒套
   poisonInstantMul: number;
   poisonDmgMul: number;        // v3.8.5: 玩家施加中毒每跳伤害 ×N
   poisonMaxStacks: number;     // 中毒可叠加层数（仅 7 件套）
   poisonDmgAmpVsTarget: number; // 蚀骨：目标中毒时对其造成的伤害 +X（仅 7 件套）
-  // 5. blood_demon 血魔套
+  // 3. blood_demon 血魔套
   bleedInstantMul: number;
   bleedDmgMul: number;         // v3.8.5: 玩家施加流血每跳伤害 ×N
   bleedLifestealIfBleeding: number; // 目标流血时玩家吸血 +X（仅 7 件套）
-  // 6. frost 极寒套
+  // 4. frost 极寒套
   freezeChanceBonus: number;
   dmgVsFrozen: number;
   frozenCannotDodge: boolean;
-  // 7. thirteen_spear 十三枪
+  // 5. thirteen_spear 十三枪
   spearActive: boolean;        // 持枪时套装激活
   spearArmorPen: number;
   spearLifesteal: number;
@@ -39,26 +31,26 @@ export interface SetEffectsState {
   spearStackDmgPerLevel: number;
   spearMaxStacks: number;
   spearGuaranteedCritOnMax: boolean; // 满 13 层时下一击必会心（仅 7 件套）
-  // 8. basic_back 回归基本功套
+  // 6. basic_back 回归基本功套
   basicBackActive: boolean;    // 任意 ≥3 件激活
   basicBackMul: number;        // 主修 AOE 倍率（多于 1 个目标时使用）
   basicBackMulSingle: number;  // 单体战倍率（仅 7 件套使用，未配置则与 basicBackMul 同值）
   basicBackBanDivine: boolean; // 禁神通
   basicBackDebuffMul: number;  // 主修 debuff 概率倍率（默认 1.0；7 件 = 1.5）
-  // 9. sword_immortal 剑仙套（持「剑」激活）
+  // 7. sword_immortal 剑仙套（持「剑」激活）
   swordActive: boolean;
   swordAtkPct: number;
   swordDefPct: number;
   swordCritRateFlat: number;
   swordQiHits: number;         // 剑气次数（1 / 2 / 3）
   swordQiMul: number;          // 剑气倍率（0.30 / 0.45 / 0.55）
-  // 10. blade_madness 刀狂套（持「刀」激活）
+  // 8. blade_madness 刀狂套（持「刀」激活）
   bladeActive: boolean;
   bladeBaseCritRate: number;   // 静态加成（叠加到 stat 上）
   bladeBaseCritDmg: number;
   bladeStackCritRate: number;  // 每次非会心叠加值
   bladeStackCritDmg: number;
-  // 11. fan_master 天机套（持「扇」激活）
+  // 9. fan_master 天机套（持「扇」激活）
   fanActive: boolean;
   fanSpiritPct: number;        // 神识 % 加成（0.15 / 0.25 / 0.35）
   fanExtraCasts: number;       // 额外释放次数（1 / 1 / 2）
@@ -67,8 +59,6 @@ export interface SetEffectsState {
 
 export function buildSetEffects(equipSetCounts: Record<string, number> | undefined, weaponType: string | null): SetEffectsState {
   const state: SetEffectsState = {
-    refreshChance: 0, refreshOpenCdReduce: 0, refreshExtraDmgMul: 1,
-    multicastChance: 0, multicastMul: 0, multicastMaxPerTurn: 0,
     burnInstantMul: 1, burnDmgMul: 1, burnExtendIfStacked: 0, burnDurationCap: 99,
     poisonInstantMul: 1, poisonDmgMul: 1, poisonMaxStacks: 1, poisonDmgAmpVsTarget: 0,
     bleedInstantMul: 1, bleedDmgMul: 1, bleedLifestealIfBleeding: 0,
@@ -92,19 +82,6 @@ export function buildSetEffects(equipSetCounts: Record<string, number> | undefin
     const tierData = set.tiers.find(t => t.count === tier);
     const hooks: any = tierData?.hooks || {};
     switch (setKey) {
-      case 'refresh': {
-        state.refreshChance = hooks.onSkillCast?.resetShortestCd?.chance || 0;
-        state.refreshOpenCdReduce = hooks.onBattleStart?.allCdReduce || 0;
-        state.refreshExtraDmgMul = hooks.onSkillCast?.resetShortestCd?.extraDmgMul ?? 1;
-        break;
-      }
-      case 'multicast': {
-        const ec = hooks.onSkillCast?.extraCast;
-        state.multicastChance = ec?.chance || 0;
-        state.multicastMul = ec?.mul || 0;
-        state.multicastMaxPerTurn = ec?.maxPerTurn || 0;
-        break;
-      }
       case 'fire_god': {
         state.burnInstantMul = hooks.onApplyBurn?.instantMul || 1;
         state.burnDmgMul = hooks.onApplyBurn?.dmgMul ?? 1;
@@ -1284,14 +1261,6 @@ export function runWaveBattle(
     logs.push({ turn: 0, text: `❖ 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
     logs.push({ turn: 0, text: `  ${s.desc}`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
   }
-  // v3.8.5: 原 7 件套「开局所有神通 CD-1」效果已移除（refreshOpenCdReduce 字段保留作兼容）
-  // 老存档兼容：若仍设有该值（旧 hooks），按原逻辑执行
-  if (setEffects.refreshOpenCdReduce > 0 && divineCds.length > 0) {
-    for (let i = 0; i < divineCds.length; i++) {
-      divineCds[i] = Math.max(0, divineCds[i] - setEffects.refreshOpenCdReduce);
-    }
-    logs.push({ turn: 0, text: `  ❖【刷新套】开局所有神通 CD -${setEffects.refreshOpenCdReduce}`, type: 'set', playerHp: player.hp, playerMaxHp: player.maxHp, monsterHp: 0, monsterMaxHp: 0 });
-  }
   let reviveAvailable = equippedSkills?.passiveEffects?.reviveOnce || false;
   // 战意沸腾
   const atkPerKillPercent = (equippedSkills?.passiveEffects as any)?.atkPerKillPercent || 0;
@@ -1937,8 +1906,6 @@ export function runWaveBattle(
 
     turnLifestealTotal = 0;
     turnMainSkillHealTotal = 0;
-    // ❖ 套装：每回合重置多重施法触发计数
-    (player as any)._multicastThisTurn = 0;
 
     // v1.2 附灵每回合开始：回春 + 洗髓
     runAwakenTurnStart(turn);
@@ -2063,14 +2030,6 @@ export function runWaveBattle(
       mul *= 1.2;
       rootMatched = true;
     }
-    // v3.8.5 刷新套：触发后下次「攻击型神通/主修」伤害打折（buff/治疗 mul=0 不消费标记）
-    let refreshDmgPenaltyApplied = false;
-    if (mul > 0 && (player as any)._refreshNextDmgMul != null && (player as any)._refreshNextDmgMul < 1) {
-      const refreshMul = (player as any)._refreshNextDmgMul;
-      mul *= refreshMul;
-      (player as any)._refreshNextDmgMul = null;
-      refreshDmgPenaltyApplied = true;
-    }
     // 神识加成神通伤害: 每点神识+0.1% (2026-04-25: 0.5%→0.1% — 神识 216 时旧 +108% 神通伤害过强)
     if (isDivine && player.spirit && player.spirit > 0) {
       mul *= 1 + player.spirit * 0.001;
@@ -2144,11 +2103,6 @@ export function runWaveBattle(
       if (skillLabel) {
         logs.push({ turn, text: `[第${turn}回合] ${prefix}【${usedSkill.name}】(${skillLabel})`, type: isDivine ? 'crit' : 'normal', ...snap() });
       }
-      // v3.8.5 刷新套：本次神通受削弱（在标题之后插一行说明，避免日志看起来"莫名其妙伤害变低"）
-      if (refreshDmgPenaltyApplied) {
-        logs.push({ turn, text: `  ❖【刷新套】此次伤害削弱（CD 重置代价已扣除）`, type: 'set', ...snap() });
-      }
-
       // v1.3 主修噬灵：主修命中即触发（与会心无关），按最大气血百分比回复
       const mainSkillLifestealRate = (isMainSkill && player.awakenState?.mainSkillLifesteal) ? player.awakenState.mainSkillLifesteal : 0;
       // v1.3 心剑回响：主修会心时所有神通 CD-1（每回合至多 1 次）
@@ -2387,47 +2341,9 @@ export function runWaveBattle(
         triggerSwordQi(target);
       }
 
-      // ❖ 套装：刷新套 / 多重施法套（仅在攻击型神通/主修释放后触发；buff/治疗 mul=0 不触发）
+      // ❖ 套装：天机套 — 神通释放后追加段
       {
-        // 刷新套：释放主修或神通后概率重置 CD 最短的神通
-        if (setEffects.refreshChance > 0 && Math.random() < setEffects.refreshChance) {
-          let minIdx = -1, minCd = Infinity;
-          for (let i = 0; i < divineCds.length; i++) {
-            if (divineCds[i] > 0 && divineCds[i] < minCd) { minCd = divineCds[i]; minIdx = i; }
-          }
-          if (minIdx >= 0) {
-            divineCds[minIdx] = 0;
-            const sk = (equippedSkills?.divineSkills || [])[minIdx];
-            // v3.8.5 给玩家打个一次性标记：下次施放攻击型神通/主修时伤害 ×refreshExtraDmgMul（buff/治疗 mul=0 不消费）
-            if (setEffects.refreshExtraDmgMul < 1) {
-              (player as any)._refreshNextDmgMul = setEffects.refreshExtraDmgMul;
-            }
-            logs.push({ turn, text: `  ❖【刷新套】神通【${sk?.name || '?'}】CD 重置`, type: 'set', ...snap() });
-          }
-        }
-        // 多重施法套：单体神通追加一个新目标（不是再次释放神通，所以不结算 buff/debuff）
-        // 仅对单体神通生效（AOE / 多目标神通已经能打多个目标，无需追加）
-        const isSingleTarget = isDivine && !usedSkill.isAoe && (!usedSkill.targetCount || usedSkill.targetCount <= 1);
-        if (isSingleTarget && setEffects.multicastChance > 0 && setEffects.multicastMaxPerTurn > 0 && mul > 0) {
-          const triggered = (player as any)._multicastThisTurn || 0;
-          if (triggered < setEffects.multicastMaxPerTurn && Math.random() < setEffects.multicastChance) {
-            // 选主目标之外的活怪（按血量低优先），找不到就不消耗触发次数
-            const extraTarget = monsters
-              .filter(m => m.alive && m.stats.hp > 0 && !attackTargets.includes(m))
-              .sort((a, b) => a.stats.hp - b.stats.hp)[0];
-            if (extraTarget) {
-              (player as any)._multicastThisTurn = triggered + 1;
-              const extraMul = mul * setEffects.multicastMul;
-              const dmgResult = calculateDamage(player, extraTarget.stats, extraMul, usedSkill.element, usedSkill.ignoreDef, false, false);
-              if (dmgResult.damage > 0) {
-                const finalDmg = dealDamage(extraTarget, dmgResult.damage, { chained: true });
-                const critText = dmgResult.isCrit ? '会心!' : '';
-                logs.push({ turn, text: `  ❖【多重施法】${critText}【${usedSkill.name}】波及${extraTarget.stats.name}造成 ${finalDmg} 伤害 (${(setEffects.multicastMul * 100).toFixed(0)}%)`, type: 'set', ...snap() });
-              }
-            }
-          }
-        }
-        // ❖ 天机套：神通释放后追加 N 次额外段（chained，不消耗 CD、不结算 debuff/buff、不触发刷新套/叠浪）
+        // ❖ 天机套：神通释放后追加 N 次额外段（chained，不消耗 CD、不结算 debuff/buff）
         if (isDivine && setEffects.fanActive && setEffects.fanExtraCasts > 0 && setEffects.fanExtraMul > 0 && mul > 0) {
           const fanTarget = (target?.alive && target.stats.hp > 0) ? target : monsters.find(m => m.alive && m.stats.hp > 0);
           if (fanTarget) {

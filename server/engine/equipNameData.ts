@@ -1,6 +1,6 @@
 // 装备命名系统 — 按品质/槽位/武器类型生成多段式名称
 // 格式：[套装前缀·] [品质前缀] [元素/词缀] [本体名] [后缀]
-// 示例：周天·紫微青锋·锋锐 (设套)、玄冰·赤焰法袍 (设套+元素)、绝尘屠魔刀·破灭 (无套装)
+// 示例：焚天·紫微青锋·锋锐 (设套)、玄冰·赤焰法袍 (设套+元素)、绝尘屠魔刀·破灭 (无套装)
 
 import { EQUIP_SET_MAP } from './equipSetData';
 
@@ -101,7 +101,7 @@ export function generateEquipName(
   const parts: string[] = [];
 
   // 0. 套装前缀（最显眼，放最前；命中套装时用【】包起来，与本体名拉开视觉边界
-  //    避免出现"叠浪金太极玉佩"这种前缀和本体粘连难辨的情况）
+  //    避免出现"机扇金太极玉佩"这种前缀和本体粘连难辨的情况）
   let setPrefixed = false;
   if (setKey && EQUIP_SET_MAP[setKey]) {
     parts.push(`【${EQUIP_SET_MAP[setKey].prefix}】`);

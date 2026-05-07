@@ -72,7 +72,6 @@ interface TeamPlayer {
   setEffects: SetEffectsState
   spearStacks: number
   guaranteedCritNext: boolean
-  _multicastThisTurn: number
   _setInstantTriggered: Record<string, boolean>
   // 刀狂套叠加状态
   _bladeAddedRate: number
@@ -464,7 +463,6 @@ export function runTeamBattle(
       setEffects,
       spearStacks: 0,
       guaranteedCritNext: false,
-      _multicastThisTurn: 0,
       _setInstantTriggered: {},
       _bladeAddedRate: 0,
       _bladeAddedDmg: 0,
@@ -482,18 +480,13 @@ export function runTeamBattle(
     logs.push({ turn: 0, text: `[队伍增益] ${bd}`, type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
   }
 
-  // v1 套装：开局展示每位队员激活的套装 + 应用刷新套 7 件 CD-1
+  // v1 套装：开局展示每位队员激活的套装
   for (const p of players) {
     const sx: any = (p.stats as any)
     const setCounts = sx.equipSetCounts || {}
     const activeSets = buildActiveSetTiers(setCounts)
     for (const s of activeSets) {
       logs.push({ turn: 0, text: `❖ ${p.name} 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)`, type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-    }
-    const reduce = p.setEffects.refreshOpenCdReduce
-    if (reduce > 0 && p.divineCds.length > 0) {
-      for (let i = 0; i < p.divineCds.length; i++) p.divineCds[i] = Math.max(0, p.divineCds[i] - reduce)
-      logs.push({ turn: 0, text: `  ❖【刷新套】${p.name} 开局所有神通 CD -${reduce}`, type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
     }
   }
 
@@ -681,9 +674,6 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   const aliveMonsters = monsters.filter(m => m.alive)
   if (aliveMonsters.length === 0) return
 
-  // ❖ 套装：本回合多重施法触发计数清零
-  p._multicastThisTurn = 0
-
   // 选技能（回归基本功套禁神通）
   let used: SkillRefInfo
   let isDivine = false
@@ -710,13 +700,6 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     rootMatched = true
   }
   if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.001
-  // v3.8.5 刷新套：触发后下次「攻击型神通/主修」伤害打折（buff/治疗 mul=0 不消费）
-  let refreshDmgPenaltyApplied = false
-  if (mul > 0 && (p as any)._refreshNextDmgMul != null && (p as any)._refreshNextDmgMul < 1) {
-    mul *= (p as any)._refreshNextDmgMul
-    ;(p as any)._refreshNextDmgMul = null
-    refreshDmgPenaltyApplied = true
-  }
 
   // 治疗 / buff 技能
   if (mul === 0) {
@@ -928,51 +911,6 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     }
   }
 
-  // ❖ 套装：刷新套 / 多重施法套（攻击型神通/主修释放后）
-  // 刷新套：释放主修或神通后概率重置 CD 最短的神通
-  if (se.refreshChance > 0 && Math.random() < se.refreshChance) {
-    let minIdx = -1, minCd = Infinity
-    for (let i = 0; i < p.divineCds.length; i++) {
-      if (p.divineCds[i] > 0 && p.divineCds[i] < minCd) { minCd = p.divineCds[i]; minIdx = i }
-    }
-    if (minIdx >= 0) {
-      p.divineCds[minIdx] = 0
-      const sk = (p.equippedSkills?.divineSkills || [])[minIdx]
-      // v3.8.5 一次性削弱标记
-      if ((se as any).refreshExtraDmgMul && (se as any).refreshExtraDmgMul < 1) {
-        (p as any)._refreshNextDmgMul = (se as any).refreshExtraDmgMul
-      }
-      logs.push({ turn, text: `  ❖【刷新套】${p.name} 神通【${sk?.name || '?'}】CD 重置`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
-    }
-  }
-  if (refreshDmgPenaltyApplied) {
-    logs.push({ turn, text: `  ❖【刷新套】${p.name} 此次伤害削弱（CD 重置代价已扣除）`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
-  }
-  // 多重施法套：单体神通追加一个新目标（不是再次释放神通，所以不结算 buff/debuff）
-  const isSingleTarget = isDivine && !used.isAoe && (!used.targetCount || used.targetCount <= 1)
-  if (isSingleTarget && se.multicastChance > 0 && se.multicastMaxPerTurn > 0 && mul > 0) {
-    if (p._multicastThisTurn < se.multicastMaxPerTurn && Math.random() < se.multicastChance) {
-      const extraTarget = monsters
-        .filter(m => m.alive && m.stats.hp > 0 && !targets.includes(m))
-        .sort((a, b) => a.stats.hp - b.stats.hp)[0]
-      if (extraTarget) {
-        p._multicastThisTurn++
-        const extraMul = mul * se.multicastMul
-        const r = calculateDamage(p.stats, extraTarget.stats, extraMul, used.element, used.ignoreDef)
-        if (r.damage > 0) {
-          const { final } = applySetDamage(extraTarget, r.damage, r.isCrit, { chained: true })
-          p.damageDealt += final
-          const critText = r.isCrit ? '会心!' : ''
-          logs.push({ turn, text: `  ❖【多重施法】${critText}【${used.name}】波及 ${extraTarget.stats.name} 造成 ${final} 伤害 (${(se.multicastMul * 100).toFixed(0)}%)`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, extraTarget.stats.hp), monsterMaxHp: extraTarget.stats.maxHp })
-          if (extraTarget.stats.hp <= 0) {
-            extraTarget.alive = false
-            killedMonsters.push({ name: extraTarget.stats.name, element: extraTarget.stats.element, isBoss: extraTarget.template.role === 'boss' })
-            logs.push({ turn, text: `${p.name} 击杀了 ${extraTarget.stats.name}！`, type: 'kill', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
-          }
-        }
-      }
-    }
-  }
   // ❖ 剑仙套：每次主攻动作触发 N 次剑气（按主目标）
   triggerSwordQi(targets[0])
   // ❖ 天机套：神通释放后追加 N 次额外段（chained）

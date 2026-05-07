@@ -106,7 +106,7 @@ function buildDummy(): PvpFighterInput {
 }
 
 // ============================================================
-// 11 套 build 配置
+// 9 套 build 配置
 // ============================================================
 
 // 通用神通模板
@@ -115,29 +115,7 @@ const STD_DIVINE = (el: string) => ([
 ])
 
 const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }> = [
-  // 1. 刷新套 — 通用，单红神通（6CD 5.0），附灵 心剑回响 + 主修锋锐
-  {
-    key: 'refresh', label: '刷新套7 (心剑+锋锐+5.0倍率红神通)',
-    make: () => mkBuild('refresh', '刷新套', {
-      setCounts: { refresh: 7 }, element: 'metal',
-      awakenState: { mainSkillCritCdCut: true, mainSkillCritRate: 0.14 },
-      active: { name: '主修', multiplier: 1.0, element: 'metal' },
-      divine: [{ name: '万古凋零', multiplier: 5.0, element: 'metal', cdTurns: 6 }],
-    }),
-  },
-
-  // 2. 多重施法套 — 单体神通（4CD 3.5）
-  {
-    key: 'multicast', label: '多重施法套7 (单体神通)',
-    make: () => mkBuild('multicast', '多重施法', {
-      setCounts: { multicast: 7 }, element: 'metal',
-      awakenState: { mainSkillCritRate: 0.14 },
-      active: { name: '主修', multiplier: 1.0, element: 'metal' },
-      divine: STD_DIVINE('metal'),
-    }),
-  },
-
-  // 3. 火神套 — 火主修 + 焚烬戒 + 火系强化副词条
+  // 1. 火神套 — 火主修 + 焚烬戒 + 火系强化副词条
   {
     key: 'fire_god', label: '火神套7 (火主修+焚烬戒+火系强化)',
     make: () => mkBuild('fire_god', '火神套', {
@@ -150,7 +128,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 4. 万毒套 — 木主修 + 木灵戒 + 木系强化副词条
+  // 2. 万毒套 — 木主修 + 木灵戒 + 木系强化副词条
   {
     key: 'venom', label: '万毒套7 (木主修+木灵戒+木系强化)',
     make: () => mkBuild('venom', '万毒套', {
@@ -163,7 +141,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 5. 血魔套 — 金主修 + 金鸣戒 + 金系强化副词条
+  // 3. 血魔套 — 金主修 + 金鸣戒 + 金系强化副词条
   {
     key: 'blood_demon', label: '血魔套7 (金主修+金鸣戒+金系强化)',
     make: () => mkBuild('blood_demon', '血魔套', {
@@ -176,7 +154,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 6. 极寒套 — 水主修 + 水蕴戒
+  // 4. 极寒套 — 水主修 + 水蕴戒
   {
     key: 'frost', label: '极寒套7 (水主修+水蕴戒+冻结)',
     make: () => mkBuild('frost', '极寒套', {
@@ -189,7 +167,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 7. 十三枪 — 枪武器，金主修
+  // 5. 十三枪 — 枪武器，金主修
   {
     key: 'thirteen_spear', label: '十三枪7 (枪武器+主修锋锐)',
     make: () => mkBuild('thirteen_spear', '十三枪', {
@@ -200,7 +178,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 8. 回归基本功 — 主修 AOE，禁神通
+  // 6. 回归基本功 — 主修 AOE，禁神通
   {
     key: 'basic_back', label: '回归基本功7 (主修AOE，禁神通)',
     make: () => mkBuild('basic_back', '回归基本功', {
@@ -211,7 +189,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 9. 剑仙套 — 剑武器，金主修，玄冥附灵
+  // 7. 剑仙套 — 剑武器，金主修，玄冥附灵
   {
     key: 'sword_immortal', label: '剑仙套7 (剑武器+玄冥+剑气)',
     make: () => mkBuild('sword_immortal', '剑仙套', {
@@ -223,7 +201,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 10. 刀狂套 — 刀武器，金主修
+  // 8. 刀狂套 — 刀武器，金主修
   {
     key: 'blade_madness', label: '刀狂套7 (刀武器+会心叠加)',
     make: () => mkBuild('blade_madness', '刀狂套', {
@@ -234,7 +212,7 @@ const builds: Array<{ key: string; label: string; make: () => PvpFighterInput }>
     }),
   },
 
-  // 11. 天机套 — 扇武器，金主修
+  // 9. 天机套 — 扇武器，金主修
   {
     key: 'fan_master', label: '天机套7 (扇武器+神通额外段)',
     make: () => mkBuild('fan_master', '天机套', {
@@ -306,6 +284,6 @@ for (const r of t15sorted) {
 
 console.log('\n============================================================')
 console.log('解读：')
-console.log('  - 同一行 5/15 回合伤害比反映"长战 / 短战"特性（DOT 套应该 >3x，刷新套约 3x，纯爆发套 <3x）')
+console.log('  - 同一行 5/15 回合伤害比反映"长战 / 短战"特性（DOT 套应该 >3x，纯爆发套 <3x）')
 console.log('  - 任一回合数下偏离 baseline ±20% 视为不平衡，需要再调')
 console.log('============================================================')

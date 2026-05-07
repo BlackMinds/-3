@@ -45,22 +45,22 @@ function mkInput(name: string, opts: { setCounts?: Record<string, number>; weapo
   }
 }
 
-console.log('=== PvP 1v1：A 装满叠浪/十三枪 vs B 裸装 ===')
+console.log('=== PvP 1v1：A 装十三枪 vs B 裸装 ===')
 const pvpResult = runPvpBattle(
-  [mkInput('叠浪剑客', { setCounts: { multicast: 5, thirteen_spear: 5 }, weaponType: 'spear' })],
+  [mkInput('霸枪剑客', { setCounts: { thirteen_spear: 5 }, weaponType: 'spear' })],
   [mkInput('裸装路人', {})],
-  { maxTurns: 15, sideAName: '叠浪方', sideBName: '裸装方' },
+  { maxTurns: 15, sideAName: '霸枪方', sideBName: '裸装方' },
 )
 const setLogs = pvpResult.logs.filter(l => l.type === 'set' || l.text.includes('❖'))
 console.log(`总日志: ${pvpResult.logs.length} 条，套装相关: ${setLogs.length} 条`)
 for (const l of setLogs.slice(0, 20)) console.log('  ' + l.text)
-console.log(`胜方: ${pvpResult.winnerSide === 'a' ? '叠浪方' : '裸装方'} (${pvpResult.totalTurns} 回合)`)
+console.log(`胜方: ${pvpResult.winnerSide === 'a' ? '霸枪方' : '裸装方'} (${pvpResult.totalTurns} 回合)`)
 
 console.log('\n=== PvP 2v2：A 装火神 vs B 裸装 ===')
 const pvpTeam = runPvpBattle(
   [
     mkInput('焚天甲', { setCounts: { fire_god: 5 }, element: 'fire' }),
-    mkInput('焚天乙', { setCounts: { fire_god: 3, refresh: 3 }, element: 'fire' }),
+    mkInput('焚天乙', { setCounts: { fire_god: 3 }, element: 'fire' }),
   ],
   [
     mkInput('路人甲', {}),
@@ -73,36 +73,6 @@ console.log(`总日志: ${pvpTeam.logs.length} 条，套装相关: ${setLogs2.le
 for (const l of setLogs2.slice(0, 15)) console.log('  ' + l.text)
 console.log(`胜方: ${pvpTeam.winnerSide} (${pvpTeam.totalTurns} 回合)`)
 
-console.log('\n=== 验证：multicast 单体追加目标，AOE 神通不触发 ===')
-// AOE 神通的角色，叠浪不应该触发追加
-const aoeInput: PvpFighterInput = {
-  characterId: 1,
-  stats: mkStats('AOE 测试', { setCounts: { multicast: 7 } }),
-  equippedSkills: {
-    activeSkill: { name: '基础剑法', multiplier: 1.0, element: 'metal' },
-    divineSkills: [
-      { name: '天罚雷劫', multiplier: 4.0, element: 'metal', cdTurns: 5, isAoe: true } as any,
-    ],
-    passiveEffects: {
-      atkPercent: 0, defPercent: 0, hpPercent: 0, spdPercent: 0,
-      critRate: 0, critDmg: 0, dodge: 0, lifesteal: 0,
-      resistFire: 0, resistWater: 0, resistWood: 0, resistMetal: 0, resistEarth: 0, resistCtrl: 0,
-      regenPerTurn: 0, damageReductionFlat: 0, reflectPercent: 0, skillCdReduction: 0,
-    } as any,
-  },
-}
-// 用 2v1 让追加目标有机会触发
-const aoeResult = runPvpBattle([aoeInput], [mkInput('靶子甲', {}), mkInput('靶子乙', {})], { maxTurns: 10 })
-// 实际触发日志（不是套装激活播报）：含"波及"才是单体追加
-const multicastTriggerLogs = aoeResult.logs.filter(l => l.text.includes('【多重施法】'))
-console.log(`AOE 神通触发多重施法 trigger 日志: ${multicastTriggerLogs.length} 条 (应为 0)`)
-if (multicastTriggerLogs.length > 0) {
-  console.error('  ❌ AOE 神通不应该触发叠浪追加目标')
-  for (const l of multicastTriggerLogs) console.error('    ' + l.text)
-} else {
-  console.log('  ✅ AOE 神通未触发叠浪追加（正确）')
-}
-
 console.log('\n=== team 引擎：秘境组队战 ===')
 // 简化测试 — team 引擎结构复杂，仅验证 setEffects 字段被正确解析（不跑完整战斗）
 import { runTeamBattle as runTeam } from '~/server/engine/teamBattleEngine'
@@ -113,10 +83,10 @@ if (!realm) {
 } else {
   const teamInput: TeamPlayerInput = {
     characterId: 1,
-    name: '叠浪秘境玩家',
+    name: '火神秘境玩家',
     spiritualRoot: 'metal',
     sectId: null,
-    stats: mkStats('叠浪秘境玩家', { setCounts: { multicast: 5, fire_god: 3 }, weaponType: 'sword', element: 'metal' }),
+    stats: mkStats('火神秘境玩家', { setCounts: { fire_god: 3 }, weaponType: 'sword', element: 'metal' }),
     equippedSkills: {
       activeSkill: { name: '基础剑法', multiplier: 1.0, element: 'metal' },
       divineSkills: [{ name: '万剑归宗', multiplier: 3.5, element: 'metal', cdTurns: 4 } as any],
@@ -129,7 +99,7 @@ if (!realm) {
     },
   }
   const teamResult = runTeam(realm, 1, [teamInput])
-  const teamSetLogs = teamResult.logs.filter(l => l.text.includes('套装激活') || l.text.includes('【多重施法】') || l.text.includes('【火神套】') || l.text.includes('【刷新套】'))
+  const teamSetLogs = teamResult.logs.filter(l => l.text.includes('套装激活') || l.text.includes('【火神套】'))
   console.log(`team 引擎套装日志: ${teamSetLogs.length} 条`)
   for (const l of teamSetLogs.slice(0, 10)) console.log('  ' + l.text)
 }

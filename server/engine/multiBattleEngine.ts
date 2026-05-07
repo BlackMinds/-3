@@ -131,7 +131,6 @@ export interface PvpFighter {
   setEffects: SetEffectsState
   spearStacks: number
   guaranteedCritNext: boolean
-  _multicastThisTurn: number
   _setInstantTriggered: Record<string, boolean>
   // 刀狂套叠加状态
   _bladeAddedRate: number
@@ -293,7 +292,6 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
     setEffects: buildSetEffects(undefined, null), // 占位，下面会被 stats 携带的真实数据覆盖
     spearStacks: 0,
     guaranteedCritNext: false,
-    _multicastThisTurn: 0,
     _setInstantTriggered: {},
     _bladeAddedRate: 0,
     _bladeAddedDmg: 0,
@@ -429,21 +427,13 @@ export function runPvpBattle(
     text: `【战斗开始】${sideAName} ${sideA.length} 人 vs ${sideBName} ${sideB.length} 人`,
   })
 
-  // v1 套装：开局展示双方激活的套装 + 应用刷新套 7 件 CD-1
+  // v1 套装：开局展示双方激活的套装
   for (const f of [...sideA, ...sideB]) {
     const sx: any = (f as any)
     const setCounts = sx._setCountsRaw || {} // 见下方 buildPvpFighter 的存档
     const activeSets = buildActiveSetTiers(setCounts)
     for (const s of activeSets) {
       log({ turn: 0, type: 'set', text: `❖ ${f.name} 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)` })
-    }
-    // 刷新套 7 件套：开局所有神通 CD -refreshOpenCdReduce
-    const reduce = f.setEffects.refreshOpenCdReduce
-    if (reduce > 0 && f.divineCds.length > 0) {
-      for (let i = 0; i < f.divineCds.length; i++) {
-        f.divineCds[i] = Math.max(0, f.divineCds[i] - reduce)
-      }
-      log({ turn: 0, type: 'set', text: `  ❖【刷新套】${f.name} 开局所有神通 CD -${reduce}` })
     }
   }
 
@@ -759,9 +749,6 @@ export function runPvpBattle(
   function executeAction(attacker: PvpFighter, enemies: PvpFighter[], turn: number) {
     if (!attacker.alive || attacker.hp <= 0) return
 
-    // ❖ 套装：本回合多重施法触发计数清零
-    attacker._multicastThisTurn = 0
-
     // 回合开始效果
     turnStartEffects(attacker, turn)
     if (!attacker.alive || attacker.hp <= 0) return
@@ -831,14 +818,6 @@ export function runPvpBattle(
     if (isMainSkill && attacker.awakenState?.mainSkillMultBonus) {
       mul *= 1 + attacker.awakenState.mainSkillMultBonus
     }
-    // v3.8.5 刷新套：触发后下次「攻击型神通/主修」伤害打折（buff/治疗 mul=0 不消费）
-    let refreshDmgPenaltyApplied = false
-    if (mul > 0 && (attacker as any)._refreshNextDmgMul != null && (attacker as any)._refreshNextDmgMul < 1) {
-      mul *= (attacker as any)._refreshNextDmgMul
-      ;(attacker as any)._refreshNextDmgMul = null
-      refreshDmgPenaltyApplied = true
-    }
-
     const prefix = isDivine
       ? (rootMatched ? '神通发动！ ✦灵根共鸣' : '神通发动！')
       : (rootMatched ? '灵根共鸣！' : '')
@@ -896,9 +875,6 @@ export function runPvpBattle(
         turn, type: isDivine ? 'crit' : 'normal',
         text: `[第${turn}回合] ${prefix}${attacker.name} 施展【${usedSkill.name}】(${skillLabel})`,
       })
-    }
-    if (refreshDmgPenaltyApplied) {
-      log({ turn, type: 'set', text: `  ❖【刷新套】${attacker.name} 此次伤害削弱（CD 重置代价已扣除）` })
     }
 
     // 注意：dealDamage 不在内部 push 吸血日志，由调用方在伤害日志后 push，
@@ -1115,46 +1091,9 @@ export function runPvpBattle(
     // ❖ 剑仙套：每次主攻动作触发 N 次剑气（不论几段几目标，按 pickTarget 选主目标）
     triggerSwordQi(target)
 
-    // ❖ 套装：刷新套 / 多重施法套（仅在攻击型神通/主修释放后触发；buff/治疗 mul=0 已提前 return）
     const se = attacker.setEffects
-    // 刷新套：释放主修或神通后概率重置 CD 最短的神通
-    if (se.refreshChance > 0 && Math.random() < se.refreshChance) {
-      let minIdx = -1, minCd = Infinity
-      for (let i = 0; i < attacker.divineCds.length; i++) {
-        if (attacker.divineCds[i] > 0 && attacker.divineCds[i] < minCd) { minCd = attacker.divineCds[i]; minIdx = i }
-      }
-      if (minIdx >= 0) {
-        attacker.divineCds[minIdx] = 0
-        const sk = attacker.divineSkills[minIdx]
-        // v3.8.5 一次性削弱标记
-        if ((se as any).refreshExtraDmgMul && (se as any).refreshExtraDmgMul < 1) {
-          (attacker as any)._refreshNextDmgMul = (se as any).refreshExtraDmgMul
-        }
-        log({ turn, type: 'set', text: `  ❖【刷新套】${attacker.name} 神通【${sk?.name || '?'}】CD 重置` })
-      }
-    }
-    // 多重施法套：单体神通追加一个新目标（不是再次释放神通，所以不结算 buff/debuff）
-    const isSingleTarget = isDivine && !usedSkill.isAoe && (!usedSkill.targetCount || usedSkill.targetCount <= 1)
-    if (isSingleTarget && se.multicastChance > 0 && se.multicastMaxPerTurn > 0 && mul > 0) {
-      if (attacker._multicastThisTurn < se.multicastMaxPerTurn && Math.random() < se.multicastChance) {
-        const extraTarget = enemies
-          .filter(e => e.alive && e.hp > 0 && !attackTargets.includes(e))
-          .sort((a, b) => a.hp - b.hp)[0]
-        if (extraTarget) {
-          attacker._multicastThisTurn++
-          const extraMul = mul * se.multicastMul
-          const dr = calculateDamage(fighterToBattlerStats(attacker), fighterToBattlerStats(extraTarget), extraMul, usedSkill.element, usedSkill.ignoreDef, false, false)
-          if (dr.damage > 0) {
-            const { final } = dealDamage(extraTarget, dr.damage, dr.isCrit, { chained: true })
-            const critText = dr.isCrit ? '会心!' : ''
-            log({ turn, type: 'set', text: `  ❖【多重施法】${critText}【${usedSkill.name}】波及 ${extraTarget.name} 造成 ${final} 伤害 (${(se.multicastMul * 100).toFixed(0)}%)` })
-            if (extraTarget.hp <= 0) extraTarget.alive = false
-          }
-        }
-      }
-    }
 
-    // ❖ 天机套：神通释放后追加 N 次额外段（chained，不消耗 CD、不结算 debuff/buff、不被刷新套/叠浪触发）
+    // ❖ 天机套：神通释放后追加 N 次额外段（chained，不消耗 CD、不结算 debuff/buff）
     if (isDivine && se.fanActive && se.fanExtraCasts > 0 && se.fanExtraMul > 0 && mul > 0) {
       for (let i = 0; i < se.fanExtraCasts; i++) {
         let t = (target.alive && target.hp > 0) ? target : pickTarget(enemies)
