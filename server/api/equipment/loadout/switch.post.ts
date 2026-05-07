@@ -1,7 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharId, ensureLoadouts } from '~/server/utils/equipment'
 
-// 切换装备方案 (1/2/3)：把目标方案的 {slot: equip_id} 应用到 character_equipment.slot
+// 切换装备方案 (1~5)：把目标方案的 {slot: equip_id} 应用到 character_equipment.slot
 // 切换前不需要 snapshot 当前——equip/unequip 已实时同步当前激活方案到 loadouts
 // 装备等级校验在切换时复检（防止：低等级装备穿在方案 2，玩家降级或换号后切回触发不一致）
 export default defineEventHandler(async (event) => {
@@ -9,8 +9,8 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const targetId = Number(body?.loadout_id)
 
-  if (!Number.isInteger(targetId) || targetId < 1 || targetId > 3) {
-    return { code: 400, message: '方案编号必须为 1/2/3' }
+  if (!Number.isInteger(targetId) || targetId < 1 || targetId > 5) {
+    return { code: 400, message: '方案编号必须为 1~5' }
   }
 
   const char = await getCharId(event.context.userId)

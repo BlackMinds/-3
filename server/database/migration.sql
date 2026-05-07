@@ -1107,8 +1107,8 @@ UPDATE sect_members SET total_contribution = contribution WHERE total_contributi
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS breakthrough_fail_streak SMALLINT NOT NULL DEFAULT 0;
 
 -- ============================================
--- 装备方案 / Loadout（2026-05-04）
--- 玩家可保存 3 套装备方案（PvE/PvP/秘境等），随时一键切换
+-- 装备方案 / Loadout（2026-05-04，2026-05-07 扩容到 5 套）
+-- 玩家可保存 5 套装备方案（PvE/PvP/秘境/团战等），随时一键切换
 -- character_equipment.slot 仍代表"当前激活方案下穿戴的槽位"
 -- character_equipment_loadouts 存每套方案的 {slot: equip_id} 快照
 -- equip/unequip 同步写当前激活方案；切换 = 把目标方案的 slots 应用到 character_equipment.slot
@@ -1119,7 +1119,7 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS active_loadout SMALLINT NOT NULL
 CREATE TABLE IF NOT EXISTS character_equipment_loadouts (
   id SERIAL PRIMARY KEY,
   character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
-  loadout_id SMALLINT NOT NULL CHECK (loadout_id BETWEEN 1 AND 3),
+  loadout_id SMALLINT NOT NULL CHECK (loadout_id BETWEEN 1 AND 5),
   slots JSONB NOT NULL DEFAULT '{}'::jsonb,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (character_id, loadout_id)
@@ -1127,7 +1127,21 @@ CREATE TABLE IF NOT EXISTS character_equipment_loadouts (
 
 CREATE INDEX IF NOT EXISTS idx_loadout_char ON character_equipment_loadouts (character_id);
 
--- 回填：所有玩家初始化方案 1（含当前装备快照）+ 空方案 2/3
+-- 2026-05-07：装备方案 3 → 5 套扩容；老库迁移 CHECK 约束
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'character_equipment_loadouts_loadout_id_check'
+  ) THEN
+    ALTER TABLE character_equipment_loadouts DROP CONSTRAINT character_equipment_loadouts_loadout_id_check;
+  END IF;
+  ALTER TABLE character_equipment_loadouts
+    ADD CONSTRAINT character_equipment_loadouts_loadout_id_check
+    CHECK (loadout_id BETWEEN 1 AND 5);
+END $$;
+
+-- 回填：所有玩家初始化方案 1（含当前装备快照）+ 空方案 2~5
 INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
 SELECT c.id, 1,
        COALESCE(
@@ -1145,6 +1159,59 @@ ON CONFLICT (character_id, loadout_id) DO NOTHING;
 
 INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
 SELECT c.id, 3, '{}'::jsonb FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
+SELECT c.id, 4, '{}'::jsonb FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
+SELECT c.id, 5, '{}'::jsonb FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+-- ============================================
+-- 功法方案 / Skill Loadout（2026-05-07）
+-- 玩家可保存 3 套功法方案，随时一键切换（主修/神通/被动整套切）
+-- character_skills 仍代表"当前激活方案下装备的功法"
+-- character_skill_loadouts 存每套方案的 [{skill_id, skill_type, slot_index}] 快照
+-- save-equipped 同步写当前激活方案；卖功法时清掉所有方案中的引用
+-- 切换 = 把目标方案的 payload 应用到 character_skills（清空再插入）
+-- 槽位上限按当前境界复检，不在限制内的功法切换时跳过
+-- ============================================
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS active_skill_loadout SMALLINT NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS character_skill_loadouts (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  loadout_id SMALLINT NOT NULL CHECK (loadout_id BETWEEN 1 AND 3),
+  payload JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (character_id, loadout_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_skill_loadout_char ON character_skill_loadouts (character_id);
+
+-- 回填：方案 1 = 当前装备的功法快照；方案 2/3 默认空
+INSERT INTO character_skill_loadouts (character_id, loadout_id, payload)
+SELECT c.id, 1,
+       COALESCE(
+         (SELECT jsonb_agg(jsonb_build_object(
+                  'skill_id', cs.skill_id,
+                  'skill_type', cs.skill_type,
+                  'slot_index', cs.slot_index))
+          FROM character_skills cs
+          WHERE cs.character_id = c.id AND cs.equipped = TRUE),
+         '[]'::jsonb
+       )
+FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+INSERT INTO character_skill_loadouts (character_id, loadout_id, payload)
+SELECT c.id, 2, '[]'::jsonb FROM characters c
+ON CONFLICT (character_id, loadout_id) DO NOTHING;
+
+INSERT INTO character_skill_loadouts (character_id, loadout_id, payload)
+SELECT c.id, 3, '[]'::jsonb FROM characters c
 ON CONFLICT (character_id, loadout_id) DO NOTHING;
 
 -- ============================================
@@ -1416,3 +1483,11 @@ CREATE TABLE IF NOT EXISTS craft_sessions (
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_craft_sessions_expires ON craft_sessions(expires_at);
+
+-- ========================================
+-- 套装碎片下线 (2026-05-07)
+-- ========================================
+-- 宗门套装碎片体系整体废弃：宗门商店「set_fragment」/「premium_equip_box」、
+-- 周常「强化竞赛」金装、Boss 排名装备奖励、craft-set-fragment 合成接口全部移除。
+-- 玩家手上残留的 set_fragment 道具直接清掉（避免 UI 显示无入口的死道具）。
+DELETE FROM character_pills WHERE pill_id = 'set_fragment';

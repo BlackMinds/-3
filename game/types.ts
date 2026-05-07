@@ -36,6 +36,7 @@ export interface CharacterData {
   cave_output_mul?: number;
   sponsor_expire_at?: string | null;
   active_loadout?: number;
+  active_skill_loadout?: number;
 }
 
 // ========== 境界 ==========

@@ -155,7 +155,7 @@ export function getEnhanceSellMul(enh: number | null | undefined): number {
 
 // ============================================
 // 装备方案 / Loadout helpers
-// 玩家有 3 套方案（loadout_id 1/2/3），character_equipment.slot 反映"当前激活方案下的穿戴"
+// 玩家有 5 套方案（loadout_id 1~5），character_equipment.slot 反映"当前激活方案下的穿戴"
 // equip/unequip 时同步写当前激活方案；卖装备时清掉所有方案的引用
 // 新角色或老库未回填的角色都用 ON CONFLICT DO NOTHING 懒创建
 // ============================================
@@ -163,7 +163,8 @@ export async function ensureLoadouts(charId: number): Promise<void> {
   const pool = getPool()
   await pool.query(
     `INSERT INTO character_equipment_loadouts (character_id, loadout_id, slots)
-     VALUES ($1, 1, '{}'::jsonb), ($1, 2, '{}'::jsonb), ($1, 3, '{}'::jsonb)
+     VALUES ($1, 1, '{}'::jsonb), ($1, 2, '{}'::jsonb), ($1, 3, '{}'::jsonb),
+            ($1, 4, '{}'::jsonb), ($1, 5, '{}'::jsonb)
      ON CONFLICT (character_id, loadout_id) DO NOTHING`,
     [charId]
   )
@@ -176,7 +177,7 @@ export async function getActiveLoadoutId(charId: number): Promise<number> {
     [charId]
   )
   const v = rows[0]?.active ?? 1
-  return v >= 1 && v <= 3 ? v : 1
+  return v >= 1 && v <= 5 ? v : 1
 }
 
 // 设置当前激活方案某槽位的装备 id（equipId=null 表示清空该槽位）

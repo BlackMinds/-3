@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharId } from '~/server/utils/equipment'
 import { SKILL_MAP } from '~/server/engine/skillData'
+import { removeSkillFromAllLoadouts } from '~/server/utils/skillLoadout'
 
 // v3.4.2: 出售价 -70%
 const SKILL_SELL_PRICES: Record<string, number> = {
@@ -69,6 +70,11 @@ export default defineEventHandler(async (event) => {
     )
 
     await client.query('COMMIT')
+
+    // 库存归零后清掉所有功法方案中对该 skill_id 的引用，防止切换后指向已不存在的功法
+    if (newCount <= 0) {
+      await removeSkillFromAllLoadouts(charId, skill_id).catch(() => {})
+    }
 
     return {
       code: 200,

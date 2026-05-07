@@ -2,6 +2,12 @@ import { getPool } from '~/server/database/db'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { getSkillSlotLimits } from '~/game/data'
 import { SKILL_MAP } from '~/server/engine/skillData'
+import {
+  ensureSkillLoadouts,
+  getActiveSkillLoadoutId,
+  syncSkillLoadout,
+  type SkillLoadoutEntry,
+} from '~/server/utils/skillLoadout'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -88,6 +94,18 @@ export default defineEventHandler(async (event) => {
         )
       }
     }
+
+    // 同步写入当前激活的功法方案（仿装备 loadout：保存 = 实时更新当前方案）
+    await ensureSkillLoadouts(charId)
+    const activeLoadoutId = await getActiveSkillLoadoutId(charId)
+    const loadoutPayload: SkillLoadoutEntry[] = Array.isArray(equipped)
+      ? equipped.map(it => ({
+          skill_id: String(it.skill_id),
+          skill_type: it.skill_type,
+          slot_index: Number(it.slot_index),
+        }))
+      : []
+    await syncSkillLoadout(charId, activeLoadoutId, loadoutPayload)
 
     checkAchievements(charId, 'skill_equip', 1).catch(() => {})
 

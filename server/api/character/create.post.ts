@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { ensureLoadouts } from '~/server/utils/equipment'
+import { ensureSkillLoadouts } from '~/server/utils/skillLoadout'
 
 const ROOT_BONUS: Record<string, {
   max_hp: number; hp: number; atk: number; def: number; spd: number;
@@ -71,8 +72,9 @@ export default defineEventHandler(async (event) => {
   checkAchievements(charId, 'char_created', 1).catch(() => {})
   checkAchievements(charId, 'first_login', 1).catch(() => {})
 
-  // 初始化 3 套装备方案（默认全空，激活第 1 套）
+  // 初始化 5 套装备方案 + 3 套功法方案（默认全空，激活第 1 套）
   await ensureLoadouts(charId)
+  await ensureSkillLoadouts(charId)
 
   return { code: 200, message: '角色创建成功', data: newChar[0] }
 })
