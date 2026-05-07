@@ -73,22 +73,25 @@ export function applyTraits(stats: BattlerStats, traits: TraitId[]): void {
         break
 
       // ===== 特殊 / Boss 类 =====
-      case 'B01': // 三阶段：MVP 简化 — maxHp ×1.30 / atk ×1.20 / def ×1.15（全段平均加强）
-        stats.maxHp = Math.floor(stats.maxHp * 1.30)
+      case 'B01': // 三阶段：开战阶段 1 仅 ×1.10 基础压迫；HP 70%/35% 阶段 2/3 由 battleEngine 主循环 hook 触发
+        stats.maxHp = Math.floor(stats.maxHp * 1.10)
         stats.hp = stats.maxHp
-        stats.atk = Math.floor(stats.atk * 1.20)
-        stats.def = Math.floor(stats.def * 1.15)
+        stats.atk = Math.floor(stats.atk * 1.10)
+        stats.def = Math.floor(stats.def * 1.10)
         break
       case 'B02': // 召唤：MVP 简化 — maxHp +30%（暂未实现召唤小怪）
         stats.maxHp = Math.floor(stats.maxHp * 1.30)
         stats.hp = stats.maxHp
         break
-      case 'B05': // 五行轮转：MVP 简化 — 所有元素抗性 = 30%
-        stats.resists!.metal = Math.max(stats.resists!.metal, 0.30)
-        stats.resists!.wood = Math.max(stats.resists!.wood, 0.30)
-        stats.resists!.water = Math.max(stats.resists!.water, 0.30)
-        stats.resists!.fire = Math.max(stats.resists!.fire, 0.30)
-        stats.resists!.earth = Math.max(stats.resists!.earth, 0.30)
+      case 'B03': // 分身：MVP 简化 — atk ×1.40 / spd ×1.20（双形态高频压制）
+        stats.atk = Math.floor(stats.atk * 1.40)
+        stats.spd = Math.floor(stats.spd * 1.20)
+        break
+      case 'B04': // 狂暴计时：开战 atk ×1.10 弱开局；turn ≥ 30 由 battleEngine 主循环 hook 触发 atk ×2
+        stats.atk = Math.floor(stats.atk * 1.10)
+        break
+      case 'B05': // 五行轮转：开战不改抗性；每 3 回合切元素+抗性由 battleEngine 主循环 hook 处理
+        // 仅占位，标记由 _towerTraits 触发
         break
     }
   }

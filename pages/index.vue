@@ -2538,6 +2538,48 @@
             <p class="help-text" style="margin-top: 4px;">8 种增益效果: 攻击提升/防御提升/速度提升/会心提升/护盾/持续回血/伤害反弹/免疫控制。</p>
           </div>
           <div class="help-section">
+            <div class="help-title">核心战斗公式</div>
+            <p class="help-text">服务器权威计算,所有数值取决于以下公式。理解公式有助于做属性取舍。</p>
+
+            <p class="help-text" style="margin-top: 8px;"><b>① 基础伤害（calculateDamage）</b></p>
+            <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">伤害 = 攻击 × 技能倍率 × 五行系数 × (1 - 元素抗性) × atk/(atk + 实际防御 × 0.8) × (1 + 元素强化%) × 觉醒乘区</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">闪避命中后伤害归零；会心命中再 × 会心伤害；其后叠加 DOT 加成、十三枪层数、噬灵套等"最终伤害"乘区。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>② 防御 / 破甲</b></p>
+            <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">总破甲 = 神通破甲% + 副属性破甲/100 + 附灵破玄% + 主修破玄%<br/>实际防御 = 防御 × max(0, 1 - 总破甲)<br/>减伤系数 = atk / (atk + 实际防御 × 0.8)</p>
+            <p class="help-text" style="margin-top: 4px;">DEF 权重 <b>0.8</b>(v3.4 从 0.5 调高,让防御更值钱)。破甲多源叠加,堆满后可让对手防御接近 0,直接吃满攻击。</p>
+            <table class="help-table" style="margin-top: 4px;"><tbody>
+              <tr><td>神通「破甲斩」</td><td>+25% (debuff 期间)</td></tr>
+              <tr><td>副属性「破甲」</td><td>+1~10/条 (除以 100 = +1~10%)</td></tr>
+              <tr><td>附灵 / 觉醒「破玄」</td><td>+5~25% (常驻)</td></tr>
+              <tr><td>主修「破玄」(灵戒)</td><td>+10~30% (仅主修攻击)</td></tr>
+              <tr><td>十三枪 6 件套</td><td>spearArmorPen 全场 +X%</td></tr>
+            </tbody></table>
+
+            <p class="help-text" style="margin-top: 10px;"><b>③ 五行相克</b></p>
+            <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">克制方 → 被克方: ×1.15　　被克方 → 克制方: ×0.88　　无关: ×1.0<br/>五行抗性上限: <b>70%</b>　(超过部分截断)</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">金克木 / 木克土 / 土克水 / 水克火 / 火克金。功法属性匹配灵根额外 +20%(灵根共鸣)。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>④ 会心 / 闪避</b></p>
+            <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">是否会心: random &lt; (会心率 + 主修锋锐)　会心: 伤害 × 会心伤害<br/>有效闪避 = max(0, 防御者闪避 - 攻击者命中/100)<br/>random &lt; 有效闪避 → 伤害归零</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">会心伤害基础 2.0(刀类武器 / 灵戒鸣锋 / 副属性会伤可叠加)。怪物闪避上限 30%。命中除以 100 后扣减闪避（即"100 命中 = 抵消 1 闪避"）。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>⑤ DOT 持续伤害</b></p>
+            <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">灼烧 / 中毒: 攻击 × <b>20%</b> / 回合　　流血: 攻击 × <b>15%</b> / 回合</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">DOT 不吃防御、不暴击、不闪避；可叠加副属性「DOT 伤害」、功法「万毒归一」、元素戒、神通基础持续。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>⑥ 吸血</b></p>
+            <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">回血 = floor(本次伤害 × 吸血率), cap 至最大气血</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">玩家吸血上限 <b>25%</b>。血魔套对流血目标 +X% 吸血；主修「噬灵」按最大气血百分比额外回血(非按伤害)。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>⑦ 反伤(v3.7 统一池)</b></p>
+            <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">反弹量 = min(floor(受击伤害 × 反伤系数Σ), 玩家攻击 × 6) + floor(玩家最大气血 × 8%)</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">所有反伤来源汇入同一池: 神通「明镜止水」+32% / 功法「荆棘之体」+8% / 副属性「反伤倍率」+3~15% / armor「明镜甲」+6~22% / pendant「玄镜佩」+5~18%。armor「荆棘」走会心独立通道。</p>
+
+            <p class="help-text" style="margin-top: 10px;"><b>⑧ 速度 / 出手顺序</b></p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">同回合内速度高者先出手；减速 / 束缚 debuff 强制后攻；冻结 / 眩晕 debuff 跳过该回合行动(不影响 DOT 结算)。</p>
+          </div>
+          <div class="help-section">
             <div class="help-title">怪物技能</div>
             <p class="help-text">怪物按地图 tier 拥有不同技能,tier 越高技能越多越强。Boss 额外拥有专属技能,气血低于 30% 时进入狂暴状态(攻击永久+30%)。</p>
             <p class="help-text" style="margin-top: 6px; color: var(--gold-ink);"><b>v3.6 奶妈怪 (T5+ 必出):</b></p>
@@ -2841,14 +2883,14 @@
           <div v-show="helpTab === 'tower'">
           <div class="help-section">
             <div class="help-title">通天塔 · 单人极限挑战</div>
-            <p class="help-text">大乘起步的单人 100 层阶梯塔（当前开放 1-25 层）。每层独立战斗,进入即满血满 CD,每层只算一波怪物。仅有大乘 (T7) 境界且等级 ≥ 140 可入塔。</p>
+            <p class="help-text">大乘起步的单人 100 层阶梯塔（1-100 层全部开放）。每层独立战斗,进入即满血满 CD,每层只算一波怪物。仅有大乘 (T7) 境界且等级 ≥ 140 可入塔。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">入口：「历练」标签页内（或主城右上角直达）。离线挂机时不能挑战。</p>
           </div>
           <div class="help-section">
             <div class="help-title">挑战规则</div>
             <table class="help-table"><tbody>
               <tr><td>跳层</td><td>不能跳层,只能挑战「最高已通关层 + 1」或重温任意已通关层</td></tr>
-              <tr><td>失败配额</td><td>挑战未通关层失败:扣 1 次配额,每日上限 <b>3 次</b>,每日 8:00 重置</td></tr>
+              <tr><td>失败配额</td><td>挑战未通关层失败:扣 1 次配额,每日上限 <b>5 次</b>,每日 8:00 重置</td></tr>
               <tr><td>重温</td><td>挑战已通关层(无论胜负):不扣配额,不更新进度,不发首通奖,但仍发 v3.9 紫品功法</td></tr>
               <tr><td>战斗超时</td><td>单层 100 回合内未分胜负判定为失败</td></tr>
             </tbody></table>

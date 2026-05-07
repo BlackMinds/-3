@@ -141,7 +141,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'spirit_vein_raid_20', name: '灵脉霸主', desc: '灵脉偷袭累计胜利 20 次', category: 'sect', type: 'counter', target: 20, event: 'spirit_vein_raid_win', reward: { spirit_stone: 50000 }, title: '灵脉霸主' },
 
   // ===== 通天塔（threshold 类型，event = 'tower_clear_floor'，传入当前 max_floor）=====
-  // MVP 阶段：5/15/25/50 层成就；75/100 层在 Phase 3 后续开放
+  // 1-100 层全部实装，5 个里程碑成就：15/25/50/75/100
   { id: 'tower_floor_15', name: '塔下行者',  desc: '通关通天塔第 15 层', category: 'battle', type: 'threshold', target: 15,  event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '塔下行者' },
   { id: 'tower_floor_25', name: '塔中过客',  desc: '通关通天塔第 25 层', category: 'battle', type: 'threshold', target: 25,  event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '塔中过客' },
   { id: 'tower_floor_50', name: '半塔之主',  desc: '通关通天塔第 50 层', category: 'battle', type: 'threshold', target: 50,  event: 'tower_clear_floor', reward: { spirit_stone: 0 }, title: '半塔之主' },

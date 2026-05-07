@@ -252,9 +252,9 @@ export const useTowerStore = defineStore('tower', () => {
   const canChallenge = computed(() => info.value?.can_challenge || false)
   const maxFloor = computed(() => info.value?.max_floor || 0)
   const nextFloor = computed(() => info.value?.next_floor || 1)
-  const implementedFloors = computed(() => info.value?.implemented_floors || 25)
+  const implementedFloors = computed(() => info.value?.implemented_floors || 100)
   const dailyFailUsed = computed(() => info.value?.daily_fail_used || 0)
-  const dailyFailMax = computed(() => info.value?.daily_fail_max || 3)
+  const dailyFailMax = computed(() => info.value?.daily_fail_max || 5)
 
   /** 玩家可选择的层数列表（1 ~ next_floor），用于下拉框 */
   const selectableFloors = computed(() => {
