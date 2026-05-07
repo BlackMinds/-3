@@ -3111,7 +3111,7 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'heaven-row': rankingTab === 'heaven' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'heaven-row': rankingTab === 'heaven' }]"
                   @mouseenter="rankingTab === 'heaven' && onHeavenRowEnter($event, item.characterId)"
                   @mousemove="rankingTab === 'heaven' && onHeavenRowMove($event)"
                   @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
