@@ -2713,19 +2713,19 @@
           </div>
           <div class="help-section">
             <div class="help-title">灵脉潮汐 · 节点争夺</div>
-            <p class="help-text">24 小时运转的异步 PVP 玩法,不依赖固定开赛时间。全服共 <b>6 个灵脉节点</b>:</p>
+            <p class="help-text">24 小时运转的异步 PVP 玩法,不依赖固定开赛时间。全服共 <b>9 个灵脉节点</b>(只产出灵石 + 修为):</p>
             <table class="help-table"><tbody>
-              <tr><td>下品(青木/赤焰)</td><td>2,000 灵石 + 500 修为 / 2h,守卫上限 2 人,宗门 Lv.1 可入</td></tr>
-              <tr><td>中品(玄水/黄土)</td><td>5,000 灵石 + 1,200 修为 / 2h,守卫上限 3 人,宗门 Lv.3</td></tr>
-              <tr><td>上品(白金)</td><td>12,000 灵石 + 3,000 修为 / 2h,守卫上限 4 人,Lv.5 (3% 概率掉落丹方)</td></tr>
-              <tr><td>极品(九天)</td><td>25,000 灵石 + 6,000 修为 / 2h,守卫上限 5 人,Lv.7 (5% 掉觉醒石/附灵石)</td></tr>
+              <tr><td>下品 ×3 (青木/赤焰/岚风)</td><td>800 灵石 + 500 修为 / 2h,守卫上限 2 人,宗门 Lv.1 可入</td></tr>
+              <tr><td>中品 ×3 (玄水/黄土/玄霜)</td><td>2,000 灵石 + 1,200 修为 / 2h,守卫上限 3 人,宗门 Lv.3</td></tr>
+              <tr><td>上品 ×2 (白金/紫电)</td><td>4,800 灵石 + 3,000 修为 / 2h,守卫上限 4 人,宗门 Lv.5</td></tr>
+              <tr><td>极品 ×1 (九天)</td><td>10,000 灵石 + 6,000 修为 / 2h,守卫上限 5 人,宗门 Lv.7</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;"><b>核心循环:</b></p>
             <p class="help-text" style="margin-top: 2px;">派弟子驻守节点 → 每 2 小时自动涌灵结算 → 其他宗门可偷袭抢夺 → 胜方接管节点。每周一 00:00 全图重置。</p>
             <p class="help-text" style="margin-top: 6px;"><b>涌灵分成:</b>宗门仓库 60% / 在守玩家 30%(邮件下发,按登录时间权重) / 全服奖池 10%。</p>
             <p class="help-text" style="margin-top: 4px;"><b>偷袭规则:</b>进场费 500 灵石 · 单人每日 10 次上限 · 同节点偷袭 CD 30 分钟 · 战败进入 2h 冷却。</p>
             <p class="help-text" style="margin-top: 4px;"><b>战斗平衡:</b>偷袭战复用团战 NvN 公式(HP ×1.5、伤害 ×0.5、DOT ×0.5),让多人 AoE 神通不至于瞬杀,保留反击与持续性伤害的博弈空间。</p>
-            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">新宗门(Lv ≤ 2 且创建 7 天内)享保护期,所占节点免疫偷袭,但占领上限 2 个。占领 ≥ 4 节点的宗门 2 小时后会被标记"众矢之敌",被偷袭奖励翻倍。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">新宗门(Lv ≤ 2 且创建 7 天内)享保护期,所占节点免疫偷袭,但占领上限 2 个。占领 ≥ 6 节点的宗门 2 小时后会被标记"众矢之敌",被偷袭奖励翻倍。</p>
           </div>
           <div class="help-section">
             <div class="help-title">站内邮件系统</div>

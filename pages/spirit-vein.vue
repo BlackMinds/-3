@@ -33,7 +33,7 @@
         <div class="node-header">
           <span class="node-tier">{{ tierText(n.tier) }}</span>
           <h3>{{ n.name }}</h3>
-          <span v-if="sectOccupyMap[n.sect_id] >= 4" class="nemesis">众矢之敌</span>
+          <span v-if="sectOccupyMap[n.sect_id] >= 6" class="nemesis">众矢之敌</span>
         </div>
         <div class="node-body">
           <div class="owner">

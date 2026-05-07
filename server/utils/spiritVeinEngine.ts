@@ -5,8 +5,6 @@ import { getPool } from '~/server/database/db'
 import { sendMail, sendMailBatch } from '~/server/utils/mail'
 import { refreshGuardCount, guardShareRatio } from '~/server/utils/spiritVein'
 
-const AWAKEN_MATERIAL_IDS = ['awaken_stone', 'spirit_inscription']
-
 function now2HourBoundary(): Date {
   const d = new Date()
   d.setMinutes(0, 0, 0)
@@ -34,7 +32,6 @@ export async function processSurge(): Promise<{ processed: number }> {
     const baseStone = Number(node.stone_reward)
     const baseExp = Number(node.exp_reward)
     let sectStoneGranted = 0
-    const rareDrops: any[] = []
     let guardsSnapshot: number[] = []
 
     if (!node.sect_id) {
@@ -52,12 +49,12 @@ export async function processSurge(): Promise<{ processed: number }> {
     )
     guardsSnapshot = guards.map((g: any) => g.character_id)
 
-    // 仇视机制：占领 >= 4 个节点，宗门 60% 分成减半
+    // 仇视机制：占领 >= 6 个节点（节点 6→9 后按比例上调），宗门 60% 分成减半
     const { rows: [{ cnt: occCount }] } = await pool.query(
       `SELECT COUNT(*)::int AS cnt FROM spirit_vein_occupation WHERE sect_id = $1`,
       [node.sect_id]
     )
-    const isNemesis = occCount >= 4
+    const isNemesis = occCount >= 6
     const sectRatio = isNemesis ? 0.3 : 0.6
     const poolRatioExtra = isNemesis ? 0.3 : 0 // 减半的另一半进奖池
 
@@ -103,17 +100,6 @@ export async function processSurge(): Promise<{ processed: number }> {
           if (expReward > 0) atts.push({ type: 'exp', amount: expReward })
           atts.push({ type: 'contribution', amount: 100 })
 
-          // 稀有掉落
-          if (node.tier === 'high' && Math.random() < 0.03) {
-            atts.push({ type: 'spirit_stone', amount: 50000 }) // 简化：丹方解锁暂用等价灵石
-            rareDrops.push({ characterId: guards[i].character_id, type: 'recipe_substitute', value: 50000 })
-          }
-          if (node.tier === 'supreme' && Math.random() < 0.05) {
-            const itemId = AWAKEN_MATERIAL_IDS[Math.random() < 0.6 ? 0 : 1]
-            atts.push({ type: 'material', itemId, quality: 'purple', qty: 1 })
-            rareDrops.push({ characterId: guards[i].character_id, itemId })
-          }
-
           mails.push({
             characterId: guards[i].character_id,
             category: 'spirit_vein_surge',
@@ -130,11 +116,11 @@ export async function processSurge(): Promise<{ processed: number }> {
       }
     }
 
-    // 记日志
+    // 记日志（rare_drops 已废弃，固定空数组占位以兼容旧 schema）
     await pool.query(
       `INSERT INTO spirit_vein_surge_log (node_id, sect_id, surge_at, sect_stone_granted, rare_drops, guards_snapshot)
        VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)`,
-      [node.id, node.sect_id, surgeAt, sectStoneGranted, JSON.stringify(rareDrops), JSON.stringify(guardsSnapshot)]
+      [node.id, node.sect_id, surgeAt, sectStoneGranted, '[]', JSON.stringify(guardsSnapshot)]
     )
     // 更新 next_surge_at
     await pool.query('UPDATE spirit_vein_occupation SET next_surge_at = $1 WHERE node_id = $2', [nextSurge, node.id])
@@ -210,7 +196,7 @@ export async function settleJackpot(): Promise<{ ok: boolean }> {
   if (jackpot.length === 0 || jackpot[0].settled) return { ok: false }
   const pot = Number(jackpot[0].pool_amount)
 
-  // 综合贡献排行: 涌灵次数 × (1 - 占领节点数/6)
+  // 综合贡献排行: 涌灵次数 × (1 - 占领节点数/9)
   const { rows: sectRanks } = await pool.query(
     `SELECT sl.sect_id,
             COUNT(*)::int AS surge_count,
@@ -223,7 +209,7 @@ export async function settleJackpot(): Promise<{ ok: boolean }> {
   )
   const scored = sectRanks.map((r: any) => ({
     sectId: r.sect_id,
-    score: r.surge_count * (1 - r.occupy_count / 6),
+    score: r.surge_count * (1 - r.occupy_count / 9),
   }))
   scored.sort((a, b) => b.score - a.score)
 
