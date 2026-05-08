@@ -97,7 +97,7 @@
           <div class="item-main">
             <div class="item-title">
               <span :class="'rc-' + l.item_snapshot.rarity">{{ l.item_snapshot.name }}</span>
-              <span class="muted">（{{ rarityLabel(l.item_snapshot.rarity) }}·T{{ l.item_snapshot.tier }}<span v-if="l.item_snapshot.enhance_level">·+{{ l.item_snapshot.enhance_level }}</span>）</span>
+              <span class="muted">（{{ rarityLabel(l.item_snapshot.rarity) }}·T{{ l.item_snapshot.tier }}·Lv.{{ l.item_snapshot.req_level || 1 }}<span v-if="l.item_snapshot.enhance_level">·+{{ l.item_snapshot.enhance_level }}</span>）</span>
               <span v-if="l.item_snapshot.awaken_effect" class="awaken-tag">✦附灵</span>
               <span v-if="l.item_snapshot.set_id" class="set-tag">❖套装</span>
             </div>
@@ -155,7 +155,7 @@
           <div class="item-main">
             <div class="item-title">
               <span :class="'rc-' + l.item_snapshot.rarity">{{ l.item_snapshot.name }}</span>
-              <span class="muted">（{{ rarityLabel(l.item_snapshot.rarity) }}·T{{ l.item_snapshot.tier }}<span v-if="l.item_snapshot.enhance_level">·+{{ l.item_snapshot.enhance_level }}</span>）</span>
+              <span class="muted">（{{ rarityLabel(l.item_snapshot.rarity) }}·T{{ l.item_snapshot.tier }}·Lv.{{ l.item_snapshot.req_level || 1 }}<span v-if="l.item_snapshot.enhance_level">·+{{ l.item_snapshot.enhance_level }}</span>）</span>
             </div>
             <div class="item-meta">
               状态：{{ statusLabel(l.status) }} ·
@@ -198,7 +198,7 @@
           <div class="item-main">
             <div class="item-title">
               <span :class="'rc-' + t.item_snapshot.rarity">{{ t.item_snapshot.name }}</span>
-              <span class="muted">（{{ rarityLabel(t.item_snapshot.rarity) }}·T{{ t.item_snapshot.tier }}）</span>
+              <span class="muted">（{{ rarityLabel(t.item_snapshot.rarity) }}·T{{ t.item_snapshot.tier }}·Lv.{{ t.item_snapshot.req_level || 1 }}）</span>
               <span class="role-badge" :class="t.role">{{ t.role === 'buy' ? '买入' : '卖出' }}</span>
             </div>
             <div class="item-meta">
