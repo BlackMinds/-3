@@ -3124,7 +3124,7 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'heaven-row': rankingTab === 'heaven' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'guofeng-row': item.name === '郭峰', 'heaven-row': rankingTab === 'heaven' }]"
                   @mouseenter="rankingTab === 'heaven' && onHeavenRowEnter($event, item.characterId)"
                   @mousemove="rankingTab === 'heaven' && onHeavenRowMove($event)"
                   @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
@@ -3150,6 +3150,8 @@
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-badge">影帝</span>
                     <span v-if="item.name === '魚魚'" class="yuyu-badge">科研家</span>
                     <span v-if="item.name === '僵尸仙人'" class="jiangshi-badge">姜尸头子</span>
+                    <span v-if="item.name === '郭峰'" class="guofeng-music">🎵</span>
+                    <span v-if="item.name === '郭峰'" class="guofeng-badge">小可爱</span>
                     <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
                   </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
@@ -13814,6 +13816,120 @@ onUnmounted(() => {
   100% { background-position: 0 0, 240% 0; }
 }
 
+/* ==================== 「郭峰」专属粉色可爱特效（胖丁风格） ==================== */
+.ranking-row.guofeng-row {
+  padding-top: 20px;
+  background: linear-gradient(90deg,
+    rgba(255, 182, 193, 0.35) 0%,
+    rgba(255, 192, 203, 0.25) 25%,
+    rgba(255, 218, 233, 0.2) 50%,
+    rgba(255, 182, 193, 0.15) 75%,
+    rgba(255, 105, 180, 0.1) 100%);
+  background-size: 220% 100%;
+  background:
+    linear-gradient(90deg,
+      rgba(255, 182, 193, 0.18) 0%,
+      rgba(255, 192, 203, 0.12) 25%,
+      rgba(255, 218, 233, 0.10) 50%,
+      rgba(255, 182, 193, 0.08) 75%,
+      rgba(255, 105, 180, 0.06) 100%) 0 0 / 220% 100% no-repeat,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  animation: guofeng-bg-flow 4s linear infinite, guofeng-pulse 2s ease-in-out infinite;
+}
+
+@keyframes guofeng-bg-flow {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+
+@keyframes guofeng-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(255, 105, 180, 0.8),
+      inset -3px 0 0 0 rgba(255, 182, 193, 0.6),
+      inset 0 0 0 1px rgba(255, 182, 193, 0.4),
+      0 0 18px rgba(255, 105, 180, 0.35),
+      0 0 35px rgba(255, 182, 193, 0.2);
+  }
+  50% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(255, 182, 193, 1),
+      inset -3px 0 0 0 rgba(255, 218, 233, 0.9),
+      inset 0 0 0 1px rgba(255, 192, 203, 0.7),
+      0 0 35px rgba(255, 105, 180, 0.6),
+      0 0 65px rgba(255, 182, 193, 0.4);
+  }
+}
+
+/* 粉色流光 */
+.ranking-row.guofeng-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 60%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transform: skewX(-18deg);
+  opacity: 0.4;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 182, 193, 0.8) 30%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 192, 203, 0.8) 70%,
+    transparent 100%);
+  animation: guofeng-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes guofeng-shimmer {
+  0% { left: -60%; }
+  100% { left: 120%; }
+}
+
+/* 音符装饰 */
+.guofeng-music {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  font-size: 15px;
+  line-height: 1;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 4px rgba(255, 105, 180, 0.9)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.6));
+  animation: guofeng-music-bounce 1.2s ease-in-out infinite;
+}
+
+@keyframes guofeng-music-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0) rotate(-10deg); opacity: 0.9; }
+  50% { transform: translateX(-50%) translateY(-6px) rotate(10deg); opacity: 1; }
+}
+
+/* 小可爱徽章 */
+.guofeng-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #ff69b4 0%, #ffb6c1 35%, #ffc0cb 70%, #ff69b4 100%);
+  background-size: 220% 100%;
+  border-radius: 10px;
+  animation: guofeng-badge-shine 2s linear infinite;
+  box-shadow: 0 0 6px rgba(255, 105, 180, 0.7), 0 0 12px rgba(255, 182, 193, 0.4);
+  vertical-align: middle;
+  letter-spacing: 1px;
+  filter: none;
+}
+
+@keyframes guofeng-badge-shine {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+
 .rank-plain {
   color: var(--ink-faint);
   font-size: 13px;
@@ -13835,6 +13951,25 @@ onUnmounted(() => {
   white-space: nowrap;
   color: var(--ink-medium);
   font-weight: 600;
+}
+
+/* 郭峰名字粉色渐变 */
+.ranking-row.guofeng-row .rank-name {
+  background: linear-gradient(90deg,
+    #ff69b4 0%, #ffb6c1 20%, #ffc0cb 40%,
+    #ff69b4 60%, #ff85c1 80%, #ff69b4 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: guofeng-text-shimmer 2.2s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 5px rgba(255, 105, 180, 0.5)) drop-shadow(0 0 10px rgba(255, 182, 193, 0.35));
+}
+
+@keyframes guofeng-text-shimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
 }
 
 .rank-title {
