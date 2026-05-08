@@ -1499,3 +1499,11 @@ DELETE FROM character_pills WHERE pill_id = 'set_fragment';
 -- 老装备 primary_stat_2/primary_value_2 = NULL，行为不变；只对新生成装备生效
 ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS primary_stat_2 VARCHAR(20) DEFAULT NULL;
 ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS primary_value_2 INT DEFAULT NULL;
+
+-- ========================================
+-- 死亡惩罚连击 (2026-05-08)
+-- ========================================
+-- 死亡一次：损失 1-5% 修为 + 1-5% 等级经验（随机）
+-- 连续死亡 3 次：随机掉落一件已穿戴的「未锁定」装备，触发后清零
+-- 战斗胜利时清零
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS death_streak SMALLINT NOT NULL DEFAULT 0;

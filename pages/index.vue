@@ -2894,7 +2894,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">死亡惩罚</div>
-            <p class="help-text">战败损失 1% 境界修为 + 1% 等级经验,3 秒后原地复活继续战斗。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
+            <p class="help-text">战败随机损失 <b>1-5%</b> 境界修为 + <b>1-5%</b> 等级经验,3 秒后原地复活继续战斗。<b style="color:#ff6b6b">连续战败 3 次</b>会随机遗落一件已穿戴的装备 (锁定的装备<b>同样</b>会掉),触发后连击重置。战斗胜利会清零连击计数。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">角色成长道具</div>
@@ -5128,6 +5128,18 @@ const secondaryStats = computed(() => {
     if (pp.effect.LIFESTEAL_flat) passLifesteal += pp.effect.LIFESTEAL_flat * lvMul * 100;
   }
 
+  // v3.9 紫品主修自带的常驻被动（active.effect）— 与战斗引擎 / syncEquippedSkills 对齐
+  let mainCritRate = 0, mainCritDmg = 0, mainDodge = 0, mainLifesteal = 0;
+  const ea = equippedActive.value as any;
+  if (ea && ea.effect) {
+    const lv = getSkillLevel('active', 0, ea.id);
+    const lvMul = 1 + (lv - 1) * 0.15;
+    if (ea.effect.CRIT_RATE_flat) mainCritRate += ea.effect.CRIT_RATE_flat * lvMul * 100;
+    if (ea.effect.CRIT_DMG_flat)  mainCritDmg  += ea.effect.CRIT_DMG_flat  * lvMul * 100;
+    if (ea.effect.DODGE_flat)     mainDodge    += ea.effect.DODGE_flat     * lvMul * 100;
+    if (ea.effect.LIFESTEAL_flat) mainLifesteal += ea.effect.LIFESTEAL_flat * lvMul * 100;
+  }
+
   // 神识：v3.4 武器 SPIRIT_percent 作用于"基础 + 装备主+副 + 附灵"
   // v4.0: 装备 SPIRIT_PCT（法宝物理向属性2 / 副词条）也并入同一乘段，与战斗引擎对齐
   const spiritTotalBeforeWeapon = Number(c.spirit || 0) + (eb.SPIRIT || 0) + (ab.spirit || 0);
@@ -5182,6 +5194,7 @@ const secondaryStats = computed(() => {
       { source: '武器类型', value: wb.CRIT_RATE_flat || 0 },
       { source: '境界', value: rb.crit_rate * 100 },
       { source: '附灵', value: ab.critRate * 100 },
+      { source: '主修功法', value: mainCritRate },
       { source: '功法被动', value: passCritRate },
       { source: '丹药', value: pb.crit || 0 },
     ], PLAYER_CAPS.critRate * 100, 1),
@@ -5190,18 +5203,21 @@ const secondaryStats = computed(() => {
       { source: '武器类型', value: wb.CRIT_DMG_flat || 0 },
       { source: '境界', value: rb.crit_dmg * 100 },
       { source: '附灵', value: ab.critDmg * 100 },
+      { source: '主修功法', value: mainCritDmg },
       { source: '功法被动', value: passCritDmg },
     ], PLAYER_CAPS.critDmg * 100, 0),
     buildStat('闪避率', Number(c.dodge) * 100, '基础', [
       { source: '装备 副属性', value: eb.DODGE || 0 },
       { source: '境界', value: rb.dodge * 100 },
       { source: '附灵', value: ab.dodge * 100 },
+      { source: '主修功法', value: mainDodge },
       { source: '功法被动', value: passDodge },
     ], PLAYER_CAPS.dodge * 100, 1),
     buildStat('吸血', Number(c.lifesteal) * 100, '基础', [
       { source: '装备 副属性', value: eb.LIFESTEAL || 0 },
       { source: '武器类型', value: wb.LIFESTEAL_flat || 0 },
       { source: '附灵', value: ab.lifesteal * 100 },
+      { source: '主修功法', value: mainLifesteal },
       { source: '功法被动', value: passLifesteal },
     ], PLAYER_CAPS.lifesteal * 100, 1),
     buildStat('神识', Number(c.spirit || 0), '基础', [
