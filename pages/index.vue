@@ -3130,7 +3130,7 @@
                   @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
                 >
                   <template v-if="item.rank <= 3">
-                    <span class="rank-cn-deco rank-dragon" aria-hidden="true">龍</span>
+                    <span class="rank-cn-deco rank-dragon" aria-hidden="true"></span>
                     <span class="rank-cn-deco rank-cloud rank-cloud-a" aria-hidden="true"></span>
                     <span class="rank-cn-deco rank-cloud rank-cloud-b" aria-hidden="true"></span>
                     <span class="rank-cn-deco rank-sword rank-sword-a" aria-hidden="true"></span>
@@ -3193,7 +3193,7 @@
                   :class="['ranking-row sect-row', { 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3 }]"
                 >
                   <template v-if="item.rank <= 3">
-                    <span class="rank-cn-deco rank-dragon" aria-hidden="true">龍</span>
+                    <span class="rank-cn-deco rank-dragon" aria-hidden="true"></span>
                     <span class="rank-cn-deco rank-cloud rank-cloud-a" aria-hidden="true"></span>
                     <span class="rank-cn-deco rank-cloud rank-cloud-b" aria-hidden="true"></span>
                     <span class="rank-cn-deco rank-sword rank-sword-a" aria-hidden="true"></span>
@@ -12855,6 +12855,7 @@ onUnmounted(() => {
 
 /* === 前三名特效：渐变背景 + 边光带 + 外发光呼吸 + 双流光 + 旋转光晕 + 文字金光 === */
 .ranking-row.rank-1 {
+  z-index: 3;
   padding-top: 20px;
   background: linear-gradient(90deg, rgba(255, 215, 0, 0.32) 0%, rgba(255, 215, 0, 0.1) 55%, transparent 100%);
   animation: rank-bg-pulse-gold 2.4s ease-in-out infinite;
@@ -12880,11 +12881,13 @@ onUnmounted(() => {
 }
 
 .ranking-row.rank-2 {
+  z-index: 2;
   background: linear-gradient(90deg, rgba(220, 220, 230, 0.22) 0%, rgba(220, 220, 230, 0.06) 55%, transparent 100%);
   animation: rank-bg-pulse-silver 2.8s ease-in-out infinite;
 }
 
 .ranking-row.rank-3 {
+  z-index: 1;
   background: linear-gradient(90deg, rgba(205, 127, 50, 0.22) 0%, rgba(205, 127, 50, 0.06) 55%, transparent 100%);
   animation: rank-bg-pulse-bronze 3.2s ease-in-out infinite;
 }
@@ -13029,6 +13032,8 @@ onUnmounted(() => {
 .ranking-row.rank-2,
 .ranking-row.rank-3 {
   isolation: isolate;
+  overflow: hidden;
+  min-height: 78px;
   border: 1px solid rgba(214, 183, 92, 0.42);
   background:
       radial-gradient(circle at 12% 50%, rgba(255, 236, 164, 0.13), transparent 34%),
@@ -13166,27 +13171,42 @@ onUnmounted(() => {
 }
 
 .rank-dragon {
-  right: 18px;
+  z-index: 0;
+  left: 50%;
+  right: auto;
   top: 50%;
-  color: rgba(238, 204, 122, 0.2);
-  font-family: "STKaiti", "KaiTi", "SimSun", serif;
-  font-size: 52px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0;
-  text-shadow: 0 0 10px rgba(232, 204, 138, 0.26);
-  transform: translateY(-50%) rotate(-8deg);
-  animation: rank-dragon-float 5.6s ease-in-out infinite;
+  width: clamp(180px, 42%, 260px);
+  height: 92px;
+  opacity: 0.24;
+  background: url('/images/rank-dragon-gold.png') center / contain no-repeat;
+  filter:
+      drop-shadow(0 1px 1px rgba(0, 0, 0, 0.38))
+      drop-shadow(0 0 8px rgba(255, 210, 88, 0.38))
+      drop-shadow(0 0 14px rgba(255, 170, 32, 0.16));
+  transform: translate(-50%, -50%) rotate(0deg);
+  animation: rank-dragon-border-float 6.2s ease-in-out infinite;
 }
 
 .ranking-row.rank-2 .rank-dragon {
-  color: rgba(206, 232, 238, 0.18);
-  text-shadow: 0 0 10px rgba(206, 232, 238, 0.2);
+  opacity: 0.22;
+  background-image: url('/images/rank-dragon-silver.png');
+  filter:
+      drop-shadow(0 1px 1px rgba(0, 0, 0, 0.34))
+      drop-shadow(0 0 7px rgba(218, 246, 255, 0.3))
+      drop-shadow(0 0 13px rgba(160, 214, 230, 0.14));
+  animation-duration: 6.8s;
+  animation-delay: -1.2s;
 }
 
 .ranking-row.rank-3 .rank-dragon {
-  color: rgba(229, 145, 88, 0.18);
-  text-shadow: 0 0 10px rgba(229, 145, 88, 0.2);
+  opacity: 0.22;
+  background-image: url('/images/rank-dragon-cyan.png');
+  filter:
+      drop-shadow(0 1px 1px rgba(0, 0, 0, 0.34))
+      drop-shadow(0 0 7px rgba(115, 244, 202, 0.26))
+      drop-shadow(0 0 13px rgba(30, 180, 172, 0.12));
+  animation-duration: 7.4s;
+  animation-delay: -2s;
 }
 
 .rank-cloud {
@@ -13216,49 +13236,27 @@ onUnmounted(() => {
 }
 
 .rank-sword {
-  width: 58px;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9) 24%, rgba(238, 202, 120, 0.92) 58%, transparent);
-  box-shadow: 0 0 8px rgba(239, 206, 112, 0.58);
+  width: 24px;
+  height: 72px;
+  top: 50%;
+  opacity: 0.76;
+  background: url('/images/rank-flying-sword.svg') center / contain no-repeat;
+  filter:
+      drop-shadow(0 0 5px rgba(255, 255, 255, 0.34))
+      drop-shadow(0 0 8px rgba(239, 206, 112, 0.35));
   transform-origin: 50% 50%;
-}
-
-.rank-sword::before {
-  content: '';
-  position: absolute;
-  right: -4px;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  border-top: 2px solid rgba(255, 255, 255, 0.9);
-  border-right: 2px solid rgba(255, 255, 255, 0.9);
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.rank-sword::after {
-  content: '';
-  position: absolute;
-  left: 5px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-left: 2px solid rgba(182, 44, 40, 0.9);
-  border-top: 2px solid rgba(182, 44, 40, 0.78);
-  transform: translateY(-50%) rotate(-45deg);
+  animation: rank-sword-float 4.8s ease-in-out infinite;
 }
 
 .rank-sword-a {
-  top: 6px;
-  left: -68px;
-  animation: rank-sword-fly-a 4.8s ease-in-out infinite;
+  left: 10px;
+  --sword-rotate: -16deg;
 }
 
 .rank-sword-b {
-  right: -58px;
-  bottom: 7px;
-  opacity: 0.72;
-  animation: rank-sword-fly-b 5.6s ease-in-out infinite;
+  right: 10px;
+  --sword-rotate: 16deg;
+  animation-delay: -1.4s;
 }
 
 @keyframes rank-cn-border-flow {
@@ -13287,9 +13285,9 @@ onUnmounted(() => {
   50% { box-shadow: inset 0 0 0 1px rgba(255, 228, 205, 0.15), inset 0 0 28px rgba(220, 122, 58, 0.18), 0 0 22px rgba(213, 135, 80, 0.27); }
 }
 
-@keyframes rank-dragon-float {
-  0%, 100% { transform: translateY(-50%) translateX(0) rotate(-8deg); opacity: 0.62; }
-  50% { transform: translateY(calc(-50% - 3px)) translateX(-5px) rotate(-4deg); opacity: 0.96; }
+@keyframes rank-dragon-border-float {
+  0%, 100% { transform: translate(-50%, -50%) translateX(0) rotate(0deg); }
+  50% { transform: translate(-50%, calc(-50% - 3px)) translateX(-4px) rotate(1deg); }
 }
 
 @keyframes rank-cloud-drift {
@@ -13297,16 +13295,15 @@ onUnmounted(() => {
   50% { translate: 16px -2px; opacity: 0.34; }
 }
 
-@keyframes rank-sword-fly-a {
-  0%, 18% { transform: translateX(0) translateY(0) rotate(-18deg); opacity: 0; }
-  30% { opacity: 0.88; }
-  64%, 100% { transform: translateX(650px) translateY(18px) rotate(-18deg); opacity: 0; }
-}
-
-@keyframes rank-sword-fly-b {
-  0%, 26% { transform: translateX(0) translateY(0) rotate(158deg); opacity: 0; }
-  40% { opacity: 0.72; }
-  70%, 100% { transform: translateX(-620px) translateY(-18px) rotate(158deg); opacity: 0; }
+@keyframes rank-sword-float {
+  0%, 100% {
+    transform: translateY(-50%) rotate(var(--sword-rotate, 0deg));
+    opacity: 0.56;
+  }
+  50% {
+    transform: translateY(calc(-50% - 5px)) rotate(var(--sword-rotate, 0deg));
+    opacity: 0.78;
+  }
 }
 
 .rank-num {
@@ -15234,12 +15231,14 @@ onUnmounted(() => {
   .ranking-tab { font-size: 12px; padding: 8px 6px; flex: 0 0 auto; white-space: nowrap; min-width: 64px; }
   .ranking-body { padding: 10px 8px 12px; }
   .ranking-row { gap: 5px; padding: 6px 6px; font-size: 12px; }
-  .ranking-row.rank-1, .ranking-row.rank-2, .ranking-row.rank-3 { padding: 8px 6px; }
-  .rank-dragon { right: 8px; font-size: 34px; opacity: 0.75; }
+  .ranking-row.rank-1, .ranking-row.rank-2, .ranking-row.rank-3 { min-height: 68px; padding: 8px 6px; }
+  .rank-dragon { left: 50%; right: auto; top: 50%; width: 128px; height: 70px; opacity: 0.18; }
   .rank-cloud { width: 52px; height: 18px; }
   .rank-cloud-a { left: 26px; }
   .rank-cloud-b { right: 54px; }
-  .rank-sword { width: 40px; }
+  .rank-sword { width: 20px; height: 60px; }
+  .rank-sword-a { left: 6px; }
+  .rank-sword-b { right: 6px; }
   .jiangshi-bolt { top: -13px; font-size: 14px; }
   .jiangshi-badge { padding: 1px 5px; font-size: 9px; letter-spacing: 0; }
   .rank-num { width: 24px; }
