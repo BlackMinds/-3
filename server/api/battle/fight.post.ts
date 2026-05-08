@@ -1020,6 +1020,8 @@ export default defineEventHandler(async (event) => {
       // 装备实际入库的名字（不含自动出售/背包满转售的），返给前端 sessionDrops 用
       const keptDropNames: string[] = []
       let autoSellIncomeOut = 0
+      // 连败 3 次触发标志：服务端判定后让前端停掉自动战斗
+      let stopAutoBattle = false
       const client = await pool.connect()
       try {
         await client.query('BEGIN')
@@ -1132,9 +1134,8 @@ export default defineEventHandler(async (event) => {
           const newStreak = Number(streakRows[0]?.death_streak || 0) + 1
 
           let droppedEquipName: string | null = null
-          let dropTriggered = false
           if (newStreak >= 3) {
-            dropTriggered = true
+            stopAutoBattle = true
             const { rows: equipPick } = await client.query(
               `SELECT id, name FROM character_equipment
                 WHERE character_id = $1 AND slot IS NOT NULL
@@ -1161,7 +1162,7 @@ export default defineEventHandler(async (event) => {
           }
 
           // 触发掉落判定后清零，避免脏 streak 永远 ≥3
-          const finalStreak = dropTriggered ? 0 : newStreak
+          const finalStreak = stopAutoBattle ? 0 : newStreak
 
           await client.query(
             `UPDATE characters SET
@@ -1184,10 +1185,17 @@ export default defineEventHandler(async (event) => {
               text: `连续陨落三次!噩运降临,【${droppedEquipName}】不慎遗落…`,
               type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
             })
-          } else if (dropTriggered) {
+          } else if (stopAutoBattle) {
             result.logs.push({
               turn: 0,
               text: `连续陨落三次!但身上别无装备可遗落,劫数暂消`,
+              type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
+            })
+          }
+          if (stopAutoBattle) {
+            result.logs.push({
+              turn: 0,
+              text: `心神受创,自动历练已暂停,请休整后再启程`,
               type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
             })
           }
@@ -1287,6 +1295,7 @@ export default defineEventHandler(async (event) => {
         monstersInfo,
         logs: result.logs,
         drops: [...keptDropNames, ...skillDropNames],
+        stopAutoBattle,
       })
 
       if (!result.won) break

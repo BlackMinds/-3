@@ -50,7 +50,7 @@ export const useGameStore = defineStore('game', () => {
   // 日志队列
   const logQueue = ref<BattleLogEntry[]>([])
   const logTimer = ref<number | null>(null)
-  const pendingResult = ref<{ won: boolean; expGained: number; spiritStoneGained: number; autoSellGained: number; drops: any[] } | null>(null)
+  const pendingResult = ref<{ won: boolean; expGained: number; spiritStoneGained: number; autoSellGained: number; drops: any[]; stopAutoBattle?: boolean } | null>(null)
   // 每次 stopBattle/changeMap 递增，executeFight 用来丢弃过期响应，避免并发请求污染状态
   const battleSession = ref(0)
 
@@ -314,6 +314,7 @@ export const useGameStore = defineStore('game', () => {
       spiritStoneGained: b.stoneGained || 0,
       autoSellGained: b.autoSellGained || 0,
       drops: b.drops || [],
+      stopAutoBattle: !!b.stopAutoBattle,
     }
 
     logQueue.value = b.logs || []
@@ -534,8 +535,15 @@ export const useGameStore = defineStore('game', () => {
       // 失败：丢弃批次剩余（后端遇到失败已 break，理论上 batchQueue 已空）
       batchQueue.value = []
       defeatCount.value++
-      deathCooldown.value = 3
       battleFrenzyStacks.value = 0
+      // 连败 3 次：服务端置 stopAutoBattle，前端立即停止自动战斗循环（不进 deathCooldown 自动续战）
+      if (result.stopAutoBattle) {
+        deathCooldown.value = 0
+        if (deathTimer.value) { clearInterval(deathTimer.value); deathTimer.value = null }
+        stopBattle()
+        return
+      }
+      deathCooldown.value = 3
       deathTimer.value = window.setInterval(() => {
         deathCooldown.value--
         if (deathCooldown.value <= 0) {

@@ -2894,7 +2894,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">死亡惩罚</div>
-            <p class="help-text">战败随机损失 <b>1-5%</b> 境界修为 + <b>1-5%</b> 等级经验,3 秒后原地复活继续战斗。<b style="color:#ff6b6b">连续战败 3 次</b>会随机遗落一件已穿戴的装备 (锁定的装备<b>同样</b>会掉),触发后连击重置。战斗胜利会清零连击计数。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
+            <p class="help-text">战败随机损失 <b>1-5%</b> 境界修为 + <b>1-5%</b> 等级经验,3 秒后原地复活继续战斗。<b style="color:#ff6b6b">连续战败 3 次</b>会随机遗落一件已穿戴装备 (锁定的装备<b>同样</b>会掉),并<b style="color:#ff6b6b">自动暂停历练</b>,需手动重新点开始;触发后连击重置,战斗胜利清零连击计数。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">角色成长道具</div>
