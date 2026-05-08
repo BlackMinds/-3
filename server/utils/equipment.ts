@@ -215,8 +215,10 @@ export function rollSubStatsV4(
   slotKey: string,
   rarity: string,
   tier: number,
+  countOverride?: number,
 ): { stat: string; value: number }[] {
-  const subCount = RARITY_SUB_COUNT_V4[rarity] ?? 0
+  // countOverride: 洗练等场景保留原副词条数量；新装备生成走 RARITY_SUB_COUNT_V4
+  const subCount = countOverride ?? RARITY_SUB_COUNT_V4[rarity] ?? 0
   if (subCount === 0) return []
   const pool = EQUIP_SUB_POOL_V4[slotKey]
   if (!pool) return []

@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
-import { getCharId, consumeSpecialItem, rollSubStats, RARITY_SUB_COUNT } from '~/server/utils/equipment'
+import { getCharId, consumeSpecialItem, rollSubStatsV4, RARITY_SUB_COUNT } from '~/server/utils/equipment'
+import { EQUIP_SUB_POOL_V4 } from '~/shared/balance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -18,12 +19,17 @@ export default defineEventHandler(async (event) => {
     const subCount = RARITY_SUB_COUNT[eq.rarity] || 0
     if (subCount === 0) return { code: 400, message: '该品质装备没有副属性' }
 
+    const slotKey = eq.base_slot
+    if (!slotKey || !EQUIP_SUB_POOL_V4[slotKey]) {
+      return { code: 400, message: '装备槽位信息缺失，无法洗练' }
+    }
+
     const used = await consumeSpecialItem(charId, 'reroll_sub_stat')
     if (!used) return { code: 400, message: '没有装备鉴定符' }
 
     const tier = eq.tier || 1
-    const rarityIdx = ['white', 'green', 'blue', 'purple', 'gold', 'red'].indexOf(eq.rarity)
-    const newSubs = rollSubStats(rarityIdx, tier, subCount)
+    // v4.0: 从对应部位的新版词条池抽取，按词条位分桶；保留原副词条数量
+    const newSubs = rollSubStatsV4(slotKey, eq.rarity, tier, subCount)
 
     await pool.query('UPDATE character_equipment SET sub_stats = $1 WHERE id = $2', [JSON.stringify(newSubs), equip_id])
     return { code: 200, message: '副属性已重随', data: { sub_stats: newSubs } }
