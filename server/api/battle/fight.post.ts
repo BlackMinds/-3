@@ -1124,54 +1124,18 @@ export default defineEventHandler(async (event) => {
           }
           autoSellIncomeOut = autoSellIncome
         } else if (!result.won) {
-          // 死亡惩罚 v2 (2026-05-08)：1-5% 随机损失，连续战败 3 次随机掉一件已穿戴装备（锁定也会掉）
+          // 死亡惩罚：1-5% 随机损失修为与等级经验（连续死亡掉装备惩罚已暂时去除）
           const cultPct = rand(1, 5)
           const lvPct = rand(1, 5)
-          const { rows: streakRows } = await client.query(
-            'SELECT death_streak FROM characters WHERE id = $1 FOR UPDATE',
-            [char.id]
-          )
-          const newStreak = Number(streakRows[0]?.death_streak || 0) + 1
-
-          let droppedEquipName: string | null = null
-          if (newStreak >= 3) {
-            stopAutoBattle = true
-            const { rows: equipPick } = await client.query(
-              `SELECT id, name FROM character_equipment
-                WHERE character_id = $1 AND slot IS NOT NULL
-                ORDER BY RANDOM() LIMIT 1
-                FOR UPDATE`,
-              [char.id]
-            )
-            if (equipPick.length > 0) {
-              const dropId = equipPick[0].id
-              droppedEquipName = equipPick[0].name
-              // 同事务清装备方案引用 + 删装备
-              await client.query(
-                `UPDATE character_equipment_loadouts
-                   SET slots = COALESCE((
-                     SELECT jsonb_object_agg(k, v)
-                     FROM jsonb_each(slots) AS s(k, v)
-                     WHERE NOT ((v)::text::int = $2)
-                   ), '{}'::jsonb), updated_at = NOW()
-                 WHERE character_id = $1`,
-                [char.id, dropId]
-              )
-              await client.query('DELETE FROM character_equipment WHERE id = $1', [dropId])
-            }
-          }
-
-          // 触发掉落判定后清零，避免脏 streak 永远 ≥3
-          const finalStreak = stopAutoBattle ? 0 : newStreak
 
           await client.query(
             `UPDATE characters SET
                cultivation_exp = GREATEST(0, cultivation_exp - FLOOR(cultivation_exp * $2 / 100)),
                level_exp = GREATEST(0, level_exp - FLOOR(level_exp * $3 / 100)),
-               death_streak = $4,
+               death_streak = 0,
                last_online = NOW()
              WHERE id = $1`,
-            [char.id, cultPct, lvPct, finalStreak]
+            [char.id, cultPct, lvPct]
           )
 
           result.logs.push({
@@ -1179,26 +1143,6 @@ export default defineEventHandler(async (event) => {
             text: `战败陨落!损失 ${cultPct}% 修为、${lvPct}% 等级经验`,
             type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
           })
-          if (droppedEquipName) {
-            result.logs.push({
-              turn: 0,
-              text: `连续陨落三次!噩运降临,【${droppedEquipName}】不慎遗落…`,
-              type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
-            })
-          } else if (stopAutoBattle) {
-            result.logs.push({
-              turn: 0,
-              text: `连续陨落三次!但身上别无装备可遗落,劫数暂消`,
-              type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
-            })
-          }
-          if (stopAutoBattle) {
-            result.logs.push({
-              turn: 0,
-              text: `心神受创,自动历练已暂停,请休整后再启程`,
-              type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
-            })
-          }
         }
 
         await client.query('COMMIT')
