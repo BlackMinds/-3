@@ -2,6 +2,7 @@ import { getPool } from '~/server/database/db'
 import { buildCharacterSnapshot, type CharacterSnapshot } from '~/server/utils/battleSnapshot'
 import { runPvpBattle, type PvpFighterInput } from '~/server/engine/multiBattleEngine'
 import { arenaScoreOnWin, arenaScoreOnLoss } from '~/shared/arenaRanks'
+import { pickPkBroadcast } from '~/server/engine/pkBroadcastData'
 
 const DAILY_CHALLENGE_LIMIT = 10
 const DAILY_LOSS_LIMIT = 10
@@ -24,7 +25,7 @@ export default defineEventHandler(async (event) => {
 
     // 1. 取自己角色
     const { rows: meRows } = await pool.query(
-      'SELECT id, name, realm_tier FROM characters WHERE user_id = $1',
+      'SELECT id, name, realm_tier, sect_id FROM characters WHERE user_id = $1',
       [userId]
     )
     if (meRows.length === 0) return { code: 400, message: '角色不存在' }
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
     // 2. 查对手
     const { rows: foeRows } = await pool.query(
-      'SELECT id, name, cultivation_exp, realm_tier FROM characters WHERE name = $1',
+      'SELECT id, name, cultivation_exp, realm_tier, sect_id FROM characters WHERE name = $1',
       [targetName]
     )
     if (foeRows.length === 0) return { code: 404, message: '查无此人' }
@@ -119,6 +120,38 @@ export default defineEventHandler(async (event) => {
       throw e
     } finally {
       client.release()
+    }
+
+    // 7. 连胜检测 → 风云阁广播（commit 之后，失败不影响主流程）
+    // 从最新一条往前数同方向（同一赢家）的连续场次，命中 3/5/10 阈值时发广播
+    try {
+      const { rows: streakRows } = await pool.query(
+        `SELECT winner_side, attacker_id FROM pk_records
+          WHERE (attacker_id = $1 AND defender_id = $2)
+             OR (attacker_id = $2 AND defender_id = $1)
+          ORDER BY fought_at DESC, id DESC
+          LIMIT 30`,
+        [me.id, foe.id]
+      )
+      let streak = 0
+      for (const r of streakRows) {
+        const rowWinnerId = r.winner_side === 'a' ? r.attacker_id : (r.attacker_id === me.id ? foe.id : me.id)
+        if (rowWinnerId === winnerId) streak++
+        else break
+      }
+      const winnerName = winnerSide === 'a' ? me.name : foe.name
+      const winnerSectId = winnerSide === 'a' ? me.sect_id : foe.sect_id
+      const broadcast = pickPkBroadcast(streak, winnerName, loserName)
+      if (broadcast) {
+        await pool.query(
+          `INSERT INTO world_broadcast
+             (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+           VALUES (NULL, $1, $2, $3, 'PK_STREAK', $4, TRUE, $5)`,
+          [winnerId, winnerName, winnerSectId, broadcast.rarity, broadcast.text]
+        )
+      }
+    } catch (broadcastErr) {
+      console.error('斗法连胜广播失败（已忽略）:', broadcastErr)
     }
 
     return {

@@ -582,9 +582,10 @@ CREATE TABLE IF NOT EXISTS character_event_log (
 CREATE INDEX IF NOT EXISTS idx_event_log_char ON character_event_log (character_id, triggered_at DESC);
 
 -- 风云阁广播（全服热榜，冗余表加速查询）
+-- log_id 在 v4.1 后允许为空：斗法连胜等非"个人随机事件"来源也复用此表
 CREATE TABLE IF NOT EXISTS world_broadcast (
   id SERIAL PRIMARY KEY,
-  log_id INT NOT NULL REFERENCES character_event_log(id) ON DELETE CASCADE,
+  log_id INT REFERENCES character_event_log(id) ON DELETE CASCADE,
   character_id INT NOT NULL,
   character_name VARCHAR(8) NOT NULL,     -- 冗余
   sect_id INT DEFAULT NULL,               -- 冗余
@@ -1507,3 +1508,9 @@ ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS primary_value_2 INT DEF
 -- 连续死亡 3 次：随机掉落一件已穿戴的「未锁定」装备，触发后清零
 -- 战斗胜利时清零
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS death_streak SMALLINT NOT NULL DEFAULT 0;
+
+-- ========================================
+-- 斗法连胜入风云阁 (2026-05-09)
+-- ========================================
+-- world_broadcast.log_id 不再强制 NOT NULL，斗法连胜（PK_STREAK）等无个人事件流的广播复用此表
+ALTER TABLE world_broadcast ALTER COLUMN log_id DROP NOT NULL;
