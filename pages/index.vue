@@ -5226,21 +5226,23 @@ const secondaryStats = computed(() => {
       { source: `武器+装备% +${totalSpiritPct.toFixed(0)}%`, value: spiritWeaponBonus },
       { source: sectSpiritSrcs.length ? `宗门心法（${sectSpiritSrcs.join(' / ')}）` : '宗门心法', value: sectSpiritBonus },
     ], null, 0, ''),
+    // v4.0：改用 equipBonus（含主属性 1+2+副词条），原 xb/equipExtendedBonus 仅统计 sub_stats，
+    // 会漏掉主属性贡献（如剑/枪的 primary2=ARMOR_PEN 破甲+20%固定）
     buildStat('破甲', 0, '基础', [
-      { source: '装备 副属性', value: xb.ARMOR_PEN || 0 },
+      { source: '装备 主+副', value: (eb as any).ARMOR_PEN || 0 },
       { source: '附灵', value: ab.armorPen * 100 },
       { source: sectArmorPenSrcs.length ? `宗门心法（${sectArmorPenSrcs.join(' / ')}）` : '宗门心法', value: sectArmorPen },
     ], PLAYER_CAPS.armorPen, 1),
     buildStat('命中', 0, '基础', [
-      { source: '装备 副属性', value: xb.ACCURACY || 0 },
+      { source: '装备 主+副', value: (eb as any).ACCURACY || 0 },
       { source: '附灵', value: ab.accuracy || 0 },
     ], PLAYER_CAPS.accuracy, 1),
     buildStat('灵气浓度', 0, '基础', [
-      { source: '装备 副属性', value: xb.SPIRIT_DENSITY || 0 },
+      { source: '装备 主+副', value: (eb as any).SPIRIT_DENSITY || 0 },
       { source: '附灵', value: ab.spiritDensity * 100 },
     ], null, 1),
     buildStat('福缘', 0, '基础', [
-      { source: '装备 副属性', value: xb.LUCK || 0 },
+      { source: '装备 主+副', value: (eb as any).LUCK || 0 },
       { source: '附灵', value: ab.luck * 100 },
     ], null, 1),
     // v4.0 控制概率：玩家施加 burn/poison/bleed/freeze/stun 等异常状态时的命中加成
