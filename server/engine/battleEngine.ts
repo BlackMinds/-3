@@ -1668,7 +1668,10 @@ export function runWaveBattle(
       for (let bi = m.buffs.length - 1; bi >= 0; bi--) {
         const b = m.buffs[bi];
         if (b.type === 'regen' && b.value && m.stats.hp < m.stats.maxHp) {
-          const heal = Math.max(1, Math.floor(m.stats.maxHp * b.value));
+          // 通天塔 boss 回血削弱 25%（trait 已厚血，避免持续回血压力过高）
+          const isTowerBoss = !!(m.stats as any)._towerTraits && m.template.role === 'boss';
+          const healMul = isTowerBoss ? 0.75 : 1;
+          const heal = Math.max(1, Math.floor(m.stats.maxHp * b.value * healMul));
           m.stats.hp = Math.min(m.stats.maxHp, m.stats.hp + heal);
           logs.push({ turn, text: `  ${m.stats.name} 持续回复了 ${heal} 点气血`, type: 'buff', ...snap() });
         }
@@ -1766,7 +1769,10 @@ export function runWaveBattle(
             let totalHealed = 0;
             for (const t of healTargets) {
               const before = t.stats.hp;
-              const heal = Math.floor(t.stats.maxHp * mSkill.healPercent);
+              // 通天塔 boss 回血削弱 25%
+              const isTowerBoss = !!(t.stats as any)._towerTraits && t.template.role === 'boss';
+              const healMul = isTowerBoss ? 0.75 : 1;
+              const heal = Math.floor(t.stats.maxHp * mSkill.healPercent * healMul);
               t.stats.hp = Math.min(t.stats.maxHp, t.stats.hp + heal);
               totalHealed += t.stats.hp - before;
             }
