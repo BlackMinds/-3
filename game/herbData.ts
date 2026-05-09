@@ -46,21 +46,21 @@ export interface PlotLevelConfig {
 }
 
 export const PLOT_LEVEL_CONFIG: PlotLevelConfig[] = [
-  { level: 1,  plotCount: 2, maxQuality: 'green'  },
-  { level: 2,  plotCount: 2, maxQuality: 'green'  },
-  { level: 3,  plotCount: 2, maxQuality: 'green'  },
-  { level: 4,  plotCount: 3, maxQuality: 'blue'   },
-  { level: 5,  plotCount: 3, maxQuality: 'blue'   },
-  { level: 6,  plotCount: 3, maxQuality: 'blue'   },
-  { level: 7,  plotCount: 4, maxQuality: 'purple' },
-  { level: 8,  plotCount: 4, maxQuality: 'purple' },
-  { level: 9,  plotCount: 4, maxQuality: 'purple' },
-  { level: 10, plotCount: 5, maxQuality: 'gold'   },
-  { level: 11, plotCount: 5, maxQuality: 'gold'   },
-  { level: 12, plotCount: 5, maxQuality: 'gold'   },
-  { level: 13, plotCount: 6, maxQuality: 'red'    },
-  { level: 14, plotCount: 6, maxQuality: 'red'    },
-  { level: 15, plotCount: 6, maxQuality: 'red'    },
+  { level: 1,  plotCount: 4, maxQuality: 'green'  },
+  { level: 2,  plotCount: 4, maxQuality: 'green'  },
+  { level: 3,  plotCount: 4, maxQuality: 'green'  },
+  { level: 4,  plotCount: 5, maxQuality: 'blue'   },
+  { level: 5,  plotCount: 5, maxQuality: 'blue'   },
+  { level: 6,  plotCount: 5, maxQuality: 'blue'   },
+  { level: 7,  plotCount: 6, maxQuality: 'purple' },
+  { level: 8,  plotCount: 6, maxQuality: 'purple' },
+  { level: 9,  plotCount: 6, maxQuality: 'purple' },
+  { level: 10, plotCount: 7, maxQuality: 'gold'   },
+  { level: 11, plotCount: 7, maxQuality: 'gold'   },
+  { level: 12, plotCount: 7, maxQuality: 'gold'   },
+  { level: 13, plotCount: 8, maxQuality: 'red'    },
+  { level: 14, plotCount: 8, maxQuality: 'red'    },
+  { level: 15, plotCount: 8, maxQuality: 'red'    },
 ];
 
 export function getPlotConfig(level: number): PlotLevelConfig {

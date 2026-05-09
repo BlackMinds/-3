@@ -44,11 +44,11 @@ export function getPlotConfig(herbFieldLevel: number): { plotCount: number; maxQ
   if (herbFieldLevel <= 0) return { plotCount: 0, maxQualityIndex: -1 }
   const lv = Math.min(herbFieldLevel, 15)
   const qOrder = ['white', 'green', 'blue', 'purple', 'gold', 'red']
-  let plotCount = 2, maxQ = 'green'
-  if (lv >= 13)      { plotCount = 6; maxQ = 'red'    }
-  else if (lv >= 10) { plotCount = 5; maxQ = 'gold'   }
-  else if (lv >= 7)  { plotCount = 4; maxQ = 'purple' }
-  else if (lv >= 4)  { plotCount = 3; maxQ = 'blue'   }
+  let plotCount = 4, maxQ = 'green'
+  if (lv >= 13)      { plotCount = 8; maxQ = 'red'    }
+  else if (lv >= 10) { plotCount = 7; maxQ = 'gold'   }
+  else if (lv >= 7)  { plotCount = 6; maxQ = 'purple' }
+  else if (lv >= 4)  { plotCount = 5; maxQ = 'blue'   }
   return { plotCount, maxQualityIndex: qOrder.indexOf(maxQ) }
 }
 
