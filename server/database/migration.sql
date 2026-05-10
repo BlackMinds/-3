@@ -1514,3 +1514,18 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS death_streak SMALLINT NOT NULL D
 -- ========================================
 -- world_broadcast.log_id 不再强制 NOT NULL，斗法连胜（PK_STREAK）等无个人事件流的广播复用此表
 ALTER TABLE world_broadcast ALTER COLUMN log_id DROP NOT NULL;
+
+-- ========================================
+-- 强化石大礼包兑换码（2026-05-10）
+-- T9/T10/T11/T12 强化石各 50 个
+-- ========================================
+INSERT INTO redeem_codes (code, attachments, description) VALUES
+('STONE2026', '[
+  {"type":"pill","pillId":"enhance_stone_t9","qty":50},
+  {"type":"pill","pillId":"enhance_stone_t10","qty":50},
+  {"type":"pill","pillId":"enhance_stone_t11","qty":50},
+  {"type":"pill","pillId":"enhance_stone_t12","qty":50}
+]'::jsonb, '强化石大礼包：T9/T10/T11/T12 强化石各 ×50')
+ON CONFLICT (code) DO UPDATE SET
+  attachments = EXCLUDED.attachments,
+  description = EXCLUDED.description;
