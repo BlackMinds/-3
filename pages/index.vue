@@ -526,7 +526,7 @@
               <button :class="['filter-btn', { active: bagFilter === 'pendant' }]" @click="bagFilter = 'pendant'">灵佩</button>
               <select v-model="tierFilter" class="sell-select">
                 <option value="all">全部 T 级</option>
-                <option v-for="t in 12" :key="t" :value="t">T{{ t }}</option>
+                <option v-for="t in 15" :key="t" :value="t">T{{ t }}</option>
               </select>
               <select v-model="rarityFilter" class="sell-select" title="按品质筛选">
                 <option value="all">全部品质</option>
@@ -2802,7 +2802,7 @@
               <tr><td>枪</td><td>攻击+3%, 身法+12%, 吸血+3% (持久)</td></tr>
               <tr><td>扇</td><td>攻击+3%, 神识+20% (法术)</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘/<b style="color: var(--gold-ink);">DOT伤害</b>/<b style="color: var(--gold-ink);">反伤倍率</b>等 17 种。装备等级需求按 tier 阶梯: T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195, T11=Lv215, T12=Lv240。</p>
+            <p class="help-text" style="margin-top: 6px;">副属性: 破甲/命中/会心率/会心伤害/5 种元素强化/灵气浓度/福缘/<b style="color: var(--gold-ink);">DOT伤害</b>/<b style="color: var(--gold-ink);">反伤倍率</b>等 17 种。装备等级需求按 tier 阶梯: T1=Lv1, T5=Lv80, T8=Lv170, T10=Lv195, T11=Lv215, T12=Lv240, T13=Lv260, T14=Lv285, T15=Lv310。</p>
             <p class="help-text" style="margin-top: 4px;">低阶图品质权重前期已上调,更易刷出蓝紫装。</p>
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);"><b>v3.6 新词条:</b><b>DOT伤害 +5~25%</b>(灼烧/中毒/流血总伤害放大,与功法被动「万毒归一」叠加)；<b>反伤倍率 +3~15%</b>(每件装备独立叠加到反伤系数)。</p>
           </div>
@@ -4100,6 +4100,9 @@ const autoSellTierOptions = [
   { value: 10, label: 'T10及以下' },
   { value: 11, label: 'T11及以下' },
   { value: 12, label: 'T12及以下' },
+  { value: 13, label: 'T13及以下' },
+  { value: 14, label: 'T14及以下' },
+  { value: 15, label: 'T15及以下' },
 ];
 const autoSellTier = ref(0);
 // 套装黑名单：勾选 = 这些套装的装备件不保留，会跟普通装备一起被自动出售

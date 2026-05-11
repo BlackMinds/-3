@@ -27,7 +27,7 @@
         </select>
         <select v-model="filter.tier" @change="reload">
           <option value="">全部 T 级</option>
-          <option v-for="t in [3,4,5,6,7,8,9,10,11,12]" :key="t" :value="t">T{{ t }}</option>
+          <option v-for="t in [3,4,5,6,7,8,9,10,11,12,13,14,15]" :key="t" :value="t">T{{ t }}</option>
         </select>
         <select v-model="filter.set_id" @change="reload" title="按套装筛选">
           <option value="">全部套装</option>
