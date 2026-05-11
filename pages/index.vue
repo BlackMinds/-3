@@ -32,6 +32,7 @@
         <button class="drop-table-btn" @click="openAchievement">
           成就<span v-if="achClaimable > 0" class="ach-badge">{{ achClaimable }}</span>
         </button>
+        <button class="drop-table-btn" @click="openCompanion" title="道侣 · 游历红尘">🌹 红尘</button>
         <button class="drop-table-btn" @click="showRedeemCode = true">兑换码</button>
         <button class="drop-table-btn" @click="showHelpDoc = true">帮助</button>
         <button class="drop-table-btn" @click="showSettings = true">设置</button>
@@ -2894,7 +2895,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">死亡惩罚</div>
-            <p class="help-text">战败随机损失 <b>1-5%</b> 境界修为 + <b>1-5%</b> 等级经验,3 秒后原地复活继续战斗。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
+            <p class="help-text">战败随机损失 <b>1-5%</b> 境界修为 + <b>1-5%</b> 等级经验,3 秒后原地复活继续战斗。<b style="color:#ff6b6b">连续战败 3 次</b>会随机遗落一件已穿戴装备 (锁定的装备<b>同样</b>会掉),并<b style="color:#ff6b6b">自动暂停历练</b>,需手动重新点开始;触发后连击重置,战斗胜利清零连击计数。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
           </div>
           <div class="help-section">
             <div class="help-title">角色成长道具</div>
@@ -3533,6 +3534,9 @@
 
     <!-- 坊市抽屉 -->
     <MarketDrawer v-model="showMarket" />
+
+    <!-- 红尘 · 道侣抽屉 -->
+    <CompanionDrawer v-model="showCompanion" />
   </div>
 </template>
 
@@ -3561,6 +3565,7 @@ import type { BuildingDef } from '~/game/caveData';
 import { setCaveBonus, setEquipLuck, setSpiritDensity, setEquipCombatStats } from '~/game/battleEngine';
 import { HERBS, HERB_QUALITIES, getHerbById, getQualityById, calcQualityFactor, getPlotConfig } from '~/game/herbData';
 import type { Skill } from '~/game/skillData';
+import CompanionDrawer from '~/components/companion/CompanionDrawer.vue';
 
 function getAuthHeaders() {
   const userStore = useUserStore()
@@ -4420,6 +4425,8 @@ const showGlobalMail = ref(false);
 const globalMailUnread = ref(0);
 const globalMailUnclaimed = ref(0);
 const showMarket = ref(false);
+const showCompanion = ref(false);
+function openCompanion() { showCompanion.value = true; }
 const sectWarStage = ref<string | null>(null);
 const myVeinOccupyCount = ref(0);
 const donateAmount = ref(10000);

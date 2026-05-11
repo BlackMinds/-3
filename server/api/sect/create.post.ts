@@ -62,6 +62,7 @@ export default defineEventHandler(async (event) => {
       [sectId, char.id, 'leader']
     )
     await client.query('UPDATE characters SET sect_id = $1 WHERE id = $2', [sectId, char.id])
+    await client.query('UPDATE sect_skills SET frozen = FALSE WHERE character_id = $1', [char.id])
 
     await client.query('COMMIT')
     return { code: 200, message: `宗门【${name}】创建成功`, data: { sectId } }

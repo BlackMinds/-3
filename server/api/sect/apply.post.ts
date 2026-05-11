@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
       await client.query('INSERT INTO sect_members (sect_id, character_id, role) VALUES ($1, $2, $3)', [sect_id, char.id, 'outer'])
       await client.query('UPDATE sects SET member_count = member_count + 1 WHERE id = $1', [sect_id])
       await client.query('UPDATE characters SET sect_id = $1, sect_quit_time = NULL WHERE id = $2', [sect_id, char.id])
+      await client.query('UPDATE sect_skills SET frozen = FALSE WHERE character_id = $1', [char.id])
       await client.query('COMMIT')
       return { code: 200, message: `已加入【${sect.name}】` }
     }
