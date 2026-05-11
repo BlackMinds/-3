@@ -153,67 +153,67 @@ const SR6_ELITE = [
 const SR6_BOSS = boss('太虚道尊', 123200, null, 1)
 
 // ==================== SR-7 鸿蒙之海（飞升·合道，T11） ====================
-// 对应单人主图 T11，组队战力略高（×1.1-1.2）
-// 2026-05-11: drop_table 修正到 t11，让怪物吃上 T11 的 MUL 压缩（×0.319）。
-//   旧版传 1 导致怪物属性按 T1 量级展开 → SR-7 BOSS 实际比主图 T11 BOSS 强 ×7-15。
+// 2026-05-11: power 整体 ×0.13 缩到主图同 tier ~12-15% 量级，与 SR-3~SR-6
+//   的历史基线（普通 BOSS HP ≈ 主图同 tier BOSS ×0.20）对齐。多波+多怪累积压力下
+//   该量级才能让 3 人组队推得动；旧版按"略高于主图"配 power 直接卡死。
 const SR7_MONSTERS = [
-  monster('鸿蒙水妖', 1500000, 'water', 'balanced', 11),
-  monster('本源蛟龙', 1900000, 'water', 'dps', 11),
-  monster('虚空圣使', 2200000, 'metal', 'tank', 11),
+  monster('鸿蒙水妖', 200000, 'water', 'balanced', 11),
+  monster('本源蛟龙', 250000, 'water', 'dps', 11),
+  monster('虚空圣使', 290000, 'metal', 'tank', 11),
 ]
 const SR7_ELITE = [
-  monster('鸿蒙战将', 3200000, 'water', 'dps', 11),
-  monster('本源护法', 3600000, 'water', 'balanced', 11),
+  monster('鸿蒙战将', 420000, 'water', 'dps', 11),
+  monster('本源护法', 470000, 'water', 'balanced', 11),
 ]
-const SR7_BOSS = boss('鸿蒙水帝', 6500000, 'water', 11)
+const SR7_BOSS = boss('鸿蒙水帝', 850000, 'water', 11)
 
 // ==================== SR-8 永恒虚空（飞升·证道，T12） ====================
 const SR8_MONSTERS = [
-  monster('虚空泰坦', 6000000, null, 'tank', 12),
-  monster('永恒刺客', 7500000, null, 'speed', 12),
-  monster('本源毁灭者', 8800000, 'fire', 'dps', 12),
+  monster('虚空泰坦', 800000, null, 'tank', 12),
+  monster('永恒刺客', 1000000, null, 'speed', 12),
+  monster('本源毁灭者', 1150000, 'fire', 'dps', 12),
 ]
 const SR8_ELITE = [
-  monster('终焉法师', 13000000, null, 'dps', 12),
-  monster('永恒守卫', 14000000, null, 'balanced', 12),
+  monster('终焉法师', 1700000, null, 'dps', 12),
+  monster('永恒守卫', 1800000, null, 'balanced', 12),
 ]
-const SR8_BOSS = boss('虚空之主', 28000000, null, 12)
+const SR8_BOSS = boss('虚空之主', 3600000, null, 12)
 
 // ==================== SR-9 万源虚境（飞升·太极，T13） ====================
 const SR9_MONSTERS = [
-  monster('万源守阙', 17000000, 'earth', 'balanced', 13),
-  monster('本源剑灵', 21000000, 'metal', 'speed', 13),
-  monster('虚境游魂', 25000000, null, 'dps', 13),
+  monster('万源守阙', 2200000, 'earth', 'balanced', 13),
+  monster('本源剑灵', 2700000, 'metal', 'speed', 13),
+  monster('虚境游魂', 3300000, null, 'dps', 13),
 ]
 const SR9_ELITE = [
-  monster('万源裁定', 36000000, null, 'dps', 13),
-  monster('虚境守阙', 40000000, null, 'tank', 13),
+  monster('万源裁定', 4700000, null, 'dps', 13),
+  monster('虚境守阙', 5200000, null, 'tank', 13),
 ]
-const SR9_BOSS = boss('万源道祖', 80000000, null, 13)
+const SR9_BOSS = boss('万源道祖', 10000000, null, 13)
 
 // ==================== SR-10 时空裂界（飞升·无极，T14） ====================
 const SR10_MONSTERS = [
-  monster('时序哨卫', 55000000, 'metal', 'balanced', 14),
-  monster('空裂幽影', 65000000, null, 'dps', 14),
-  monster('裂界吞噬者', 75000000, 'fire', 'dps', 14),
+  monster('时序哨卫', 7000000, 'metal', 'balanced', 14),
+  monster('空裂幽影', 8500000, null, 'dps', 14),
+  monster('裂界吞噬者', 10000000, 'fire', 'dps', 14),
 ]
 const SR10_ELITE = [
-  monster('时空裁定', 110000000, null, 'dps', 14),
-  monster('裂界君主', 120000000, null, 'balanced', 14),
+  monster('时空裁定', 14000000, null, 'dps', 14),
+  monster('裂界君主', 15500000, null, 'balanced', 14),
 ]
-const SR10_BOSS = boss('时空之主', 250000000, null, 14)
+const SR10_BOSS = boss('时空之主', 32000000, null, 14)
 
 // ==================== SR-11 万道终焉（飞升·大圆满，T15） ====================
 const SR11_MONSTERS = [
-  monster('终焉守阙', 170000000, 'earth', 'tank', 15),
-  monster('终焉剑魄', 200000000, 'metal', 'speed', 15),
-  monster('末劫呼唤者', 230000000, 'fire', 'dps', 15),
+  monster('终焉守阙', 22000000, 'earth', 'tank', 15),
+  monster('终焉剑魄', 26000000, 'metal', 'speed', 15),
+  monster('末劫呼唤者', 30000000, 'fire', 'dps', 15),
 ]
 const SR11_ELITE = [
-  monster('万道执剑', 340000000, 'metal', 'dps', 15),
-  monster('终焉裁定者', 380000000, null, 'balanced', 15),
+  monster('万道执剑', 44000000, 'metal', 'dps', 15),
+  monster('终焉裁定者', 50000000, null, 'balanced', 15),
 ]
-const SR11_BOSS = boss('终焉道祖', 800000000, null, 15)
+const SR11_BOSS = boss('终焉道祖', 100000000, null, 15)
 
 // ==================== 秘境定义 ====================
 export const SECRET_REALMS: Record<string, SecretRealmDef> = {
