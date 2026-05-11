@@ -38,14 +38,15 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '今日亲密度上限已达' }
     }
 
-    // 检查物品库存
-    // 礼物默认 quality='white'（炼制品质系数在 Phase 2 接入）
+    // 检查物品库存（汇总所有品质：游历产出/凡品炼制是 white，炼丹房高品质炼制可能是 green/blue/.../red）
+    // 优先消耗高品质（赠送时按所选品质计算亲密度系数 — Phase 2 简化：实际亲密度仍按基础值，品质优先消耗保证不浪费）
     const { rows: invRows } = await pool.query(
-      `SELECT count FROM character_materials
-        WHERE character_id = $1 AND material_id = $2 AND quality = 'white'`,
+      `SELECT quality, count FROM character_materials
+        WHERE character_id = $1 AND material_id = $2 AND count > 0
+        ORDER BY CASE quality WHEN 'red' THEN 5 WHEN 'gold' THEN 4 WHEN 'purple' THEN 3 WHEN 'blue' THEN 2 WHEN 'green' THEN 1 ELSE 0 END DESC`,
       [char.id, giftId]
     )
-    const stock = invRows[0]?.count || 0
+    const stock = invRows.reduce((a: number, r: any) => a + (r.count || 0), 0)
     if (stock < quantity) return { code: 400, message: `物品不足，仅有 ${stock} 件` }
 
     // 反应判断
@@ -67,13 +68,19 @@ export default defineEventHandler(async (event) => {
     try {
       await client.query('BEGIN')
 
-      // 扣物品
-      await client.query(
-        `UPDATE character_materials
-            SET count = count - $1
-          WHERE character_id = $2 AND material_id = $3 AND quality = 'white'`,
-        [quantity, char.id, giftId]
-      )
+      // 扣物品（按高品质优先扣，保证 quantity 件被消耗）
+      let remainingToDeduct = quantity
+      for (const row of invRows) {
+        if (remainingToDeduct <= 0) break
+        const take = Math.min(remainingToDeduct, row.count)
+        await client.query(
+          `UPDATE character_materials
+              SET count = count - $1
+            WHERE character_id = $2 AND material_id = $3 AND quality = $4`,
+          [take, char.id, giftId, row.quality]
+        )
+        remainingToDeduct -= take
+      }
 
       // 改亲密度
       await client.query(

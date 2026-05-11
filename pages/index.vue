@@ -820,6 +820,11 @@
                 :class="{ active: selectedPillType === 'breakthrough' }"
                 @click="switchPillType('breakthrough')"
               >突破丹药</button>
+              <button
+                class="alchemy-tab-btn"
+                :class="{ active: selectedPillType === 'gift' }"
+                @click="switchPillType('gift')"
+              >礼制</button>
             </div>
 
             <div class="alchemy-field">
@@ -6337,8 +6342,14 @@ function getMaxQualityName(): string {
   return HERB_QUALITIES[plotData.value.maxQualityIndex]?.name || '无';
 }
 
+const GIFT_NAMES_LOCAL: Record<string, string> = {
+  fruit_jam: '灵果蜜饯', colorful_beads: '彩珠串',
+  peach_wine: '桃花酿', warm_jade_sachet: '温玉香囊', kiddy_beads: '童趣彩珠',
+  frost_pendant: '寒玉佩', purple_gold_hairpin: '紫金钗', moonlight_pill: '月华丹',
+  lotus_heart: '并蒂莲心', mandarin_pendant: '鸳鸯玉佩', red_dust_hairpin: '红尘仙缘簪',
+}
 function getHerbName(id: string): string {
-  return getHerbById(id)?.name || id;
+  return getHerbById(id)?.name || GIFT_NAMES_LOCAL[id] || id;
 }
 
 function getQualityName(id: string): string {
@@ -6640,18 +6651,48 @@ const breakthroughRecipes = computed(() =>
 
 // 炼丹面板: 分类 + 选中丹方
 const cauldronImg = '/images/cauldron.svg';
-const selectedPillType = ref<'battle' | 'breakthrough'>('battle');
+const selectedPillType = ref<'battle' | 'breakthrough' | 'gift'>('battle');
 const selectedPillId = ref<string>('');
-const currentRecipeList = computed(() =>
-  selectedPillType.value === 'battle' ? battleRecipes.value : breakthroughRecipes.value
-);
-const currentRecipe = computed<PillRecipe | null>(() => {
-  if (!selectedPillId.value) return null;
-  return currentRecipeList.value.find(r => r.id === selectedPillId.value) || null;
+
+// 礼制配方（道侣系统 Phase 2，design 3.3.4）—— 后端 /api/companion/gift-recipes 返回，转成类丹药结构以复用 UI
+const giftRecipes = ref<any[]>([]);
+async function loadGiftRecipes() {
+  const api = useApi()
+  try {
+    const res = await api<{ code: number; data?: { recipes: any[] } }>('/companion/gift-recipes')
+    if (res.code === 200 && res.data) {
+      giftRecipes.value = res.data.recipes
+        .filter((r: any) => r.unlocked)
+        .map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          rarity: r.rarity,
+          // 类丹药结构
+          herbCost: r.ingredients.map((i: any) => ({ herb_id: i.itemId, count: i.qty })),
+          cost: r.spiritStoneCost,
+          successRate: 1.0,
+          // 礼物专属字段
+          isGift: true,
+          baseIntimacy: r.baseIntimacy,
+          fitPersonality: r.fitPersonality,
+        }))
+    }
+  } catch {}
+}
+
+const currentRecipeList = computed(() => {
+  if (selectedPillType.value === 'battle') return battleRecipes.value
+  if (selectedPillType.value === 'breakthrough') return breakthroughRecipes.value
+  return giftRecipes.value
 });
-function switchPillType(t: 'battle' | 'breakthrough') {
+const currentRecipe = computed<any | null>(() => {
+  if (!selectedPillId.value) return null;
+  return currentRecipeList.value.find((r: any) => r.id === selectedPillId.value) || null;
+});
+function switchPillType(t: 'battle' | 'breakthrough' | 'gift') {
   selectedPillType.value = t;
   selectedPillId.value = '';
+  if (t === 'gift' && giftRecipes.value.length === 0) loadGiftRecipes()
 }
 
 // 我的丹房: 按丹方分组所有已炼成的丹药
@@ -6693,7 +6734,8 @@ function initHerbSelections() {
 
 function getHerbSelection(pillId: string): string[] {
   if (!herbSelections.value[pillId]) {
-    const recipe = PILL_RECIPES.find(r => r.id === pillId);
+    const recipe = PILL_RECIPES.find(r => r.id === pillId)
+      || giftRecipes.value.find((r: any) => r.id === pillId)
     herbSelections.value[pillId] = recipe ? new Array(recipe.herbCost.length).fill('') : [];
   }
   return herbSelections.value[pillId];
@@ -6714,8 +6756,9 @@ function isQualityEnough(herbId: string, qualityId: string, needCount: number): 
   return getHerbCount(herbId, qualityId) >= needCount;
 }
 
-function canCraft(recipe: PillRecipe): boolean {
-  const factor = getCraftPreview(recipe).factor || 1;
+function canCraft(recipe: any): boolean {
+  // 礼物：灵石按固定 cost，不乘品质系数
+  const factor = (recipe as any).isGift ? 1 : (getCraftPreview(recipe).factor || 1);
   if (!gameStore.character || gameStore.character.spirit_stone < Math.floor(recipe.cost * factor)) return false;
   const selection = herbSelections.value[recipe.id] || [];
   for (let i = 0; i < recipe.herbCost.length; i++) {
@@ -6727,7 +6770,14 @@ function canCraft(recipe: PillRecipe): boolean {
 }
 
 // 格式化丹方效果,基于当前选中灵草品质
-function formatPillEffect(recipe: PillRecipe): string {
+function formatPillEffect(recipe: any): string {
+  if ((recipe as any).isGift) {
+    const factor = getCraftPreview(recipe).factor || 1.0
+    const r = recipe as any
+    const intimacy = Math.round(r.baseIntimacy * factor)
+    const fitTag = r.fitPersonality === 'all' ? '通用' : `适配「${r.fitPersonality}」`
+    return `亲密度 +${intimacy}（${fitTag}，喜爱时 ×1.5）`
+  }
   const factor = getCraftPreview(recipe).factor || 1.0;
   const parts: string[] = [];
   if (recipe.buffEffect) {
@@ -6762,6 +6812,12 @@ function getCraftPreview(recipe: PillRecipe): { factor: number; herbs: any[] } {
 }
 
 function getPillTotalCount(pillId: string): number {
+  // 礼制：礼物成品存 character_materials（herb_id=礼物 id），不是 character_pills
+  if (giftRecipes.value.some((r: any) => r.id === pillId)) {
+    return herbInventory.value
+      .filter((i: any) => i.herb_id === pillId)
+      .reduce((sum, i) => sum + i.count, 0);
+  }
   return pillInventory.value
     .filter((i: any) => i.pill_id === pillId)
     .reduce((sum, i) => sum + i.count, 0);
@@ -7001,8 +7057,41 @@ async function executeCraft(recipe: PillRecipe, fire_position: number) {
 }
 
 // 兼容旧入口(template 还在调用)
-function craftPill(recipe: PillRecipe) {
+function craftPill(recipe: any) {
+  if ((recipe as any).isGift) {
+    craftGift(recipe)
+    return
+  }
   openFireMeter(recipe);
+}
+
+// 礼制（道侣礼物）— 跳过点火候，直接一次调用
+async function craftGift(recipe: any) {
+  if (crafting.value || !canCraft(recipe)) return
+  const selection = herbSelections.value[recipe.id] || []
+  const ingredientQualities: Record<string, string> = {}
+  for (let i = 0; i < recipe.herbCost.length; i++) {
+    ingredientQualities[recipe.herbCost[i].herb_id] = selection[i]
+  }
+  crafting.value = true
+  try {
+    const res: any = await $fetch('/api/companion/craft-gift', {
+      method: 'POST',
+      body: { recipe_id: recipe.id, ingredient_qualities: ingredientQualities },
+      headers: getAuthHeaders(),
+    })
+    if (res.code === 200) {
+      showToast(res.message || '炼制成功', 'success')
+      gameStore.character!.spirit_stone -= recipe.cost
+      await loadHerbs()
+    } else {
+      showToast(res.message || '炼制失败', 'error')
+    }
+  } catch (e: any) {
+    showToast(e?.data?.message || '网络错误', 'error')
+  } finally {
+    crafting.value = false
+  }
 }
 
 async function useVariant(recipe: PillRecipe, variant: any) {
