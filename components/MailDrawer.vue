@@ -82,6 +82,7 @@ const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 
 const api = useApi()
+const gameStore = useGameStore()
 const list = ref<any[]>([])
 const total = ref(0)
 const unread = ref(0)
@@ -234,7 +235,7 @@ async function claim(id: number) {
   try {
     const res = await api('/mail/claim', { method: 'POST', body: { id } })
     if (res.code === 200) {
-      await load()
+      await Promise.all([load(), gameStore.loadGameData()])
     } else {
       alert(res.message)
     }
@@ -249,7 +250,7 @@ async function claimAll() {
     // 简单提示
     console.log('[mail] claimed:', res.data.claimed, 'granted:', res.data.granted)
   }
-  await load()
+  await Promise.all([load(), gameStore.loadGameData()])
 }
 
 async function readAll() {
