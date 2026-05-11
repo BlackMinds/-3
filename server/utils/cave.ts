@@ -13,11 +13,11 @@ export interface BuildingConfig {
 export const BUILDINGS: Record<string, BuildingConfig> = {
   spirit_array:   { id: 'spirit_array',   maxLevel: 20, baseCost: 1000,  costMul: 1.6, baseTime: 0,   output: { type: 'exp',          base: 144, perLevelMul: 1.17 } },
   herb_field:     { id: 'herb_field',     maxLevel: 15, baseCost: 1500,  costMul: 1.7, baseTime: 0   },
-  treasure_pot:   { id: 'treasure_pot',   maxLevel: 20, baseCost: 2000,  costMul: 1.8, baseTime: 0,   output: { type: 'spirit_stone', base: 900, perLevelMul: 1.22 } },
+  treasure_pot:   { id: 'treasure_pot',   maxLevel: 20, baseCost: 2000,  costMul: 1.7, baseTime: 0,   output: { type: 'spirit_stone', base: 900, perLevelMul: 1.22 } },
   martial_hall:   { id: 'martial_hall',   maxLevel: 10, baseCost: 3000,  costMul: 2.5, baseTime: 60 },
-  sutra_pavilion: { id: 'sutra_pavilion', maxLevel: 10, baseCost: 5000,  costMul: 2.5, baseTime: 120, prerequisite: { buildingId: 'spirit_array', level: 5 } },
-  pill_room:      { id: 'pill_room',      maxLevel: 10, baseCost: 8000,  costMul: 2.5, baseTime: 180, prerequisite: { buildingId: 'herb_field', level: 5 } },
-  forge_room:     { id: 'forge_room',     maxLevel: 10, baseCost: 10000, costMul: 2.5, baseTime: 300, prerequisite: { buildingId: 'sutra_pavilion', level: 5 } },
+  sutra_pavilion: { id: 'sutra_pavilion', maxLevel: 10, baseCost: 5000,  costMul: 2.2, baseTime: 120, prerequisite: { buildingId: 'spirit_array', level: 5 } },
+  pill_room:      { id: 'pill_room',      maxLevel: 10, baseCost: 8000,  costMul: 2.2, baseTime: 180, prerequisite: { buildingId: 'herb_field', level: 5 } },
+  forge_room:     { id: 'forge_room',     maxLevel: 10, baseCost: 10000, costMul: 2.2, baseTime: 300, prerequisite: { buildingId: 'sutra_pavilion', level: 5 } },
 }
 
 export const HERBS: Record<string, { id: string; element: string | null; unlockPlotMaxLevel: number }> = {
