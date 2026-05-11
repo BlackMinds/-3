@@ -58,186 +58,186 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
   sunset_mountain: {
     tier: 2,
     monsters: [
-      { name: '火狐妖', power: 640, element: 'fire', exp: 50, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
-      { name: '熔岩蜥', power: 800, element: 'fire', exp: 63, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
-      { name: '火鸦', power: 1200, element: 'fire', exp: 95, stone_min: 28, stone_max: 70, role: 'dps', drop_table: 'uncommon_t2' },
+      { name: '火狐妖', power: 640, element: 'fire', exp: 37, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
+      { name: '熔岩蜥', power: 800, element: 'fire', exp: 47, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
+      { name: '火鸦', power: 1200, element: 'fire', exp: 71, stone_min: 28, stone_max: 70, role: 'dps', drop_table: 'uncommon_t2' },
     ],
-    boss: { name: '赤炎蟒', power: 2400, element: 'fire', exp: 945, stone_min: 350, stone_max: 700, role: 'boss', drop_table: 'boss_t2' },
+    boss: { name: '赤炎蟒', power: 2400, element: 'fire', exp: 596, stone_min: 350, stone_max: 700, role: 'boss', drop_table: 'boss_t2' },
   },
   jade_bamboo_forest: {
     tier: 2,
     monsters: [
-      { name: '竹灵', power: 720, element: 'wood', exp: 57, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
-      { name: '藤妖', power: 960, element: 'wood', exp: 76, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
-      { name: '玉面猴', power: 1280, element: 'wood', exp: 101, stone_min: 28, stone_max: 70, role: 'dps', drop_table: 'uncommon_t2' },
+      { name: '竹灵', power: 720, element: 'wood', exp: 43, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
+      { name: '藤妖', power: 960, element: 'wood', exp: 57, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
+      { name: '玉面猴', power: 1280, element: 'wood', exp: 75, stone_min: 28, stone_max: 70, role: 'dps', drop_table: 'uncommon_t2' },
     ],
-    boss: { name: '千年竹妖', power: 2800, element: 'wood', exp: 1134, stone_min: 350, stone_max: 700, role: 'boss', drop_table: 'boss_t2' },
+    boss: { name: '千年竹妖', power: 2800, element: 'wood', exp: 715, stone_min: 350, stone_max: 700, role: 'boss', drop_table: 'boss_t2' },
   },
   iron_ore_cave: {
     tier: 2,
     monsters: [
-      { name: '铁傀儡', power: 960, element: 'metal', exp: 69, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
-      { name: '矿蝠', power: 1120, element: 'metal', exp: 82, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
-      { name: '晶蚕', power: 1600, element: 'earth', exp: 113, stone_min: 28, stone_max: 70, role: 'dps', drop_table: 'uncommon_t2' },
+      { name: '铁傀儡', power: 960, element: 'metal', exp: 51, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
+      { name: '矿蝠', power: 1120, element: 'metal', exp: 61, stone_min: 14, stone_max: 42, role: 'balanced', drop_table: 'common_t2' },
+      { name: '晶蚕', power: 1600, element: 'earth', exp: 84, stone_min: 28, stone_max: 70, role: 'dps', drop_table: 'uncommon_t2' },
     ],
-    boss: { name: '矿灵王', power: 3200, element: 'metal', exp: 1260, stone_min: 350, stone_max: 700, role: 'boss', drop_table: 'boss_t2' },
+    boss: { name: '矿灵王', power: 3200, element: 'metal', exp: 795, stone_min: 350, stone_max: 700, role: 'boss', drop_table: 'boss_t2' },
   },
   myriad_demon_mountain: { tier: 3, monsters: [
-    { name: '树妖', power: 1200, element: 'wood', exp: 144, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
-    { name: '熊妖', power: 1650, element: 'earth', exp: 198, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
-    { name: '花妖', power: 2100, element: 'wood', exp: 252, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
-  ], boss: { name: '妖猿王', power: 4500, element: 'earth', exp: 2880, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
+    { name: '树妖', power: 1200, element: 'wood', exp: 91, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
+    { name: '熊妖', power: 1650, element: 'earth', exp: 125, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
+    { name: '花妖', power: 2100, element: 'wood', exp: 160, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
+  ], boss: { name: '妖猿王', power: 4500, element: 'earth', exp: 1511, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
   thunderpeak: { tier: 3, monsters: [
-    { name: '雷鹰', power: 1500, element: 'metal', exp: 180, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
-    { name: '风暴狼', power: 1950, element: 'metal', exp: 234, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
-    { name: '雷蛇', power: 2400, element: 'metal', exp: 288, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
-  ], boss: { name: '雷鹏', power: 5400, element: 'metal', exp: 3240, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
+    { name: '雷鹰', power: 1500, element: 'metal', exp: 114, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
+    { name: '风暴狼', power: 1950, element: 'metal', exp: 148, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
+    { name: '雷蛇', power: 2400, element: 'metal', exp: 182, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
+  ], boss: { name: '雷鹏', power: 5400, element: 'metal', exp: 1700, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
   ancient_ruins: { tier: 3, monsters: [
-    { name: '石卫士', power: 1800, element: 'earth', exp: 216, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
-    { name: '符傀儡', power: 2400, element: 'earth', exp: 288, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
-    { name: '远古怨灵', power: 3000, element: null, exp: 360, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
-  ], boss: { name: '遗迹守护者', power: 6600, element: 'earth', exp: 4320, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
+    { name: '石卫士', power: 1800, element: 'earth', exp: 137, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
+    { name: '符傀儡', power: 2400, element: 'earth', exp: 182, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
+    { name: '远古怨灵', power: 3000, element: null, exp: 228, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
+  ], boss: { name: '遗迹守护者', power: 6600, element: 'earth', exp: 2266, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
   dark_sea: { tier: 4, monsters: [
-    { name: '海蛟', power: 4500, element: 'water', exp: 400, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
-    { name: '幽灵鱼', power: 5500, element: 'water', exp: 500, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
-    { name: '墨海兽', power: 7500, element: 'water', exp: 700, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
-  ], boss: { name: '龙龟', power: 15000, element: 'water', exp: 6000, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
+    { name: '海蛟', power: 4500, element: 'water', exp: 265, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '幽灵鱼', power: 5500, element: 'water', exp: 332, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '墨海兽', power: 7500, element: 'water', exp: 464, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
+  ], boss: { name: '龙龟', power: 15000, element: 'water', exp: 4068, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
   soul_forest: { tier: 4, monsters: [
-    { name: '噬魂树', power: 5000, element: 'wood', exp: 440, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
-    { name: '幽影猫', power: 6250, element: null, exp: 560, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
-    { name: '尸花', power: 8000, element: 'wood', exp: 760, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
-  ], boss: { name: '噬魂古树', power: 16250, element: 'wood', exp: 7000, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
+    { name: '噬魂树', power: 5000, element: 'wood', exp: 292, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '幽影猫', power: 6250, element: null, exp: 371, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '尸花', power: 8000, element: 'wood', exp: 504, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
+  ], boss: { name: '噬魂古树', power: 16250, element: 'wood', exp: 4746, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
   desert_of_sands: { tier: 4, monsters: [
-    { name: '沙蝎王', power: 6000, element: 'earth', exp: 520, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
-    { name: '沙虫', power: 7500, element: 'earth', exp: 640, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
-    { name: '蜃狐', power: 9500, element: 'fire', exp: 840, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
-  ], boss: { name: '流沙帝蝎', power: 20000, element: 'earth', exp: 8000, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
+    { name: '沙蝎王', power: 6000, element: 'earth', exp: 345, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '沙虫', power: 7500, element: 'earth', exp: 424, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '蜃狐', power: 9500, element: 'fire', exp: 557, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
+  ], boss: { name: '流沙帝蝎', power: 20000, element: 'earth', exp: 5424, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
   purgatory: { tier: 5, monsters: [
-    { name: '狱卒', power: 9000, element: 'fire', exp: 975, stone_min: 250, stone_max: 750, role: 'balanced', drop_table: 'common_t5' },
-    { name: '魔兵', power: 11000, element: 'metal', exp: 1170, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
-    { name: '骨龙', power: 15000, element: 'fire', exp: 1755, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
-  ], boss: { name: '炼狱魔君', power: 35000, element: 'fire', exp: 9750, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
+    { name: '狱卒', power: 9000, element: 'fire', exp: 665, stone_min: 250, stone_max: 750, role: 'balanced', drop_table: 'common_t5' },
+    { name: '魔兵', power: 11000, element: 'metal', exp: 798, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
+    { name: '骨龙', power: 15000, element: 'fire', exp: 1197, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
+  ], boss: { name: '炼狱魔君', power: 35000, element: 'fire', exp: 10283, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
   frozen_abyss: { tier: 5, monsters: [
-    { name: '霜巨人', power: 9500, element: 'water', exp: 1073, stone_min: 250, stone_max: 750, role: 'balanced', drop_table: 'common_t5' },
-    { name: '冰魄', power: 12000, element: 'water', exp: 1365, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
-    { name: '冰蛟龙', power: 16000, element: 'water', exp: 1853, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
-  ], boss: { name: '寒渊冰帝', power: 38000, element: 'water', exp: 10725, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
+    { name: '霜巨人', power: 9500, element: 'water', exp: 732, stone_min: 250, stone_max: 750, role: 'balanced', drop_table: 'common_t5' },
+    { name: '冰魄', power: 12000, element: 'water', exp: 931, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
+    { name: '冰蛟龙', power: 16000, element: 'water', exp: 1264, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
+  ], boss: { name: '寒渊冰帝', power: 38000, element: 'water', exp: 11312, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
   demon_battlefield: { tier: 5, monsters: [
-    { name: '魔将', power: 13000, element: 'fire', exp: 1463, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
-    { name: '暗骑士', power: 16000, element: 'metal', exp: 1755, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
-    { name: '战魔', power: 20000, element: null, exp: 2145, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
-  ], boss: { name: '魔帅', power: 45000, element: null, exp: 14625, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
+    { name: '魔将', power: 13000, element: 'fire', exp: 998, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
+    { name: '暗骑士', power: 16000, element: 'metal', exp: 1197, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
+    { name: '战魔', power: 20000, element: null, exp: 1463, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
+  ], boss: { name: '魔帅', power: 45000, element: null, exp: 15425, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
   tribulation_wasteland: { tier: 6, monsters: [
-    { name: '雷兽', power: 27000, element: 'metal', exp: 2750, stone_min: 900, stone_max: 2700, role: 'balanced', drop_table: 'common_t6' },
-    { name: '虚空生物', power: 33000, element: null, exp: 3575, stone_min: 1440, stone_max: 4500, role: 'speed', drop_table: 'uncommon_t6' },
-    { name: '堕仙', power: 42000, element: 'metal', exp: 4675, stone_min: 2700, stone_max: 7200, role: 'dps', drop_table: 'rare_t6' },
-  ], boss: { name: '雷帝', power: 90000, element: 'metal', exp: 27500, stone_min: 18000, stone_max: 54000, role: 'boss', drop_table: 'boss_t6' } },
+    { name: '雷兽', power: 27000, element: 'metal', exp: 1931, stone_min: 900, stone_max: 2700, role: 'balanced', drop_table: 'common_t6' },
+    { name: '虚空生物', power: 33000, element: null, exp: 2510, stone_min: 1440, stone_max: 4500, role: 'speed', drop_table: 'uncommon_t6' },
+    { name: '堕仙', power: 42000, element: 'metal', exp: 3282, stone_min: 2700, stone_max: 7200, role: 'dps', drop_table: 'rare_t6' },
+  ], boss: { name: '雷帝', power: 90000, element: 'metal', exp: 30558, stone_min: 18000, stone_max: 54000, role: 'boss', drop_table: 'boss_t6' } },
   void_rift: { tier: 6, monsters: [
-    { name: '虚空猎手', power: 28800, element: null, exp: 3025, stone_min: 900, stone_max: 2700, role: 'balanced', drop_table: 'common_t6' },
-    { name: '时光幻影', power: 34800, element: null, exp: 3850, stone_min: 1440, stone_max: 4500, role: 'speed', drop_table: 'uncommon_t6' },
-    { name: '混沌元素', power: 45000, element: null, exp: 4950, stone_min: 2700, stone_max: 7200, role: 'dps', drop_table: 'rare_t6' },
-  ], boss: { name: '虚空之主', power: 96000, element: null, exp: 30250, stone_min: 18000, stone_max: 54000, role: 'boss', drop_table: 'boss_t6' } },
+    { name: '虚空猎手', power: 28800, element: null, exp: 2124, stone_min: 900, stone_max: 2700, role: 'balanced', drop_table: 'common_t6' },
+    { name: '时光幻影', power: 34800, element: null, exp: 2703, stone_min: 1440, stone_max: 4500, role: 'speed', drop_table: 'uncommon_t6' },
+    { name: '混沌元素', power: 45000, element: null, exp: 3475, stone_min: 2700, stone_max: 7200, role: 'dps', drop_table: 'rare_t6' },
+  ], boss: { name: '虚空之主', power: 96000, element: null, exp: 33614, stone_min: 18000, stone_max: 54000, role: 'boss', drop_table: 'boss_t6' } },
   celestial_mountain: { tier: 7, monsters: [
-    { name: '仙鹤', power: 36000, element: 'metal', exp: 3600, stone_min: 3600, stone_max: 9600, role: 'balanced', drop_table: 'common_t7' },
-    { name: '玉麒麟', power: 44000, element: 'earth', exp: 4500, stone_min: 6000, stone_max: 18000, role: 'dps', drop_table: 'uncommon_t7' },
-    { name: '金龙', power: 56000, element: 'metal', exp: 5760, stone_min: 9600, stone_max: 30000, role: 'dps', drop_table: 'rare_t7' },
-  ], boss: { name: '昆仑仙尊', power: 120000, element: 'metal', exp: 48000, stone_min: 60000, stone_max: 180000, role: 'boss', drop_table: 'boss_t7' } },
+    { name: '仙鹤', power: 36000, element: 'metal', exp: 3984, stone_min: 3600, stone_max: 9600, role: 'balanced', drop_table: 'common_t7' },
+    { name: '玉麒麟', power: 44000, element: 'earth', exp: 4981, stone_min: 6000, stone_max: 18000, role: 'dps', drop_table: 'uncommon_t7' },
+    { name: '金龙', power: 56000, element: 'metal', exp: 6375, stone_min: 9600, stone_max: 30000, role: 'dps', drop_table: 'rare_t7' },
+  ], boss: { name: '昆仑仙尊', power: 120000, element: 'metal', exp: 59030, stone_min: 60000, stone_max: 180000, role: 'boss', drop_table: 'boss_t7' } },
   nether_realm: { tier: 7, monsters: [
-    { name: '冥卫', power: 50000, element: 'water', exp: 5040, stone_min: 3600, stone_max: 9600, role: 'balanced', drop_table: 'common_t7' },
-    { name: '夺魂使', power: 60000, element: null, exp: 6300, stone_min: 6000, stone_max: 18000, role: 'dps', drop_table: 'uncommon_t7' },
-    { name: '冥龙', power: 80000, element: 'water', exp: 8100, stone_min: 9600, stone_max: 30000, role: 'dps', drop_table: 'rare_t7' },
-  ], boss: { name: '冥王', power: 180000, element: 'water', exp: 72000, stone_min: 60000, stone_max: 180000, role: 'boss', drop_table: 'boss_t7' } },
+    { name: '冥卫', power: 50000, element: 'water', exp: 5578, stone_min: 3600, stone_max: 9600, role: 'balanced', drop_table: 'common_t7' },
+    { name: '夺魂使', power: 60000, element: null, exp: 6973, stone_min: 6000, stone_max: 18000, role: 'dps', drop_table: 'uncommon_t7' },
+    { name: '冥龙', power: 80000, element: 'water', exp: 8965, stone_min: 9600, stone_max: 30000, role: 'dps', drop_table: 'rare_t7' },
+  ], boss: { name: '冥王', power: 180000, element: 'water', exp: 88546, stone_min: 60000, stone_max: 180000, role: 'boss', drop_table: 'boss_t7' } },
   immortal_realm: { tier: 8, monsters: [
-    { name: '天兵', power: 80000, element: 'metal', exp: 7680, stone_min: 20000, stone_max: 50000, role: 'balanced', drop_table: 'common_t8' },
-    { name: '神兽', power: 100000, element: null, exp: 9600, stone_min: 40000, stone_max: 100000, role: 'dps', drop_table: 'uncommon_t8' },
-    { name: '远古神灵', power: 150000, element: null, exp: 14400, stone_min: 80000, stone_max: 200000, role: 'dps', drop_table: 'rare_t8' },
-  ], boss: { name: '天帝', power: 300000, element: null, exp: 108000, stone_min: 200000, stone_max: 500000, role: 'boss', drop_table: 'boss_t8' } },
+    { name: '天兵', power: 80000, element: 'metal', exp: 6164, stone_min: 20000, stone_max: 50000, role: 'balanced', drop_table: 'common_t8' },
+    { name: '神兽', power: 100000, element: null, exp: 7706, stone_min: 40000, stone_max: 100000, role: 'dps', drop_table: 'uncommon_t8' },
+    { name: '远古神灵', power: 150000, element: null, exp: 11559, stone_min: 80000, stone_max: 200000, role: 'dps', drop_table: 'rare_t8' },
+  ], boss: { name: '天帝', power: 300000, element: null, exp: 113141, stone_min: 200000, stone_max: 500000, role: 'boss', drop_table: 'boss_t8' } },
   chaos_origin: { tier: 8, monsters: [
-    { name: '混沌兽', power: 180000, element: null, exp: 19200, stone_min: 20000, stone_max: 50000, role: 'balanced', drop_table: 'common_t8' },
-    { name: '太古凶兽', power: 220000, element: null, exp: 24000, stone_min: 80000, stone_max: 200000, role: 'dps', drop_table: 'rare_t8' },
-    { name: '道之幻影', power: 280000, element: null, exp: 30720, stone_min: 80000, stone_max: 200000, role: 'dps', drop_table: 'rare_t8' },
-  ], boss: { name: '混沌之主', power: 500000, element: null, exp: 216000, stone_min: 200000, stone_max: 500000, role: 'boss', drop_table: 'boss_t8' } },
+    { name: '混沌兽', power: 180000, element: null, exp: 15412, stone_min: 20000, stone_max: 50000, role: 'balanced', drop_table: 'common_t8' },
+    { name: '太古凶兽', power: 220000, element: null, exp: 19265, stone_min: 80000, stone_max: 200000, role: 'dps', drop_table: 'rare_t8' },
+    { name: '道之幻影', power: 280000, element: null, exp: 24659, stone_min: 80000, stone_max: 200000, role: 'dps', drop_table: 'rare_t8' },
+  ], boss: { name: '混沌之主', power: 500000, element: null, exp: 226282, stone_min: 200000, stone_max: 500000, role: 'boss', drop_table: 'boss_t8' } },
   void_holy_land: { tier: 9, monsters: [
-    { name: '虚空剑侍', power: 240000, element: 'metal', exp: 24000, stone_min: 50000, stone_max: 120000, role: 'balanced', drop_table: 'common_t9' },
-    { name: '圣境守护', power: 300000, element: 'earth', exp: 31200, stone_min: 50000, stone_max: 120000, role: 'tank', drop_table: 'common_t9' },
-    { name: '天凤', power: 360000, element: 'fire', exp: 38400, stone_min: 100000, stone_max: 250000, role: 'dps', drop_table: 'uncommon_t9' },
-  ], boss: { name: '太虚帝君', power: 600000, element: 'metal', exp: 288000, stone_min: 500000, stone_max: 1200000, role: 'boss', drop_table: 'boss_t9' } },
+    { name: '虚空剑侍', power: 240000, element: 'metal', exp: 21663, stone_min: 50000, stone_max: 120000, role: 'balanced', drop_table: 'common_t9' },
+    { name: '圣境守护', power: 300000, element: 'earth', exp: 28162, stone_min: 50000, stone_max: 120000, role: 'tank', drop_table: 'common_t9' },
+    { name: '天凤', power: 360000, element: 'fire', exp: 34660, stone_min: 100000, stone_max: 250000, role: 'dps', drop_table: 'uncommon_t9' },
+  ], boss: { name: '太虚帝君', power: 600000, element: 'metal', exp: 312278, stone_min: 500000, stone_max: 1200000, role: 'boss', drop_table: 'boss_t9' } },
   hongmeng_realm: { tier: 9, monsters: [
-    { name: '鸿蒙异兽', power: 280000, element: 'wood', exp: 28800, stone_min: 50000, stone_max: 120000, role: 'balanced', drop_table: 'common_t9' },
-    { name: '本源精灵', power: 340000, element: 'water', exp: 36000, stone_min: 50000, stone_max: 120000, role: 'balanced', drop_table: 'common_t9' },
-    { name: '始祖龙', power: 400000, element: null, exp: 43200, stone_min: 150000, stone_max: 300000, role: 'dps', drop_table: 'uncommon_t9' },
-  ], boss: { name: '鸿蒙道尊', power: 720000, element: null, exp: 360000, stone_min: 600000, stone_max: 1500000, role: 'boss', drop_table: 'boss_t9' } },
+    { name: '鸿蒙异兽', power: 280000, element: 'wood', exp: 25996, stone_min: 50000, stone_max: 120000, role: 'balanced', drop_table: 'common_t9' },
+    { name: '本源精灵', power: 340000, element: 'water', exp: 32494, stone_min: 50000, stone_max: 120000, role: 'balanced', drop_table: 'common_t9' },
+    { name: '始祖龙', power: 400000, element: null, exp: 38994, stone_min: 150000, stone_max: 300000, role: 'dps', drop_table: 'uncommon_t9' },
+  ], boss: { name: '鸿蒙道尊', power: 720000, element: null, exp: 390348, stone_min: 600000, stone_max: 1500000, role: 'boss', drop_table: 'boss_t9' } },
   myriad_battlefield: { tier: 9, monsters: [
-    { name: '界域战士', power: 320000, element: 'fire', exp: 33600, stone_min: 60000, stone_max: 150000, role: 'balanced', drop_table: 'common_t9' },
-    { name: '虚空刺客', power: 380000, element: null, exp: 40800, stone_min: 60000, stone_max: 150000, role: 'speed', drop_table: 'uncommon_t9' },
-    { name: '远古泰坦', power: 480000, element: 'earth', exp: 48000, stone_min: 200000, stone_max: 400000, role: 'tank', drop_table: 'uncommon_t9' },
-  ], boss: { name: '万界战神', power: 800000, element: null, exp: 432000, stone_min: 800000, stone_max: 2000000, role: 'boss', drop_table: 'boss_t9' } },
+    { name: '界域战士', power: 320000, element: 'fire', exp: 30327, stone_min: 60000, stone_max: 150000, role: 'balanced', drop_table: 'common_t9' },
+    { name: '虚空刺客', power: 380000, element: null, exp: 36826, stone_min: 60000, stone_max: 150000, role: 'speed', drop_table: 'uncommon_t9' },
+    { name: '远古泰坦', power: 480000, element: 'earth', exp: 43325, stone_min: 200000, stone_max: 400000, role: 'tank', drop_table: 'uncommon_t9' },
+  ], boss: { name: '万界战神', power: 800000, element: null, exp: 468418, stone_min: 800000, stone_max: 2000000, role: 'boss', drop_table: 'boss_t9' } },
   dao_trial: { tier: 10, monsters: [
-    { name: '天道傀儡', power: 225000, element: null, exp: 21600, stone_min: 200000, stone_max: 500000, role: 'balanced', drop_table: 'common_t10' },
-    { name: '规则执行者', power: 300000, element: null, exp: 28800, stone_min: 200000, stone_max: 500000, role: 'dps', drop_table: 'uncommon_t10' },
-    { name: '命运织者', power: 375000, element: null, exp: 36000, stone_min: 500000, stone_max: 1000000, role: 'dps', drop_table: 'uncommon_t10' },
-  ], boss: { name: '天道化身', power: 750000, element: null, exp: 336000, stone_min: 2000000, stone_max: 5000000, role: 'boss', drop_table: 'boss_t10' } },
+    { name: '天道傀儡', power: 225000, element: null, exp: 31195, stone_min: 200000, stone_max: 500000, role: 'balanced', drop_table: 'common_t10' },
+    { name: '规则执行者', power: 300000, element: null, exp: 41593, stone_min: 200000, stone_max: 500000, role: 'dps', drop_table: 'uncommon_t10' },
+    { name: '命运织者', power: 375000, element: null, exp: 51991, stone_min: 500000, stone_max: 1000000, role: 'dps', drop_table: 'uncommon_t10' },
+  ], boss: { name: '天道化身', power: 750000, element: null, exp: 416371, stone_min: 2000000, stone_max: 5000000, role: 'boss', drop_table: 'boss_t10' } },
   eternal_peak: { tier: 10, monsters: [
-    { name: '永恒守卫', power: 300000, element: 'metal', exp: 28800, stone_min: 300000, stone_max: 800000, role: 'balanced', drop_table: 'common_t10' },
-    { name: '时间领主', power: 450000, element: 'water', exp: 43200, stone_min: 300000, stone_max: 800000, role: 'dps', drop_table: 'uncommon_t10' },
-    { name: '创世之灵', power: 500000, element: null, exp: 57600, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t10' },
-  ], boss: { name: '永恒之主', power: 1200000, element: null, exp: 672000, stone_min: 5000000, stone_max: 10000000, role: 'boss', drop_table: 'boss_t10' } },
+    { name: '永恒守卫', power: 300000, element: 'metal', exp: 41593, stone_min: 300000, stone_max: 800000, role: 'balanced', drop_table: 'common_t10' },
+    { name: '时间领主', power: 450000, element: 'water', exp: 62389, stone_min: 300000, stone_max: 800000, role: 'dps', drop_table: 'uncommon_t10' },
+    { name: '创世之灵', power: 500000, element: null, exp: 83186, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t10' },
+  ], boss: { name: '永恒之主', power: 1200000, element: null, exp: 832742, stone_min: 5000000, stone_max: 10000000, role: 'boss', drop_table: 'boss_t10' } },
   // ===== T11 地图（混元境界专属，曲线对 T10 跨度 ~3-4x）=====
   // 经验/灵石继续按 ×0.4 / ×0.1 系数（与 T8+ 一致）
   primal_chaos_sea: { tier: 11, monsters: [
-    { name: '鸿蒙巨鲲', power: 1200000, element: 'water', exp: 129600, stone_min: 800000, stone_max: 2000000, role: 'balanced', drop_table: 'common_t11' },
-    { name: '本源龙神', power: 1600000, element: null, exp: 172800, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t11' },
-    { name: '虚空圣使', power: 1850000, element: 'metal', exp: 237600, stone_min: 2000000, stone_max: 5000000, role: 'dps', drop_table: 'uncommon_t11' },
-  ], boss: { name: '鸿蒙帝君', power: 4500000, element: null, exp: 2280000, stone_min: 10000000, stone_max: 25000000, role: 'boss', drop_table: 'boss_t11' } },
+    { name: '鸿蒙巨鲲', power: 1200000, element: 'water', exp: 56506, stone_min: 800000, stone_max: 2000000, role: 'balanced', drop_table: 'common_t11' },
+    { name: '本源龙神', power: 1600000, element: null, exp: 75341, stone_min: 800000, stone_max: 2000000, role: 'dps', drop_table: 'uncommon_t11' },
+    { name: '虚空圣使', power: 1850000, element: 'metal', exp: 103594, stone_min: 2000000, stone_max: 5000000, role: 'dps', drop_table: 'uncommon_t11' },
+  ], boss: { name: '鸿蒙帝君', power: 4500000, element: null, exp: 908352, stone_min: 10000000, stone_max: 25000000, role: 'boss', drop_table: 'boss_t11' } },
   nine_heavens_court: { tier: 11, monsters: [
-    { name: '天庭元帅', power: 1500000, element: 'metal', exp: 151200, stone_min: 800000, stone_max: 2000000, role: 'tank', drop_table: 'common_t11' },
-    { name: '星辰大将', power: 2000000, element: 'fire', exp: 194400, stone_min: 1000000, stone_max: 2500000, role: 'dps', drop_table: 'uncommon_t11' },
-    { name: '雷霆君主', power: 2200000, element: 'metal', exp: 259200, stone_min: 2500000, stone_max: 6000000, role: 'dps', drop_table: 'uncommon_t11' },
-  ], boss: { name: '九霄玉帝', power: 5500000, element: 'metal', exp: 2736000, stone_min: 12000000, stone_max: 30000000, role: 'boss', drop_table: 'boss_t11' } },
+    { name: '天庭元帅', power: 1500000, element: 'metal', exp: 65923, stone_min: 800000, stone_max: 2000000, role: 'tank', drop_table: 'common_t11' },
+    { name: '星辰大将', power: 2000000, element: 'fire', exp: 84758, stone_min: 1000000, stone_max: 2500000, role: 'dps', drop_table: 'uncommon_t11' },
+    { name: '雷霆君主', power: 2200000, element: 'metal', exp: 113011, stone_min: 2500000, stone_max: 6000000, role: 'dps', drop_table: 'uncommon_t11' },
+  ], boss: { name: '九霄玉帝', power: 5500000, element: 'metal', exp: 1090022, stone_min: 12000000, stone_max: 30000000, role: 'boss', drop_table: 'boss_t11' } },
   // ===== T12 地图（混元·太极+ 准入，毕业级）=====
   eternal_void: { tier: 12, monsters: [
-    { name: '虚空泰坦', power: 4500000, element: null, exp: 480000, stone_min: 4000000, stone_max: 10000000, role: 'tank', drop_table: 'common_t12' },
-    { name: '永恒刺客', power: 6000000, element: null, exp: 640000, stone_min: 4000000, stone_max: 10000000, role: 'speed', drop_table: 'uncommon_t12' },
-    { name: '本源毁灭者', power: 6700000, element: 'fire', exp: 880000, stone_min: 10000000, stone_max: 25000000, role: 'dps', drop_table: 'uncommon_t12' },
-  ], boss: { name: '虚空之主', power: 16000000, element: null, exp: 8000000, stone_min: 50000000, stone_max: 120000000, role: 'boss', drop_table: 'boss_t12' } },
+    { name: '虚空泰坦', power: 4500000, element: null, exp: 81216, stone_min: 4000000, stone_max: 10000000, role: 'tank', drop_table: 'common_t12' },
+    { name: '永恒刺客', power: 6000000, element: null, exp: 108288, stone_min: 4000000, stone_max: 10000000, role: 'speed', drop_table: 'uncommon_t12' },
+    { name: '本源毁灭者', power: 6700000, element: 'fire', exp: 148896, stone_min: 10000000, stone_max: 25000000, role: 'dps', drop_table: 'uncommon_t12' },
+  ], boss: { name: '虚空之主', power: 16000000, element: null, exp: 1279200, stone_min: 50000000, stone_max: 120000000, role: 'boss', drop_table: 'boss_t12' } },
   genesis_realm: { tier: 12, monsters: [
-    { name: '创世守卫', power: 6000000, element: 'earth', exp: 640000, stone_min: 6000000, stone_max: 15000000, role: 'tank', drop_table: 'common_t12' },
-    { name: '法则裁定者', power: 8500000, element: null, exp: 880000, stone_min: 6000000, stone_max: 15000000, role: 'dps', drop_table: 'uncommon_t12' },
-    { name: '终焉先知', power: 10000000, element: null, exp: 1200000, stone_min: 15000000, stone_max: 35000000, role: 'dps', drop_table: 'uncommon_t12' },
-  ], boss: { name: '创世道祖', power: 25000000, element: null, exp: 12000000, stone_min: 80000000, stone_max: 200000000, role: 'boss', drop_table: 'boss_t12' } },
+    { name: '创世守卫', power: 6000000, element: 'earth', exp: 108288, stone_min: 6000000, stone_max: 15000000, role: 'tank', drop_table: 'common_t12' },
+    { name: '法则裁定者', power: 8500000, element: null, exp: 148896, stone_min: 6000000, stone_max: 15000000, role: 'dps', drop_table: 'uncommon_t12' },
+    { name: '终焉先知', power: 10000000, element: null, exp: 203040, stone_min: 15000000, stone_max: 35000000, role: 'dps', drop_table: 'uncommon_t12' },
+  ], boss: { name: '创世道祖', power: 25000000, element: null, exp: 1918800, stone_min: 80000000, stone_max: 200000000, role: 'boss', drop_table: 'boss_t12' } },
   // ===== T13 地图（道域）=====
   astral_dao_field: { tier: 13, monsters: [
-    { name: '星辰仲裁者', power: 13000000, element: 'metal', exp: 14000000, stone_min: 12000000, stone_max: 30000000, role: 'tank', drop_table: 'common_t13' },
-    { name: '星海掠者', power: 18000000, element: 'water', exp: 20000000, stone_min: 15000000, stone_max: 38000000, role: 'dps', drop_table: 'uncommon_t13' },
-    { name: '宙环先知', power: 23000000, element: null, exp: 28000000, stone_min: 35000000, stone_max: 80000000, role: 'dps', drop_table: 'uncommon_t13' },
-  ], boss: { name: '天宇道君', power: 60000000, element: 'metal', exp: 152000000, stone_min: 200000000, stone_max: 500000000, role: 'boss', drop_table: 'boss_t13' } },
+    { name: '星辰仲裁者', power: 13000000, element: 'metal', exp: 138446, stone_min: 12000000, stone_max: 30000000, role: 'tank', drop_table: 'common_t13' },
+    { name: '星海掠者', power: 18000000, element: 'water', exp: 197780, stone_min: 15000000, stone_max: 38000000, role: 'dps', drop_table: 'uncommon_t13' },
+    { name: '宙环先知', power: 23000000, element: null, exp: 276892, stone_min: 35000000, stone_max: 80000000, role: 'dps', drop_table: 'uncommon_t13' },
+  ], boss: { name: '天宇道君', power: 60000000, element: 'metal', exp: 2430480, stone_min: 200000000, stone_max: 500000000, role: 'boss', drop_table: 'boss_t13' } },
   myriad_origin_void: { tier: 13, monsters: [
-    { name: '万源守阙', power: 15000000, element: 'earth', exp: 15200000, stone_min: 12000000, stone_max: 30000000, role: 'balanced', drop_table: 'common_t13' },
-    { name: '本源剑灵', power: 20000000, element: 'metal', exp: 22000000, stone_min: 15000000, stone_max: 38000000, role: 'speed', drop_table: 'uncommon_t13' },
-    { name: '本源终焉', power: 26000000, element: 'fire', exp: 30000000, stone_min: 35000000, stone_max: 80000000, role: 'dps', drop_table: 'uncommon_t13' },
-  ], boss: { name: '万源道祖', power: 70000000, element: null, exp: 168000000, stone_min: 250000000, stone_max: 600000000, role: 'boss', drop_table: 'boss_t13' } },
+    { name: '万源守阙', power: 15000000, element: 'earth', exp: 150313, stone_min: 12000000, stone_max: 30000000, role: 'balanced', drop_table: 'common_t13' },
+    { name: '本源剑灵', power: 20000000, element: 'metal', exp: 217558, stone_min: 15000000, stone_max: 38000000, role: 'speed', drop_table: 'uncommon_t13' },
+    { name: '本源终焉', power: 26000000, element: 'fire', exp: 296670, stone_min: 35000000, stone_max: 80000000, role: 'dps', drop_table: 'uncommon_t13' },
+  ], boss: { name: '万源道祖', power: 70000000, element: null, exp: 2686320, stone_min: 250000000, stone_max: 600000000, role: 'boss', drop_table: 'boss_t13' } },
   // ===== T14 地图（法则）=====
   causality_sea: { tier: 14, monsters: [
-    { name: '因果守律', power: 40000000, element: 'water', exp: 44000000, stone_min: 40000000, stone_max: 100000000, role: 'tank', drop_table: 'common_t14' },
-    { name: '命运刺客', power: 55000000, element: null, exp: 64000000, stone_min: 50000000, stone_max: 130000000, role: 'speed', drop_table: 'uncommon_t14' },
-    { name: '因果裁决', power: 70000000, element: null, exp: 88000000, stone_min: 120000000, stone_max: 280000000, role: 'dps', drop_table: 'uncommon_t14' },
-  ], boss: { name: '因果天尊', power: 180000000, element: 'water', exp: 440000000, stone_min: 600000000, stone_max: 1400000000, role: 'boss', drop_table: 'boss_t14' } },
+    { name: '因果守律', power: 40000000, element: 'water', exp: 218328, stone_min: 40000000, stone_max: 100000000, role: 'tank', drop_table: 'common_t14' },
+    { name: '命运刺客', power: 55000000, element: null, exp: 317568, stone_min: 50000000, stone_max: 130000000, role: 'speed', drop_table: 'uncommon_t14' },
+    { name: '因果裁决', power: 70000000, element: null, exp: 436656, stone_min: 120000000, stone_max: 280000000, role: 'dps', drop_table: 'uncommon_t14' },
+  ], boss: { name: '因果天尊', power: 180000000, element: 'water', exp: 3751880, stone_min: 600000000, stone_max: 1400000000, role: 'boss', drop_table: 'boss_t14' } },
   spacetime_rift: { tier: 14, monsters: [
-    { name: '时序哨卫', power: 45000000, element: 'metal', exp: 48000000, stone_min: 40000000, stone_max: 100000000, role: 'balanced', drop_table: 'common_t14' },
-    { name: '空裂幽影', power: 62000000, element: null, exp: 72000000, stone_min: 50000000, stone_max: 130000000, role: 'dps', drop_table: 'uncommon_t14' },
-    { name: '裂界吞噬者', power: 78000000, element: 'fire', exp: 96000000, stone_min: 120000000, stone_max: 280000000, role: 'dps', drop_table: 'uncommon_t14' },
-  ], boss: { name: '时空之主', power: 220000000, element: null, exp: 520000000, stone_min: 700000000, stone_max: 1600000000, role: 'boss', drop_table: 'boss_t14' } },
+    { name: '时序哨卫', power: 45000000, element: 'metal', exp: 238176, stone_min: 40000000, stone_max: 100000000, role: 'balanced', drop_table: 'common_t14' },
+    { name: '空裂幽影', power: 62000000, element: null, exp: 357264, stone_min: 50000000, stone_max: 130000000, role: 'dps', drop_table: 'uncommon_t14' },
+    { name: '裂界吞噬者', power: 78000000, element: 'fire', exp: 476352, stone_min: 120000000, stone_max: 280000000, role: 'dps', drop_table: 'uncommon_t14' },
+  ], boss: { name: '时空之主', power: 220000000, element: null, exp: 4434040, stone_min: 700000000, stone_max: 1600000000, role: 'boss', drop_table: 'boss_t14' } },
   // ===== T15 地图（道祖）=====
   genesis_dawn: { tier: 15, monsters: [
-    { name: '初辰守者', power: 130000000, element: 'fire', exp: 152000000, stone_min: 150000000, stone_max: 350000000, role: 'tank', drop_table: 'common_t15' },
-    { name: '创世圣使', power: 170000000, element: 'metal', exp: 200000000, stone_min: 180000000, stone_max: 450000000, role: 'dps', drop_table: 'uncommon_t15' },
-    { name: '初道化形', power: 210000000, element: null, exp: 280000000, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t15' },
-  ], boss: { name: '初辰道神', power: 550000000, element: null, exp: 1400000000, stone_min: 2000000000, stone_max: 4500000000, role: 'boss', drop_table: 'boss_t15' } },
+    { name: '初辰守者', power: 130000000, element: 'fire', exp: 369968, stone_min: 150000000, stone_max: 350000000, role: 'tank', drop_table: 'common_t15' },
+    { name: '创世圣使', power: 170000000, element: 'metal', exp: 486800, stone_min: 180000000, stone_max: 450000000, role: 'dps', drop_table: 'uncommon_t15' },
+    { name: '初道化形', power: 210000000, element: null, exp: 681520, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t15' },
+  ], boss: { name: '初辰道神', power: 550000000, element: null, exp: 5730200, stone_min: 2000000000, stone_max: 4500000000, role: 'boss', drop_table: 'boss_t15' } },
   myriad_dao_end: { tier: 15, monsters: [
-    { name: '终焉守阙', power: 150000000, element: 'earth', exp: 168000000, stone_min: 150000000, stone_max: 350000000, role: 'tank', drop_table: 'common_t15' },
-    { name: '终焉剑魄', power: 200000000, element: 'metal', exp: 224000000, stone_min: 180000000, stone_max: 450000000, role: 'speed', drop_table: 'uncommon_t15' },
-    { name: '末劫呼唤者', power: 260000000, element: 'fire', exp: 320000000, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t15' },
-  ], boss: { name: '终焉道祖', power: 700000000, element: null, exp: 1800000000, stone_min: 3000000000, stone_max: 7000000000, role: 'boss', drop_table: 'boss_t15' } },
+    { name: '终焉守阙', power: 150000000, element: 'earth', exp: 408912, stone_min: 150000000, stone_max: 350000000, role: 'tank', drop_table: 'common_t15' },
+    { name: '终焉剑魄', power: 200000000, element: 'metal', exp: 545216, stone_min: 180000000, stone_max: 450000000, role: 'speed', drop_table: 'uncommon_t15' },
+    { name: '末劫呼唤者', power: 260000000, element: 'fire', exp: 778880, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t15' },
+  ], boss: { name: '终焉道祖', power: 700000000, element: null, exp: 7367400, stone_min: 3000000000, stone_max: 7000000000, role: 'boss', drop_table: 'boss_t15' } },
 }
 
 // ===== v4.0 槽位映射（神兵锻造总纲）=====
@@ -838,6 +838,55 @@ export default defineEventHandler(async (event) => {
     const { rows: charRows } = await pool.query('SELECT * FROM characters WHERE user_id = $1', [event.context.userId])
     if (charRows.length === 0) return { code: 400, message: '角色不存在' }
     const char = charRows[0]
+
+    // 道侣仙缘印记 buff：已正式结侣后获得 +3%~+15% 全属性（design 3.6）
+    // 修改基础 atk/def/hp/spd（buildPlayerStats 会基于这些做派生计算，自然按比例放大）
+    const { rows: compRows } = await pool.query(
+      'SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1',
+      [char.id]
+    )
+    if (compRows[0]?.seal_level > 0) {
+      const SEAL_PCT = [0, 0.03, 0.05, 0.08, 0.12, 0.15]
+      const pct = SEAL_PCT[Math.min(compRows[0].seal_level, 5)] || 0
+      if (pct > 0) {
+        char.atk = Math.floor(char.atk * (1 + pct))
+        char.def = Math.floor(char.def * (1 + pct))
+        char.max_hp = Math.floor(char.max_hp * (1 + pct))
+        char.hp = Math.floor(char.hp * (1 + pct))
+        char.spd = Math.floor(char.spd * (1 + pct))
+        char._companion_seal_pct = pct  // 标记字段，供前端展示用
+      }
+    }
+
+    // 助战子女 buff：按 cap 70% 把子女属性加到玩家（design 5.6.1 简化版）
+    // 子女阶段 multiplier：少年 0.3 / 青年 0.6 / 成年 1.0
+    if (char.battling_child_id) {
+      const { rows: childRows } = await pool.query(
+        'SELECT atk, def, max_hp, spd, stage FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
+        [char.battling_child_id, char.id]
+      )
+      if (childRows[0]) {
+        const c = childRows[0]
+        const STAGE_MUL: Record<string, number> = { youth: 0.3, adult_youth: 0.6, adult: 1.0 }
+        const stageMul = STAGE_MUL[c.stage] || 0
+        if (stageMul > 0) {
+          const cap = 0.70
+          // 子女实际贡献 = min(子女属性 × 阶段, 父母属性 × cap)
+          const addAtk = Math.floor(Math.min(c.atk * stageMul, char.atk * cap))
+          const addDef = Math.floor(Math.min(c.def * stageMul, char.def * cap))
+          const addHp = Math.floor(Math.min(c.max_hp * stageMul, char.max_hp * cap))
+          const addSpd = Math.floor(Math.min(c.spd * stageMul, char.spd * cap))
+          char.atk += addAtk
+          char.def += addDef
+          char.max_hp += addHp
+          char.hp += addHp
+          char.spd += addSpd
+          char._child_battle_atk = addAtk
+          char._child_battle_def = addDef
+          char._child_battle_hp = addHp
+        }
+      }
+    }
 
     // 离线挂机中禁止战斗
     if (char.offline_start) {
