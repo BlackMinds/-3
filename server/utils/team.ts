@@ -68,7 +68,7 @@ export function validateRealmEntry(
 
 const realmNames: Record<number, string> = {
   1: '练气', 2: '筑基', 3: '金丹', 4: '元婴',
-  5: '化神', 6: '渡劫', 7: '大乘', 8: '飞升',
+  5: '化神', 6: '渡劫', 7: '大乘', 8: '飞升', 9: '混元',
 }
 
 /** 查询玩家当前所在房间 */

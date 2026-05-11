@@ -152,6 +152,67 @@ const SR6_ELITE = [
 ]
 const SR6_BOSS = boss('太虚道尊', 123200, null, 1)
 
+// ==================== SR-7 鸿蒙之海（飞升·合道，T11） ====================
+// 对应单人主图 T11，组队战力略高（×1.1-1.2）
+const SR7_MONSTERS = [
+  monster('鸿蒙水妖', 1500000, 'water', 'balanced', 1),
+  monster('本源蛟龙', 1900000, 'water', 'dps', 1),
+  monster('虚空圣使', 2200000, 'metal', 'tank', 1),
+]
+const SR7_ELITE = [
+  monster('鸿蒙战将', 3200000, 'water', 'dps', 1),
+  monster('本源护法', 3600000, 'water', 'balanced', 1),
+]
+const SR7_BOSS = boss('鸿蒙水帝', 6500000, 'water', 1)
+
+// ==================== SR-8 永恒虚空（飞升·证道，T12） ====================
+const SR8_MONSTERS = [
+  monster('虚空泰坦', 6000000, null, 'tank', 1),
+  monster('永恒刺客', 7500000, null, 'speed', 1),
+  monster('本源毁灭者', 8800000, 'fire', 'dps', 1),
+]
+const SR8_ELITE = [
+  monster('终焉法师', 13000000, null, 'dps', 1),
+  monster('永恒守卫', 14000000, null, 'balanced', 1),
+]
+const SR8_BOSS = boss('虚空之主', 28000000, null, 1)
+
+// ==================== SR-9 万源虚境（飞升·太极，T13） ====================
+const SR9_MONSTERS = [
+  monster('万源守阙', 17000000, 'earth', 'balanced', 1),
+  monster('本源剑灵', 21000000, 'metal', 'speed', 1),
+  monster('虚境游魂', 25000000, null, 'dps', 1),
+]
+const SR9_ELITE = [
+  monster('万源裁定', 36000000, null, 'dps', 1),
+  monster('虚境守阙', 40000000, null, 'tank', 1),
+]
+const SR9_BOSS = boss('万源道祖', 80000000, null, 1)
+
+// ==================== SR-10 时空裂界（飞升·无极，T14） ====================
+const SR10_MONSTERS = [
+  monster('时序哨卫', 55000000, 'metal', 'balanced', 1),
+  monster('空裂幽影', 65000000, null, 'dps', 1),
+  monster('裂界吞噬者', 75000000, 'fire', 'dps', 1),
+]
+const SR10_ELITE = [
+  monster('时空裁定', 110000000, null, 'dps', 1),
+  monster('裂界君主', 120000000, null, 'balanced', 1),
+]
+const SR10_BOSS = boss('时空之主', 250000000, null, 1)
+
+// ==================== SR-11 万道终焉（飞升·大圆满，T15） ====================
+const SR11_MONSTERS = [
+  monster('终焉守阙', 170000000, 'earth', 'tank', 1),
+  monster('终焉剑魄', 200000000, 'metal', 'speed', 1),
+  monster('末劫呼唤者', 230000000, 'fire', 'dps', 1),
+]
+const SR11_ELITE = [
+  monster('万道执剑', 340000000, 'metal', 'dps', 1),
+  monster('终焉裁定者', 380000000, null, 'balanced', 1),
+]
+const SR11_BOSS = boss('终焉道祖', 800000000, null, 1)
+
 // ==================== 秘境定义 ====================
 export const SECRET_REALMS: Record<string, SecretRealmDef> = {
   'SR-1': {
@@ -168,7 +229,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.0,
         rewardMul: 1.0,
         turnsPerWave: 15,
-        basePoints: 100,
+        basePoints: 300,
         waves: [
           { monsterPool: SR1_MONSTERS, monsterCount: 3 },
           { monsterPool: SR1_ELITE, monsterCount: 2 },
@@ -180,7 +241,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.8,
         rewardMul: 2.0,
         turnsPerWave: 15,
-        basePoints: 250,
+        basePoints: 540,
         waves: [
           { monsterPool: SR1_MONSTERS, monsterCount: 4 },
           { monsterPool: SR1_ELITE, monsterCount: 3 },
@@ -194,7 +255,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 3.0,
         rewardMul: 3.5,
         turnsPerWave: 18,
-        basePoints: 500,
+        basePoints: 900,
         waves: [
           { monsterPool: SR1_MONSTERS, monsterCount: 5 },
           { monsterPool: SR1_ELITE, monsterCount: 3 },
@@ -221,7 +282,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.0,
         rewardMul: 1.0,
         turnsPerWave: 15,
-        basePoints: 200,
+        basePoints: 400,
         waves: [
           { monsterPool: SR2_MONSTERS, monsterCount: 3 },
           { monsterPool: SR2_ELITE, monsterCount: 2 },
@@ -233,7 +294,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.8,
         rewardMul: 2.0,
         turnsPerWave: 15,
-        basePoints: 500,
+        basePoints: 720,
         waves: [
           { monsterPool: SR2_MONSTERS, monsterCount: 4 },
           { monsterPool: SR2_ELITE, monsterCount: 3 },
@@ -247,7 +308,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 3.0,
         rewardMul: 3.5,
         turnsPerWave: 18,
-        basePoints: 1000,
+        basePoints: 1200,
         waves: [
           { monsterPool: SR2_MONSTERS, monsterCount: 5 },
           { monsterPool: SR2_ELITE, monsterCount: 3 },
@@ -274,7 +335,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.0,
         rewardMul: 1.0,
         turnsPerWave: 15,
-        basePoints: 350,
+        basePoints: 600,
         waves: [
           { monsterPool: SR3_MONSTERS, monsterCount: 3 },
           { monsterPool: SR3_ELITE, monsterCount: 2 },
@@ -286,7 +347,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.8,
         rewardMul: 2.0,
         turnsPerWave: 15,
-        basePoints: 875,
+        basePoints: 1080,
         waves: [
           { monsterPool: SR3_MONSTERS, monsterCount: 4 },
           { monsterPool: SR3_ELITE, monsterCount: 3 },
@@ -300,7 +361,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 3.0,
         rewardMul: 3.5,
         turnsPerWave: 18,
-        basePoints: 1750,
+        basePoints: 1800,
         waves: [
           { monsterPool: SR3_MONSTERS, monsterCount: 5 },
           { monsterPool: SR3_ELITE, monsterCount: 3 },
@@ -327,7 +388,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.0,
         rewardMul: 1.0,
         turnsPerWave: 15,
-        basePoints: 600,
+        basePoints: 900,
         waves: [
           { monsterPool: SR4_MONSTERS, monsterCount: 3 },
           { monsterPool: SR4_ELITE, monsterCount: 2 },
@@ -339,7 +400,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.8,
         rewardMul: 2.0,
         turnsPerWave: 15,
-        basePoints: 1500,
+        basePoints: 1620,
         waves: [
           { monsterPool: SR4_MONSTERS, monsterCount: 4 },
           { monsterPool: SR4_ELITE, monsterCount: 3 },
@@ -353,7 +414,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 3.0,
         rewardMul: 3.5,
         turnsPerWave: 18,
-        basePoints: 3000,
+        basePoints: 2700,
         waves: [
           { monsterPool: SR4_MONSTERS, monsterCount: 5 },
           { monsterPool: SR4_ELITE, monsterCount: 3 },
@@ -380,7 +441,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.0,
         rewardMul: 1.0,
         turnsPerWave: 15,
-        basePoints: 1000,
+        basePoints: 1200,
         waves: [
           { monsterPool: SR5_MONSTERS, monsterCount: 3 },
           { monsterPool: SR5_ELITE, monsterCount: 2 },
@@ -392,7 +453,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.8,
         rewardMul: 2.0,
         turnsPerWave: 15,
-        basePoints: 2500,
+        basePoints: 2160,
         waves: [
           { monsterPool: SR5_MONSTERS, monsterCount: 4 },
           { monsterPool: SR5_ELITE, monsterCount: 3 },
@@ -406,7 +467,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 3.0,
         rewardMul: 3.5,
         turnsPerWave: 18,
-        basePoints: 5000,
+        basePoints: 3600,
         waves: [
           { monsterPool: SR5_MONSTERS, monsterCount: 5 },
           { monsterPool: SR5_ELITE, monsterCount: 3 },
@@ -445,7 +506,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 1.8,
         rewardMul: 2.0,
         turnsPerWave: 15,
-        basePoints: 4500,
+        basePoints: 3240,
         waves: [
           { monsterPool: SR6_MONSTERS, monsterCount: 4 },
           { monsterPool: SR6_ELITE, monsterCount: 3 },
@@ -459,7 +520,7 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
         powerMul: 3.0,
         rewardMul: 3.5,
         turnsPerWave: 18,
-        basePoints: 9000,
+        basePoints: 5400,
         waves: [
           { monsterPool: SR6_MONSTERS, monsterCount: 5 },
           { monsterPool: SR6_ELITE, monsterCount: 3 },
@@ -468,6 +529,271 @@ export const SECRET_REALMS: Record<string, SecretRealmDef> = {
           { monsterPool: [SR6_BOSS, SR6_BOSS], monsterCount: 2, isBoss: true },
           { monsterPool: SR6_ELITE, monsterCount: 4 },
           { monsterPool: [SR6_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-7': {
+    id: 'SR-7',
+    name: '鸿蒙之海',
+    reqRealmTier: 8, // 飞升
+    reqLevel: 215,
+    element: 'water',
+    description: '鸿蒙未分之海，孕育万道之始。水域深处藏着远古道则。',
+    dropTier: 11,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 2200,
+        waves: [
+          { monsterPool: SR7_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR7_ELITE, monsterCount: 2 },
+          { monsterPool: [SR7_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 3960,
+        waves: [
+          { monsterPool: SR7_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR7_ELITE, monsterCount: 3 },
+          { monsterPool: [SR7_BOSS, ...SR7_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR7_ELITE, monsterCount: 3 },
+          { monsterPool: [SR7_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 6600,
+        waves: [
+          { monsterPool: SR7_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR7_ELITE, monsterCount: 3 },
+          { monsterPool: [SR7_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR7_ELITE, monsterCount: 4 },
+          { monsterPool: [SR7_BOSS, SR7_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR7_ELITE, monsterCount: 4 },
+          { monsterPool: [SR7_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-8': {
+    id: 'SR-8',
+    name: '永恒虚空',
+    reqRealmTier: 9, // 混元
+    reqLevel: 240,
+    element: null,
+    description: '诸界之外的永恒虚空，立足者必为踏破极限之人。',
+    dropTier: 12,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 2600,
+        waves: [
+          { monsterPool: SR8_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR8_ELITE, monsterCount: 2 },
+          { monsterPool: [SR8_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 4680,
+        waves: [
+          { monsterPool: SR8_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR8_ELITE, monsterCount: 3 },
+          { monsterPool: [SR8_BOSS, ...SR8_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR8_ELITE, monsterCount: 3 },
+          { monsterPool: [SR8_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 7800,
+        waves: [
+          { monsterPool: SR8_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR8_ELITE, monsterCount: 3 },
+          { monsterPool: [SR8_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR8_ELITE, monsterCount: 4 },
+          { monsterPool: [SR8_BOSS, SR8_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR8_ELITE, monsterCount: 4 },
+          { monsterPool: [SR8_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-9': {
+    id: 'SR-9',
+    name: '万源虚境',
+    reqRealmTier: 9, // 混元
+    reqLevel: 260,
+    element: null,
+    description: '万道之源凝于此境，虚实相融，法则在此处皆为残卷。',
+    dropTier: 13,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 3000,
+        waves: [
+          { monsterPool: SR9_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR9_ELITE, monsterCount: 2 },
+          { monsterPool: [SR9_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 5400,
+        waves: [
+          { monsterPool: SR9_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR9_ELITE, monsterCount: 3 },
+          { monsterPool: [SR9_BOSS, ...SR9_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR9_ELITE, monsterCount: 3 },
+          { monsterPool: [SR9_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 9000,
+        waves: [
+          { monsterPool: SR9_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR9_ELITE, monsterCount: 3 },
+          { monsterPool: [SR9_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR9_ELITE, monsterCount: 4 },
+          { monsterPool: [SR9_BOSS, SR9_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR9_ELITE, monsterCount: 4 },
+          { monsterPool: [SR9_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-10': {
+    id: 'SR-10',
+    name: '时空裂界',
+    reqRealmTier: 9, // 混元
+    reqLevel: 285,
+    element: null,
+    description: '时之河断，空之裂裸，唯执一念可定乾坤。',
+    dropTier: 14,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 3400,
+        waves: [
+          { monsterPool: SR10_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR10_ELITE, monsterCount: 2 },
+          { monsterPool: [SR10_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 6120,
+        waves: [
+          { monsterPool: SR10_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR10_ELITE, monsterCount: 3 },
+          { monsterPool: [SR10_BOSS, ...SR10_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR10_ELITE, monsterCount: 3 },
+          { monsterPool: [SR10_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 10200,
+        waves: [
+          { monsterPool: SR10_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR10_ELITE, monsterCount: 3 },
+          { monsterPool: [SR10_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR10_ELITE, monsterCount: 4 },
+          { monsterPool: [SR10_BOSS, SR10_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR10_ELITE, monsterCount: 4 },
+          { monsterPool: [SR10_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+    },
+  },
+  'SR-11': {
+    id: 'SR-11',
+    name: '万道终焉',
+    reqRealmTier: 9, // 混元
+    reqLevel: 310,
+    element: null,
+    description: '诸道尽头，纵证圣亦止于此，唯越终焉者得见无极。',
+    dropTier: 15,
+    difficulties: {
+      1: {
+        name: '普通',
+        powerMul: 1.0,
+        rewardMul: 1.0,
+        turnsPerWave: 15,
+        basePoints: 4000,
+        waves: [
+          { monsterPool: SR11_MONSTERS, monsterCount: 3 },
+          { monsterPool: SR11_ELITE, monsterCount: 2 },
+          { monsterPool: [SR11_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      2: {
+        name: '困难',
+        powerMul: 1.8,
+        rewardMul: 2.0,
+        turnsPerWave: 15,
+        basePoints: 7200,
+        waves: [
+          { monsterPool: SR11_MONSTERS, monsterCount: 4 },
+          { monsterPool: SR11_ELITE, monsterCount: 3 },
+          { monsterPool: [SR11_BOSS, ...SR11_ELITE], monsterCount: 3, isBoss: true },
+          { monsterPool: SR11_ELITE, monsterCount: 3 },
+          { monsterPool: [SR11_BOSS], monsterCount: 1, isBoss: true },
+        ],
+      },
+      3: {
+        name: '噩梦',
+        powerMul: 3.0,
+        rewardMul: 3.5,
+        turnsPerWave: 18,
+        basePoints: 12000,
+        waves: [
+          { monsterPool: SR11_MONSTERS, monsterCount: 5 },
+          { monsterPool: SR11_ELITE, monsterCount: 3 },
+          { monsterPool: [SR11_BOSS], monsterCount: 1, isBoss: true },
+          { monsterPool: SR11_ELITE, monsterCount: 4 },
+          { monsterPool: [SR11_BOSS, SR11_BOSS], monsterCount: 2, isBoss: true },
+          { monsterPool: SR11_ELITE, monsterCount: 4 },
+          { monsterPool: [SR11_BOSS], monsterCount: 1, isBoss: true },
         ],
       },
     },
