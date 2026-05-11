@@ -888,6 +888,25 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // 离家子女永久 buff：所有 has_left_home 子女的 permanent_buff_pct 求和后给本体全属性放大
+    // (design 5.8: 每 10 天回家 +0.5%, 上限单子女 20%)
+    {
+      const { rows: leftRows } = await pool.query(
+        `SELECT COALESCE(SUM(permanent_buff_pct), 0)::numeric AS total
+           FROM children WHERE character_id = $1 AND has_left_home = TRUE`,
+        [char.id]
+      )
+      const leftPct = Number(leftRows[0]?.total || 0)
+      if (leftPct > 0) {
+        char.atk = Math.floor(char.atk * (1 + leftPct))
+        char.def = Math.floor(char.def * (1 + leftPct))
+        char.max_hp = Math.floor(char.max_hp * (1 + leftPct))
+        char.hp = Math.floor(char.hp * (1 + leftPct))
+        char.spd = Math.floor(char.spd * (1 + leftPct))
+        char._left_home_buff_pct = leftPct
+      }
+    }
+
     // 离线挂机中禁止战斗
     if (char.offline_start) {
       return { code: 400, message: '离线挂机中，请先结束离线' }

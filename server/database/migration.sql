@@ -1510,12 +1510,6 @@ ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS primary_value_2 INT DEF
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS death_streak SMALLINT NOT NULL DEFAULT 0;
 
 -- ========================================
--- 斗法连胜入风云阁 (2026-05-09)
--- ========================================
--- world_broadcast.log_id 不再强制 NOT NULL，斗法连胜（PK_STREAK）等无个人事件流的广播复用此表
-ALTER TABLE world_broadcast ALTER COLUMN log_id DROP NOT NULL;
-
--- ========================================
 -- 强化石大礼包兑换码（2026-05-10）
 -- T9/T10/T11/T12 强化石各 50 个
 -- ========================================
@@ -1529,3 +1523,198 @@ INSERT INTO redeem_codes (code, attachments, description) VALUES
 ON CONFLICT (code) DO UPDATE SET
   attachments = EXCLUDED.attachments,
   description = EXCLUDED.description;
+
+-- ========================================
+-- 斗法连胜入风云阁 (2026-05-09)
+-- ========================================
+-- world_broadcast.log_id 不再强制 NOT NULL，斗法连胜（PK_STREAK）等无个人事件流的广播复用此表
+ALTER TABLE world_broadcast ALTER COLUMN log_id DROP NOT NULL;
+
+-- ========================================
+-- 道侣系统 (2026-05-09) — design/system-companion.md
+-- ========================================
+-- Phase 1 MVP 落地：道侣花名册 + 子女系统骨架 + 游历入口 + 礼物链 v1。
+-- 表清单：companions / children / child_equipment / companion_gifts /
+--         companion_dates / divorce_history / romance_scripts / date_events
+-- characters 表扩展：红尘玉、和离冷却、助战子女、本体资质、5 个游历追踪字段、陪伴亲密度结算日。
+
+-- 1. 道侣花名册（含未结侣和已结侣对象）
+CREATE TABLE IF NOT EXISTS companions (
+  id                    SERIAL PRIMARY KEY,
+  character_id          INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+
+  -- 基础信息
+  name                  VARCHAR(8) NOT NULL,
+  quality               SMALLINT NOT NULL,                   -- 0=凡品 ... 5=仙品
+  spiritual_root        VARCHAR(10) NOT NULL,                -- metal/wood/water/fire/earth
+  personality           VARCHAR(10) NOT NULL,                -- 冷艳/活泼/温柔/高傲/俏皮
+  avatar_id             VARCHAR(20) NOT NULL,
+  background_story      TEXT,
+
+  -- 喜好（JSONB 存物品 ID 数组，对照 3.3.4 礼制丹方）
+  preferred_gifts       JSONB NOT NULL DEFAULT '[]'::jsonb,
+  disliked_gifts        JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+  -- 状态
+  intimacy              INT NOT NULL DEFAULT 0,
+  is_official           BOOLEAN NOT NULL DEFAULT FALSE,
+
+  -- 陪伴亲密度累积（替代旧"双修主动"）
+  last_companion_settle DATE DEFAULT NULL,
+
+  -- 怀胎
+  pregnant_until        TIMESTAMP DEFAULT NULL,
+  pregnant_count        SMALLINT NOT NULL DEFAULT 0,        -- 1=单胎 / 2=双胎 / 3=三胎
+
+  -- 仙缘印记 0-5
+  seal_level            SMALLINT NOT NULL DEFAULT 0,
+
+  -- 元数据
+  encounter_story       VARCHAR(50),
+  encountered_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  married_at            TIMESTAMP DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_companions_char ON companions(character_id);
+-- 一个角色只能有一个正式道侣（部分唯一索引）
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companions_official_unique
+  ON companions(character_id) WHERE is_official = TRUE;
+
+-- 2. 子女表
+CREATE TABLE IF NOT EXISTS children (
+  id                    SERIAL PRIMARY KEY,
+  character_id          INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  parent_companion_id   INT REFERENCES companions(id) ON DELETE SET NULL,
+
+  -- 基础
+  name                  VARCHAR(8) NOT NULL,
+  gender                VARCHAR(8) NOT NULL CHECK (gender IN ('male','female')),
+  avatar_id             VARCHAR(20) NOT NULL,
+
+  -- 资质（出生时确定，可重铸）
+  aptitude              SMALLINT NOT NULL,                  -- 0=凡品 ... 6=圣品
+  spiritual_root        VARCHAR(20) NOT NULL,               -- 单灵根/双灵根/五行混灵
+  awakened              BOOLEAN NOT NULL DEFAULT FALSE,
+
+  -- 等级
+  level                 INT NOT NULL DEFAULT 1,
+  level_exp             BIGINT NOT NULL DEFAULT 0,
+  realm_tier            SMALLINT NOT NULL DEFAULT 1,
+  realm_stage           SMALLINT NOT NULL DEFAULT 1,
+
+  -- 阶段
+  stage                 VARCHAR(10) NOT NULL DEFAULT 'infant',  -- infant/child/youth/adult/grown
+
+  -- 战斗属性缓存（动态计算后写入加速读取）
+  max_hp                INT NOT NULL DEFAULT 200,
+  atk                   INT NOT NULL DEFAULT 20,
+  def                   INT NOT NULL DEFAULT 15,
+  spd                   INT NOT NULL DEFAULT 30,
+
+  -- 状态
+  is_battling           BOOLEAN NOT NULL DEFAULT FALSE,
+  has_left_home         BOOLEAN NOT NULL DEFAULT FALSE,
+  last_visit_at         TIMESTAMP DEFAULT NULL,
+  permanent_buff_pct    DECIMAL(5,4) NOT NULL DEFAULT 0,
+
+  -- 喂养限制
+  feed_count_today      SMALLINT NOT NULL DEFAULT 0,
+  feed_date             DATE,
+
+  -- 天赋（最多 7 个）+ 学习功法（仅 1 个血脉觉醒功法）
+  awakened_talents      JSONB NOT NULL DEFAULT '[]'::jsonb,
+  learned_skills        JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+  born_at               TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_children_char ON children(character_id);
+CREATE INDEX IF NOT EXISTS idx_children_companion ON children(parent_companion_id);
+
+-- 3. 子女装备（与玩家本体 character_equipment 完全分离）
+CREATE TABLE IF NOT EXISTS child_equipment (
+  id                    SERIAL PRIMARY KEY,
+  child_id              INT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  slot                  VARCHAR(20) NOT NULL,               -- weapon / robe / amulet1 / amulet2
+  name                  VARCHAR(30) NOT NULL,
+  rarity                VARCHAR(10) NOT NULL,               -- white/green/blue/purple/gold/red
+  tier                  SMALLINT NOT NULL DEFAULT 1,
+  primary_stat          JSONB NOT NULL,                     -- {atk: 50, ...}
+  sub_stats             JSONB,
+  is_equipped           BOOLEAN NOT NULL DEFAULT FALSE,
+  obtained_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_child_equip_child ON child_equipment(child_id, is_equipped);
+
+-- 4. 道侣礼物赠送日志（用于喜好提示和每日上限校验）
+CREATE TABLE IF NOT EXISTS companion_gifts (
+  id                    SERIAL PRIMARY KEY,
+  companion_id          INT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+  gift_type             VARCHAR(30) NOT NULL,
+  intimacy_gained       INT NOT NULL,
+  reaction              VARCHAR(20) NOT NULL,               -- love / normal / dislike
+  gifted_at             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_companion_gifts_date ON companion_gifts(companion_id, gifted_at DESC);
+
+-- 5. 约会事件记录
+CREATE TABLE IF NOT EXISTS companion_dates (
+  id                    SERIAL PRIMARY KEY,
+  companion_id          INT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+  event_id              VARCHAR(20) NOT NULL,
+  choice                VARCHAR(10),
+  intimacy_gained       INT NOT NULL DEFAULT 0,
+  reward                JSONB,
+  occurred_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_companion_dates_date ON companion_dates(companion_id, occurred_at DESC);
+
+-- 6. 和离历史（保留全量历史用于 FAQ "曾有 N 位红尘伴侣"）
+CREATE TABLE IF NOT EXISTS divorce_history (
+  id                    SERIAL PRIMARY KEY,
+  character_id          INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  companion_name        VARCHAR(8) NOT NULL,
+  quality               SMALLINT NOT NULL,
+  intimacy_at_divorce   INT NOT NULL,
+  children_count        SMALLINT NOT NULL DEFAULT 0,
+  divorced_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_divorce_char ON divorce_history(character_id);
+
+-- 7. 邂逅剧情库（静态数据可放代码 server/data，此表仅做"已经历"追踪 — 暂不强制使用）
+CREATE TABLE IF NOT EXISTS romance_scripts (
+  id                    VARCHAR(20) PRIMARY KEY,            -- RD-001 等
+  title                 VARCHAR(30) NOT NULL,
+  scene                 TEXT NOT NULL,
+  style                 VARCHAR(20) NOT NULL,
+  base_intimacy         SMALLINT NOT NULL DEFAULT 0,
+  enabled               BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- 8. 约会事件库（同上，作为静态配置可选项）
+CREATE TABLE IF NOT EXISTS date_events (
+  id                    VARCHAR(20) PRIMARY KEY,            -- DT-001 等
+  title                 VARCHAR(30) NOT NULL,
+  event_type            VARCHAR(20) NOT NULL,               -- dialog/battle/gift/special
+  scene_text            TEXT NOT NULL,
+  choices               JSONB NOT NULL,
+  weight                SMALLINT NOT NULL DEFAULT 100,
+  enabled               BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- 9. characters 表扩展（11 字段）
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS red_jade               INT NOT NULL DEFAULT 0;            -- 红尘玉余额
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS divorce_cooldown       TIMESTAMP DEFAULT NULL;            -- 和离冷却结束时间（4.2 节为 1 天）
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS battling_child_id      INT REFERENCES children(id) ON DELETE SET NULL; -- 当前出战子女
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS aptitude               SMALLINT NOT NULL DEFAULT 1;       -- 玩家本体资质（用于子女继承计算）
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_count_today SMALLINT NOT NULL DEFAULT 0;       -- 今日已用游历次数
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_date        DATE DEFAULT NULL;                 -- 游历次数所属日期（跨日重置）
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_extra_today SMALLINT NOT NULL DEFAULT 0;       -- 今日付费扩展次数
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_extra_week  SMALLINT NOT NULL DEFAULT 0;       -- 本周已购"游历加次符"次数
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_week_number INT NOT NULL DEFAULT 0;            -- 周编号（与 realm_shop_purchases 一致）
+-- last_companion_settle 已在 companions 表，不在 characters
+
+-- ========================================
+-- 道侣自定义立绘 (2026-05-11)
+-- ========================================
+-- 玩家把图发给作者，作者用 SQL UPDATE 直接赋值到该字段。
+-- 支持外链 URL 或 base64 data URL；前端按"有 custom 用 custom，否则用 SVG 占位"渲染。
+ALTER TABLE companions ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT DEFAULT NULL;

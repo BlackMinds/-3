@@ -40,6 +40,12 @@ jobs:
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
+      - name: Child visit home (离家子女 10 天回家加成)
+        run: |
+          curl -sfL -X POST "$APP_URL/api/cron/child-visit-home" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 30
 
   weekly-reset:
     if: github.event.schedule == '0 16 * * 1' || github.event_name == 'workflow_dispatch'

@@ -37,6 +37,9 @@ export const ITEM_INFO: Record<string, ItemInfo> = {
   // —— 附灵类（新增）——
   awaken_stone:       { name: '附灵石',     description: '为一件蓝+品装备附加一条随机附灵（组队副本掉落）', category: 'awaken', needsTarget: 'equip', awakenMode: 'add' },
   awaken_reroll:      { name: '灵枢玉',     description: '重新随机一件装备的附灵（保证与原附灵不同）',     category: 'awaken', needsTarget: 'equip', awakenMode: 'reroll' },
+  // —— 道侣专属道具 ——
+  parting_charm:      { name: '红尘解',     description: '正式道侣和离时消耗的专属信物（游历奇遇极低概率获取 / 红尘玉商店）', category: 'character' },
+  fate_pill:          { name: '夺天造化丹', description: '子女资质重铸，新资质低于原资质时按保底保留（游历奇遇极稀有 / 红尘玉商店）', category: 'character' },
   // —— 修为类 ——
   permanent_stat:     { name: '道果结晶',   description: '永久属性 +1%（攻/防/血 三选一）',       category: 'character', needsTarget: 'stat' },
   breakthrough_boost: { name: '宗门突破丹', description: '下次突破成功率 +20%（上限 100%，不论成败消耗一次）', category: 'character' },

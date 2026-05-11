@@ -63,3 +63,6 @@ scripts/*.mjs
 
 # 测试账号快照 (dump 出来的临时统计, 由 scripts/dump-test-accounts.mjs 生成)
 design/test-accounts.txt
+
+# 本地 e2e / 备份 / 抽样工作区 (companion-e2e.mjs, *.bak, 解压目录等)
+tmp/

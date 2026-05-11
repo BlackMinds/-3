@@ -2523,6 +2523,7 @@
           <button :class="['help-tab', { active: helpTab === 'pvp' }]" @click="helpTab = 'pvp'">宗门/PvP</button>
           <button :class="['help-tab', { active: helpTab === 'realm' }]" @click="helpTab = 'realm'">秘境</button>
           <button :class="['help-tab', { active: helpTab === 'tower' }]" @click="helpTab = 'tower'">通天塔</button>
+          <button :class="['help-tab', { active: helpTab === 'romance' }]" @click="helpTab = 'romance'">红尘</button>
           <button :class="['help-tab', { active: helpTab === 'misc' }]" @click="helpTab = 'misc'">其他</button>
         </div>
         <div class="modal-body">
@@ -2988,6 +2989,100 @@
             </tbody></table>
           </div>
           </div>
+          <div v-show="helpTab === 'romance'">
+          <div class="help-section">
+            <div class="help-title">系统总览</div>
+            <p class="help-text"><b style="color:#ff8cba">金丹期（境界 ≥ 3）</b>解锁。顶部 <b>🌹 红尘</b> 按钮进入。三大模块：<b>道侣花名册 / 游历红尘 / 子嗣</b>。所有产出与战斗系统隔离，单独走"游历"机制，避免高级图洗低级邂逅。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">游历红尘（道侣邂逅唯一入口）</div>
+            <p class="help-text">每日 <b>3 次</b>基础次数（宗门 5 级 +1，仙玉商城每周限购 +2，硬上限 5 次/天）。5 个地点按境界解锁，灵根偏向不同（仅影响邂逅道侣的灵根，不影响品质）。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>6 类产出</b>（每次随机一类）：</p>
+            <table class="help-table"><tbody>
+              <tr><td>邂逅</td><td>30% · 滚出新道侣，弹窗 4 选项 A/B/C/D</td></tr>
+              <tr><td>道侣材料</td><td>30% · 情花种子/成品礼物/喂养灵草/装备洗练石</td></tr>
+              <tr><td>红尘玉</td><td>20% · 道侣专属货币，按地点等级浮动</td></tr>
+              <tr><td>炼丹灵草</td><td>10% · 五行灵草，按地点偏向</td></tr>
+              <tr><td>修仙奇遇</td><td>5% · 红尘玉/情花种子；<b style="color:#ff8cba">极低概率出红尘解 / 夺天造化丹</b></td></tr>
+              <tr><td>修仙劫难</td><td>5% · 损失少量灵石</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">花名册满 5 位未结侣时邂逅产出归零（需先婉拒或结侣腾位置）。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">邂逅 4 选项</div>
+            <table class="help-table"><tbody>
+              <tr><td>A 上前搭话</td><td>录入花名册，初始亲密度 +5</td></tr>
+              <tr><td>B 远观致意</td><td>录入花名册，初始亲密度 +2</td></tr>
+              <tr><td>C 拂袖离去</td><td>不录入，缘分擦肩</td></tr>
+              <tr><td>D 战斗试探</td><td>胜则录入 +10，败则擦肩</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">道侣品质 <b>凡/下/中/上/极/仙</b> 6 档，按全局固定概率随机生成（与地点等级无关）。仙品期望 200 次邂逅出 1 位。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">亲密度 · 阶段解锁</div>
+            <table class="help-table"><tbody>
+              <tr><td>0 - 250</td><td>陌路/相识</td></tr>
+              <tr><td>250+</td><td>心动 · 解锁<b style="color:#ff7eb3">约会</b>（每天 3 次）</td></tr>
+              <tr><td>600+</td><td>解锁<b style="color:#ffd700">正式结侣</b>（仙缘印记自动 LV1，+3% 全属性）</td></tr>
+              <tr><td>1000+</td><td>解锁<b style="color:#ffaa00">求子</b>（怀胎 48h，消耗 100 万灵石 + 金莲花露 ×1）</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">已结侣每天自动 +20 亲密度（怀胎中跳过）+5 红尘玉到玩家。离线最多累计 7 天。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">赠礼系统</div>
+            <p class="help-text">每日亲密度上限 50（仅正向收益），礼物品质：下品 +2 / 中品 +3 / 上品 +5 / 极品 +8 / 仙品 +10。<b style="color:#5fcf6f">喜爱礼物 ×1.5</b>（按性格匹配），<b style="color:#ff6b6b">厌恶礼物固定 -3</b> 不计上限。</p>
+            <p class="help-text" style="margin-top: 4px;">礼物来源：游历"道侣材料"产出 + 灵田种相思藤/蝶恋花等情花 + 炼丹房"礼制"Tab 合成（Phase 2 接入）。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">仙缘印记（结侣后永久 buff）</div>
+            <table class="help-table"><tbody>
+              <tr><td>LV 1</td><td>全属性 +3%（结侣赠送）</td></tr>
+              <tr><td>LV 2</td><td>+5%（消耗 500 红尘玉）</td></tr>
+              <tr><td>LV 3</td><td>+8%（2000 红尘玉）</td></tr>
+              <tr><td>LV 4</td><td>+12%（8000 红尘玉）</td></tr>
+              <tr><td>LV 5</td><td>+15%（30000 红尘玉）</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">直接放大本体 atk/def/hp/spd，与装备/丹药/天赋三个 cap <b>独立</b>不挤占池。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">子女系统</div>
+            <p class="help-text"><b style="color:#ffd700">总子女上限 5 名</b>（在家 + 已离家 合计）。出生时按"<b>道侣品质</b>"决定资质上限、"<b>玩家资质</b>"决定下限，5% 概率血脉觉醒突破上限。资质 7 档：凡/下/中/上/极/仙/圣（圣品仅夺天造化丹重铸可得）。</p>
+            <p class="help-text" style="margin-top: 4px;">五行继承：父灵根 45% / 母灵根 45% / 随机 9% / 双灵根混灵 1%。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>成长阶段</b>：婴幼(1-10) / 童年(11-30) / 少年(31-60) / 青年(61-99) / 成年(100)。喂养灵草升级，每日上限 5 次。Lv.31 起可设为<b>助战</b>。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>助战 buff</b>：少年 30% / 青年 60% / 成年 100% 阶段倍率，但实际贡献被 <b style="color:#ff6b6b">cap 在父母属性 70%</b> 之内，避免子女超越本体。</p>
+            <p class="help-text" style="margin-top: 4px;">每个子女出生时根据主灵根<b style="color:#d4b0ff">血脉觉醒</b>独有功法（攻击/肉盾/回复/Buff 4 类，品质按资质映射）。功法跟随等级自然提升，不消耗资源。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">子女成年选择（Lv.100）</div>
+            <table class="help-table"><tbody>
+              <tr><td>A 留家助战</td><td>继续作为助战单位，按成年阶段 100% 倍率（受 70% cap）</td></tr>
+              <tr><td>B 外出历练</td><td>退出助战，每 <b style="color:#5fcf6f">10 天回家一次 +0.5% 永久全属性</b>，上限 +20%（40 次回家）</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">外出子女回家时发邮件提醒。多个外出子女 buff 叠加（理论上限 4 个 × 20% = 80% 永久加成，但实际需 800 天养成）。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">资质重铸（夺天造化丹）</div>
+            <p class="help-text">消耗夺天造化丹 ×1 重新随机子女资质（仍受父母品质上限约束）。<b style="color:#5fcf6f">保底机制</b>：新资质 ≤ 旧资质时按保底保留原资质，避免越洗越差；但血脉觉醒功法每次都会重新生成（同品质池里换功法）。</p>
+            <p class="help-text" style="margin-top: 4px;">夺天造化丹来源：游历奇遇极低概率（约 0.05%/次）；后续接入红尘玉商店（50000 红尘玉/月限购 1）。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">和离机制</div>
+            <p class="help-text">代价：<b style="color:#ff6b6b">红尘解 ×1 + 当前境界灵石（金丹期 50 万）+ 24 小时结侣冷却 + 风云阁公开广播</b>。和离后道侣从花名册永久删除，仙缘印记重置 LV0，子女由玩家保留（parent_companion_id 置 NULL，仍可继续助战/外出）。</p>
+            <p class="help-text" style="margin-top: 4px;">怀胎中不可和离。红尘解来源：游历奇遇极低概率（约 0.2%/次）；后续接入红尘玉商店。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">红尘玉</div>
+            <p class="help-text">道侣系统专属货币，<b>不可与灵石互换</b>。来源：</p>
+            <table class="help-table"><tbody>
+              <tr><td>游历产出</td><td>20% 概率，按地点等级浮动 +20~150</td></tr>
+              <tr><td>已结侣每日</td><td>+5（陪伴亲密度结算时）</td></tr>
+              <tr><td>约会奖励</td><td>部分选项给红尘玉</td></tr>
+              <tr><td>奇遇产出</td><td>fortune 类 5% 概率 +50</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">用途：升级仙缘印记 LV2-5、红尘玉商店购买夺天造化丹/红尘解/喂养灵草/装备洗练材料等（Phase 2 接入）。</p>
+          </div>
+          </div>
+
           <div v-show="helpTab === 'misc'">
           <div class="help-section">
             <div class="help-title">成就与称号</div>
@@ -3672,7 +3767,7 @@ const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showRedeemCode = ref(false);
 const showHelpDoc = ref(false);
-const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'misc'>('basic');
+const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'romance' | 'misc'>('basic');
 const showSettings = ref(false);
 
 async function copyQqGroup() {
