@@ -2401,7 +2401,7 @@ export function runWaveBattle(
           totalStone += stone;
           monstersKilled.push({ template: m.template });
           if (m.template.role === 'boss' && turn <= 3) battleStats.bossKilledByTurn3 = true;
-          logs.push({ turn, text: `你击杀了${m.stats.name}，获得 ${exp} 修为、${stone} 灵石`, type: 'kill', ...snap() });
+          logs.push({ turn, text: `你击杀了${m.stats.name}，获得 ${exp} 修为`, type: 'kill', ...snap() });
           // 战意沸腾: 击杀叠攻
           if (atkPerKillPercent > 0 && killStacks < maxKillStacks) {
             killStacks++;

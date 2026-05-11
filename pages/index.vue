@@ -169,7 +169,7 @@
             <button class="stats-btn" @click="showStats = true">统计</button>
             <span>击杀: {{ gameStore.killCount }}</span>
             <span>修为: +{{ formatNum(gameStore.sessionExp) }}</span>
-            <span>灵石: +{{ formatNum(gameStore.sessionStone) }}</span>
+            <span>出售: +{{ formatNum(gameStore.sessionStone) }}</span>
           </div>
         </div>
 
@@ -2114,7 +2114,7 @@
               <span class="stats-val">+{{ formatNum(gameStore.sessionExp) }}</span>
             </div>
             <div class="stats-row">
-              <span class="stats-label">获得灵石</span>
+              <span class="stats-label">出售收入</span>
               <span class="stats-val">+{{ formatNum(gameStore.sessionStone) }}</span>
             </div>
             <div class="stats-row">
