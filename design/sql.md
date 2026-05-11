@@ -200,3 +200,10 @@ UPDATE characters SET crit_dmg = 1.0 WHERE crit_dmg = 1.7;
   WHERE name IN ('角色名1', '角色名2', '角色名3')
   ON CONFLICT (character_id, pill_id, quality_factor)
   DO UPDATE SET count = character_pills.count + EXCLUDED.count;
+
+
+重置游历
+    UPDATE characters     SET expedition_count_today = -50
+   WHERE name = '吴彦祖1号';
+  原理：server/utils/expedition.ts:365-372 计算公式
+  remaining = max(0, limit - countToday)

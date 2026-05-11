@@ -194,14 +194,14 @@ function rollFortune(location: ExpeditionLocation): { text: string; rewardOrPena
       rewardOrPenalty: { pills: [{ itemId: 'fate_pill', quantity: 1 }] },
     }
   }
-  // 50% 给红尘玉 +50，50% 给情花种子 ×1
+  // 50% 给红尘玉 +50，50% 给情花本体 ×1（相思藤，凡品礼物可直接赠送 +1 亲密度，也可做礼制原料）
   if (r < 0.525) {
     return { text, rewardOrPenalty: { redJade: 50 } }
   }
   return {
-    text,
+    text: text + '（拾得相思藤一株）',
     rewardOrPenalty: {
-      seeds: [{ itemId: 'silk_flower_seed', quantity: 1 }],
+      seeds: [{ itemId: 'silk_flower', quantity: 1 }],
     },
   }
 }

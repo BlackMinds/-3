@@ -26,6 +26,13 @@ export const HERBS: HerbDef[] = [
   { id: 'fire_herb',    name: '赤焰花', element: 'fire',  description: '火系灵草,会心系丹药主料', unlockPlotMaxLevel: 4  },
   { id: 'earth_herb',   name: '厚土参', element: 'earth', description: '土系灵草,综合系丹药主料', unlockPlotMaxLevel: 7  },
   { id: 'spirit_grass', name: '仙灵草', element: null,    description: '突破丹药关键材料',       unlockPlotMaxLevel: 10 },
+  // 情花系列（道侣礼物原料，design/system-companion.md 3.3.3）
+  { id: 'silk_flower',      name: '相思藤', element: null, description: '凡/下品礼物原料,凡品本身可直接赠送(+1 亲密度)', unlockPlotMaxLevel: 3  },
+  { id: 'butterfly_flower', name: '蝶恋花', element: null, description: '下/中品礼物原料,凡品本身可直接赠送(+1 亲密度)', unlockPlotMaxLevel: 5  },
+  { id: 'moonlight_orchid', name: '月光兰', element: null, description: '中/上品礼物原料,种子需活动/红尘玉商店获取',    unlockPlotMaxLevel: 7  },
+  { id: 'couple_lotus',     name: '并蒂莲', element: null, description: '上/极品礼物原料,种子需活动/红尘玉商店获取',    unlockPlotMaxLevel: 10 },
+  { id: 'lifelong_grass',   name: '长情草', element: null, description: '极品礼物必需原料,种子需活动/红尘玉商店获取',   unlockPlotMaxLevel: 13 },
+  { id: 'red_dust_flower',  name: '红尘花', element: null, description: '仙品礼物限定原料,种子仅七夕活动期间可得',     unlockPlotMaxLevel: 15 },
 ];
 
 // 灵草品质（种植时间不按品质分档；真实成熟时间由 server/api/cave/plant.post.ts 按灵田等级统一计算）

@@ -28,6 +28,13 @@ export const HERBS: Record<string, { id: string; element: string | null; unlockP
   fire_herb:    { id: 'fire_herb',    element: 'fire',  unlockPlotMaxLevel: 4  },
   earth_herb:   { id: 'earth_herb',   element: 'earth', unlockPlotMaxLevel: 7  },
   spirit_grass: { id: 'spirit_grass', element: null,    unlockPlotMaxLevel: 10 },
+  // 情花系列（道侣礼物原料，design/system-companion.md 3.3.3）
+  silk_flower:      { id: 'silk_flower',      element: null, unlockPlotMaxLevel: 3  },
+  butterfly_flower: { id: 'butterfly_flower', element: null, unlockPlotMaxLevel: 5  },
+  moonlight_orchid: { id: 'moonlight_orchid', element: null, unlockPlotMaxLevel: 7  },
+  couple_lotus:     { id: 'couple_lotus',     element: null, unlockPlotMaxLevel: 10 },
+  lifelong_grass:   { id: 'lifelong_grass',   element: null, unlockPlotMaxLevel: 13 },
+  red_dust_flower:  { id: 'red_dust_flower',  element: null, unlockPlotMaxLevel: 15 },
 }
 
 // 种植时间不按品质分档：真实成熟时间由 server/api/cave/plant.post.ts 按灵田等级统一计算

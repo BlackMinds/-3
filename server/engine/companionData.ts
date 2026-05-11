@@ -156,11 +156,13 @@ export const EXPEDITION_CONFIG = {
 } as const
 
 // 道侣培养材料子表（30% 主产出展开，参考 2.2.5.1）
+// 注：2026-05-11 修正 — 灵田种植机制不需要种子（按等级直接解锁），原 *_seed 后缀
+// 改为发放灵草本体，玩家可直接炼礼/凡品赠送（参考 design 3.3.3）
 export const GIFT_MATERIAL_DROP_TABLE = [
-  // 子概率（35%）凡品/灵品情花种子
-  { weight: 350, kind: 'seed_low', items: ['silk_flower_seed', 'butterfly_flower_seed'], qtyMin: 1, qtyMax: 2 },
-  // 25% 玄品情花种子
-  { weight: 250, kind: 'seed_mid', items: ['moonlight_orchid_seed'], qtyMin: 1, qtyMax: 1 },
+  // 子概率（35%）凡品/灵品情花本体（相思藤、蝶恋花）
+  { weight: 350, kind: 'flower_low', items: ['silk_flower', 'butterfly_flower'], qtyMin: 1, qtyMax: 2 },
+  // 25% 玄品情花本体（月光兰）
+  { weight: 250, kind: 'flower_mid', items: ['moonlight_orchid'], qtyMin: 1, qtyMax: 1 },
   // 15% 凡-下品成品礼物
   { weight: 150, kind: 'gift_low', items: ['fruit_jam', 'colorful_beads'], qtyMin: 1, qtyMax: 1 },
   // 10% 中品成品礼物
@@ -169,10 +171,10 @@ export const GIFT_MATERIAL_DROP_TABLE = [
   { weight: 80, kind: 'feed_herb', items: ['common_herb'], qtyMin: 2, qtyMax: 5 },
   // 5% 装备洗练材料（项目已有 awaken_stone / awaken_reroll，各 50%）
   { weight: 50, kind: 'equip_awaken', items: ['awaken_stone', 'awaken_reroll'], qtyMin: 1, qtyMax: 1 },
-  // 1.8% 地品/天品情花种子
-  { weight: 18, kind: 'seed_high', items: ['couple_lotus_seed', 'lifelong_grass_seed'], qtyMin: 1, qtyMax: 1 },
-  // 0.2% 红尘花种子（仅七夕活动期间触发，运行时再校验）
-  { weight: 2, kind: 'seed_red_dust', items: ['red_dust_flower_seed'], qtyMin: 1, qtyMax: 1 },
+  // 1.8% 地品/天品情花本体（并蒂莲、长情草）
+  { weight: 18, kind: 'flower_high', items: ['couple_lotus', 'lifelong_grass'], qtyMin: 1, qtyMax: 1 },
+  // 0.2% 红尘花本体（仅七夕活动期间触发，运行时再校验）
+  { weight: 2, kind: 'flower_red_dust', items: ['red_dust_flower'], qtyMin: 1, qtyMax: 1 },
 ]
 
 // ============================================================

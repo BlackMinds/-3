@@ -273,7 +273,13 @@ const resultText = computed(() => {
 })
 
 const ITEM_NAMES: Record<string, string> = {
-  silk_flower_seed: '相思藤·种子',
+  silk_flower_seed: '相思藤·种子',  // 老数据兼容（v1.x 期游历产出名）
+  silk_flower: '相思藤',
+  butterfly_flower: '蝶恋花',
+  moonlight_orchid: '月光兰',
+  couple_lotus: '并蒂莲',
+  lifelong_grass: '长情草',
+  red_dust_flower: '红尘花',
   butterfly_flower_seed: '蝶恋花·种子',
   moonlight_orchid_seed: '月光兰·种子',
   couple_lotus_seed: '并蒂莲·种子',
