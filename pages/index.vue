@@ -3267,6 +3267,21 @@
                       </template>
                       <span v-else class="rank-power-empty">— 未登塔</span>
                     </span>
+                    <span v-else-if="rankingTab === 'companion_q'" class="rank-companion">
+                      <span class="rank-companion-name">{{ item.companionName }}</span>
+                      <span :class="['rank-quality', `q-${item.companionQuality}`]">{{ item.qualityName }}</span>
+                      <span v-if="item.isOfficial" class="rank-official">正室</span>
+                    </span>
+                    <span v-else-if="rankingTab === 'child_apt'" class="rank-companion">
+                      <span class="rank-companion-name">{{ item.childName }}</span>
+                      <span :class="['rank-quality', `q-${item.aptitude}`]">{{ item.aptitudeName }}</span>
+                      <span v-if="item.awakened" class="rank-awakened">✦ 觉醒</span>
+                      <span class="rank-child-lv">Lv.{{ item.childLevel }}</span>
+                    </span>
+                    <span v-else-if="rankingTab === 'intimacy'" class="rank-companion">
+                      <span class="rank-companion-name">{{ item.companionName }}</span>
+                      <span class="rank-intimacy-num">❤ {{ item.intimacy }}</span>
+                    </span>
                     <span v-else>Lv.{{ item.level }}</span>
                   </div>
                   <div class="rank-sect">{{ item.sectName || '—' }}</div>
@@ -3870,7 +3885,7 @@ async function doPkChallenge() {
 
 // ===== 排行榜 =====
 const showRanking = ref(false);
-type RankingTabKey = 'realm' | 'level' | 'wealth' | 'arena' | 'sect' | 'heaven';
+type RankingTabKey = 'realm' | 'level' | 'wealth' | 'arena' | 'sect' | 'heaven' | 'companion_q' | 'child_apt' | 'intimacy';
 const rankingTab = ref<RankingTabKey>('realm');
 const rankingLoading = ref(false);
 const rankingList = ref<any[]>([]);
@@ -3886,6 +3901,9 @@ const rankingTabs = [
   { key: 'arena' as const, label: '斗法榜' },
   { key: 'sect' as const, label: '宗门榜' },
   { key: 'heaven' as const, label: '通天榜' },
+  { key: 'companion_q' as const, label: '道侣榜' },
+  { key: 'child_apt' as const, label: '子女资质' },
+  { key: 'intimacy' as const, label: '亲密度榜' },
 ];
 
 // ===== 通天榜：hover 详情（装备 + 功法）=====
@@ -3987,6 +4005,9 @@ async function fetchRankingData() {
       case 'arena':  res = await $fetch('/api/ranking/arena',  { headers: getAuthHeaders() }); break;
       case 'sect':   res = await $fetch('/api/ranking/sect', { headers: getAuthHeaders() }); break;
       case 'heaven': res = await $fetch('/api/ranking/heaven', { headers: getAuthHeaders() }); break;
+      case 'companion_q': res = await $fetch('/api/ranking/companion-quality', { headers: getAuthHeaders() }); break;
+      case 'child_apt':   res = await $fetch('/api/ranking/child-aptitude',   { headers: getAuthHeaders() }); break;
+      case 'intimacy':    res = await $fetch('/api/ranking/intimacy',         { headers: getAuthHeaders() }); break;
     }
     if (res?.code === 200 && res.data) {
       if (rankingTab.value === 'sect') {
@@ -14383,6 +14404,23 @@ onUnmounted(() => {
   font-size: 14px;
   text-shadow: 0 0 6px rgba(232, 204, 138, 0.4);
 }
+/* 道侣/子女/亲密度榜 cell */
+.rank-companion {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px;
+}
+.rank-companion-name { color: #ff7eb3; font-weight: bold; }
+.rank-quality { padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+.rank-quality.q-0 { background: #4a4a4a; color: #ddd; }
+.rank-quality.q-1 { background: #2a5a30; color: #afe8b0; }
+.rank-quality.q-2 { background: #2a4a78; color: #a0c8ff; }
+.rank-quality.q-3 { background: #5a2585; color: #d8b0ff; }
+.rank-quality.q-4 { background: #8a6010; color: #ffd366; }
+.rank-quality.q-5 { background: #8a2020; color: #ffaaaa; }
+.rank-quality.q-6 { background: #ffd700; color: #1a1027; }   /* 圣品（仅子女资质榜）*/
+.rank-official { padding: 1px 6px; background: rgba(255,215,0,0.25); color: #ffd700; font-size: 10px; border-radius: 6px; }
+.rank-awakened { color: #ff8cba; font-size: 10px; }
+.rank-child-lv { color: #aaa; font-size: 11px; }
+.rank-intimacy-num { color: #ff8888; font-weight: bold; font-size: 13px; }
 .rank-power-label {
   color: var(--ink-faint);
   font-size: 11px;

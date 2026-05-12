@@ -2,7 +2,7 @@
 // 注：design 原表的"种子"已改为发放灵草本体（灵田种植机制按等级解锁，种子是无意义中间态）
 // "洗髓丹"原用于子女天赋重铸，但天赋重铸接口未实装，跳过该商品
 
-export type RedJadeItemKind = 'material' | 'pill'
+export type RedJadeItemKind = 'material' | 'pill' | 'child_box'
 export type LimitPeriod = 'week' | 'month'
 
 export interface RedJadeShopItem {
@@ -91,6 +91,39 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     price: 10000,
     limit: { type: 'month', count: 1 },
     give: { itemId: 'parting_charm', qty: 1, kind: 'pill' },
+  },
+  // 子女装备宝箱（design 5.6.2 来源）
+  {
+    id: 'child_box_green',
+    name: '子女宝箱·灵品',
+    desc: '开出 1 件灵品子女装备（10% 概率玄品）',
+    price: 300,
+    limit: { type: 'week', count: 5 },
+    give: { itemId: 'child_box_green', qty: 1, kind: 'child_box' },
+  },
+  {
+    id: 'child_box_blue',
+    name: '子女宝箱·玄品',
+    desc: '开出 1 件玄品子女装备（10% 概率地品）',
+    price: 1000,
+    limit: { type: 'week', count: 3 },
+    give: { itemId: 'child_box_blue', qty: 1, kind: 'child_box' },
+  },
+  {
+    id: 'child_box_purple',
+    name: '子女宝箱·地品',
+    desc: '开出 1 件地品子女装备（10% 概率天品）',
+    price: 3000,
+    limit: { type: 'week', count: 2 },
+    give: { itemId: 'child_box_purple', qty: 1, kind: 'child_box' },
+  },
+  {
+    id: 'child_box_gold',
+    name: '子女宝箱·天品',
+    desc: '开出 1 件天品子女装备（10% 概率仙品）',
+    price: 8000,
+    limit: { type: 'week', count: 1 },
+    give: { itemId: 'child_box_gold', qty: 1, kind: 'child_box' },
   },
 ]
 

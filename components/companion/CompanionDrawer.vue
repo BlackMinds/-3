@@ -204,12 +204,41 @@ async function loadShop() {
 }
 async function onBuy(itemId: string) {
   if (buying.value) return
+  // 子女装备宝箱：需要先选择子女
+  let childId: number | null = null
+  if (itemId.startsWith('child_box_')) {
+    if (store.children.length === 0) {
+      alert('暂无子女。先求子，孩子出生后才能购买子女装备宝箱。')
+      return
+    }
+    // 优先在家子女
+    const homeChildren = store.children.filter((c: any) => !c.hasLeftHome)
+    if (homeChildren.length === 0) {
+      alert('在家子女为空。')
+      return
+    }
+    if (homeChildren.length === 1) {
+      childId = homeChildren[0].id
+      if (!confirm(`购买后立即开成装备并入「${homeChildren[0].name}」的装备背包，是否继续？`)) return
+    } else {
+      const list = homeChildren.map((c: any, i: number) => `${i + 1}. ${c.name}（${c.aptitudeName} Lv.${c.level}）`).join('\n')
+      const input = prompt(`选择要给哪个子女购买宝箱：\n${list}\n\n输入序号（1-${homeChildren.length}）：`)
+      const idx = Number(input) - 1
+      if (!Number.isInteger(idx) || idx < 0 || idx >= homeChildren.length) {
+        alert('输入无效，已取消')
+        return
+      }
+      childId = homeChildren[idx].id
+    }
+  }
   buying.value = true
   try {
     const api = useApi()
+    const body: any = { item_id: itemId }
+    if (childId) body.child_id = childId
     const res = await api<{ code: number; message?: string }>('/companion/red-jade-shop/buy', {
       method: 'POST',
-      body: { item_id: itemId },
+      body,
     })
     alert(res.message || '操作完成')
     if (res.code === 200) await loadShop()

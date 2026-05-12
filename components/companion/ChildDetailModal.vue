@@ -46,6 +46,34 @@
           </div>
         </div>
 
+        <!-- 装备 -->
+        <div v-if="!detail.hasLeftHome" class="section">
+          <div class="section-head">装备</div>
+          <div class="equip-slots">
+            <div v-for="slot in SLOT_LIST" :key="slot.id" class="equip-slot">
+              <div class="es-name">{{ slot.label }}</div>
+              <div v-if="equippedBySlot[slot.id]" class="es-item">
+                <span :class="['es-rarity', `rar-${equippedBySlot[slot.id].rarity}`]">{{ equippedBySlot[slot.id].name }}</span>
+                <span class="es-pri">{{ statLabel(equippedBySlot[slot.id].primaryStat.stat) }} +{{ equippedBySlot[slot.id].primaryStat.value }}</span>
+                <button class="btn-mini" @click="unequipItem(equippedBySlot[slot.id].id)">卸</button>
+              </div>
+              <div v-else class="es-empty">未装备</div>
+            </div>
+          </div>
+          <div v-if="bagEquips.length > 0" class="equip-bag">
+            <div class="section-head" style="margin-top:8px">装备背包</div>
+            <div v-for="e in bagEquips" :key="e.id" class="bag-row" :class="`rar-${e.rarity}`">
+              <span class="br-slot">[{{ e.slotName }}]</span>
+              <span class="br-name">{{ e.name }}</span>
+              <span class="br-pri">{{ statLabel(e.primaryStat.stat) }} +{{ e.primaryStat.value }}</span>
+              <span v-if="e.subStats && e.subStats.length" class="br-sub">+{{ e.subStats.length }}副</span>
+              <button class="btn-mini" @click="equipItem(e.id)">穿戴</button>
+              <button class="btn-mini btn-sell" @click="sellItem(e.id, e.name)">出售</button>
+            </div>
+          </div>
+          <div v-else class="equip-tip">无背包装备，可去「红尘玉商店」购买子女宝箱</div>
+        </div>
+
         <!-- 离家标记 -->
         <div v-if="detail.hasLeftHome" class="section leave-banner">
           <div class="leave-title">🌿 外出历练中</div>
@@ -248,6 +276,55 @@ async function onFeed(o: any) {
   }
 }
 
+// ===== 子女装备 =====
+const SLOT_LIST = [
+  { id: 'weapon', label: '武器' },
+  { id: 'robe', label: '法袍' },
+  { id: 'amulet1', label: '饰品1' },
+  { id: 'amulet2', label: '饰品2' },
+]
+const equipList = ref<any[]>([])
+
+async function loadEquipments() {
+  if (!detail.value) return
+  const api = useApi()
+  const res = await api<{ code: number; data?: { equipments: any[] } }>('/child/equipment', {
+    query: { child_id: detail.value.id }
+  })
+  if (res.code === 200) equipList.value = res.data?.equipments || []
+}
+
+const equippedBySlot = computed(() => {
+  const map: Record<string, any> = {}
+  for (const e of equipList.value) if (e.isEquipped) map[e.slot] = e
+  return map
+})
+const bagEquips = computed(() => equipList.value.filter(e => !e.isEquipped))
+
+function statLabel(s: string): string {
+  return ({ atk: '攻击', def: '防御', max_hp: '气血', spd: '速度', crit_rate: '会心率', crit_dmg: '会心伤害' } as any)[s] || s
+}
+
+async function equipItem(id: number) {
+  const api = useApi()
+  const r = await api<{ code: number; message?: string }>('/child/equip', { method: 'POST', body: { equipment_id: id } })
+  showToast(r.message || (r.code === 200 ? '穿戴成功' : '穿戴失败'))
+  if (r.code === 200) await loadEquipments()
+}
+async function unequipItem(id: number) {
+  const api = useApi()
+  const r = await api<{ code: number; message?: string }>('/child/unequip', { method: 'POST', body: { equipment_id: id } })
+  showToast(r.message || (r.code === 200 ? '已卸下' : '卸下失败'))
+  if (r.code === 200) await loadEquipments()
+}
+async function sellItem(id: number, name: string) {
+  if (!confirm(`确定出售「${name}」？此操作不可撤销。`)) return
+  const api = useApi()
+  const r = await api<{ code: number; message?: string }>('/child/sell-equipment', { method: 'POST', body: { equipment_id: id } })
+  showToast(r.message || (r.code === 200 ? '已出售' : '出售失败'))
+  if (r.code === 200) await loadEquipments()
+}
+
 async function onToggleBattling() {
   const targetId = detail.value.isBattling ? null : detail.value.id
   const res = await store.setBattlingChild(targetId)
@@ -264,6 +341,7 @@ function showToast(msg: string) {
 
 onMounted(async () => {
   detail.value = await store.loadChildDetail(props.childId)
+  if (detail.value) await loadEquipments()
 })
 </script>
 
@@ -336,6 +414,39 @@ onMounted(async () => {
 .btn-action.btn-cancel { border-color: #d4514c; color: #ff8c8c; }
 .btn-action.btn-reroll { border-color: #b070ff; color: #d4b0ff; }
 .btn-action.btn-reroll:hover:not(:disabled) { background: rgba(176,112,255,0.3); }
+
+/* 装备区 */
+.equip-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.equip-slot { padding: 6px 10px; background: rgba(40,20,60,0.6); border: 1px solid #3a2050; border-radius: 4px; font-size: 12px; }
+.es-name { color: #c8a8ff; margin-bottom: 3px; }
+.es-item { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.es-rarity { font-weight: bold; flex: 1; }
+.es-rarity.rar-white { color: #ddd; }
+.es-rarity.rar-green { color: #5fcf6f; }
+.es-rarity.rar-blue { color: #5fa0e8; }
+.es-rarity.rar-purple { color: #c87aff; }
+.es-rarity.rar-gold { color: #ffd366; }
+.es-rarity.rar-red { color: #ff8888; }
+.es-pri { color: #ffd700; font-size: 11px; }
+.es-empty { color: #555; font-style: italic; }
+
+.equip-bag { margin-top: 8px; }
+.bag-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: rgba(0,0,0,0.3); border-radius: 4px; font-size: 11px; margin-bottom: 4px; flex-wrap: wrap; }
+.bag-row.rar-white { border-left: 2px solid #ddd; }
+.bag-row.rar-green { border-left: 2px solid #5fcf6f; }
+.bag-row.rar-blue { border-left: 2px solid #5fa0e8; }
+.bag-row.rar-purple { border-left: 2px solid #c87aff; }
+.bag-row.rar-gold { border-left: 2px solid #ffd366; }
+.bag-row.rar-red { border-left: 2px solid #ff8888; }
+.br-slot { color: #aaa; }
+.br-name { color: #fff; flex: 1; }
+.br-pri { color: #ffd700; }
+.br-sub { color: #c8a8ff; }
+.btn-mini { background: #555; color: #fff; border: none; padding: 2px 8px; border-radius: 3px; font-size: 10px; cursor: pointer; }
+.btn-mini:hover { background: #777; }
+.btn-mini.btn-sell { background: #774a2a; }
+.btn-mini.btn-sell:hover { background: #946238; }
+.equip-tip { color: #888; font-size: 11px; padding: 8px; text-align: center; font-style: italic; }
 
 /* 离家 banner */
 .leave-banner {

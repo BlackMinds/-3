@@ -32,7 +32,9 @@ export default defineEventHandler(async (event) => {
       characterId: r.id,
       name: r.name,
       title: r.title,
-      realmName: REALM_NAMES[r.realm_tier] || '',
+      realmDisplay: REALM_NAMES[r.realm_tier] || '',
+      spiritualRoot: '',  // 不展示灵根，前端 rootColorMap 取空即可
+      rootName: '',
       companionName: r.companion_name,
       companionQuality: r.companion_quality,
       qualityName: QUALITY_NAMES[r.companion_quality] || '?',

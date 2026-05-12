@@ -861,6 +861,7 @@ export default defineEventHandler(async (event) => {
     // 助战子女 buff：按 cap 70% 把子女属性加到玩家（design 5.6.1 简化版）
     // 子女阶段 multiplier：少年 0.3 / 青年 0.6 / 成年 1.0
     // 子女天赋（design 5.6.3）：先按 PassiveEffect 放大子女自身属性，再走 cap
+    // 子女装备（design 5.6.2）：is_equipped 的 child_equipment 主属性 + 副词条加到子女自身
     if (char.battling_child_id) {
       const { rows: childRows } = await pool.query(
         'SELECT atk, def, max_hp, spd, stage, awakened_talents FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
@@ -884,10 +885,30 @@ export default defineEventHandler(async (event) => {
             hpPct += e.HP_percent || 0
             spdPct += e.SPD_percent || 0
           }
-          const buffedAtk = Math.floor(c.atk * (1 + atkPct / 100))
-          const buffedDef = Math.floor(c.def * (1 + defPct / 100))
-          const buffedHp = Math.floor(c.max_hp * (1 + hpPct / 100))
-          const buffedSpd = Math.floor(c.spd * (1 + spdPct / 100))
+          // 子女装备主属性 + 副词条
+          const { rows: equipRows } = await pool.query(
+            'SELECT primary_stat, sub_stats FROM child_equipment WHERE child_id = $1 AND is_equipped = TRUE',
+            [char.battling_child_id]
+          )
+          let eqAtk = 0, eqDef = 0, eqHp = 0, eqSpd = 0
+          for (const er of equipRows) {
+            const ps = er.primary_stat || {}
+            if (ps.stat === 'atk') eqAtk += ps.value || 0
+            else if (ps.stat === 'def') eqDef += ps.value || 0
+            else if (ps.stat === 'max_hp') eqHp += ps.value || 0
+            else if (ps.stat === 'spd') eqSpd += ps.value || 0
+            const ss = Array.isArray(er.sub_stats) ? er.sub_stats : []
+            for (const s of ss) {
+              if (s.stat === 'atk') eqAtk += s.value || 0
+              else if (s.stat === 'def') eqDef += s.value || 0
+              else if (s.stat === 'max_hp') eqHp += s.value || 0
+              else if (s.stat === 'spd') eqSpd += s.value || 0
+            }
+          }
+          const buffedAtk = Math.floor((c.atk + eqAtk) * (1 + atkPct / 100))
+          const buffedDef = Math.floor((c.def + eqDef) * (1 + defPct / 100))
+          const buffedHp = Math.floor((c.max_hp + eqHp) * (1 + hpPct / 100))
+          const buffedSpd = Math.floor((c.spd + eqSpd) * (1 + spdPct / 100))
 
           const cap = 0.70
           // 子女实际贡献 = min(子女属性(含天赋) × 阶段, 父母属性 × cap)

@@ -5,6 +5,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
 import { RED_JADE_SHOP_MAP, getPeriodKey } from '~/server/engine/redJadeShopData'
+import { rollChildEquipFromBox, type ChildRarity } from '~/server/engine/childEquipData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -65,6 +66,25 @@ export default defineEventHandler(async (event) => {
            ON CONFLICT (character_id, material_id, quality)
            DO UPDATE SET count = character_materials.count + EXCLUDED.count`,
           [char.id, item.give.itemId, item.give.qty, quality]
+        )
+      } else if (item.give.kind === 'child_box') {
+        // 子女装备宝箱：必须传 child_id，立即开成装备入 child_equipment
+        const childId = Number(body?.child_id)
+        if (!childId) throw new Error('购买子女宝箱需要指定 child_id')
+        const { rows: childRows } = await client.query(
+          'SELECT id, level FROM children WHERE id = $1 AND character_id = $2',
+          [childId, char.id]
+        )
+        if (childRows.length === 0) throw new Error('指定的子女不存在')
+        // boxRarity 从 itemId 解析：child_box_green → green
+        const boxRarity = item.give.itemId.replace('child_box_', '') as ChildRarity
+        const equip = rollChildEquipFromBox(boxRarity, childRows[0].level || 1)
+        await client.query(
+          `INSERT INTO child_equipment (child_id, slot, name, rarity, tier, primary_stat, sub_stats)
+           VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)`,
+          [childId, equip.slot, equip.name, equip.rarity, equip.tier,
+           JSON.stringify(equip.primary_stat),
+           equip.sub_stats ? JSON.stringify(equip.sub_stats) : null]
         )
       } else {
         // pill
