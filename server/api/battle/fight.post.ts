@@ -864,7 +864,7 @@ export default defineEventHandler(async (event) => {
     // 子女装备（design 5.6.2）：is_equipped 的 child_equipment 主属性 + 副词条加到子女自身
     if (char.battling_child_id) {
       const { rows: childRows } = await pool.query(
-        'SELECT atk, def, max_hp, spd, stage, awakened_talents FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
+        'SELECT atk, def, max_hp, spd, stage, awakened_talents, crit_rate, crit_dmg, dodge, lifesteal, spirit, resist_ctrl FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
         [char.battling_child_id, char.id]
       )
       if (childRows[0]) {
@@ -925,6 +925,22 @@ export default defineEventHandler(async (event) => {
           char._child_battle_def = addDef
           char._child_battle_hp = addHp
           char._child_talents_count = talents.length
+
+          // 子女二级属性 → 玩家本体（cap 70%，按阶段 multiplier 缩放）
+          // crit_dmg 是"增量"加到玩家身上（如子女 1.5 → 加 0.5），不是覆盖
+          const cap2 = 0.70
+          const addCritRate  = Math.min(Number(c.crit_rate || 0)  * stageMul, Number(char.crit_rate || 0)  * cap2)
+          const addCritDmgInc = Math.min(Math.max(0, Number(c.crit_dmg || 1) - 1) * stageMul, Math.max(0, Number(char.crit_dmg || 1) - 1) * cap2)
+          const addDodge     = Math.min(Number(c.dodge || 0)      * stageMul, Number(char.dodge || 0)      * cap2)
+          const addLifesteal = Math.min(Number(c.lifesteal || 0)  * stageMul, Number(char.lifesteal || 0)  * cap2)
+          const addSpirit    = Math.floor(Math.min((c.spirit || 0) * stageMul, (char.spirit || 0) * cap2))
+          const addResistCtrl = Math.min(Number(c.resist_ctrl || 0) * stageMul, Number(char.resist_ctrl || 0) * cap2)
+          char.crit_rate  = Number(char.crit_rate || 0)  + addCritRate
+          char.crit_dmg   = Number(char.crit_dmg || 1)   + addCritDmgInc
+          char.dodge      = Number(char.dodge || 0)      + addDodge
+          char.lifesteal  = Number(char.lifesteal || 0)  + addLifesteal
+          char.spirit     = (char.spirit || 0) + addSpirit
+          char.resist_ctrl = Number(char.resist_ctrl || 0) + addResistCtrl
         }
       }
     }

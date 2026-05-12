@@ -1720,6 +1720,18 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_week_number INT NOT N
 ALTER TABLE companions ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT DEFAULT NULL;
 
 -- ========================================
+-- 子女二级属性 (2026-05-12)
+-- 让子女有完整的会心/闪避/吸血/神识/控抗，与玩家本体属性体系对齐
+-- 助战时按 cap 70% 加到本体
+-- ========================================
+ALTER TABLE children ADD COLUMN IF NOT EXISTS crit_rate   DECIMAL(5,4) NOT NULL DEFAULT 0.0300;
+ALTER TABLE children ADD COLUMN IF NOT EXISTS crit_dmg    DECIMAL(5,4) NOT NULL DEFAULT 1.0000;
+ALTER TABLE children ADD COLUMN IF NOT EXISTS dodge       DECIMAL(5,4) NOT NULL DEFAULT 0.0000;
+ALTER TABLE children ADD COLUMN IF NOT EXISTS lifesteal   DECIMAL(5,4) NOT NULL DEFAULT 0.0000;
+ALTER TABLE children ADD COLUMN IF NOT EXISTS spirit      INT          NOT NULL DEFAULT 5;
+ALTER TABLE children ADD COLUMN IF NOT EXISTS resist_ctrl DECIMAL(5,4) NOT NULL DEFAULT 0.0500;
+
+-- ========================================
 -- 红尘玉商店限购计数 (2026-05-12, design 3.7.2)
 -- ========================================
 -- 周/月限购通过 (period_type, period_key) 隐式隔离，跨周/月自动新计数行

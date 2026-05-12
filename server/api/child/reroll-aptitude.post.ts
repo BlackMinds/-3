@@ -94,17 +94,19 @@ export default defineEventHandler(async (event) => {
         [char.id, FATE_PILL_ID]
       )
 
-      // 更新子女
+      // 更新子女（含二级属性）
       await client.query(
         `UPDATE children
             SET aptitude = $1, awakened = $2,
                 max_hp = $3, atk = $4, def = $5, spd = $6,
-                learned_skills = $7::jsonb,
-                avatar_id = $8
-          WHERE id = $9`,
+                crit_rate = $7, crit_dmg = $8, dodge = $9, lifesteal = $10, spirit = $11, resist_ctrl = $12,
+                learned_skills = $13::jsonb,
+                avatar_id = $14
+          WHERE id = $15`,
         [
           finalAptitude, finalAwakened,
           newStats.maxHp, newStats.atk, newStats.def, newStats.spd,
+          newStats.critRate, newStats.critDmg, newStats.dodge, newStats.lifesteal, newStats.spirit, newStats.resistCtrl,
           JSON.stringify(newSkills),
           `child_${c.gender}_${finalAptitude}`,
           childId,

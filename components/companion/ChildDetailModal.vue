@@ -24,6 +24,12 @@
           <div class="row"><span class="lbl">攻击</span><span class="val">{{ detail.atk }}</span></div>
           <div class="row"><span class="lbl">防御</span><span class="val">{{ detail.def }}</span></div>
           <div class="row"><span class="lbl">速度</span><span class="val">{{ detail.spd }}</span></div>
+          <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate) }}</span></div>
+          <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg) }}</span></div>
+          <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge) }}</span></div>
+          <div class="row"><span class="lbl">吸血</span><span class="val">{{ pct(detail.lifesteal) }}</span></div>
+          <div class="row"><span class="lbl">神识</span><span class="val">{{ detail.spirit }}</span></div>
+          <div class="row"><span class="lbl">控制抗性</span><span class="val">{{ pct(detail.resistCtrl) }}</span></div>
           <div class="row">
             <span class="lbl">经验</span>
             <span class="val">{{ detail.levelExp }} / {{ detail.nextLevelExp }}</span>
@@ -300,6 +306,11 @@ const equippedBySlot = computed(() => {
   return map
 })
 const bagEquips = computed(() => equipList.value.filter(e => !e.isEquipped))
+
+function pct(v: any): string {
+  const n = Number(v || 0)
+  return (n * 100).toFixed(1) + '%'
+}
 
 function statLabel(s: string): string {
   return ({ atk: '攻击', def: '防御', max_hp: '气血', spd: '速度', crit_rate: '会心率', crit_dmg: '会心伤害' } as any)[s] || s

@@ -34,6 +34,12 @@ export interface ChildRow {
   atk: number
   def: number
   spd: number
+  crit_rate: number
+  crit_dmg: number
+  dodge: number
+  lifesteal: number
+  spirit: number
+  resist_ctrl: number
   is_battling: boolean
   has_left_home: boolean
   last_visit_at: Date | null
@@ -125,13 +131,29 @@ const STAGE_MULTIPLIER: Record<string, number> = {
 export function calcChildBaseStats(
   aptitude: ChildAptitude,
   level: number
-): { maxHp: number; atk: number; def: number; spd: number } {
+): {
+  maxHp: number; atk: number; def: number; spd: number
+  critRate: number; critDmg: number; dodge: number; lifesteal: number
+  spirit: number; resistCtrl: number
+} {
   const mul = APTITUDE_MULTIPLIER[aptitude] || 1
+  // 二级属性比基础属性增长慢，避免子女在堆资质后会心率飞天
+  // crit_rate: 凡品 lv1 = 3% / 仙品 lv100 = 18%
+  // crit_dmg:  凡品 lv1 = 100% / 仙品 lv100 = 175%
+  // dodge:     凡品 0 / 仙品 lv100 = 9%
+  // spirit:    凡品 lv1=5 / 仙品 lv100 ≈ 155
+  // resist_ctrl: 凡品 5% / 仙品 lv100 = 20%
   return {
     maxHp: Math.floor(200 + level * 50 * mul),
     atk: Math.floor(20 + level * 5 * mul),
     def: Math.floor(15 + level * 3 * mul),
     spd: Math.floor(30 + level * 1.5 * mul),
+    critRate: +(0.03 + level * 0.0005 * mul).toFixed(4),
+    critDmg: +(1.00 + level * 0.0025 * mul).toFixed(4),
+    dodge: +(level * 0.0003 * mul).toFixed(4),
+    lifesteal: 0,                                              // 默认 0，靠装备/天赋获取
+    spirit: Math.floor(5 + level * 0.5 * mul),
+    resistCtrl: +(0.05 + level * 0.0005 * mul).toFixed(4),
   }
 }
 
@@ -227,8 +249,10 @@ export async function birthChild(
       character_id, parent_companion_id, name, gender, avatar_id,
       aptitude, spiritual_root, awakened,
       level, max_hp, atk, def, spd, stage,
+      crit_rate, crit_dmg, dodge, lifesteal, spirit, resist_ctrl,
       learned_skills
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, $12, 'infant', $13::jsonb)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, $12, 'infant',
+              $13, $14, $15, $16, $17, $18, $19::jsonb)
     RETURNING *`,
     [
       inputs.characterId,
@@ -243,6 +267,12 @@ export async function birthChild(
       baseStats.atk,
       baseStats.def,
       baseStats.spd,
+      baseStats.critRate,
+      baseStats.critDmg,
+      baseStats.dodge,
+      baseStats.lifesteal,
+      baseStats.spirit,
+      baseStats.resistCtrl,
       JSON.stringify([{ skill_id: innateSkill.id, level: 1, type: 'innate' }]),
     ]
   )
@@ -326,11 +356,13 @@ export async function feedChild(
       `UPDATE children SET
         level = $1, level_exp = $2, stage = $3,
         max_hp = $4, atk = $5, def = $6, spd = $7,
-        feed_count_today = $8, feed_date = $9::date,
-        awakened_talents = $10::jsonb
-       WHERE id = $11`,
+        crit_rate = $8, crit_dmg = $9, dodge = $10, lifesteal = $11, spirit = $12, resist_ctrl = $13,
+        feed_count_today = $14, feed_date = $15::date,
+        awakened_talents = $16::jsonb
+       WHERE id = $17`,
       [newLevel, remainExp, newStage,
        newStats.maxHp, newStats.atk, newStats.def, newStats.spd,
+       newStats.critRate, newStats.critDmg, newStats.dodge, newStats.lifesteal, newStats.spirit, newStats.resistCtrl,
        feedCnt + 1, today, JSON.stringify(newAwakened), childId]
     )
     await client.query('COMMIT')

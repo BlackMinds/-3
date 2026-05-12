@@ -31,9 +31,13 @@ export default defineEventHandler(async (event) => {
     await pool.query(
       `UPDATE children SET
         level = $1, stage = $2,
-        max_hp = $3, atk = $4, def = $5, spd = $6
-       WHERE id = $7`,
-      [newLevel, newStage, newStats.maxHp, newStats.atk, newStats.def, newStats.spd, c.id]
+        max_hp = $3, atk = $4, def = $5, spd = $6,
+        crit_rate = $7, crit_dmg = $8, dodge = $9, lifesteal = $10, spirit = $11, resist_ctrl = $12
+       WHERE id = $13`,
+      [newLevel, newStage,
+       newStats.maxHp, newStats.atk, newStats.def, newStats.spd,
+       newStats.critRate, newStats.critDmg, newStats.dodge, newStats.lifesteal, newStats.spirit, newStats.resistCtrl,
+       c.id]
     )
     grown++
   }
