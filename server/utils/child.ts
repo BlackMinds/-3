@@ -124,10 +124,38 @@ export function getChildLevelCap(aptitude: number): number {
   return APTITUDE_LEVEL_CAP[Math.min(Math.max(aptitude, 0), 6)] || 100
 }
 
-// 资质 → 会心率/会心伤害/闪避（2026-05-12 小夏决策：固定值，不随等级增长，只靠装备/功法）
-const APTITUDE_CRIT_RATE  = [0.03, 0.05, 0.08, 0.12, 0.16, 0.22, 0.30]
-const APTITUDE_CRIT_DMG   = [1.00, 1.10, 1.30, 1.60, 2.00, 2.50, 3.20]
-const APTITUDE_DODGE      = [0.00, 0.01, 0.03, 0.05, 0.08, 0.12, 0.18]
+// 资质 → 会心率/会心伤害/闪避 浮动范围（出生时随机一次锁定，升级不会重滚）
+// 同资质子女会有"天生体质"差异，运气好可以多 30~50% 多余面板属性
+const APTITUDE_CRIT_RATE: Array<[number, number]> = [
+  [0.03, 0.05],  // 凡 3-5%
+  [0.05, 0.08],  // 下 5-8%
+  [0.08, 0.12],  // 中 8-12%
+  [0.12, 0.16],  // 上 12-16%
+  [0.16, 0.22],  // 极 16-22%
+  [0.22, 0.28],  // 仙 22-28%
+  [0.30, 0.40],  // 圣 30-40%
+]
+const APTITUDE_CRIT_DMG: Array<[number, number]> = [
+  [1.00, 1.10],  // 凡 100-110%
+  [1.10, 1.30],  // 下 110-130%
+  [1.30, 1.50],  // 中 130-150%
+  [1.60, 1.85],  // 上 160-185%
+  [2.00, 2.30],  // 极 200-230%
+  [2.50, 2.85],  // 仙 250-285%
+  [3.20, 3.60],  // 圣 320-360%
+]
+const APTITUDE_DODGE: Array<[number, number]> = [
+  [0.00, 0.01],  // 凡 0-1%
+  [0.01, 0.03],  // 下 1-3%
+  [0.03, 0.05],  // 中 3-5%
+  [0.05, 0.08],  // 上 5-8%
+  [0.08, 0.12],  // 极 8-12%
+  [0.12, 0.16],  // 仙 12-16%
+  [0.18, 0.22],  // 圣 18-22%
+]
+function rollRange(r: [number, number]): number {
+  return +(r[0] + Math.random() * (r[1] - r[0])).toFixed(4)
+}
 // 阶段 → 出战属性百分比
 const STAGE_MULTIPLIER: Record<string, number> = {
   infant: 0,        // 婴幼期不能出战
@@ -156,9 +184,9 @@ export function calcChildBaseStats(
     atk: Math.floor(20 + level * 15 * mul),
     def: Math.floor(15 + level * 9 * mul),
     spd: Math.floor(30 + level * 4.5 * mul),
-    critRate: APTITUDE_CRIT_RATE[aptIdx],
-    critDmg: APTITUDE_CRIT_DMG[aptIdx],
-    dodge: APTITUDE_DODGE[aptIdx],
+    critRate: rollRange(APTITUDE_CRIT_RATE[aptIdx]),
+    critDmg: rollRange(APTITUDE_CRIT_DMG[aptIdx]),
+    dodge: rollRange(APTITUDE_DODGE[aptIdx]),
     lifesteal: 0,                                              // 默认 0，靠装备/天赋获取
     spirit: Math.floor(5 + level * 0.5 * mul),
     resistCtrl: +(0.05 + level * 0.0005 * mul).toFixed(4),
@@ -361,17 +389,18 @@ export async function feedChild(
     }
     const newTalentsCount = newAwakened.length - existingTalents.length
 
+    // 升级时不重滚 crit_rate/crit_dmg/dodge（出生时锁定），只刷新 level 相关的基础 4 + spirit + resist_ctrl
     await client.query(
       `UPDATE children SET
         level = $1, level_exp = $2, stage = $3,
         max_hp = $4, atk = $5, def = $6, spd = $7,
-        crit_rate = $8, crit_dmg = $9, dodge = $10, lifesteal = $11, spirit = $12, resist_ctrl = $13,
-        feed_count_today = $14, feed_date = $15::date,
-        awakened_talents = $16::jsonb
-       WHERE id = $17`,
+        spirit = $8, resist_ctrl = $9,
+        feed_count_today = $10, feed_date = $11::date,
+        awakened_talents = $12::jsonb
+       WHERE id = $13`,
       [newLevel, remainExp, newStage,
        newStats.maxHp, newStats.atk, newStats.def, newStats.spd,
-       newStats.critRate, newStats.critDmg, newStats.dodge, newStats.lifesteal, newStats.spirit, newStats.resistCtrl,
+       newStats.spirit, newStats.resistCtrl,
        feedCnt + 1, today, JSON.stringify(newAwakened), childId]
     )
     await client.query('COMMIT')

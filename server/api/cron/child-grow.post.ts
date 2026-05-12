@@ -28,15 +28,16 @@ export default defineEventHandler(async (event) => {
     if (newLevel === c.level) continue
     const newStats = calcChildBaseStats(c.aptitude as ChildAptitude, newLevel)
     const newStage = newLevel <= 10 ? 'infant' : newLevel <= 30 ? 'child' : 'youth'
+    // 自动成长同样不重滚 crit/dodge（保留出生时锁定的浮动值）
     await pool.query(
       `UPDATE children SET
         level = $1, stage = $2,
         max_hp = $3, atk = $4, def = $5, spd = $6,
-        crit_rate = $7, crit_dmg = $8, dodge = $9, lifesteal = $10, spirit = $11, resist_ctrl = $12
-       WHERE id = $13`,
+        spirit = $7, resist_ctrl = $8
+       WHERE id = $9`,
       [newLevel, newStage,
        newStats.maxHp, newStats.atk, newStats.def, newStats.spd,
-       newStats.critRate, newStats.critDmg, newStats.dodge, newStats.lifesteal, newStats.spirit, newStats.resistCtrl,
+       newStats.spirit, newStats.resistCtrl,
        c.id]
     )
     grown++
