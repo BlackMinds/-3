@@ -10,6 +10,10 @@ export const useGameStore = defineStore('game', () => {
 
   // ===== 战斗状态 =====
   const battleLogs = ref<BattleLogEntry[]>([])
+  // 助战子女战斗状态（双人战斗 UI 用）
+  const assistChildBattle = ref<{ name: string; gender: string; aptitude: number; aptitudeName: string; level: number; hp: number; maxHp: number; atk: number; fainted: boolean } | null>(null)
+  const assistChildFinalHp = ref<number>(0)
+  const assistChildFainted = ref<boolean>(false)
   const isBattling = ref(false)
   const currentMapId = ref('qingfeng_valley')
   const battleTimer = ref<number | null>(null)
@@ -307,6 +311,15 @@ export const useGameStore = defineStore('game', () => {
     waveMonstersInfo.value = Array.isArray(b.monstersInfo) ? b.monstersInfo : (b.monsterInfo ? [b.monsterInfo] : [])
     displayPlayerHp.value = character.value.max_hp
     displayPlayerMaxHp.value = character.value.max_hp
+    // 助战子女血条：每场战斗开始满血，logs 播完后变成 b.assistChild.hp（代理伤害分摊后的余量）
+    if (b.assistChild) {
+      assistChildBattle.value = { ...b.assistChild, hp: b.assistChild.maxHp }
+      // 战斗 logs 播完后切换到最终 hp（模拟挨打过程结束后的实际血量）
+      assistChildFinalHp.value = b.assistChild.hp
+      assistChildFainted.value = b.assistChild.fainted
+    } else {
+      assistChildBattle.value = null
+    }
 
     pendingResult.value = {
       won: b.won,
@@ -513,6 +526,15 @@ export const useGameStore = defineStore('game', () => {
     pendingResult.value = null
     inFight.value = false
 
+    // 战斗 logs 播完，子女血条切到最终值（代理伤害分摊后的余量）
+    if (assistChildBattle.value) {
+      assistChildBattle.value = {
+        ...assistChildBattle.value,
+        hp: assistChildFinalHp.value,
+        fainted: assistChildFainted.value,
+      }
+    }
+
     if (result.won) {
       killCount.value++
       if (battleFrenzyStacks.value < 10) battleFrenzyStacks.value++
@@ -625,5 +647,7 @@ export const useGameStore = defineStore('game', () => {
     charLevel, levelExpRequired, levelExpPercent, levelBonus,
     loadGameData, changeMap, startBattle, stopBattle, resumeBattleIfStalled, clearLogs, addLog, flushSave, tryBreakthrough,
     applyTowerBattleEntry,
+    // 助战子女战斗状态（双人战斗 UI）
+    assistChildBattle, assistChildFinalHp, assistChildFainted,
   }
 })

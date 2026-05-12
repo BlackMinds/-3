@@ -301,6 +301,19 @@
               ></div>
             </div>
             <div class="hud-hp-text">{{ formatNum(gameStore.displayPlayerHp) }} / {{ formatNum(gameStore.displayPlayerMaxHp) }}</div>
+            <!-- 助战子女血条（双人战斗模式） -->
+            <div v-if="assistChildBattle" :class="['hud-assist', { fainted: assistChildBattle.fainted }]">
+              <div class="hud-assist-head">
+                <span class="hud-assist-icon">⚔</span>
+                <span class="hud-assist-name">{{ assistChildBattle.name }}</span>
+                <span class="hud-assist-tag">{{ assistChildBattle.aptitudeName }} Lv.{{ assistChildBattle.level }}</span>
+                <span v-if="assistChildBattle.fainted" class="hud-assist-fainted">昏迷</span>
+              </div>
+              <div class="hud-hp-bar hud-assist-bar">
+                <div class="hud-hp-fill assist-fill" :style="{ width: assistChildHpPercent + '%' }"></div>
+              </div>
+              <div class="hud-hp-text">{{ formatNum(assistChildBattle.hp) }} / {{ formatNum(assistChildBattle.maxHp) }} · 攻 {{ formatNum(assistChildBattle.atk) }}</div>
+            </div>
           </div>
 
           <!-- VS -->
@@ -3655,7 +3668,7 @@
 definePageMeta({ middleware: 'auth' })
 
 import { SPIRITUAL_ROOTS, formatNumber, getRealmBonusAtLevel, getSkillSlotLimits, type RealmBonus } from '~/game/data';
-import { BREAKTHROUGH_PENALTIES, BREAKTHROUGH_FAIL_BOOST_PER_STREAK, getBreakthroughRateAt, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance';
+import { BREAKTHROUGH_PENALTIES, BREAKTHROUGH_FAIL_BOOST_PER_STREAK, getBreakthroughRateAt, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance';
 import { ALL_SKILLS, ACTIVE_SKILLS, DIVINE_SKILLS, PASSIVE_SKILLS } from '~/game/skillData';
 import { ROLE_NAMES as SECT_ROLE_NAMES, ROLE_COLORS, BOSS_NAMES, SHOP_CATEGORY_NAMES, SHOP_CATEGORY_COLORS, formatFund } from '~/game/sectData';
 import { SECT_ITEM_INFO, ITEM_INFO, ITEM_CATEGORIES } from '~/game/items';
@@ -3687,6 +3700,7 @@ const userStore = useUserStore();
 const eventStore = useEventStore();
 const gameStore = useGameStore();
 const towerStore = useTowerStore();
+const companionStore = useCompanionStore();
 
 // 通天塔 UI 状态
 const showTowerHistory = ref(false);
@@ -4521,6 +4535,14 @@ const playerHpPercent = computed(() => {
   return Math.max(0, Math.min(100, (gameStore.displayPlayerHp / gameStore.displayPlayerMaxHp) * 100));
 });
 
+// 助战子女战斗状态（来自 gameStore.assistChildBattle，由 fight.post.ts 返回 + applyBattleEntry 写入）
+const assistChildBattle = computed(() => gameStore.assistChildBattle)
+const assistChildHpPercent = computed(() => {
+  const a = assistChildBattle.value
+  if (!a || a.maxHp === 0) return 0
+  return Math.max(0, Math.min(100, (a.hp / a.maxHp) * 100))
+})
+
 const monsterHpPercent = computed(() => {
   if (gameStore.displayMonsterMaxHp === 0) return 0;
   return Math.max(0, Math.min(100, (gameStore.displayMonsterHp / gameStore.displayMonsterMaxHp) * 100));
@@ -5112,6 +5134,19 @@ const mainStats = computed(() => {
   if (passHpPct  > 0) hpPctEntries.push({  source: '功法被动', pct: passHpPct  / 100, note: passNote });
   if (passSpdPct > 0) spdPctEntries.push({ source: '功法被动', pct: passSpdPct / 100, note: passNote });
 
+  // 4i) 道侣仙缘印记 — 已正式结侣给全属性 +3%~+15%（与 server/api/battle/fight.post.ts 同表）
+  const sealLv = companionStore.officialCompanion?.sealLevel || 0;
+  if (sealLv > 0) {
+    const sealPct = COMPANION_SEAL_PCT[Math.min(sealLv, 5)] || 0;
+    if (sealPct > 0) {
+      const sealNote = `LV${sealLv}`;
+      atkPctEntries.push({ source: '仙缘印记', pct: sealPct, note: sealNote });
+      defPctEntries.push({ source: '仙缘印记', pct: sealPct, note: sealNote });
+      hpPctEntries.push({  source: '仙缘印记', pct: sealPct, note: sealNote });
+      spdPctEntries.push({ source: '仙缘印记', pct: sealPct, note: sealNote });
+    }
+  }
+
   // ===== 加法池一次乘 + 各条按贡献比例分摊 delta =====
   const compose = (flat: number, flatSteps: StatStep[], pctEntries: PctEntry[]): { total: number; steps: StatStep[] } => {
     const sumPct = pctEntries.reduce((a, e) => a + e.pct, 0);
@@ -5660,6 +5695,8 @@ onMounted(async () => {
     loadSectInfo().catch(() => {});
     loadSectSkills().catch(() => {});
   }
+  // 仙缘印记加成要算进 mainStats，不阻塞首屏；没结道侣 list 为空也无副作用
+  companionStore.loadCompanions().catch(() => {});
   // 天道造化轮询：120 秒一次（合并 pending + broadcast 调用）
   eventStore.startPolling();
   // P5: 以下数据按需加载（切到对应 tab 时 watch 触发）
@@ -9019,6 +9056,36 @@ onUnmounted(() => {
 .monster-fill {
   background: linear-gradient(90deg, rgba(196, 92, 74, 0.85), rgba(196, 92, 74, 0.5));
   float: right; /* 怪物血条从右往左减少 */
+}
+
+/* 助战子女血条 */
+.hud-assist {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 126, 179, 0.08);
+  border: 1px solid rgba(255, 126, 179, 0.3);
+  border-radius: 5px;
+  transition: opacity 0.3s;
+}
+.hud-assist.fainted {
+  opacity: 0.5;
+  border-color: rgba(120, 120, 120, 0.4);
+  background: rgba(60, 60, 60, 0.15);
+}
+.hud-assist-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+.hud-assist-icon { color: #ffd700; }
+.hud-assist-name { color: #ff7eb3; font-weight: bold; }
+.hud-assist-tag { color: #aaa; font-size: 10px; padding: 1px 5px; background: rgba(255,215,0,0.15); border-radius: 6px; }
+.hud-assist-fainted { color: #ff6b6b; font-size: 10px; margin-left: auto; font-weight: bold; }
+.hud-assist-bar { height: 6px; }
+.assist-fill {
+  background: linear-gradient(90deg, rgba(255, 126, 179, 0.6), rgba(255, 126, 179, 0.9));
 }
 
 .hud-hp-text {

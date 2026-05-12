@@ -976,14 +976,26 @@ export default defineEventHandler(async (event) => {
           char._child_battle_def = addDef
           char._child_battle_hp = addHp
           char._child_talents_count = talents.length
-          // 保存助战提示文案，待 runWaveBattle 后插入 logs 顶部
+          // 保存助战子女完整数据：标签 + 战斗血量 + 战斗 atk（含 装备+天赋 实际加成）
           const { rows: nameRows } = await pool.query(
-            "SELECT name, aptitude, level FROM children WHERE id = $1",
+            "SELECT name, gender, aptitude, level FROM children WHERE id = $1",
             [char.battling_child_id]
           )
           if (nameRows[0]) {
             const APT_NAMES = ['凡品','下品','中品','上品','极品','仙品','圣品']
             char._child_battle_label = `${nameRows[0].name}·${APT_NAMES[nameRows[0].aptitude] || ''} Lv.${nameRows[0].level}`
+            char._child_battle_data = {
+              name: nameRows[0].name,
+              gender: nameRows[0].gender,
+              aptitude: nameRows[0].aptitude,
+              aptitudeName: APT_NAMES[nameRows[0].aptitude] || '凡品',
+              level: nameRows[0].level,
+              // 子女装备+天赋加成后的实际战斗属性（用于 UI 血条 / 攻击展示）
+              atk: buffedAtk,
+              def: buffedDef,
+              maxHp: buffedHp,
+              spd: buffedSpd,
+            }
           }
 
           // 子女二级属性（裸 + 装备）→ 玩家本体（cap 70%，按阶段 multiplier 缩放）
@@ -1461,6 +1473,32 @@ export default defineEventHandler(async (event) => {
       const skillDropNames = allDrops
         .filter(d => d.type === 'skill')
         .map(d => SKILL_MAP[d.data]?.name || d.data)
+      // 助战子女：计算本场战斗子女代理 hp 损耗（玩家挨打总量 × 30%，cap 在子女 maxHp 内）
+      // 设计语义：子女是"虚拟战斗单位"，玩家挨打时子女在前挡刀分担伤害；下场战斗满血恢复
+      let assistChild: any = null
+      const childData = (char as any)._child_battle_data
+      if (childData) {
+        // 扫 logs 算玩家挨打总量：取 playerHp 出现过的最低值 vs maxHp 差值
+        let minHp = char.max_hp
+        for (const lg of result.logs) {
+          const ph = (lg as any).playerHp
+          if (typeof ph === 'number' && ph >= 0 && ph < minHp) minHp = ph
+        }
+        const playerDmgTaken = Math.max(0, char.max_hp - minHp)
+        const childHpLost = Math.min(childData.maxHp, Math.floor(playerDmgTaken * 0.3))
+        const childHpAfter = Math.max(0, childData.maxHp - childHpLost)
+        assistChild = {
+          name: childData.name,
+          gender: childData.gender,
+          aptitude: childData.aptitude,
+          aptitudeName: childData.aptitudeName,
+          level: childData.level,
+          hp: childHpAfter,
+          maxHp: childData.maxHp,
+          atk: childData.atk,
+          fainted: childHpAfter === 0,
+        }
+      }
       battles.push({
         won: result.won,
         expGained: totalExp,
@@ -1474,6 +1512,7 @@ export default defineEventHandler(async (event) => {
         logs: result.logs,
         drops: [...keptDropNames, ...skillDropNames],
         stopAutoBattle,
+        assistChild,
       })
 
       if (!result.won) break
