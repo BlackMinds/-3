@@ -1,10 +1,15 @@
 // 真双人战斗引擎（玩家 + 助战子女 vs 怪物群）
-// Phase 1 骨架：身法排序 / 玩家普攻 + 神通 / 子女普攻 + 血脉功法 / 怪物 50:50 选目标 / 死亡判定
+// Phase 1：身法排序 / 玩家普攻 + 神通 / 子女普攻 + 血脉功法 / 怪物 50:50 选目标
+// Phase 2a：DOT (burn/poison/bleed) + 控制 (freeze/stun/root/silence) + brittle/atk_down
 // 复用 battleEngine.ts 的 calculateDamage 公式，保证伤害结果一致
-// 后续会话补：套装、附灵、控制 (stun/freeze/silence/root/brittle)、DOT、反伤池
+// 后续：套装、附灵、反伤池、复活、玩家 buff (shield/regen/immune)
 
 import {
   calculateDamage,
+  calcDotDamage,
+  getElementMultiplier,
+  DEBUFF_NAMES,
+  type ActiveDebuff,
   type BattlerStats,
   type BattleLogEntry,
   type MonsterTemplate,
@@ -16,7 +21,9 @@ import {
   tickMonsterCds,
   type MonsterSkillState,
 } from './battleEngine';
+import type { DebuffType } from './skillData';
 import type { ChildSkill } from './childSkillData';
+import { BATTLE_FORMULA } from '../../shared/balance';
 
 // ---- 类型 ----
 export interface DuoAssistInput {
@@ -59,6 +66,8 @@ interface MonsterRuntime {
   skillState: MonsterSkillState;
   baseAtk: number;
   baseDef: number;
+  debuffs: ActiveDebuff[];
+  frozenTurns: number;
 }
 
 function rand(min: number, max: number): number {
@@ -140,6 +149,8 @@ export function runDuoWaveBattle(
       skillState: initMonsterSkillState(m.template),
       baseAtk: m.stats.atk,
       baseDef: m.stats.def,
+      debuffs: [],
+      frozenTurns: 0,
     };
   });
 
@@ -171,6 +182,104 @@ export function runDuoWaveBattle(
 
   const firstAlive = (): MonsterRuntime | null => monsters.find(m => m.alive && m.stats.hp > 0) || null;
 
+  // ===== Phase 2a: DOT + 控制 helpers =====
+  // 目标类型：玩家 / 助战 / 怪物 — 共有字段 debuffs/frozenTurns
+  type DebuffTarget = { debuffs: ActiveDebuff[]; frozenTurns: number; stats?: any; maxHp?: number; resists?: any };
+
+  // 施加 debuff（简化版，省去套装 dmgMul/instantMul 与附灵 main 元素 amp — 留待 Phase 2b/2c）
+  // inflictor === 'player' 时享受 dotAmpPct / elementDmg / 五行抗性（与 battleEngine 一致）
+  const tryApplyDebuff = (
+    target: DebuffTarget,
+    targetName: string,
+    debuff: { type: DebuffType; chance: number; duration: number; value?: number },
+    attackerAtk: number,
+    turn: number,
+    inflictor: 'player' | 'assist' | 'monster',
+  ): boolean => {
+    if (Math.random() >= debuff.chance) return false;
+    const isCtrl = debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root' || debuff.type === 'silence';
+    // 控制类抗性（cap 70%）
+    if (isCtrl) {
+      const r = Math.min(0.7, target.resists?.ctrl || target.stats?.resists?.ctrl || 0);
+      if (r > 0 && Math.random() < r) {
+        logs.push({ turn, text: `  ${targetName}抵抗了${DEBUFF_NAMES[debuff.type]}`, type: 'normal', ...snap() });
+        return false;
+      }
+    }
+    const duration = debuff.duration;
+    if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
+      target.frozenTurns = Math.max(target.frozenTurns, duration);
+      logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合`, type: 'normal', ...snap() });
+      return true;
+    }
+    // DOT / brittle / atk_down / silence
+    const targetMaxHp = target.stats?.maxHp || target.maxHp || 0;
+    let dmg = calcDotDamage(debuff.type, targetMaxHp, attackerAtk);
+    const isDotType = debuff.type === 'poison' || debuff.type === 'burn' || debuff.type === 'bleed';
+    // 玩家施加 DOT → v3 万毒归一 + 元素强化 + 元素克制 + 抗性（与 runWaveBattle 同公式）
+    if (isDotType && inflictor === 'player') {
+      if ((player as any).dotAmpPct) dmg = Math.max(1, Math.floor(dmg * (1 + (player as any).dotAmpPct / 100)));
+      const dotElem: Record<string, string> = { burn: 'fire', poison: 'wood', bleed: 'metal' };
+      const el = dotElem[debuff.type];
+      if (el) {
+        const ed = (player.elementDmg as any)?.[el] || 0;
+        if (ed > 0) dmg = Math.max(1, Math.floor(dmg * (1 + ed / 100)));
+        const targetElem = target.stats?.element || null;
+        const elemMul = getElementMultiplier(el, targetElem);
+        if (elemMul !== 1.0) dmg = Math.max(1, Math.floor(dmg * elemMul));
+        const resistRaw = target.stats?.resists?.[el] ?? target.resists?.[el] ?? 0;
+        const resist = Math.min(BATTLE_FORMULA.maxResistRate, resistRaw);
+        if (resist > 0) dmg = Math.max(1, Math.floor(dmg * (1 - resist)));
+      }
+    }
+    const exists = target.debuffs.find(d => d.type === debuff.type);
+    if (exists) {
+      exists.remaining = duration;
+      exists.value = debuff.value;
+      exists.damagePerTurn = dmg;
+    } else {
+      target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: debuff.value });
+    }
+    let text = `${targetName}陷入${DEBUFF_NAMES[debuff.type]} ${duration} 回合`;
+    if (debuff.type === 'poison') text += ` (每回合 ${dmg} 毒伤)`;
+    else if (debuff.type === 'burn') text += ` (每回合 ${dmg} 火伤)`;
+    else if (debuff.type === 'bleed') text += ` (每回合 ${dmg} 流血)`;
+    else if (debuff.type === 'brittle') text += ` (受伤+${(((debuff.value || 0.15)) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'atk_down') text += ` (攻击-${(((debuff.value || 0.15)) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'silence') text += ` (无法使用神通)`;
+    logs.push({ turn, text: `  ${text}`, type: 'normal', ...snap() });
+    return true;
+  };
+
+  // 结算 DOT 并递减 — 返回此回合总 DOT 伤害；不扣血（调用方扣）
+  const tickDebuffs = (target: DebuffTarget, targetName: string, turn: number): number => {
+    let dot = 0;
+    for (const d of target.debuffs) {
+      if (d.damagePerTurn > 0) {
+        dot += d.damagePerTurn;
+        logs.push({ turn, text: `  ${targetName}受到${DEBUFF_NAMES[d.type]} ${d.damagePerTurn} 点伤害`, type: 'normal', ...snap() });
+      }
+    }
+    for (let i = target.debuffs.length - 1; i >= 0; i--) {
+      target.debuffs[i].remaining--;
+      if (target.debuffs[i].remaining <= 0) {
+        logs.push({ turn, text: `  ${targetName}的${DEBUFF_NAMES[target.debuffs[i].type]}效果结束`, type: 'normal', ...snap() });
+        target.debuffs.splice(i, 1);
+      }
+    }
+    return dot;
+  };
+
+  const hasSilence = (t: DebuffTarget): boolean => t.debuffs.some(d => d.type === 'silence');
+  const getBrittleBonus = (t: DebuffTarget): number => {
+    const b = t.debuffs.find(d => d.type === 'brittle');
+    return b ? (b.value || 0.15) : 0;
+  };
+  const getAtkDownMul = (t: DebuffTarget): number => {
+    const a = t.debuffs.find(d => d.type === 'atk_down');
+    return a ? (1 - (a.value || 0.15)) : 1;
+  };
+
   const killCheck = (target: MonsterRuntime, turn: number, killerName: string) => {
     if (target.alive && target.stats.hp <= 0) {
       target.alive = false;
@@ -194,10 +303,14 @@ export function runDuoWaveBattle(
     if (!tgt) return;
     if (player.hp <= 0) return;
 
+    // silence → 屏蔽神通
+    const silenced = hasSilence(player);
+    if (silenced) logs.push({ turn, text: `  你被封印,无法使用神通`, type: 'normal', ...snap() });
+
     // 选神通：第一个 CD ≤ 0 的 divineSkill
     let chosenSkill: SkillRefInfo | null = null;
     let chosenIdx = -1;
-    if (equippedSkills?.divineSkills?.length) {
+    if (!silenced && equippedSkills?.divineSkills?.length) {
       for (let i = 0; i < equippedSkills.divineSkills.length; i++) {
         if (playerDivineCds[i] <= 0) {
           chosenSkill = equippedSkills.divineSkills[i];
@@ -212,11 +325,16 @@ export function runDuoWaveBattle(
     const elem = chosenSkill?.element ?? null;
     const hits = chosenSkill?.hitCount || 1;
 
+    // atk_down 折扣（临时改 player.atk，攻击后还原）
+    const atkDownMul = getAtkDownMul(player);
+    const origAtk = player.atk;
+    if (atkDownMul < 1) player.atk = Math.max(1, Math.floor(player.atk * atkDownMul));
+
     if (hits > 1) {
       logs.push({ turn, text: `[第${turn}回合] 你施展了【${activeName}】(${hits}段)!`, type: 'crit', actor: 'player', ...snap() });
     }
     let totalDealt = 0;
-    let anyCrit = false;
+    let anyHit = false;
     for (let h = 0; h < hits; h++) {
       if (!tgt.alive) break;
       const perMul = hits > 1 ? mul / hits : mul;
@@ -225,16 +343,22 @@ export function runDuoWaveBattle(
         logs.push({ turn, text: `[第${turn}回合] 你${chosenSkill ? `的【${activeName}】` : '的攻击'}被${tgt.stats.name}闪避了`, type: 'normal', actor: 'player', ...snap() });
         continue;
       }
-      tgt.stats.hp -= r.damage;
-      totalDealt += r.damage;
-      if (r.isCrit) anyCrit = true;
+      // 目标 brittle → 受伤增加
+      let dealt = r.damage;
+      const brittle = getBrittleBonus(tgt);
+      if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
+      tgt.stats.hp -= dealt;
+      totalDealt += dealt;
+      anyHit = true;
       const critText = r.isCrit ? '会心!' : '';
       if (hits > 1) {
-        logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${r.damage} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'player', ...snap() });
+        logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'player', ...snap() });
       } else {
-        logs.push({ turn, text: `[第${turn}回合] 你${chosenSkill ? `施展【${activeName}】` : ''}攻击了${tgt.stats.name}，${critText}造成 ${r.damage} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'player', ...snap() });
+        logs.push({ turn, text: `[第${turn}回合] 你${chosenSkill ? `施展【${activeName}】` : ''}攻击了${tgt.stats.name}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'player', ...snap() });
       }
     }
+    // 还原 atk
+    player.atk = origAtk;
 
     // 吸血
     if (totalDealt > 0 && player.lifesteal > 0 && player.hp > 0) {
@@ -244,6 +368,11 @@ export function runDuoWaveBattle(
         player.hp += actual;
         logs.push({ turn, text: `  【吸血】回复 ${actual} 点气血`, type: 'buff', actor: 'player', ...snap() });
       }
+    }
+
+    // 神通 debuff 施加（命中过 ≥1 次才尝试，与 battleEngine 一致）
+    if (anyHit && chosenSkill?.debuff && tgt.alive) {
+      tryApplyDebuff(tgt, tgt.stats.name, chosenSkill.debuff, player.atk, turn, 'player');
     }
 
     // 击杀检查
@@ -262,8 +391,12 @@ export function runDuoWaveBattle(
     const tgt = firstAlive();
     if (!tgt) return;
 
+    // 子女被 silence 也屏蔽血脉功法
+    const silenced = hasSilence(assist);
+    if (silenced) logs.push({ turn, text: `  ${assist.name}·助战被封印,无法使用血脉功法`, type: 'normal', actor: 'assist', ...snap() });
+
     let useSkill: ChildSkill | null = null;
-    if (isAssistDivine && assistSkillCd.current <= 0) {
+    if (!silenced && isAssistDivine && assistSkillCd.current <= 0) {
       useSkill = assistSkillCd.skill!;
     }
     const skillName = useSkill?.name || '普通攻击';
@@ -271,6 +404,11 @@ export function runDuoWaveBattle(
     const elem = useSkill?.element ?? null;
     const ignoreDef = useSkill?.ignoreDef || 0;
     const hits = useSkill?.hitCount || 1;
+
+    // atk_down 折扣
+    const atkDownMul = getAtkDownMul(assist);
+    const origAtk = assist.atk;
+    if (atkDownMul < 1) assist.atk = Math.max(1, Math.floor(assist.atk * atkDownMul));
 
     if (hits > 1) {
       logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战施展【${skillName}】(${hits}段)!`, type: 'crit', actor: 'assist', ...snap() });
@@ -284,15 +422,19 @@ export function runDuoWaveBattle(
         logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战的攻击被${tgt.stats.name}闪避了`, type: 'normal', actor: 'assist', ...snap() });
         continue;
       }
-      tgt.stats.hp -= r.damage;
-      totalDealt += r.damage;
+      let dealt = r.damage;
+      const brittle = getBrittleBonus(tgt);
+      if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
+      tgt.stats.hp -= dealt;
+      totalDealt += dealt;
       const critText = r.isCrit ? '会心!' : '';
       if (hits > 1) {
-        logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${r.damage} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
+        logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
       } else {
-        logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战${useSkill ? `施展【${skillName}】` : ''}攻击了${tgt.stats.name}，${critText}造成 ${r.damage} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
+        logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战${useSkill ? `施展【${skillName}】` : ''}攻击了${tgt.stats.name}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
       }
     }
+    assist.atk = origAtk;
 
     // 子女吸血
     if (totalDealt > 0 && assist.lifesteal > 0 && assist.hp > 0) {
@@ -302,6 +444,13 @@ export function runDuoWaveBattle(
         assist.hp += actual;
         logs.push({ turn, text: `  ${assist.name}·助战【吸血】回复 ${actual} 点气血`, type: 'buff', actor: 'assist', ...snap() });
       }
+    }
+
+    // 助战血脉功法 debuff 施加（按 'player' 待遇 — 队友享受 dotAmpPct 等同身受？暂定按 'assist' 不享受玩家专属加成）
+    // 注：assist 当前继承 player 的 dotAmpPct 也不合适，Phase 2a 走最保守：用 'assist' 路径（无加成）
+    if (useSkill && (useSkill as any).debuff && tgt.alive) {
+      const d = (useSkill as any).debuff;
+      tryApplyDebuff(tgt, tgt.stats.name, d, assist.atk, turn, 'assist');
     }
 
     killCheck(tgt, turn, `${assist.name}·助战`);
@@ -340,9 +489,15 @@ export function runDuoWaveBattle(
     const hits = mSkill?.hitCount || 1;
     const tgtName = pick.isPlayer ? '你' : `${assist.name}·助战`;
 
+    // 怪物 atk_down 折扣
+    const atkDownMul = getAtkDownMul(m);
+    const origAtk = m.stats.atk;
+    if (atkDownMul < 1) m.stats.atk = Math.max(1, Math.floor(m.stats.atk * atkDownMul));
+
     if (hits > 1) {
       logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}施展了【${skillName}】(${hits}段) → ${tgtName}!`, type: 'crit', actor: 'monster', ...snap() });
     }
+    let anyHit = false;
     for (let h = 0; h < hits; h++) {
       const perMul = hits > 1 ? skillMul / hits : skillMul;
       const r = calculateDamage(m.stats, pick.ref, perMul, skillElem);
@@ -350,22 +505,31 @@ export function runDuoWaveBattle(
         logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}的攻击被${tgtName}闪避了`, type: 'normal', actor: 'monster', ...snap() });
         continue;
       }
-      pick.ref.hp -= r.damage;
+      // 目标 brittle → 受伤加深
+      let dealt = r.damage;
+      const brittle = getBrittleBonus(pick.ref);
+      if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
+      pick.ref.hp -= dealt;
+      anyHit = true;
       const critText = r.isCrit ? '会心!' : '';
       if (hits > 1) {
-        logs.push({ turn, text: `  第${h + 1}段 ${critText}对${tgtName}造成 ${r.damage} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'monster', ...snap() });
+        logs.push({ turn, text: `  第${h + 1}段 ${critText}对${tgtName}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'monster', ...snap() });
       } else {
-        logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}${mSkill ? '施展【' + skillName + '】' : ''}攻击了${tgtName}，${critText}造成 ${r.damage} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'monster', ...snap() });
+        logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}${mSkill ? '施展【' + skillName + '】' : ''}攻击了${tgtName}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'monster', ...snap() });
       }
       if (pick.ref.hp <= 0) {
         pick.ref.hp = 0;
-        if (pick.isPlayer) {
-          // 玩家死 → 战斗失败
-        } else {
+        if (!pick.isPlayer) {
           logs.push({ turn, text: `${assist.name}·助战倒下了`, type: 'death', actor: 'assist', ...snap() });
         }
         break;
       }
+    }
+    m.stats.atk = origAtk;
+
+    // 怪物技能 debuff → 玩家或助战（inflictor='monster' 不享受加成）
+    if (anyHit && mSkill?.debuff && pick.ref.hp > 0) {
+      tryApplyDebuff(pick.ref, tgtName, mSkill.debuff, m.stats.atk, turn, 'monster');
     }
   };
 
@@ -380,6 +544,50 @@ export function runDuoWaveBattle(
         finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: assist.hp <= 0,
       };
     }
+
+    // ==== 回合开始：DOT 结算 ====
+    // 玩家 DOT
+    const pDot = tickDebuffs(player, '你', turn);
+    if (pDot > 0) {
+      player.hp -= pDot;
+      if (player.hp <= 0) {
+        logs.push({ turn, text: '你在持续伤害中陨落了…3回合后原地复活', type: 'death', actor: 'player', ...snap() });
+        return {
+          won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats,
+          finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: !assist._isNoop && assist.hp <= 0,
+        };
+      }
+    }
+    // 助战 DOT
+    if (!assist._isNoop && assist.hp > 0) {
+      const aDot = tickDebuffs(assist, `${assist.name}·助战`, turn);
+      if (aDot > 0) {
+        assist.hp -= aDot;
+        if (assist.hp <= 0) {
+          assist.hp = 0;
+          logs.push({ turn, text: `${assist.name}·助战在持续伤害中倒下了`, type: 'death', actor: 'assist', ...snap() });
+        }
+      }
+    }
+    // 怪物 DOT
+    for (const m of aliveMonsters) {
+      const dot = tickDebuffs(m, m.stats.name, turn);
+      if (dot > 0) m.stats.hp -= dot;
+    }
+    // 击杀检查（DOT 致死）
+    for (const m of monsters) {
+      if (m.alive && m.stats.hp <= 0) {
+        m.alive = false;
+        const exp = Math.floor(m.template.exp * randFloat(0.9, 1.1));
+        const stone = rand(m.template.stone_min, m.template.stone_max);
+        totalExp += exp;
+        totalStone += stone;
+        monstersKilled.push({ template: m.template });
+        logs.push({ turn, text: `${m.stats.name}因持续伤害死亡，获得 ${exp} 修为、${stone} 灵石`, type: 'kill', ...snap() });
+      }
+    }
+    // DOT 已全部清场？
+    if (monsters.every(m => !m.alive)) break;
 
     // 行动顺序：按身法降序排（玩家、助战、所有存活怪物）
     interface Actor { kind: 'player' | 'assist' | 'monster'; spd: number; idx: number; }
@@ -399,12 +607,33 @@ export function runDuoWaveBattle(
       if (monsters.every(m => !m.alive)) break;
 
       if (ac.kind === 'player') {
-        if (player.hp > 0) playerAction(turn);
+        if (player.hp > 0) {
+          if (player.frozenTurns > 0) {
+            player.frozenTurns--;
+            logs.push({ turn, text: `  你被控制中,无法行动`, type: 'normal', actor: 'player', ...snap() });
+          } else {
+            playerAction(turn);
+          }
+        }
       } else if (ac.kind === 'assist') {
-        if (!assist._isNoop && assist.hp > 0) assistAction(turn);
+        if (!assist._isNoop && assist.hp > 0) {
+          if (assist.frozenTurns > 0) {
+            assist.frozenTurns--;
+            logs.push({ turn, text: `  ${assist.name}·助战被控制中,无法行动`, type: 'normal', actor: 'assist', ...snap() });
+          } else {
+            assistAction(turn);
+          }
+        }
       } else {
         const m = monsters[ac.idx];
-        if (m && m.alive && m.stats.hp > 0) monsterAction(m, turn);
+        if (m && m.alive && m.stats.hp > 0) {
+          if (m.frozenTurns > 0) {
+            m.frozenTurns--;
+            logs.push({ turn, text: `  ${m.stats.name}被控制中,无法行动`, type: 'normal', actor: 'monster', ...snap() });
+          } else {
+            monsterAction(m, turn);
+          }
+        }
       }
     }
 

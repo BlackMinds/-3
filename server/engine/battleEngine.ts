@@ -329,7 +329,7 @@ export interface EquippedSkillInfo {
   };
 }
 
-interface ActiveDebuff {
+export interface ActiveDebuff {
   type: DebuffType;
   remaining: number;
   damagePerTurn: number;
@@ -346,13 +346,13 @@ interface ActiveBuff {
 }
 
 // debuff 中文名
-const DEBUFF_NAMES: Record<string, string> = {
+export const DEBUFF_NAMES: Record<string, string> = {
   burn: '灼烧', poison: '中毒', bleed: '流血', freeze: '冻结',
   stun: '眩晕', slow: '减速', brittle: '脆弱', atk_down: '降攻',
   root: '束缚', silence: '封印',
 };
 
-function calcDotDamage(type: DebuffType, targetMaxHp: number, attackerAtk: number): number {
+export function calcDotDamage(type: DebuffType, targetMaxHp: number, attackerAtk: number): number {
   // 改读 balance.ts 常量，避免数值散落
   if (type === 'poison') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.poisonPerTurnAtkRatio));
   if (type === 'burn') return Math.max(1, Math.floor(attackerAtk * DOT_FORMULA.burnPerTurnAtkRatio));
@@ -366,7 +366,7 @@ const ELEMENT_ADVANTAGE: Record<string, string> = {
   metal: 'wood', wood: 'earth', earth: 'water', water: 'fire', fire: 'metal',
 };
 
-function getElementMultiplier(atk: string | null, def: string | null): number {
+export function getElementMultiplier(atk: string | null, def: string | null): number {
   if (!atk || !def) return 1.0;
   if (ELEMENT_ADVANTAGE[atk] === def) return BATTLE_FORMULA.elementCounterMul;
   if (ELEMENT_ADVANTAGE[def] === atk) return BATTLE_FORMULA.elementResistedMul;
