@@ -202,6 +202,7 @@ import { useCompanionStore, type CompanionDetail } from '~/stores/companion'
 import { useGameStore } from '~/stores/game'
 import { avatarDataUrl, type AvatarQuality, type AvatarPersonality } from '~/game/companionAvatar'
 import CompanionDateModal from './CompanionDateModal.vue'
+import { COMPANION_SEAL_PCT } from '~/shared/balance'
 
 const props = defineProps<{
   companionId: number
@@ -213,7 +214,7 @@ const detail = ref<CompanionDetail | null>(null)
 const giftPanelOpen = ref(false)
 const toast = ref('')
 
-const SEAL_STATS = [0, 3, 5, 8, 12, 15]
+const SEAL_STATS = COMPANION_SEAL_PCT.map(p => Math.round(p * 100))
 const SEAL_COSTS = [0, 0, 500, 2000, 8000, 30000]  // LV1 是结侣赠送
 const sealStat = computed(() => SEAL_STATS[detail.value?.sealLevel || 0] || 0)
 const canMarry = computed(() => detail.value && !detail.value.isOfficial && detail.value.intimacy >= 600)
