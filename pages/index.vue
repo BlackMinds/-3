@@ -494,6 +494,14 @@
                   <div class="equip-set-effect">{{ s.activeDesc }}</div>
                 </div>
               </div>
+              <!-- V5 灵根共鸣：穿戴装备的灵根前缀与角色灵根匹配的件数 → 3/5/7 +5%/10%/20% -->
+              <div v-if="lingenResonance.matched > 0" class="lingen-resonance-panel" :class="{ active: lingenResonance.bonus_pct > 0 }">
+                <span class="lingen-icon">{{ lingenResonance.charLingenSymbol }}</span>
+                <span class="lingen-label">灵根共鸣</span>
+                <span class="lingen-progress">{{ lingenResonance.matched }} / 7 件</span>
+                <span v-if="lingenResonance.bonus_pct > 0" class="lingen-bonus">攻防血神识 +{{ (lingenResonance.bonus_pct * 100).toFixed(0) }}%</span>
+                <span v-else class="lingen-bonus-pending">下一档需 {{ lingenResonance.nextThreshold }} 件</span>
+              </div>
               <div class="equip-grid">
             <div
               v-for="slotDef in equipSlots"
@@ -5096,6 +5104,14 @@ const mainStats = computed(() => {
   if (permDefPct > 0) defPctEntries.push({ source: '道果结晶', pct: permDefPct / 100 });
   if (permHpPct  > 0) hpPctEntries.push({  source: '道果结晶', pct: permHpPct  / 100 });
 
+  // 4e') V5 灵根共鸣（穿戴装备前缀匹配角色灵根 3/5/7 件 → 5%/10%/20%）
+  const lb = lingenResonance.value.bonus_pct;
+  if (lb > 0) {
+    atkPctEntries.push({ source: 'V5 灵根共鸣', pct: lb, note: `${lingenResonance.value.matched}/7 件匹配` });
+    defPctEntries.push({ source: 'V5 灵根共鸣', pct: lb });
+    hpPctEntries.push({  source: 'V5 灵根共鸣', pct: lb });
+  }
+
   // 4f) 宗门等级
   const sect = sectInfo.value;
   if (sect && sect.sect) {
@@ -8105,6 +8121,26 @@ function getV5Activation(equip: any) {
 const yuanshiCount = computed(() =>
   equipList.value.filter(e => e.slot && e.legendary_set_id === 'yuanshi_tianzun').length
 )
+
+// V5 灵根共鸣（穿戴装备前缀 = 角色灵根的件数 → 3/5/7 件分档加成）
+const _WUXING_SYMBOL_MAP: Record<string, string> = { metal: '⚪', wood: '🟢', water: '🔵', fire: '🔴', earth: '🟡' }
+const lingenResonance = computed(() => {
+  const charLingen = (gameStore.character as any)?.spiritual_root as string | undefined
+  if (!charLingen) return { matched: 0, bonus_pct: 0, nextThreshold: 3, charLingenSymbol: '' }
+  let matched = 0
+  for (const eq of equipList.value) {
+    if (!eq.slot || eq.equipment_version !== 5) continue
+    const arr: string[] = Array.isArray(eq.wuxing_prefix) ? eq.wuxing_prefix : (typeof eq.wuxing_prefix === 'string' ? [eq.wuxing_prefix] : [])
+    if (arr.includes(charLingen)) matched++
+  }
+  let bonus_pct = 0
+  let nextThreshold = 3
+  if (matched >= 7) { bonus_pct = 0.20; nextThreshold = 7 }
+  else if (matched >= 5) { bonus_pct = 0.10; nextThreshold = 7 }
+  else if (matched >= 3) { bonus_pct = 0.05; nextThreshold = 5 }
+  else nextThreshold = 3
+  return { matched, bonus_pct, nextThreshold, charLingenSymbol: _WUXING_SYMBOL_MAP[charLingen] || '' }
+})
 const wuxingChainStrip = computed(() => {
   // 按 slot_index 1~7 依次列前缀（缺位用 '空'）
   const map: Record<number, string[]> = {}
@@ -9814,6 +9850,31 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 6px;
 }
+/* V5 灵根共鸣状态条 */
+.lingen-resonance-panel {
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  border: 1px dashed rgba(160, 160, 180, 0.3);
+  border-radius: 4px;
+  background: rgba(60, 60, 80, 0.15);
+  color: var(--ink-light);
+}
+.lingen-resonance-panel.active {
+  border-color: rgba(120, 200, 255, 0.5);
+  background: linear-gradient(90deg, rgba(120, 200, 255, 0.10), rgba(255, 211, 94, 0.06));
+  box-shadow: 0 0 6px rgba(120, 200, 255, 0.2) inset;
+  color: #b8d8f0;
+}
+.lingen-icon { font-size: 14px; }
+.lingen-label { font-weight: 600; }
+.lingen-progress { color: var(--ink-faint); }
+.lingen-resonance-panel.active .lingen-progress { color: rgba(120, 200, 255, 0.7); }
+.lingen-bonus { color: #78c8ff; font-weight: 600; margin-left: auto; }
+.lingen-bonus-pending { color: var(--ink-faint); margin-left: auto; font-size: 11px; }
 .equip-set-active {
   padding: 8px 10px;
   background: linear-gradient(90deg, rgba(255, 211, 94, 0.10), rgba(120, 200, 255, 0.06));
