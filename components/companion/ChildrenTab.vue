@@ -11,7 +11,7 @@
           <img :src="childAvatarDataUrl(battlingChild.gender, battlingChild.aptitude)" :alt="battlingChild.name" />
           <div>
             <div class="bc-name">{{ battlingChild.name }}（{{ battlingChild.stageName }} Lv.{{ battlingChild.level }}）</div>
-            <div class="bc-stats">攻 {{ battlingChild.atk }} 防 {{ battlingChild.def }} 速 {{ battlingChild.spd }}</div>
+            <div class="bc-stats">攻 {{ battlingChild.atk }} 防 {{ battlingChild.def }} 身法 {{ battlingChild.spd }}</div>
           </div>
           <button class="btn-secondary" @click="onCancelBattling">取消助战</button>
         </div>
@@ -39,7 +39,7 @@
             <div class="cc-info">
               {{ c.stageName }} · Lv.{{ c.level }} · {{ rootName(c.spiritualRoot) }}灵根
             </div>
-            <div class="cc-stats">攻 {{ c.atk }} · 防 {{ c.def }} · 血 {{ c.maxHp }} · 速 {{ c.spd }}</div>
+            <div class="cc-stats">攻 {{ c.atk }} · 防 {{ c.def }} · 血 {{ c.maxHp }} · 身法 {{ c.spd }}</div>
           </div>
         </div>
       </div>

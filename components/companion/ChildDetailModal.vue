@@ -23,7 +23,7 @@
           <div class="row"><span class="lbl">气血</span><span class="val">{{ detail.maxHp }}</span></div>
           <div class="row"><span class="lbl">攻击</span><span class="val">{{ detail.atk }}</span></div>
           <div class="row"><span class="lbl">防御</span><span class="val">{{ detail.def }}</span></div>
-          <div class="row"><span class="lbl">速度</span><span class="val">{{ detail.spd }}</span></div>
+          <div class="row"><span class="lbl">身法</span><span class="val">{{ detail.spd }}</span></div>
           <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate) }}</span></div>
           <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg) }}</span></div>
           <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge) }}</span></div>
@@ -313,7 +313,7 @@ function pct(v: any): string {
 }
 
 function statLabel(s: string): string {
-  return ({ atk: '攻击', def: '防御', max_hp: '气血', spd: '速度', crit_rate: '会心率', crit_dmg: '会心伤害' } as any)[s] || s
+  return ({ atk: '攻击', def: '防御', max_hp: '气血', spd: '身法', crit_rate: '会心率', crit_dmg: '会心伤害' } as any)[s] || s
 }
 
 async function equipItem(id: number) {
