@@ -118,6 +118,11 @@ export function generateChildName(
 
 // 资质 → 属性倍率（参考 5.5.2）
 const APTITUDE_MULTIPLIER = [1.0, 1.3, 1.6, 2.0, 2.5, 3.0, 5.0]
+// 资质 → 等级上限（design 5.5.2）：凡 50 / 下 80 / 中 100 / 上 130 / 极 160 / 仙 200 / 圣 ∞（实际 999 兜底）
+export const APTITUDE_LEVEL_CAP = [50, 80, 100, 130, 160, 200, 999]
+export function getChildLevelCap(aptitude: number): number {
+  return APTITUDE_LEVEL_CAP[Math.min(Math.max(aptitude, 0), 6)] || 100
+}
 // 阶段 → 出战属性百分比
 const STAGE_MULTIPLIER: Record<string, number> = {
   infant: 0,        // 婴幼期不能出战
@@ -332,7 +337,8 @@ export async function feedChild(
     const newExp = child.level_exp + expGain
     let newLevel = child.level
     let remainExp = newExp
-    while (remainExp >= newLevel * 100 && newLevel < 100) {  // 简化升级公式：lvl * 100 经验
+    const levelCap = getChildLevelCap(child.aptitude)  // 按资质走 50/80/100/130/160/200/999
+    while (remainExp >= newLevel * 100 && newLevel < levelCap) {  // 简化升级公式：lvl * 100 经验
       remainExp -= newLevel * 100
       newLevel++
     }

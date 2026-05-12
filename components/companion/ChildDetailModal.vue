@@ -196,8 +196,13 @@ const HERB_NAMES: Record<string, string> = {
   spirit_grass: '仙灵草',
 }
 
-const canFeed = computed(() => detail.value && detail.value.feedCountToday < detail.value.feedDailyMax && detail.value.level < 100 && !detail.value.hasLeftHome)
-const canBattle = computed(() => detail.value && detail.value.level >= 31 && !detail.value.hasLeftHome && detail.value.level < 100)
+// 等级上限按资质（凡 50 / 下 80 / 中 100 / 上 130 / 极 160 / 仙 200 / 圣 999）
+const APTITUDE_LEVEL_CAP = [50, 80, 100, 130, 160, 200, 999]
+const childLevelCap = computed(() => APTITUDE_LEVEL_CAP[detail.value?.aptitude || 0] || 100)
+const canFeed = computed(() => detail.value && detail.value.feedCountToday < detail.value.feedDailyMax && detail.value.level < childLevelCap.value && !detail.value.hasLeftHome)
+// 成年弹窗按"已达资质上限"判定（凡品 lv50 = 成年）
+const isAdult = computed(() => detail.value && detail.value.level >= childLevelCap.value)
+const canBattle = computed(() => detail.value && detail.value.level >= 31 && !detail.value.hasLeftHome && !isAdult.value)
 const canReroll = computed(() => detail.value && !detail.value.hasLeftHome)
 
 const APTITUDE_NAMES = ['凡品', '下品', '中品', '上品', '极品', '仙品', '圣品']
@@ -217,7 +222,7 @@ function formatVisitDate(iso: string | null): string {
 const comeOfAgeDismissed = ref(false)
 const showComeOfAge = computed(() =>
   detail.value &&
-  detail.value.level >= 100 &&
+  detail.value.level >= childLevelCap.value &&
   !detail.value.hasLeftHome &&
   !comeOfAgeDismissed.value
 )

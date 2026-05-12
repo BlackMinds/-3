@@ -61,8 +61,11 @@ export function generateChildEquipment(slot: ChildSlot, rarity: ChildRarity, chi
     }
   }
 
-  // 副词条：紫品+ 给 1 条，金品+ 给 2 条，红品 给 3 条
-  const subCount = rarity === 'red' ? 3 : rarity === 'gold' ? 2 : rarity === 'purple' ? 1 : 0
+  // 副词条数量按品质平铺（2026-05-12 小夏决策）：凡 1 / 灵 2 / 玄 3 / 地 4 / 天 5 / 仙 6
+  const SUB_COUNT_BY_RARITY: Record<ChildRarity, number> = {
+    white: 1, green: 2, blue: 3, purple: 4, gold: 5, red: 6,
+  }
+  const subCount = SUB_COUNT_BY_RARITY[rarity] || 0
   const sub_stats: Array<{ stat: string; value: number }> = []
   const candPool = ['atk', 'def', 'max_hp', 'spd', 'crit_rate', 'crit_dmg']
   for (let i = 0; i < subCount; i++) {
