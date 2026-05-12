@@ -10,6 +10,7 @@ import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats, EQUIP_SELL_PRICES, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
 import { tryRollEquipmentV5DropSpec } from '~/server/utils/equipment-v5'
+import { computeV5EquipmentDelta } from '~/server/utils/equipmentAggregateV5'
 import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
@@ -479,8 +480,38 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
     else if (stat === 'EARTH_DMG') elementDmg.earth += value
   }
 
+  // === V5 装备聚合（design/system-equipment-v5-0-2.json）— 与 V4 并存 ===
+  const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null)
+  atk += v5Delta.atk;  def += v5Delta.def;  maxHp += v5Delta.maxHp;  spd += v5Delta.spd;  spirit += v5Delta.spirit
+  critRate += v5Delta.critRate;  critDmg += v5Delta.critDmg;  lifesteal += v5Delta.lifesteal;  dodge += v5Delta.dodge
+  armorPen += v5Delta.armorPen;  accuracy += v5Delta.accuracy
+  equipAtkPct += v5Delta.equipAtkPct;  equipDefPct += v5Delta.equipDefPct;  equipHpPct += v5Delta.equipHpPct;  equipSpdPct += v5Delta.equipSpdPct
+  weaponSpiritPct += v5Delta.weaponSpiritPct
+  equipReflectPct += v5Delta.equipReflectPct
+  elementDmg.metal += v5Delta.elementDmg.metal
+  elementDmg.wood  += v5Delta.elementDmg.wood
+  elementDmg.water += v5Delta.elementDmg.water
+  elementDmg.fire  += v5Delta.elementDmg.fire
+  elementDmg.earth += v5Delta.elementDmg.earth
+  for (const eff of v5Delta.legendarySetEffects) {
+    const e = eff.effect as any
+    if (typeof e.atk_pct === 'number') nonPassiveAtkPct += e.atk_pct
+    if (typeof e.def_pct === 'number') nonPassiveDefPct += e.def_pct
+    if (typeof e.hp_pct === 'number')  nonPassiveHpPct  += e.hp_pct
+    if (typeof e.spd_pct === 'number') nonPassiveSpdPct += e.spd_pct
+    if (typeof e.spirit_pct === 'number' && e.spirit_pct > 0) spirit = Math.floor(spirit * (1 + e.spirit_pct))
+  }
+  if (v5Delta.lingenBonusPct > 0) {
+    nonPassiveAtkPct += v5Delta.lingenBonusPct
+    nonPassiveDefPct += v5Delta.lingenBonusPct
+    nonPassiveHpPct  += v5Delta.lingenBonusPct
+    if (spirit > 0) spirit = Math.floor(spirit * (1 + v5Delta.lingenBonusPct))
+  }
+  // === V5 装备聚合结束 ===
+
   for (const eq of equipRows) {
     if (!eq.slot) continue
+    if (eq.equipment_version === 5) continue  // V5 装备已由 computeV5EquipmentDelta 聚合
     if (eq.set_id) {
       equipSetCounts[eq.set_id] = (equipSetCounts[eq.set_id] || 0) + 1
     }
@@ -945,6 +976,15 @@ export default defineEventHandler(async (event) => {
           char._child_battle_def = addDef
           char._child_battle_hp = addHp
           char._child_talents_count = talents.length
+          // 保存助战提示文案，待 runWaveBattle 后插入 logs 顶部
+          const { rows: nameRows } = await pool.query(
+            "SELECT name, aptitude, level FROM children WHERE id = $1",
+            [char.battling_child_id]
+          )
+          if (nameRows[0]) {
+            const APT_NAMES = ['凡品','下品','中品','上品','极品','仙品','圣品']
+            char._child_battle_label = `${nameRows[0].name}·${APT_NAMES[nameRows[0].aptitude] || ''} Lv.${nameRows[0].level}`
+          }
 
           // 子女二级属性（裸 + 装备）→ 玩家本体（cap 70%，按阶段 multiplier 缩放）
           // crit_dmg 是"增量"加到玩家身上（如子女 1.5 → 加 0.5），不是覆盖
@@ -1126,6 +1166,20 @@ export default defineEventHandler(async (event) => {
       }
 
       const result = runWaveBattle(playerStats, monsterList, equippedSkills)
+
+      // 助战子女提示：在战斗 logs 顶部插入 1 条
+      if ((char as any)._child_battle_label) {
+        const addA = (char as any)._child_battle_atk || 0
+        const addD = (char as any)._child_battle_def || 0
+        const addH = (char as any)._child_battle_hp || 0
+        const talentN = (char as any)._child_talents_count || 0
+        result.logs.unshift({
+          turn: 0,
+          text: `⚔ 助战中：${(char as any)._child_battle_label}（攻 +${addA} / 防 +${addD} / 血 +${addH}${talentN ? ` / 天赋 ×${talentN}` : ''}）`,
+          type: 'system',
+          playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
+        } as any)
+      }
 
       const expMul = 1 + (expBonusPercent || 0) / 100
       const catchUpMul = getCatchUpMultiplier(char.level || 1, avgLevel)
