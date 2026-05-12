@@ -112,11 +112,16 @@ export interface BattlerStats {
 export interface BattleLogEntry {
   turn: number;
   text: string;
-  type: 'normal' | 'crit' | 'kill' | 'loot' | 'death' | 'system' | 'dot' | 'buff';
+  type: 'normal' | 'crit' | 'kill' | 'loot' | 'death' | 'system' | 'dot' | 'buff' | 'set';
   playerHp?: number;
   playerMaxHp?: number;
   monsterHp?: number;
   monsterMaxHp?: number;
+  monstersHp?: number[];
+  // 真双人战斗（duoBattleEngine）：每条 log 携带助战子女实时血量
+  assistHp?: number;
+  assistMaxHp?: number;
+  actor?: 'player' | 'assist' | 'monster';
 }
 
 export interface MonsterBattleInfo {

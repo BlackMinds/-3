@@ -484,6 +484,16 @@ export const useGameStore = defineStore('game', () => {
     if (log.monsterHp !== undefined) displayMonsterHp.value = Math.max(0, log.monsterHp)
     if (log.monsterMaxHp !== undefined) displayMonsterMaxHp.value = log.monsterMaxHp
     if (log.monstersHp !== undefined) waveMonsterHps.value = log.monstersHp.map(h => Math.max(0, h))
+    // 真双人战斗：duoBattleEngine 在每条 log 里都带 assistHp，实时同步血条
+    const dl: any = log
+    if (dl.assistHp !== undefined && assistChildBattle.value) {
+      const newHp = Math.max(0, dl.assistHp)
+      assistChildBattle.value = {
+        ...assistChildBattle.value,
+        hp: newHp,
+        fainted: newHp <= 0,
+      }
+    }
   }
 
   function drainLogQueue() {

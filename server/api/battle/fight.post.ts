@@ -1,5 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { generateMonsterStats, buildEquippedSkillInfo, runWaveBattle, buildMonsterSkillDescriptions, makeHealerTemplate, applyInnateMainToAwaken, type BattlerStats, type MonsterTemplate } from '~/server/engine/battleEngine'
+import { runDuoWaveBattle } from '~/server/engine/duoBattleEngine'
+import { CHILD_SKILL_MAP } from '~/server/engine/childSkillData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { generateEquipName } from '~/server/engine/equipNameData'
@@ -493,6 +495,18 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   elementDmg.water += v5Delta.elementDmg.water
   elementDmg.fire  += v5Delta.elementDmg.fire
   elementDmg.earth += v5Delta.elementDmg.earth
+  // V5 专属 stat → 接到对应 V4 战斗字段
+  equipDotDmgPct += v5Delta.dotDmgPct
+  lifesteal += v5Delta.lifestealAllPct
+  equipResist.metal += v5Delta.resistAllPct
+  equipResist.wood  += v5Delta.resistAllPct
+  equipResist.water += v5Delta.resistAllPct
+  equipResist.fire  += v5Delta.resistAllPct
+  equipResist.earth += v5Delta.resistAllPct
+  // dmgReductionPct 走 awaken.damageReduction（cap 0.20，与附灵口径一致）
+  if (v5Delta.dmgReductionPct > 0) {
+    awaken.damageReduction = Math.min(0.20, (awaken.damageReduction || 0) + v5Delta.dmgReductionPct)
+  }
   for (const eff of v5Delta.legendarySetEffects) {
     const e = eff.effect as any
     if (typeof e.atk_pct === 'number') nonPassiveAtkPct += e.atk_pct
@@ -500,6 +514,10 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
     if (typeof e.hp_pct === 'number')  nonPassiveHpPct  += e.hp_pct
     if (typeof e.spd_pct === 'number') nonPassiveSpdPct += e.spd_pct
     if (typeof e.spirit_pct === 'number' && e.spirit_pct > 0) spirit = Math.floor(spirit * (1 + e.spirit_pct))
+    // 元始天尊 3 件套：神通伤害 +10%（skill_dmg_pct）；走 mainSkillMultBonus 通道（与灵戒附灵同口径）
+    if (typeof e.skill_dmg_pct === 'number' && e.skill_dmg_pct > 0) {
+      awaken.mainSkillMultBonus = (awaken.mainSkillMultBonus || 0) + e.skill_dmg_pct
+    }
   }
   if (v5Delta.lingenBonusPct > 0) {
     nonPassiveAtkPct += v5Delta.lingenBonusPct
@@ -908,7 +926,7 @@ export default defineEventHandler(async (event) => {
     // 子女装备（design 5.6.2）：is_equipped 的 child_equipment 主属性 + 副词条加到子女自身
     if (char.battling_child_id) {
       const { rows: childRows } = await pool.query(
-        'SELECT atk, def, max_hp, spd, stage, awakened_talents, crit_rate, crit_dmg, dodge, lifesteal, spirit, resist_ctrl FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
+        'SELECT atk, def, max_hp, spd, stage, awakened_talents, crit_rate, crit_dmg, dodge, lifesteal, spirit, resist_ctrl, spiritual_root, learned_skills FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
         [char.battling_child_id, char.id]
       )
       if (childRows[0]) {
@@ -961,64 +979,79 @@ export default defineEventHandler(async (event) => {
           const buffedHp = Math.floor((c.max_hp + eqHp) * (1 + hpPct / 100))
           const buffedSpd = Math.floor((c.spd + eqSpd) * (1 + spdPct / 100))
 
+          // 真双人战斗：构造助战子女独立的 BattlerStats（不再 merge 到玩家）
+          // 阶段缩放 + cap 70% 防止子女比玩家强太多
           const cap = 0.70
-          // 子女实际贡献 = min(子女属性(含天赋) × 阶段, 父母属性 × cap)
-          const addAtk = Math.floor(Math.min(buffedAtk * stageMul, char.atk * cap))
-          const addDef = Math.floor(Math.min(buffedDef * stageMul, char.def * cap))
-          const addHp = Math.floor(Math.min(buffedHp * stageMul, char.max_hp * cap))
-          const addSpd = Math.floor(Math.min(buffedSpd * stageMul, char.spd * cap))
-          char.atk += addAtk
-          char.def += addDef
-          char.max_hp += addHp
-          char.hp += addHp
-          char.spd += addSpd
-          char._child_battle_atk = addAtk
-          char._child_battle_def = addDef
-          char._child_battle_hp = addHp
-          char._child_talents_count = talents.length
-          // 保存助战子女完整数据：标签 + 战斗血量 + 战斗 atk（含 装备+天赋 实际加成）
-          const { rows: nameRows } = await pool.query(
-            "SELECT name, gender, aptitude, level FROM children WHERE id = $1",
-            [char.battling_child_id]
-          )
-          if (nameRows[0]) {
-            const APT_NAMES = ['凡品','下品','中品','上品','极品','仙品','圣品']
-            char._child_battle_label = `${nameRows[0].name}·${APT_NAMES[nameRows[0].aptitude] || ''} Lv.${nameRows[0].level}`
-            char._child_battle_data = {
-              name: nameRows[0].name,
-              gender: nameRows[0].gender,
-              aptitude: nameRows[0].aptitude,
-              aptitudeName: APT_NAMES[nameRows[0].aptitude] || '凡品',
-              level: nameRows[0].level,
-              // 子女装备+天赋加成后的实际战斗属性（用于 UI 血条 / 攻击展示）
-              atk: buffedAtk,
-              def: buffedDef,
-              maxHp: buffedHp,
-              spd: buffedSpd,
-            }
-          }
+          const assistAtk = Math.floor(Math.min(buffedAtk * stageMul, char.atk * cap))
+          const assistDef = Math.floor(Math.min(buffedDef * stageMul, char.def * cap))
+          const assistHp = Math.floor(Math.min(buffedHp * stageMul, char.max_hp * cap))
+          const assistSpd = Math.floor(Math.min(buffedSpd * stageMul, char.spd * cap))
 
-          // 子女二级属性（裸 + 装备）→ 玩家本体（cap 70%，按阶段 multiplier 缩放）
-          // crit_dmg 是"增量"加到玩家身上（如子女 1.5 → 加 0.5），不是覆盖
-          const cap2 = 0.70
+          // 二级属性：cap 后取
           const childCritR = Number(c.crit_rate || 0) + eqCritR
           const childCritD = Number(c.crit_dmg || 1) + eqCritD
           const childDodge = Number(c.dodge || 0) + eqDodge
           const childLs    = Number(c.lifesteal || 0) + eqLs
           const childRctrl = Number(c.resist_ctrl || 0) + eqRctrl
           const childSpirit = (c.spirit || 0) + eqSpirit
-          const addCritRate  = Math.min(childCritR * stageMul, Number(char.crit_rate || 0)  * cap2)
-          const addCritDmgInc = Math.min(Math.max(0, childCritD - 1) * stageMul, Math.max(0, Number(char.crit_dmg || 1) - 1) * cap2)
-          const addDodge     = Math.min(childDodge * stageMul, Number(char.dodge || 0)      * cap2)
-          const addLifesteal = Math.min(childLs    * stageMul, Number(char.lifesteal || 0)  * cap2)
-          const addSpirit    = Math.floor(Math.min(childSpirit * stageMul, (char.spirit || 0) * cap2))
-          const addResistCtrl = Math.min(childRctrl * stageMul, Number(char.resist_ctrl || 0) * cap2)
-          char.crit_rate  = Number(char.crit_rate || 0)  + addCritRate
-          char.crit_dmg   = Number(char.crit_dmg || 1)   + addCritDmgInc
-          char.dodge      = Number(char.dodge || 0)      + addDodge
-          char.lifesteal  = Number(char.lifesteal || 0)  + addLifesteal
-          char.spirit     = (char.spirit || 0) + addSpirit
-          char.resist_ctrl = Number(char.resist_ctrl || 0) + addResistCtrl
+          const assistCritRate = Math.min(childCritR * stageMul, Number(char.crit_rate || 0) * cap)
+          const assistCritDmg  = Math.max(1, 1 + Math.min(Math.max(0, childCritD - 1) * stageMul, Math.max(0, Number(char.crit_dmg || 1) - 1) * cap))
+          const assistDodgeV   = Math.min(childDodge * stageMul, Number(char.dodge || 0) * cap)
+          const assistLs       = Math.min(childLs * stageMul, Number(char.lifesteal || 0) * cap)
+          const assistRctrl    = Math.min(childRctrl * stageMul, Number(char.resist_ctrl || 0) * cap)
+          const assistSpirit   = Math.floor(Math.min(childSpirit * stageMul, (char.spirit || 0) * cap))
+
+          // 获取标签信息
+          const { rows: nameRows } = await pool.query(
+            "SELECT name, gender, aptitude, level FROM children WHERE id = $1",
+            [char.battling_child_id]
+          )
+          const APT_NAMES = ['凡品','下品','中品','上品','极品','仙品','圣品']
+          const nm = nameRows[0] || { name: '助战', gender: 'male', aptitude: 0, level: 1 }
+          const aptName = APT_NAMES[nm.aptitude] || '凡品'
+
+          // 解析血脉功法（learned_skills 中 type='innate'）
+          const learned = Array.isArray(c.learned_skills) ? c.learned_skills : []
+          const innateRow = learned.find((s: any) => s.type === 'innate' || s.type === 'divine')
+          const innateSkill = innateRow ? (CHILD_SKILL_MAP as any)[innateRow.skill_id] || null : null
+
+          // 构造 BattlerStats（duoBattleEngine 用）
+          char._duo_assist_stats = {
+            name: nm.name,
+            maxHp: assistHp,
+            hp: assistHp,
+            atk: assistAtk,
+            def: assistDef,
+            spd: assistSpd,
+            crit_rate: assistCritRate,
+            crit_dmg: assistCritDmg,
+            dodge: assistDodgeV,
+            lifesteal: assistLs,
+            element: c.spiritual_root || null,
+            resists: { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: assistRctrl },
+            spirit: assistSpirit,
+            armorPen: 0,
+            accuracy: 0,
+          }
+          char._duo_assist_skill = innateSkill
+
+          // 兼容旧 UI：保留 _child_battle_data + _child_battle_label
+          char._child_battle_atk = assistAtk
+          char._child_battle_def = assistDef
+          char._child_battle_hp = assistHp
+          char._child_talents_count = talents.length
+          char._child_battle_label = `${nm.name}·${aptName} Lv.${nm.level}`
+          char._child_battle_data = {
+            name: nm.name,
+            gender: nm.gender,
+            aptitude: nm.aptitude,
+            aptitudeName: aptName,
+            level: nm.level,
+            atk: assistAtk,
+            def: assistDef,
+            maxHp: assistHp,
+            spd: assistSpd,
+          }
         }
       }
     }
@@ -1177,7 +1210,12 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      const result = runWaveBattle(playerStats, monsterList, equippedSkills)
+      // 助战子女在场 → 走真双人引擎；否则走原有单人引擎
+      const duoAssistStats = (char as any)._duo_assist_stats
+      const duoAssistSkill = (char as any)._duo_assist_skill
+      const result = duoAssistStats
+        ? runDuoWaveBattle(playerStats, { stats: duoAssistStats, innateSkill: duoAssistSkill }, monsterList, equippedSkills)
+        : runWaveBattle(playerStats, monsterList, equippedSkills)
 
       // 助战子女提示：在战斗 logs 顶部插入 1 条
       if ((char as any)._child_battle_label) {
@@ -1478,15 +1516,15 @@ export default defineEventHandler(async (event) => {
       let assistChild: any = null
       const childData = (char as any)._child_battle_data
       if (childData) {
-        // 扫 logs 算玩家挨打总量：取 playerHp 出现过的最低值 vs maxHp 差值
-        let minHp = char.max_hp
-        for (const lg of result.logs) {
-          const ph = (lg as any).playerHp
-          if (typeof ph === 'number' && ph >= 0 && ph < minHp) minHp = ph
-        }
-        const playerDmgTaken = Math.max(0, char.max_hp - minHp)
-        const childHpLost = Math.min(childData.maxHp, Math.floor(playerDmgTaken * 0.3))
-        const childHpAfter = Math.max(0, childData.maxHp - childHpLost)
+        // 真双人战斗：从 result.finalAssistHp 直接取（duoBattleEngine 跑出来的真实结果）
+        const duoResult: any = result as any
+        const hasFinalHp = typeof duoResult.finalAssistHp === 'number'
+        const childHpAfter = hasFinalHp
+          ? Math.max(0, duoResult.finalAssistHp)
+          : childData.maxHp // 兜底：单人引擎不跟踪子女
+        const fainted = hasFinalHp
+          ? !!duoResult.assistFainted
+          : false
         assistChild = {
           name: childData.name,
           gender: childData.gender,
@@ -1496,7 +1534,7 @@ export default defineEventHandler(async (event) => {
           hp: childHpAfter,
           maxHp: childData.maxHp,
           atk: childData.atk,
-          fainted: childHpAfter === 0,
+          fainted,
         }
       }
       battles.push({
