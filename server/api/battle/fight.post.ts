@@ -940,10 +940,19 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 助战子女 buff：按 cap 70% 把子女属性加到玩家（design 5.6.1 简化版）
+    // 助战子女预算：查询 + 累加装备/天赋，先算出 buffed 值（cap 在 batch 循环里用 playerStats 做）
     // 子女阶段 multiplier：少年 0.3 / 青年 0.6 / 成年 1.0
-    // 子女天赋（design 5.6.3）：先按 PassiveEffect 放大子女自身属性，再走 cap
+    // 子女天赋（design 5.6.3）：PassiveEffect 放大子女自身属性
     // 子女装备（design 5.6.2）：is_equipped 的 child_equipment 主属性 + 副词条加到子女自身
+    let _assistPrep: {
+      buffedAtk: number; buffedDef: number; buffedHp: number; buffedSpd: number
+      stageMul: number
+      childCritR: number; childCritD: number; childDodge: number
+      childLs: number; childRctrl: number; childSpirit: number
+      spiritualRoot: string | null
+      name: string; gender: string; aptitude: number; aptName: string; level: number
+      talentsCount: number; innateSkill: any
+    } | null = null
     if (char.battling_child_id) {
       const { rows: childRows } = await pool.query(
         'SELECT atk, def, max_hp, spd, stage, awakened_talents, crit_rate, crit_dmg, dodge, lifesteal, spirit, resist_ctrl, spiritual_root, learned_skills FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
@@ -954,7 +963,6 @@ export default defineEventHandler(async (event) => {
         const STAGE_MUL: Record<string, number> = { youth: 0.3, adult_youth: 0.6, adult: 1.0 }
         const stageMul = STAGE_MUL[c.stage] || 0
         if (stageMul > 0) {
-          // 天赋 PassiveEffect 应用于子女自身（仅基础 stat percent，更复杂的 dot/dodge/revive 暂不接）
           const { CHILD_TALENT_MAP } = await import('~/server/engine/childTalentData')
           const talents = Array.isArray(c.awakened_talents) ? c.awakened_talents : []
           let atkPct = 0, defPct = 0, hpPct = 0, spdPct = 0
@@ -967,7 +975,6 @@ export default defineEventHandler(async (event) => {
             hpPct += e.HP_percent || 0
             spdPct += e.SPD_percent || 0
           }
-          // 子女装备主属性 + 副词条
           const { rows: equipRows } = await pool.query(
             'SELECT primary_stat, sub_stats FROM child_equipment WHERE child_id = $1 AND is_equipped = TRUE',
             [char.battling_child_id]
@@ -994,83 +1001,34 @@ export default defineEventHandler(async (event) => {
             addStat(er.primary_stat)
             for (const s of (Array.isArray(er.sub_stats) ? er.sub_stats : [])) addStat(s)
           }
-          const buffedAtk = Math.floor((c.atk + eqAtk) * (1 + atkPct / 100))
-          const buffedDef = Math.floor((c.def + eqDef) * (1 + defPct / 100))
-          const buffedHp = Math.floor((c.max_hp + eqHp) * (1 + hpPct / 100))
-          const buffedSpd = Math.floor((c.spd + eqSpd) * (1 + spdPct / 100))
-
-          // 真双人战斗：构造助战子女独立的 BattlerStats（不再 merge 到玩家）
-          // 阶段缩放 + cap 70% 防止子女比玩家强太多
-          const cap = 0.70
-          const assistAtk = Math.floor(Math.min(buffedAtk * stageMul, char.atk * cap))
-          const assistDef = Math.floor(Math.min(buffedDef * stageMul, char.def * cap))
-          const assistHp = Math.floor(Math.min(buffedHp * stageMul, char.max_hp * cap))
-          const assistSpd = Math.floor(Math.min(buffedSpd * stageMul, char.spd * cap))
-
-          // 二级属性：cap 后取
-          const childCritR = Number(c.crit_rate || 0) + eqCritR
-          const childCritD = Number(c.crit_dmg || 1) + eqCritD
-          const childDodge = Number(c.dodge || 0) + eqDodge
-          const childLs    = Number(c.lifesteal || 0) + eqLs
-          const childRctrl = Number(c.resist_ctrl || 0) + eqRctrl
-          const childSpirit = (c.spirit || 0) + eqSpirit
-          const assistCritRate = Math.min(childCritR * stageMul, Number(char.crit_rate || 0) * cap)
-          const assistCritDmg  = Math.max(1, 1 + Math.min(Math.max(0, childCritD - 1) * stageMul, Math.max(0, Number(char.crit_dmg || 1) - 1) * cap))
-          const assistDodgeV   = Math.min(childDodge * stageMul, Number(char.dodge || 0) * cap)
-          const assistLs       = Math.min(childLs * stageMul, Number(char.lifesteal || 0) * cap)
-          const assistRctrl    = Math.min(childRctrl * stageMul, Number(char.resist_ctrl || 0) * cap)
-          const assistSpirit   = Math.floor(Math.min(childSpirit * stageMul, (char.spirit || 0) * cap))
-
-          // 获取标签信息
           const { rows: nameRows } = await pool.query(
             "SELECT name, gender, aptitude, level FROM children WHERE id = $1",
             [char.battling_child_id]
           )
           const APT_NAMES = ['凡品','下品','中品','上品','极品','仙品','圣品']
           const nm = nameRows[0] || { name: '助战', gender: 'male', aptitude: 0, level: 1 }
-          const aptName = APT_NAMES[nm.aptitude] || '凡品'
-
-          // 解析血脉功法（learned_skills 中 type='innate'）
           const learned = Array.isArray(c.learned_skills) ? c.learned_skills : []
           const innateRow = learned.find((s: any) => s.type === 'innate' || s.type === 'divine')
-          const innateSkill = innateRow ? (CHILD_SKILL_MAP as any)[innateRow.skill_id] || null : null
-
-          // 构造 BattlerStats（duoBattleEngine 用）
-          char._duo_assist_stats = {
-            name: nm.name,
-            maxHp: assistHp,
-            hp: assistHp,
-            atk: assistAtk,
-            def: assistDef,
-            spd: assistSpd,
-            crit_rate: assistCritRate,
-            crit_dmg: assistCritDmg,
-            dodge: assistDodgeV,
-            lifesteal: assistLs,
-            element: c.spiritual_root || null,
-            resists: { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: assistRctrl },
-            spirit: assistSpirit,
-            armorPen: 0,
-            accuracy: 0,
-          }
-          char._duo_assist_skill = innateSkill
-
-          // 兼容旧 UI：保留 _child_battle_data + _child_battle_label
-          char._child_battle_atk = assistAtk
-          char._child_battle_def = assistDef
-          char._child_battle_hp = assistHp
-          char._child_talents_count = talents.length
-          char._child_battle_label = `${nm.name}·${aptName} Lv.${nm.level}`
-          char._child_battle_data = {
+          _assistPrep = {
+            buffedAtk: Math.floor((c.atk + eqAtk) * (1 + atkPct / 100)),
+            buffedDef: Math.floor((c.def + eqDef) * (1 + defPct / 100)),
+            buffedHp:  Math.floor((c.max_hp + eqHp) * (1 + hpPct / 100)),
+            buffedSpd: Math.floor((c.spd + eqSpd) * (1 + spdPct / 100)),
+            stageMul,
+            childCritR:  Number(c.crit_rate || 0) + eqCritR,
+            childCritD:  Number(c.crit_dmg || 1) + eqCritD,
+            childDodge:  Number(c.dodge || 0) + eqDodge,
+            childLs:     Number(c.lifesteal || 0) + eqLs,
+            childRctrl:  Number(c.resist_ctrl || 0) + eqRctrl,
+            childSpirit: (c.spirit || 0) + eqSpirit,
+            spiritualRoot: c.spiritual_root || null,
             name: nm.name,
             gender: nm.gender,
             aptitude: nm.aptitude,
-            aptitudeName: aptName,
+            aptName: APT_NAMES[nm.aptitude] || '凡品',
             level: nm.level,
-            atk: assistAtk,
-            def: assistDef,
-            maxHp: assistHp,
-            spd: assistSpd,
+            talentsCount: talents.length,
+            innateSkill: innateRow ? (CHILD_SKILL_MAP as any)[innateRow.skill_id] || null : null,
           }
         }
       }
@@ -1185,6 +1143,48 @@ export default defineEventHandler(async (event) => {
       const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows)
       // v3.9: 把主修内蕴被动叠加进 awaken（与 v1.3 灵戒同字段共池，引擎复用 mainSkill* 钩子）
       applyInnateMainToAwaken((playerStats as any).awaken, equippedSkills.activeSkill)
+
+      // 助战子女 cap + 组装：cap 用 playerStats（运行时合成）而非 char.* (DB 基础值)
+      // 否则子女 50w 真实血量会被 cap 到 char.max_hp(=500)×0.7=350 这种小值
+      if (_assistPrep) {
+        const a = _assistPrep
+        const cap = 0.70
+        const psCritR = Number((playerStats as any).crit_rate || 0)
+        const psCritD = Number((playerStats as any).crit_dmg || 1)
+        const psDodge = Number((playerStats as any).dodge || 0)
+        const psLs    = Number((playerStats as any).lifesteal || 0)
+        const psRctrl = Number((playerStats as any).resists?.ctrl || 0)
+        const assistAtk = Math.floor(Math.min(a.buffedAtk * a.stageMul, playerStats.atk * cap))
+        const assistDef = Math.floor(Math.min(a.buffedDef * a.stageMul, playerStats.def * cap))
+        const assistHp  = Math.floor(Math.min(a.buffedHp  * a.stageMul, playerStats.maxHp * cap))
+        const assistSpd = Math.floor(Math.min(a.buffedSpd * a.stageMul, playerStats.spd * cap))
+        const assistCritRate = Math.min(a.childCritR * a.stageMul, psCritR * cap)
+        const assistCritDmg  = Math.max(1, 1 + Math.min(Math.max(0, a.childCritD - 1) * a.stageMul, Math.max(0, psCritD - 1) * cap))
+        const assistDodgeV   = Math.min(a.childDodge * a.stageMul, psDodge * cap)
+        const assistLs       = Math.min(a.childLs    * a.stageMul, psLs    * cap)
+        const assistRctrl    = Math.min(a.childRctrl * a.stageMul, psRctrl * cap)
+        const assistSpirit   = Math.floor(Math.min(a.childSpirit * a.stageMul, (playerStats.spirit || 0) * cap))
+        ;(char as any)._duo_assist_stats = {
+          name: a.name,
+          maxHp: assistHp, hp: assistHp,
+          atk: assistAtk, def: assistDef, spd: assistSpd,
+          crit_rate: assistCritRate, crit_dmg: assistCritDmg,
+          dodge: assistDodgeV, lifesteal: assistLs,
+          element: a.spiritualRoot,
+          resists: { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: assistRctrl },
+          spirit: assistSpirit, armorPen: 0, accuracy: 0,
+        }
+        ;(char as any)._duo_assist_skill = a.innateSkill
+        ;(char as any)._child_battle_atk = assistAtk
+        ;(char as any)._child_battle_def = assistDef
+        ;(char as any)._child_battle_hp = assistHp
+        ;(char as any)._child_talents_count = a.talentsCount
+        ;(char as any)._child_battle_label = `${a.name}·${a.aptName} Lv.${a.level}`
+        ;(char as any)._child_battle_data = {
+          name: a.name, gender: a.gender, aptitude: a.aptitude, aptitudeName: a.aptName,
+          level: a.level, atk: assistAtk, def: assistDef, maxHp: assistHp, spd: assistSpd,
+        }
+      }
 
       // 生成怪物波次
       const isBoss = mapData.boss && Math.random() < 0.01
