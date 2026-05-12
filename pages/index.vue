@@ -817,11 +817,6 @@
               >战斗丹药</button>
               <button
                 class="alchemy-tab-btn"
-                :class="{ active: selectedPillType === 'breakthrough' }"
-                @click="switchPillType('breakthrough')"
-              >突破丹药</button>
-              <button
-                class="alchemy-tab-btn"
                 :class="{ active: selectedPillType === 'gift' }"
                 @click="switchPillType('gift')"
               >礼制</button>
@@ -936,19 +931,20 @@
             >
               <div class="pill-room-head">
                 <span class="pill-room-name" :style="{ color: getPillColor(g.recipe.rarity) }">{{ g.recipe.name }}</span>
-                <span class="pill-room-type">{{ g.recipe.type === 'battle' ? '战斗' : '突破' }}</span>
+                <span class="pill-room-type">{{ g.recipe.type === 'battle' ? '战斗' : g.recipe.type === 'gift' ? '礼制' : '突破' }}</span>
               </div>
-              <div class="pill-room-desc">{{ formatPillEffect(g.recipe) }}</div>
+              <div class="pill-room-desc">{{ g.isGift ? `亲密度礼物 (基础 +${g.recipe.baseIntimacy})，去「红尘」赠送` : formatPillEffect(g.recipe) }}</div>
               <div class="pill-room-variants">
                 <div
                   v-for="v in g.variants"
-                  :key="v.quality_factor"
+                  :key="g.isGift ? v.quality : v.quality_factor"
                   class="pill-room-variant"
                   :style="{ borderColor: getPillColor(g.recipe.rarity) }"
                 >
-                  <span class="pill-room-qf" :style="{ color: getPillColor(g.recipe.rarity) }">{{ v.quality_factor }}x</span>
+                  <span v-if="g.isGift" class="pill-room-qf" :style="{ color: getHerbQualityColor(v.quality) }">{{ getQualityName(v.quality) }}</span>
+                  <span v-else class="pill-room-qf" :style="{ color: getPillColor(g.recipe.rarity) }">{{ v.quality_factor }}x</span>
                   <span class="pill-room-count">× {{ v.count }}</span>
-                  <button class="pill-use-btn-small" @click="useVariant(g.recipe, v)">使用</button>
+                  <button v-if="!g.isGift" class="pill-use-btn-small" @click="useVariant(g.recipe, v)">使用</button>
                 </div>
               </div>
             </div>
@@ -2869,9 +2865,9 @@
             <p class="help-text" style="margin-top: 4px; color: #c45c4a;">炼制失败灵石和灵草全部损失!</p>
             <table class="help-table"><tbody>
               <tr><td>战斗丹药</td><td>使用后持续 1-8 小时(按品质系数,实时倒计时)</td></tr>
-              <tr><td>突破丹药</td><td>使用直接获得修为(按品质系数加成)</td></tr>
+              <tr><td>礼制（道侣）</td><td>合成赠送道侣的礼物,品质系数按原料品质均值算</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px;">解锁条件: 练气=聚灵丹/铁皮丹/培元丹/筑基丹, 筑基=凝元丹, 金丹=天元丹/化神丹, 化神=渡劫丹。</p>
+            <p class="help-text" style="margin-top: 4px;">战斗丹药解锁条件: 练气=聚灵丹/铁皮丹/培元丹, 筑基=天元丹（金丹解锁）等,按境界递进。</p>
           </div>
           <div class="help-section">
             <div class="help-title">洞府建筑</div>
@@ -6645,13 +6641,12 @@ function isRecipeAccessible(r: PillRecipe): boolean {
 const battleRecipes = computed(() =>
   PILL_RECIPES.filter(r => r.type === 'battle' && r.tierRequired <= (gameStore.character?.realm_tier || 1) && isRecipeAccessible(r))
 );
-const breakthroughRecipes = computed(() =>
-  PILL_RECIPES.filter(r => r.type === 'breakthrough' && r.tierRequired <= (gameStore.character?.realm_tier || 1) && isRecipeAccessible(r))
-);
+// 突破丹药分类已下线 (2026-05-12 小夏决策)，type='breakthrough' 数据保留供
+// 老玩家库存继续使用，但炼丹房不再提供炼制入口
 
 // 炼丹面板: 分类 + 选中丹方
 const cauldronImg = '/images/cauldron.svg';
-const selectedPillType = ref<'battle' | 'breakthrough' | 'gift'>('battle');
+const selectedPillType = ref<'battle' | 'gift'>('battle');
 const selectedPillId = ref<string>('');
 
 // 礼制配方（道侣系统 Phase 2，design 3.3.4）—— 后端 /api/companion/gift-recipes 返回，转成类丹药结构以复用 UI
@@ -6682,22 +6677,22 @@ async function loadGiftRecipes() {
 
 const currentRecipeList = computed(() => {
   if (selectedPillType.value === 'battle') return battleRecipes.value
-  if (selectedPillType.value === 'breakthrough') return breakthroughRecipes.value
   return giftRecipes.value
 });
 const currentRecipe = computed<any | null>(() => {
   if (!selectedPillId.value) return null;
   return currentRecipeList.value.find((r: any) => r.id === selectedPillId.value) || null;
 });
-function switchPillType(t: 'battle' | 'breakthrough' | 'gift') {
+function switchPillType(t: 'battle' | 'gift') {
   selectedPillType.value = t;
   selectedPillId.value = '';
   if (t === 'gift' && giftRecipes.value.length === 0) loadGiftRecipes()
 }
 
-// 我的丹房: 按丹方分组所有已炼成的丹药
+// 我的丹房: 按丹方分组所有已炼成的丹药 + 已炼成的礼物
 const pillRoomGroups = computed(() => {
   const map = new Map<string, any[]>();
+  // 1. 丹药（character_pills 表）
   for (const p of pillInventory.value) {
     if (!p.count || p.count <= 0) continue;
     const recipe = getPillById(p.pill_id);
@@ -6705,16 +6700,40 @@ const pillRoomGroups = computed(() => {
     if (!map.has(p.pill_id)) map.set(p.pill_id, []);
     map.get(p.pill_id)!.push(p);
   }
-  const groups: { pill_id: string; recipe: any; variants: any[] }[] = [];
+  const groups: { pill_id: string; recipe: any; variants: any[]; isGift?: boolean }[] = [];
   for (const [pill_id, variants] of map.entries()) {
     const recipe = getPillById(pill_id);
     variants.sort((a, b) => Number(b.quality_factor) - Number(a.quality_factor));
     groups.push({ pill_id, recipe, variants });
   }
-  // 战斗丹在前,突破丹在后,同类按 tierRequired 升序
+  // 2. 礼物成品（character_materials 表，按礼物 id 过滤，已通过 herbs.get.ts 白名单返回）
+  // 礼物没有 quality_factor 字段，借用 quality（white~red）做单格展示
+  const giftMap = new Map<string, any[]>()
+  for (const h of herbInventory.value) {
+    if (!giftRecipes.value.some((r: any) => r.id === h.herb_id)) continue
+    if (!h.count || h.count <= 0) continue
+    if (!giftMap.has(h.herb_id)) giftMap.set(h.herb_id, [])
+    giftMap.get(h.herb_id)!.push({ quality: h.quality, count: h.count, isGift: true })
+  }
+  for (const [gid, variants] of giftMap.entries()) {
+    const r = giftRecipes.value.find((x: any) => x.id === gid)
+    if (!r) continue
+    variants.sort((a, b) => {
+      const order = ['white','green','blue','purple','gold','red']
+      return order.indexOf(b.quality) - order.indexOf(a.quality)
+    })
+    groups.push({
+      pill_id: gid,
+      recipe: { ...r, type: 'gift', name: GIFT_NAMES_LOCAL[gid] || r.name },
+      variants,
+      isGift: true,
+    })
+  }
+  // 战斗丹在前,突破丹中间,礼物在后；同类按 tierRequired 升序
+  const typeOrder = (t: string) => t === 'battle' ? 0 : t === 'gift' ? 2 : 1
   groups.sort((a, b) => {
-    const typeOrder = (a.recipe.type === 'battle' ? 0 : 1) - (b.recipe.type === 'battle' ? 0 : 1);
-    if (typeOrder !== 0) return typeOrder;
+    const t = typeOrder(a.recipe.type) - typeOrder(b.recipe.type);
+    if (t !== 0) return t;
     return (a.recipe.tierRequired || 0) - (b.recipe.tierRequired || 0);
   });
   return groups;
