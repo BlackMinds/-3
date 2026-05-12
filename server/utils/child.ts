@@ -118,11 +118,16 @@ export function generateChildName(
 
 // 资质 → 属性倍率（参考 5.5.2）
 const APTITUDE_MULTIPLIER = [1.0, 1.3, 1.6, 2.0, 2.5, 3.0, 5.0]
-// 资质 → 等级上限（design 5.5.2）：凡 50 / 下 80 / 中 100 / 上 130 / 极 160 / 仙 200 / 圣 ∞（实际 999 兜底）
-export const APTITUDE_LEVEL_CAP = [50, 80, 100, 130, 160, 200, 999]
+// 资质 → 等级上限（2026-05-12 小夏调整）：拉高梯度，圣品对齐玩家本体上限 400
+export const APTITUDE_LEVEL_CAP = [100, 150, 200, 250, 300, 350, 400]
 export function getChildLevelCap(aptitude: number): number {
   return APTITUDE_LEVEL_CAP[Math.min(Math.max(aptitude, 0), 6)] || 100
 }
+
+// 资质 → 会心率/会心伤害/闪避（2026-05-12 小夏决策：固定值，不随等级增长，只靠装备/功法）
+const APTITUDE_CRIT_RATE  = [0.03, 0.05, 0.08, 0.12, 0.16, 0.22, 0.30]
+const APTITUDE_CRIT_DMG   = [1.00, 1.10, 1.30, 1.60, 2.00, 2.50, 3.20]
+const APTITUDE_DODGE      = [0.00, 0.01, 0.03, 0.05, 0.08, 0.12, 0.18]
 // 阶段 → 出战属性百分比
 const STAGE_MULTIPLIER: Record<string, number> = {
   infant: 0,        // 婴幼期不能出战
@@ -142,17 +147,18 @@ export function calcChildBaseStats(
   spirit: number; resistCtrl: number
 } {
   const mul = APTITUDE_MULTIPLIER[aptitude] || 1
-  // 2026-05-12 数值调强 ×3：让子女基础属性能跟上高境界本体（lv200+ 玩家 atk 数万级）
-  // 圣品 lv200: atk=15020 / def=9015 / hp=150200 / spd=4530
-  // 二级属性增长保留原节奏（避免会心率超 cap 浪费）
+  const aptIdx = Math.min(Math.max(aptitude, 0), 6)
+  // 基础四属性：按 level + 资质倍率成长
+  // 二级属性会心率/会心伤害/闪避：仅由资质决定，**升级不会增加**，只能装备/功法补足（2026-05-12 小夏决策）
+  // 神识/控抗：依然按 level 成长（这两个是修仙叙事属性，不影响战斗 cap）
   return {
     maxHp: Math.floor(200 + level * 150 * mul),
     atk: Math.floor(20 + level * 15 * mul),
     def: Math.floor(15 + level * 9 * mul),
     spd: Math.floor(30 + level * 4.5 * mul),
-    critRate: +(0.03 + level * 0.00025 * mul).toFixed(4),
-    critDmg: +(1.00 + level * 0.00125 * mul).toFixed(4),
-    dodge: +(level * 0.0003 * mul).toFixed(4),
+    critRate: APTITUDE_CRIT_RATE[aptIdx],
+    critDmg: APTITUDE_CRIT_DMG[aptIdx],
+    dodge: APTITUDE_DODGE[aptIdx],
     lifesteal: 0,                                              // 默认 0，靠装备/天赋获取
     spirit: Math.floor(5 + level * 0.5 * mul),
     resistCtrl: +(0.05 + level * 0.0005 * mul).toFixed(4),

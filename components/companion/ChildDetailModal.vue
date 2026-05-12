@@ -218,8 +218,8 @@ const HERB_NAMES: Record<string, string> = {
   spirit_grass: '仙灵草',
 }
 
-// 等级上限按资质（凡 50 / 下 80 / 中 100 / 上 130 / 极 160 / 仙 200 / 圣 999）
-const APTITUDE_LEVEL_CAP = [50, 80, 100, 130, 160, 200, 999]
+// 等级上限按资质（2026-05-12 小夏调整）：凡 100 / 下 150 / 中 200 / 上 250 / 极 300 / 仙 350 / 圣 400
+const APTITUDE_LEVEL_CAP = [100, 150, 200, 250, 300, 350, 400]
 const childLevelCap = computed(() => APTITUDE_LEVEL_CAP[detail.value?.aptitude || 0] || 100)
 const canFeed = computed(() => detail.value && detail.value.feedCountToday < detail.value.feedDailyMax && detail.value.level < childLevelCap.value && !detail.value.hasLeftHome)
 // 成年弹窗按"已达资质上限"判定（凡品 lv50 = 成年）
