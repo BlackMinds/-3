@@ -1748,3 +1748,47 @@ CREATE TABLE IF NOT EXISTS character_red_jade_purchases (
 );
 CREATE INDEX IF NOT EXISTS idx_red_jade_purchases_char
   ON character_red_jade_purchases(character_id, period_type, period_key);
+
+-- ========================================
+-- 装备 V5.0.2 schema 扩展 (2026-05-12, design/system-equipment-v5-0-2.json)
+-- ========================================
+-- 与 V4 装备并存：equipment_version 区分版本，老装备默认 4，新 V5 装备写 5。
+-- 业务层未挂载（生成器走 V4），仅落 schema 做前置；feature flag 控制后续灰度。
+-- 详细字段说明见 design/migration-v5-equipment-draft.sql
+
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS equipment_version SMALLINT NOT NULL DEFAULT 4;
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS wuxing_prefix     TEXT[]   DEFAULT NULL;
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS wuxing_affixes    JSONB    DEFAULT NULL;
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS legendary_set_id  VARCHAR(50) DEFAULT NULL;
+ALTER TABLE character_equipment ADD COLUMN IF NOT EXISTS is_boss_treasure  BOOLEAN  NOT NULL DEFAULT FALSE;
+
+-- 幂等约束：DROP IF EXISTS + ADD（每次跑 migrate 都重建一次）
+ALTER TABLE character_equipment DROP CONSTRAINT IF EXISTS character_equipment_version_chk;
+ALTER TABLE character_equipment ADD  CONSTRAINT character_equipment_version_chk
+  CHECK (equipment_version IN (4, 5));
+
+ALTER TABLE character_equipment DROP CONSTRAINT IF EXISTS character_equipment_wuxing_prefix_chk;
+ALTER TABLE character_equipment ADD  CONSTRAINT character_equipment_wuxing_prefix_chk
+  CHECK (
+    wuxing_prefix IS NULL OR (
+      array_length(wuxing_prefix, 1) BETWEEN 1 AND 5
+      AND wuxing_prefix <@ ARRAY['metal','wood','water','fire','earth']::TEXT[]
+    )
+  );
+
+ALTER TABLE character_equipment DROP CONSTRAINT IF EXISTS character_equipment_wuxing_affixes_chk;
+ALTER TABLE character_equipment ADD  CONSTRAINT character_equipment_wuxing_affixes_chk
+  CHECK (
+    wuxing_affixes IS NULL OR (
+      jsonb_typeof(wuxing_affixes) = 'array'
+      AND jsonb_array_length(wuxing_affixes) = 3
+    )
+  );
+
+ALTER TABLE character_equipment DROP CONSTRAINT IF EXISTS character_equipment_v5_required_chk;
+ALTER TABLE character_equipment ADD  CONSTRAINT character_equipment_v5_required_chk
+  CHECK (
+    equipment_version <> 5 OR (
+      wuxing_prefix IS NOT NULL AND wuxing_affixes IS NOT NULL
+    )
+  );
