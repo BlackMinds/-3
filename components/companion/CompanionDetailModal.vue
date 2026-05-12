@@ -8,7 +8,11 @@
 
       <div class="detail-body">
         <div class="hero">
-          <img class="hero-avatar" :src="avatarUrl" :alt="detail.name" />
+          <div class="hero-avatar-wrap" @click="onPickAvatar" :title="'点击上传自定义头像（最大 600KB，png/jpg/webp）'">
+            <img class="hero-avatar" :src="avatarUrl" :alt="detail.name" />
+            <div class="hero-avatar-mask">📷 换头像</div>
+          </div>
+          <input ref="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" @change="onAvatarFileChange" />
           <div class="hero-meta">
             <span :class="['quality-tag', `quality-${detail.qualityColor}`]">{{ detail.qualityName }}</span>
             <span v-if="detail.isOfficial" class="official-tag">✨ 正式道侣</span>
@@ -371,6 +375,50 @@ async function copyText(text: string) {
   }
 }
 
+// ===== 头像上传 =====
+const avatarInput = ref<HTMLInputElement | null>(null)
+function onPickAvatar() {
+  avatarInput.value?.click()
+}
+async function onAvatarFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  // 客户端粗校验
+  if (file.size > 600 * 1024) {
+    showToast(`图片过大（${(file.size / 1024).toFixed(0)}KB），上限 600KB`)
+    input.value = ''
+    return
+  }
+  if (!['image/png','image/jpeg','image/webp'].includes(file.type)) {
+    showToast('仅支持 png / jpg / webp')
+    input.value = ''
+    return
+  }
+  // 读为 data URL
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as string)
+    r.onerror = reject
+    r.readAsDataURL(file)
+  })
+  // 上传
+  const api = useApi()
+  const res = await api<{ code: number; message?: string; data?: any }>('/companion/upload-avatar', {
+    method: 'POST',
+    body: { companion_id: detail.value!.id, image_data: dataUrl },
+  })
+  if (res.code === 200) {
+    showToast(`上传成功 (${res.data?.sizeKB}KB)`)
+    // 刷新本地 detail
+    detail.value = await store.loadDetail(props.companionId, true)
+    await store.loadCompanions()
+  } else {
+    showToast(res.message || '上传失败')
+  }
+  input.value = ''
+}
+
 // ===== 和离 =====
 const divorceStep = ref(0)  // 0=未开启 / 1=警告 / 2=消耗确认
 const gameStore = useGameStore()
@@ -607,11 +655,25 @@ onMounted(async () => {
   border: 1px solid #3a2050;
   margin-bottom: 14px;
 }
+.hero-avatar-wrap {
+  position: relative; width: 80px; height: 80px;
+  flex-shrink: 0; cursor: pointer; border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(180,100,255,0.4);
+  overflow: hidden;
+}
+.hero-avatar-wrap:hover .hero-avatar-mask { opacity: 1; }
 .hero-avatar {
   width: 80px; height: 80px;
   border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(180,100,255,0.4);
+  display: block;
+}
+.hero-avatar-mask {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  color: #ffd700; font-size: 11px; font-weight: bold;
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none;
 }
 .hero-meta {
   display: flex; flex-direction: column; gap: 6px;
