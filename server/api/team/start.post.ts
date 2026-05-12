@@ -513,10 +513,23 @@ export default defineEventHandler(async (event) => {
             continue
           }
           const { rows: eqRows } = await client.query(
-            `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 0)
-             RETURNING id`,
-            [c.characterId, eq.name, eq.rarity, eq.primary_stat, eq.primary_value, eq.primary_stat_2 || null, eq.primary_value_2 || null, eq.sub_stats, eq.set_id, eq.tier, eq.weapon_type, eq.base_slot, eq.req_level]
+            `INSERT INTO character_equipment (
+               character_id, name, rarity, primary_stat, primary_value,
+               primary_stat_2, primary_value_2, sub_stats, set_id, tier,
+               weapon_type, base_slot, req_level, enhance_level,
+               equipment_version, wuxing_prefix, wuxing_affixes, legendary_set_id, is_boss_treasure
+             ) VALUES (
+               $1, $2, $3, $4, $5,
+               $6, $7, $8, $9, $10,
+               $11, $12, $13, 0,
+               $14, $15, $16, $17, $18
+             ) RETURNING id`,
+            [
+              c.characterId, eq.name, eq.rarity, eq.primary_stat, eq.primary_value,
+              eq.primary_stat_2 || null, eq.primary_value_2 || null, eq.sub_stats, eq.set_id, eq.tier,
+              eq.weapon_type, eq.base_slot, eq.req_level,
+              eq.equipment_version ?? 4, eq.wuxing_prefix ?? null, eq.wuxing_affixes ?? null, eq.legendary_set_id ?? null, eq.is_boss_treasure ?? false,
+            ]
           )
           equipIds.push(eqRows[0].id)
           bagCount++

@@ -5,6 +5,7 @@ import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_BAG_LIMIT } from '~/shared/balance'
 import { decideEquipPrimariesV4, rollSubStatsV4, EQUIP_SELL_PRICES } from '~/server/utils/equipment'
+import { tryRollEquipmentV5DropSpec } from '~/server/utils/equipment-v5'
 import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { rollEquipSet } from '~/server/engine/equipSetData'
@@ -243,21 +244,48 @@ export default defineEventHandler(async (event) => {
       const slotIdx = Math.floor(Math.random() * slots.length)
       const slot = slots[slotIdx]
       const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][Math.floor(Math.random()*4)] : null
+
+      // 背包满 → 转灵石返还（V5 / V4 都先卡这一道）
+      if (bagCount >= EQUIP_BAG_LIMIT) {
+        bagOverflowGain += Math.floor((EQUIP_SELL_PRICES[rarities[idx]] || 10) * mapData.tier)
+        continue
+      }
+
+      // V5 灰度
+      const v5Spec = tryRollEquipmentV5DropSpec({ baseSlot: slot as any, rarity: rarities[idx], tier: mapData.tier, weaponType })
+      if (v5Spec) {
+        await pool.query(
+          `INSERT INTO character_equipment (
+             character_id, name, rarity, primary_stat, primary_value,
+             primary_stat_2, primary_value_2, sub_stats, set_id, tier,
+             weapon_type, base_slot, req_level, enhance_level,
+             equipment_version, wuxing_prefix, wuxing_affixes, legendary_set_id, is_boss_treasure
+           ) VALUES ($1,$2,$3,$4,$5, $6,$7,$8,$9,$10, $11,$12,$13,0, $14,$15,$16,$17,$18)`,
+          [
+            char.id, v5Spec.name, v5Spec.rarity, v5Spec.primary_stat, v5Spec.primary_value,
+            null, null, v5Spec.sub_stats, null, v5Spec.tier,
+            v5Spec.weapon_type, v5Spec.base_slot, v5Spec.req_level,
+            v5Spec.equipment_version, v5Spec.wuxing_prefix, v5Spec.wuxing_affixes, v5Spec.legendary_set_id, v5Spec.is_boss_treasure,
+          ],
+        )
+        bagCount++
+        continue
+      }
+
       // v4.0：双主属性 + 部位分桶副词条
       const v4 = pickV4SlotInfo(slot, weaponType)
       const primaries = decideEquipPrimariesV4(v4.slotKey, v4.subType, rarities[idx], mapData.tier)
       const subStats = rollSubStatsV4(v4.slotKey, rarities[idx], mapData.tier)
       // 套装注入：与主图战斗一致（白/绿不出，蓝~红按 5/10/20/35% 概率）
       const setKey = rollEquipSet(rarities[idx], 1.0, slot, weaponType, mapData.tier)
-      // 背包满 → 转灵石返还
-      if (bagCount >= EQUIP_BAG_LIMIT) {
-        bagOverflowGain += Math.floor((EQUIP_SELL_PRICES[rarities[idx]] || 10) * mapData.tier)
-        continue
-      }
       const equipName = generateEquipName(rarities[idx], slot, weaponType, mapData.tier, primaries.primary_stat, null, '', setKey)
       await pool.query(
-        `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 0)`,
+        `INSERT INTO character_equipment (
+           character_id, name, rarity, primary_stat, primary_value,
+           primary_stat_2, primary_value_2, sub_stats, set_id, tier,
+           weapon_type, base_slot, req_level, enhance_level,
+           equipment_version, wuxing_prefix, wuxing_affixes, legendary_set_id, is_boss_treasure
+         ) VALUES ($1,$2,$3,$4,$5, $6,$7,$8,$9,$10, $11,$12,$13,0, 4, NULL, NULL, NULL, FALSE)`,
         [char.id, equipName, rarities[idx], primaries.primary_stat, primaries.primary_value, primaries.primary_stat_2 || null, primaries.primary_value_2 || null, JSON.stringify(subStats), setKey, mapData.tier, weaponType, slot, tierReqLevels[mapData.tier] || 1]
       )
       bagCount++
