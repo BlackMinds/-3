@@ -125,6 +125,63 @@ export function runDuoWaveBattle(
     player.resists.fire  += p.resistFire  || 0;
     player.resists.earth += p.resistEarth || 0;
     player.resists.ctrl  += p.resistCtrl  || 0;
+    // v3 紫色被动：DOT 增伤 / 闪避必暴 / 治疗增幅
+    (player as any).dotAmpPct = p.dotAmpPct || 0;
+    (player as any).critAfterDodge = !!p.critAfterDodge;
+    (player as any).healAmpPct = p.healAmpPct || 0;
+  }
+  // v3.6 副属性 DOT_DMG_PCT / REFLECT_PCT 注入到 player
+  const equipDotPct = (playerStats as any).equipDotDmgPct || 0;
+  const equipReflectPct = (playerStats as any).equipReflectPct || 0;
+  if (equipDotPct > 0) (player as any).dotAmpPct = ((player as any).dotAmpPct || 0) + equipDotPct * 100;
+  if (equipReflectPct > 0) (player as any).reflectPctBonus = ((player as any).reflectPctBonus || 0) + equipReflectPct;
+
+  // 1.4 附灵运行时状态注入（13 hooks）
+  const aw = (playerStats as any).awaken || {};
+  player.awakenState = {
+    burnOnHitChance: aw.burnOnHitChance || 0,
+    poisonOnHitChance: aw.poisonOnHitChance || 0,
+    bleedOnHitChance: aw.bleedOnHitChance || 0,
+    chainAttackChance: aw.chainAttackChance || 0,
+    armorPenPct: aw.armorPenPct || 0,
+    executeBonus: aw.executeBonus || 0,
+    lowHpAtkBonus: aw.lowHpAtkBonus || 0,
+    lowHpDefBonus: aw.lowHpDefBonus || 0,
+    damageReduction: aw.damageReduction || 0,
+    critTakenReduction: aw.critTakenReduction || 0,
+    regenPerTurn: aw.regenPerTurn || 0,
+    cleanseInterval: aw.cleanseInterval || 0,
+    vsBossBonus: aw.vsBossBonus || 0,
+    vsEliteBonus: aw.vsEliteBonus || 0,
+    debuffDurationBonus: aw.debuffDurationBonus || 0,
+    // v1.3 灵戒附灵·主修功法增幅
+    mainSkillMultBonus: aw.mainSkillMultBonus || 0,
+    mainSkillCritRate: aw.mainSkillCritRate || 0,
+    mainSkillArmorPen: aw.mainSkillArmorPen || 0,
+    mainSkillLifesteal: aw.mainSkillLifesteal || 0,
+    mainSkillBleedAmp: aw.mainSkillBleedAmp || 0,
+    mainSkillBleedAmpElem: aw.mainSkillBleedAmpElem,
+    mainSkillPoisonAmp: aw.mainSkillPoisonAmp || 0,
+    mainSkillPoisonAmpElem: aw.mainSkillPoisonAmpElem,
+    mainSkillFreezeChance: aw.mainSkillFreezeChance || 0,
+    mainSkillFreezeChanceElem: aw.mainSkillFreezeChanceElem,
+    mainSkillExtraFreezeChance: aw.mainSkillExtraFreezeChance || 0,
+    mainSkillBurnDuration: aw.mainSkillBurnDuration || 0,
+    mainSkillBurnDurationElem: aw.mainSkillBurnDurationElem,
+    mainSkillBurnAmp: aw.mainSkillBurnAmp || 0,
+    mainSkillBurnAmpElem: aw.mainSkillBurnAmpElem,
+    mainSkillBrittleAmp: aw.mainSkillBrittleAmp || 0,
+    mainSkillBrittleAmpElem: aw.mainSkillBrittleAmpElem,
+    mainSkillExecuteThr: aw.mainSkillExecuteThr || 0,
+    mainSkillExecuteBonus: aw.mainSkillExecuteBonus || 0,
+  };
+  player.awakenTurnCounter = 0;
+  // 与功法被动同位钩子 Max-Merge（poisonOnHitTaken / burnOnHitTaken / reflectOnCrit）
+  if (equippedSkills?.passiveEffects) {
+    const pe: any = equippedSkills.passiveEffects;
+    if (aw.poisonOnHitTaken) pe.poisonOnHitTaken = Math.max(pe.poisonOnHitTaken || 0, aw.poisonOnHitTaken);
+    if (aw.burnOnHitTaken)   pe.burnOnHitTaken   = Math.max(pe.burnOnHitTaken   || 0, aw.burnOnHitTaken);
+    if (aw.reflectOnCrit)    pe.reflectOnCrit    = Math.max(pe.reflectOnCrit    || 0, aw.reflectOnCrit);
   }
 
   // 1.5 套装系统：buildSetEffects + 静态加成（sword/blade/fan）— 仅玩家享受
@@ -221,7 +278,7 @@ export function runDuoWaveBattle(
   type DebuffTarget = { debuffs: ActiveDebuff[]; frozenTurns: number; stats?: any; maxHp?: number; resists?: any };
 
   // 施加 debuff
-  // inflictor === 'player' 时享受 dotAmpPct / elementDmg / 五行抗性 / 套装效果（火神/万毒/血魔/极寒/基本功）
+  // inflictor === 'player' 时享受 dotAmpPct / elementDmg / 五行抗性 / 套装效果 / 附灵主修元素 amp
   const tryApplyDebuff = (
     target: DebuffTarget,
     targetName: string,
@@ -232,7 +289,41 @@ export function runDuoWaveBattle(
     isPlayerMainSkill: boolean = false,
   ): boolean => {
     let effChance = debuff.chance;
+    let effDuration = debuff.duration;
+    let effValue = debuff.value;
+    let burnAmpMul = 1.0, bleedAmpMul = 1.0, poisonAmpMul = 1.0;
     let tag = '';
+    // ✦ v1.3 灵戒附灵·主修元素匹配增强
+    if (inflictor === 'player' && isPlayerMainSkill) {
+      const aState = player.awakenState;
+      const mainElem = player._mainSkillElement;
+      if (aState && mainElem) {
+        if (debuff.type === 'burn' && mainElem === 'fire' && aState.mainSkillBurnDurationElem === 'fire' && aState.mainSkillBurnDuration) {
+          effDuration += aState.mainSkillBurnDuration;
+          tag += ` ✦焚天+${aState.mainSkillBurnDuration}`;
+        }
+        if (debuff.type === 'burn' && mainElem === 'fire' && aState.mainSkillBurnAmpElem === 'fire' && aState.mainSkillBurnAmp) {
+          burnAmpMul = 1 + aState.mainSkillBurnAmp;
+          tag += ` ✦焚烬+${(aState.mainSkillBurnAmp * 100).toFixed(0)}%`;
+        }
+        if ((debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') && mainElem === 'water' && aState.mainSkillFreezeChanceElem === 'water' && aState.mainSkillFreezeChance) {
+          effChance = Math.min(1, effChance + aState.mainSkillFreezeChance);
+          tag += ` ✦水蕴+${(aState.mainSkillFreezeChance * 100).toFixed(0)}%`;
+        }
+        if (debuff.type === 'brittle' && mainElem === 'earth' && aState.mainSkillBrittleAmpElem === 'earth' && aState.mainSkillBrittleAmp) {
+          effValue = (effValue || 0.15) * (1 + aState.mainSkillBrittleAmp);
+          tag += ` ✦厚土+${(aState.mainSkillBrittleAmp * 100).toFixed(0)}%`;
+        }
+        if (debuff.type === 'bleed' && mainElem === 'metal' && aState.mainSkillBleedAmpElem === 'metal' && aState.mainSkillBleedAmp) {
+          bleedAmpMul = 1 + aState.mainSkillBleedAmp;
+          tag += ` ✦金鸣+${(aState.mainSkillBleedAmp * 100).toFixed(0)}%`;
+        }
+        if (debuff.type === 'poison' && mainElem === 'wood' && aState.mainSkillPoisonAmpElem === 'wood' && aState.mainSkillPoisonAmp) {
+          poisonAmpMul = 1 + aState.mainSkillPoisonAmp;
+          tag += ` ✦木灵+${(aState.mainSkillPoisonAmp * 100).toFixed(0)}%`;
+        }
+      }
+    }
     // ❖ 极寒套：玩家施加 freeze 时 chance +X
     if (inflictor === 'player' && debuff.type === 'freeze' && setEffects.freezeChanceBonus > 0) {
       effChance = Math.min(1, effChance + setEffects.freezeChanceBonus);
@@ -252,7 +343,10 @@ export function runDuoWaveBattle(
         return false;
       }
     }
-    let duration = debuff.duration;
+    // ✦ 天师附灵：施加方延长减益持续回合（不影响控制类）
+    const dBonus = (inflictor === 'player' && !isCtrl) ? (player.awakenState?.debuffDurationBonus || 0) : 0;
+    let duration = effDuration + dBonus;
+    if (dBonus > 0) tag += ` ✦天师+${dBonus}`;
     if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
       target.frozenTurns = Math.max(target.frozenTurns, duration);
       logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tag}`, type: 'normal', ...snap() });
@@ -276,6 +370,10 @@ export function runDuoWaveBattle(
         const resist = Math.min(BATTLE_FORMULA.maxResistRate, resistRaw);
         if (resist > 0) dmg = Math.max(1, Math.floor(dmg * (1 - resist)));
       }
+      // ✦ 主修元素 amp（火/木/金对应 burn/poison/bleed 每跳放大）
+      if (debuff.type === 'burn'   && burnAmpMul   > 1) dmg = Math.max(1, Math.floor(dmg * burnAmpMul));
+      if (debuff.type === 'poison' && poisonAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * poisonAmpMul));
+      if (debuff.type === 'bleed'  && bleedAmpMul  > 1) dmg = Math.max(1, Math.floor(dmg * bleedAmpMul));
       // ❖ 火神/万毒/血魔套：玩家施加 DOT 时每跳伤害 × dmgMul（v3.8.5）
       let dmgMul = 1;
       if (debuff.type === 'burn'   && setEffects.burnDmgMul   > 1) dmgMul = setEffects.burnDmgMul;
@@ -292,17 +390,17 @@ export function runDuoWaveBattle(
     }
     if (exists) {
       exists.remaining = duration;
-      exists.value = debuff.value;
+      exists.value = effValue;
       exists.damagePerTurn = dmg;
     } else {
-      target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: debuff.value });
+      target.debuffs.push({ type: debuff.type, remaining: duration, damagePerTurn: dmg, value: effValue });
     }
     let text = `${targetName}陷入${DEBUFF_NAMES[debuff.type]} ${duration} 回合`;
     if (debuff.type === 'poison') text += ` (每回合 ${dmg} 毒伤)`;
     else if (debuff.type === 'burn') text += ` (每回合 ${dmg} 火伤)`;
     else if (debuff.type === 'bleed') text += ` (每回合 ${dmg} 流血)`;
-    else if (debuff.type === 'brittle') text += ` (受伤+${(((debuff.value || 0.15)) * 100).toFixed(0)}%)`;
-    else if (debuff.type === 'atk_down') text += ` (攻击-${(((debuff.value || 0.15)) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'brittle') text += ` (受伤+${(((effValue || 0.15)) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'atk_down') text += ` (攻击-${(((effValue || 0.15)) * 100).toFixed(0)}%)`;
     else if (debuff.type === 'silence') text += ` (无法使用神通)`;
     logs.push({ turn, text: `  ${text}${tag}`, type: 'normal', ...snap() });
 
@@ -359,6 +457,68 @@ export function runDuoWaveBattle(
     return a ? (1 - (a.value || 0.15)) : 1;
   };
 
+  // ===== Phase 2c-1: 附灵 hooks (13 钩子) =====
+  // v1.2 附灵：命中后 roll 主动 DOT（焚魂/淬毒/裂魂）— 仅玩家攻击命中目标时调用
+  const triggerAwakenOnHit = (target: any, targetName: string, turn: number) => {
+    const st = player.awakenState;
+    if (!st) return;
+    if (st.burnOnHitChance > 0 && Math.random() < st.burnOnHitChance) {
+      const ok = tryApplyDebuff(target, targetName, { type: 'burn' as DebuffType, chance: 1.0, duration: 2 }, player.atk, turn, 'player');
+      if (ok) logs.push({ turn, text: `  ✦【焚魂】${targetName}被烈焰灼烧`, type: 'buff', actor: 'player', ...snap() });
+    }
+    if (st.poisonOnHitChance > 0 && Math.random() < st.poisonOnHitChance) {
+      const ok = tryApplyDebuff(target, targetName, { type: 'poison' as DebuffType, chance: 1.0, duration: 2 }, player.atk, turn, 'player');
+      if (ok) logs.push({ turn, text: `  ✦【淬毒】${targetName}中毒`, type: 'buff', actor: 'player', ...snap() });
+    }
+    if (st.bleedOnHitChance > 0 && Math.random() < st.bleedOnHitChance) {
+      const ok = tryApplyDebuff(target, targetName, { type: 'bleed' as DebuffType, chance: 1.0, duration: 2 }, player.atk, turn, 'player');
+      if (ok) logs.push({ turn, text: `  ✦【裂魂】${targetName}流血不止`, type: 'buff', actor: 'player', ...snap() });
+    }
+  };
+
+  // v1.2 附灵：每回合开始 — 回春 + 洗髓
+  const runAwakenTurnStart = (turn: number) => {
+    const st = player.awakenState;
+    if (!st) return;
+    player.awakenTurnCounter = (player.awakenTurnCounter || 0) + 1;
+    if (st.regenPerTurn > 0 && player.hp > 0 && player.hp < player.maxHp) {
+      const heal = Math.max(1, Math.floor(player.maxHp * st.regenPerTurn));
+      const before = player.hp;
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      if (player.hp > before) {
+        logs.push({ turn, text: `  ✦【回春】回复 ${player.hp - before} 点气血`, type: 'buff', actor: 'player', ...snap() });
+      }
+    }
+    if (st.cleanseInterval > 0 && (player.awakenTurnCounter % st.cleanseInterval === 0)) {
+      if (player.frozenTurns > 0) {
+        player.frozenTurns = 0;
+        logs.push({ turn, text: `  ✦【洗髓】解除了控制状态`, type: 'buff', actor: 'player', ...snap() });
+      } else if (player.debuffs && player.debuffs.length > 0) {
+        const silenceIdx = player.debuffs.findIndex((d: ActiveDebuff) => d.type === 'silence');
+        let removed: ActiveDebuff;
+        if (silenceIdx >= 0) {
+          removed = player.debuffs.splice(silenceIdx, 1)[0];
+        } else {
+          removed = player.debuffs.shift();
+        }
+        logs.push({ turn, text: `  ✦【洗髓】清除了 ${DEBUFF_NAMES[removed.type] || removed.type}`, type: 'buff', actor: 'player', ...snap() });
+      }
+    }
+  };
+
+  // v1.2 附灵：玩家受伤减免（返回修正后的伤害）
+  const applyAwakenIncomingReduction = (damage: number, isCrit: boolean): number => {
+    const st = player.awakenState;
+    if (!st) return damage;
+    let d = damage;
+    if (st.damageReduction > 0) d = d * (1 - st.damageReduction);
+    if (isCrit && st.critTakenReduction > 0) d = d * (1 - st.critTakenReduction);
+    if (st.lowHpDefBonus > 0 && player.maxHp > 0 && player.hp / player.maxHp < 0.30) {
+      d = d * (1 / (1 + st.lowHpDefBonus));
+    }
+    return Math.max(1, Math.floor(d));
+  };
+
   const killCheck = (target: MonsterRuntime, turn: number, killerName: string) => {
     if (target.alive && target.stats.hp <= 0) {
       target.alive = false;
@@ -400,12 +560,19 @@ export function runDuoWaveBattle(
       }
     }
     const isMainSkill = !chosenSkill; // 用基础 activeSkill 即视为主修
+    const activeSkillRef = equippedSkills?.activeSkill;
+    // 设置当前主修元素到 player 上，供 tryApplyDebuff 检查主修元素 amp
+    player._mainSkillElement = isMainSkill ? (activeSkillRef?.element ?? null) : null;
 
-    const activeName = chosenSkill?.name || '普通攻击';
-    const mul = chosenSkill?.multiplier ?? 1.0;
-    const elem = chosenSkill?.element ?? null;
-    const hits = chosenSkill?.hitCount || 1;
+    const activeName = chosenSkill?.name || activeSkillRef?.name || '普通攻击';
+    let mul = chosenSkill?.multiplier ?? activeSkillRef?.multiplier ?? 1.0;
+    const elem = chosenSkill?.element ?? (isMainSkill ? (activeSkillRef?.element ?? null) : null);
+    const hits = chosenSkill?.hitCount || activeSkillRef?.hitCount || 1;
     const ignoreDef = chosenSkill?.ignoreDef || 0;
+    // v1.3 灵戒附灵·心法贯通：主修伤害倍率 +X%
+    if (isMainSkill && player.awakenState?.mainSkillMultBonus) {
+      mul *= 1 + player.awakenState.mainSkillMultBonus;
+    }
 
     // atk_down 折扣（临时改 player.atk，攻击后还原）
     const atkDownMul = getAtkDownMul(player);
@@ -495,7 +662,7 @@ export function runDuoWaveBattle(
     // 还原 atk
     player.atk = origAtk;
 
-    // 吸血（❖ 血魔套：目标流血时吸血加成）
+    // 吸血（❖ 血魔套：目标流血时吸血加成 / ✦ 主修吸血：mainSkillLifesteal 按 maxHp%）
     if (totalDealt > 0 && player.hp > 0) {
       let lsRate = player.lifesteal || 0;
       const tgtBleeding = tgt.debuffs.some(d => d.type === 'bleed' && d.remaining > 0);
@@ -510,11 +677,34 @@ export function runDuoWaveBattle(
           logs.push({ turn, text: `  【吸血】回复 ${actual} 点气血`, type: 'buff', actor: 'player', ...snap() });
         }
       }
+      // ✦ v1.3 主修吸血：仅主修攻击触发，按 maxHp × 系数回血
+      const mainLsRate = (isMainSkill && player.awakenState?.mainSkillLifesteal) || 0;
+      if (mainLsRate > 0 && player.hp < player.maxHp) {
+        const mainHeal = Math.floor(player.maxHp * mainLsRate);
+        if (mainHeal > 0) {
+          const actual = Math.min(mainHeal, player.maxHp - player.hp);
+          player.hp += actual;
+          logs.push({ turn, text: `  ✦【主修噬灵】回复 ${actual} 点气血`, type: 'buff', actor: 'player', ...snap() });
+        }
+      }
     }
 
-    // 神通 debuff 施加（命中过 ≥1 次才尝试，与 battleEngine 一致）
-    if (anyHit && chosenSkill?.debuff && tgt.alive) {
-      tryApplyDebuff(tgt, tgt.stats.name, chosenSkill.debuff, player.atk, turn, 'player', isMainSkill);
+    // ✦ v1.2 附灵：命中后概率追加 burn/poison/bleed（焚魂/淬毒/裂魂）
+    if (anyHit && tgt.alive) {
+      triggerAwakenOnHit(tgt, tgt.stats.name, turn);
+    }
+
+    // ✦ v3.9 主修玄冰诀：命中后独立 X 概率追加 1 回合冻结（不依赖原 debuff roll）
+    if (anyHit && isMainSkill && player.awakenState?.mainSkillExtraFreezeChance && tgt.alive) {
+      if (Math.random() < player.awakenState.mainSkillExtraFreezeChance) {
+        tryApplyDebuff(tgt, tgt.stats.name, { type: 'freeze' as DebuffType, chance: 1.0, duration: 1 }, player.atk, turn, 'player', isMainSkill);
+      }
+    }
+
+    // 神通 / 主修攻击 debuff 施加（命中过 ≥1 次才尝试，与 battleEngine 一致）
+    const usedSkillDebuff = chosenSkill?.debuff || (isMainSkill ? activeSkillRef?.debuff : undefined);
+    if (anyHit && usedSkillDebuff && tgt.alive) {
+      tryApplyDebuff(tgt, tgt.stats.name, usedSkillDebuff, player.atk, turn, 'player', isMainSkill);
     }
 
     // ❖ 剑仙套：神通后额外触发 swordQiHits 次剑气（swordQiMul 倍）
@@ -688,6 +878,8 @@ export function runDuoWaveBattle(
       let dealt = r.damage;
       const brittle = getBrittleBonus(pick.ref);
       if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
+      // ✦ v1.2 附灵：仅玩家受伤享受 damageReduction / critTakenReduction / lowHpDefBonus
+      if (pick.isPlayer) dealt = applyAwakenIncomingReduction(dealt, r.isCrit);
       pick.ref.hp -= dealt;
       anyHit = true;
       const critText = r.isCrit ? '会心!' : '';
@@ -695,6 +887,24 @@ export function runDuoWaveBattle(
         logs.push({ turn, text: `  第${h + 1}段 ${critText}对${tgtName}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'monster', ...snap() });
       } else {
         logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}${mSkill ? '施展【' + skillName + '】' : ''}攻击了${tgtName}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'monster', ...snap() });
+      }
+      // ✦ v1.2 附灵：玩家被命中时反向触发 DOT/反伤池（poisonOnHitTaken / burnOnHitTaken / reflectOnCrit）
+      // pe.* 字段在 player 初始化时已与 awaken Max-Merge 合并
+      if (pick.isPlayer) {
+        const pe = equippedSkills?.passiveEffects as any;
+        if (pe?.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
+          tryApplyDebuff(m, m.stats.name, { type: 'poison' as DebuffType, chance: 1, duration: 2 }, player.atk, turn, 'player');
+        }
+        if (pe?.burnOnHitTaken && Math.random() < pe.burnOnHitTaken) {
+          tryApplyDebuff(m, m.stats.name, { type: 'burn' as DebuffType, chance: 1, duration: 2 }, player.atk, turn, 'player');
+        }
+        if (r.isCrit && pe?.reflectOnCrit && Math.random() < pe.reflectOnCrit) {
+          const reflectDmg = Math.floor(dealt * pe.reflectOnCrit);
+          if (reflectDmg > 0) {
+            m.stats.hp = Math.max(0, m.stats.hp - reflectDmg);
+            logs.push({ turn, text: `  ✦【反伤】对${m.stats.name}反弹 ${reflectDmg} 点伤害`, type: 'buff', actor: 'player', ...snap() });
+          }
+        }
       }
       if (pick.ref.hp <= 0) {
         pick.ref.hp = 0;
@@ -723,6 +933,9 @@ export function runDuoWaveBattle(
         finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: assist.hp <= 0,
       };
     }
+
+    // ✦ v1.2 附灵：回合开始 — 回春（regenPerTurn）+ 洗髓（cleanseInterval）
+    runAwakenTurnStart(turn);
 
     // ==== 回合开始：DOT 结算 ====
     // 玩家 DOT
