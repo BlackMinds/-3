@@ -1,7 +1,9 @@
 import { getPool } from '~/server/database/db'
 import { getCharId } from '~/server/utils/equipment'
+import { applyV5EnhanceMilestone, getV5SlotIndexByBaseSlot } from '~/server/utils/equipment-v5'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { V5_ENHANCE_MILESTONES, type V5Rarity, type V5BaseSlot } from '~/shared/balance-v5'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -165,12 +167,29 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 副属性突破 (+5 和 +10 时)
+    // 副属性突破：
+    //   V4 装备：+5 / +10 时随机一条 ×1.30
+    //   V5 装备：+3 / +6 / +9 milestone 时随机一条 ×1.30，不新增词条，允许重复
     let breakthroughStat: string | null = null
     let breakthroughOldVal = 0
     let breakthroughNewVal = 0
 
-    if (nextLevel === 5 || nextLevel === 10) {
+    if (isV5 && (V5_ENHANCE_MILESTONES as readonly number[]).includes(nextLevel)) {
+      let subStats = eq.sub_stats
+      if (typeof subStats === 'string') subStats = JSON.parse(subStats)
+      const currentSubs = Array.isArray(subStats) ? subStats : []
+      const slotIndex = getV5SlotIndexByBaseSlot(eq.base_slot as V5BaseSlot)
+      const milestoneResult = applyV5EnhanceMilestone(currentSubs, slotIndex, eq.rarity as V5Rarity, nextLevel)
+      await pool.query(
+        'UPDATE character_equipment SET sub_stats = $1 WHERE id = $2',
+        [JSON.stringify(milestoneResult.newSubStats), equip_id]
+      )
+      if (milestoneResult.boosted) {
+        breakthroughStat = milestoneResult.boosted.stat
+        breakthroughOldVal = milestoneResult.boosted.oldValue
+        breakthroughNewVal = milestoneResult.boosted.newValue
+      }
+    } else if (!isV5 && (nextLevel === 5 || nextLevel === 10)) {
       let subStats = eq.sub_stats
       if (typeof subStats === 'string') subStats = JSON.parse(subStats)
       if (Array.isArray(subStats) && subStats.length > 0) {

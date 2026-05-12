@@ -17,6 +17,7 @@ import { getV5SlotIndexByBaseSlot } from './equipment-v5'
 export interface V5EquipmentDelta {
   // flat 累加
   atk: number; def: number; maxHp: number; spd: number; spirit: number
+  luck: number; spiritDensity: number
   // 百分比类（小数）
   critRate: number; critDmg: number; lifesteal: number; dodge: number
   armorPen: number; accuracy: number
@@ -42,6 +43,7 @@ export interface V5EquipmentDelta {
 
 const ZERO_DELTA = (): V5EquipmentDelta => ({
   atk: 0, def: 0, maxHp: 0, spd: 0, spirit: 0,
+  luck: 0, spiritDensity: 0,
   critRate: 0, critDmg: 0, lifesteal: 0, dodge: 0,
   armorPen: 0, accuracy: 0,
   equipAtkPct: 0, equipDefPct: 0, equipHpPct: 0, equipSpdPct: 0,
@@ -53,14 +55,47 @@ const ZERO_DELTA = (): V5EquipmentDelta => ({
   lingenBonusPct: 0,
 })
 
+/**
+ * 已装备神通 → 主属（出现次数最多的五行）
+ * 平局按 metal/wood/water/fire/earth 顺序取第一个；全 null 返回 null。
+ */
+export function getDominantSkillWuxing(equippedSkills: any): WuxingPrefix | null {
+  if (!equippedSkills) return null
+  const elements: (WuxingPrefix | null | undefined)[] = []
+  if (equippedSkills.activeSkill?.element) elements.push(equippedSkills.activeSkill.element)
+  if (Array.isArray(equippedSkills.divineSkills)) {
+    for (const s of equippedSkills.divineSkills) {
+      if (s?.skill?.element) elements.push(s.skill.element)
+      else if (s?.element) elements.push(s.element)
+    }
+  }
+  if (Array.isArray(equippedSkills.passiveSkills)) {
+    for (const s of equippedSkills.passiveSkills) {
+      if (s?.skill?.element) elements.push(s.skill.element)
+      else if (s?.element) elements.push(s.element)
+    }
+  }
+  const counts: Record<string, number> = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
+  for (const e of elements) if (e && counts[e] !== undefined) counts[e]++
+  const order: WuxingPrefix[] = ['metal', 'wood', 'water', 'fire', 'earth']
+  let best: WuxingPrefix | null = null
+  let bestCount = 0
+  for (const w of order) {
+    if (counts[w] > bestCount) { bestCount = counts[w]; best = w }
+  }
+  return best
+}
+
 /** V5 小写 stat key → 加到 delta 哪个累加器 */
-function applyStat(d: V5EquipmentDelta, stat: string, value: number, prefixes: readonly WuxingPrefix[]): void {
+function applyStat(d: V5EquipmentDelta, stat: string, value: number, prefixes: readonly WuxingPrefix[], dominantSkillWuxing: WuxingPrefix | null): void {
   switch (stat) {
     case 'atk':           d.atk += value; break
     case 'def':           d.def += value; break
     case 'hp':            d.maxHp += value; break
     case 'spd':           d.spd += value; break
     case 'spirit':        d.spirit += value; break
+    case 'luck':          d.luck += value; break
+    case 'spirit_density': d.spiritDensity += value; break
     case 'crit_rate':     d.critRate += value / 100; break
     case 'crit_dmg':      d.critDmg += value / 100; break
     case 'lifesteal':     d.lifesteal += value / 100; break
@@ -74,8 +109,12 @@ function applyStat(d: V5EquipmentDelta, stat: string, value: number, prefixes: r
     case 'spirit_pct':    d.weaponSpiritPct += value; break
     case 'reflect':       d.equipReflectPct += value / 100; break
     case 'wuxing_dmg':
-      // 按装备前缀分摊：双前缀两个五行都加 value（保证强度，因双前缀总能触发更多相生）
-      for (const p of prefixes) d.elementDmg[p] += value
+      // 五行强化按「携带神通主属（最多者）」生效；若无神通，按装备前缀兜底
+      if (dominantSkillWuxing) {
+        d.elementDmg[dominantSkillWuxing] += value
+      } else {
+        for (const p of prefixes) d.elementDmg[p] += value
+      }
       break
     // V5 专属 stat → 各自累加器（调用方接到 V4 战斗字段）
     case 'dot_dmg':       d.dotDmgPct       += value / 100; break  // 与 V4 DOT_DMG_PCT 同口径（/100）
@@ -102,6 +141,7 @@ function normalizePrefix(raw: any): WuxingPrefix[] {
 export function computeV5EquipmentDelta(
   equipRows: readonly any[],
   charLingen: WuxingPrefix | null,
+  dominantSkillWuxing: WuxingPrefix | null = null,
 ): V5EquipmentDelta {
   const delta = ZERO_DELTA()
   const v5Rows = equipRows.filter(eq => eq.slot && eq.equipment_version === 5)
@@ -130,7 +170,7 @@ export function computeV5EquipmentDelta(
     // 基础属性1（受强化：每级 +10%）
     if (eq.primary_stat && typeof eq.primary_value === 'number') {
       const v1 = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
-      applyStat(delta, eq.primary_stat, v1, prefixes)
+      applyStat(delta, eq.primary_stat, v1, prefixes, dominantSkillWuxing)
     }
 
     // 强化词条（sub_stats 复用 V4 字段，V5 用小写 stat key；不受强化）
@@ -138,7 +178,7 @@ export function computeV5EquipmentDelta(
     if (Array.isArray(enhAffixes)) {
       for (const a of enhAffixes) {
         if (a && typeof a.stat === 'string' && typeof a.value === 'number') {
-          applyStat(delta, a.stat, a.value, prefixes)
+          applyStat(delta, a.stat, a.value, prefixes, dominantSkillWuxing)
         }
       }
     }
@@ -152,7 +192,7 @@ export function computeV5EquipmentDelta(
         if (!flags[i]) continue
         const a = wuxingArr[i]
         if (a && typeof a.stat === 'string' && typeof a.value === 'number') {
-          applyStat(delta, a.stat, a.value, prefixes)
+          applyStat(delta, a.stat, a.value, prefixes, dominantSkillWuxing)
         }
       }
     }

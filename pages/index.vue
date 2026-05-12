@@ -567,10 +567,13 @@
                 <option value="legendary">✦ 传奇（炫金）</option>
                 <option value="boss_treasure">◆ 秘宝（亮粉）</option>
               </select>
-              <select v-model="setFilter" class="sell-select" title="按套装筛选">
-                <option value="all">全部套装</option>
-                <option value="none">无套装</option>
-                <option v-for="s in EQUIP_SETS" :key="s.setKey" :value="s.setKey">{{ s.name }}</option>
+              <select v-model="wuxingFilter" class="sell-select" title="按五行前缀筛选">
+                <option value="all">全部五行</option>
+                <option value="metal">金</option>
+                <option value="wood">木</option>
+                <option value="water">水</option>
+                <option value="fire">火</option>
+                <option value="earth">土</option>
               </select>
               <div class="attr-picker">
                 <button
@@ -2280,7 +2283,11 @@
                 </span>
               </span>
             </div>
-            <div class="enhance-preview-row" v-if="(enhanceTarget.enhance_level || 0) + 1 === 5 || (enhanceTarget.enhance_level || 0) + 1 === 10">
+            <div class="enhance-preview-row" v-if="isV5Equip(enhanceTarget) && [3,6,9].includes((enhanceTarget.enhance_level || 0) + 1)">
+              <span class="enhance-label" style="color: var(--gold-ink);">副词条加值</span>
+              <span style="color: var(--gold-ink);">随机一条副词条 +30%（允许重复）</span>
+            </div>
+            <div class="enhance-preview-row" v-else-if="!isV5Equip(enhanceTarget) && ((enhanceTarget.enhance_level || 0) + 1 === 5 || (enhanceTarget.enhance_level || 0) + 1 === 10)">
               <span class="enhance-label" style="color: var(--gold-ink);">副属性突破</span>
               <span style="color: var(--gold-ink);">随机一条副属性 +30%</span>
             </div>
@@ -2315,7 +2322,7 @@
               {{ enhancing ? '强化中...' : '强化' }}
             </button>
           </div>
-          <div v-else class="enhance-maxed">已达最大强化等级 +10</div>
+          <div v-else class="enhance-maxed">已达最大强化等级 +{{ isV5Equip(enhanceTarget) ? 9 : 10 }}</div>
 
           <!-- 结果提示 -->
           <div v-if="enhanceResult" class="enhance-result" :class="{ success: enhanceResult.success, fail: enhanceResult.success === false }">
@@ -2843,8 +2850,8 @@
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);"><b>v3.6 新词条:</b><b>DOT伤害 +5~25%</b>(灼烧/中毒/流血总伤害放大,与功法被动「万毒归一」叠加)；<b>反伤倍率 +3~15%</b>(每件装备独立叠加到反伤系数)。</p>
           </div>
           <div class="help-section">
-            <div class="help-title">装备强化</div>
-            <p class="help-text">消耗灵石强化已穿戴装备,最高 +10。每级主属性 +10%(满级 +100%)。</p>
+            <div class="help-title">装备强化（V4 老装备）</div>
+            <p class="help-text">消耗灵石强化已穿戴装备,最高 +10。每级主属性 +10%(满级 +100%)。<span style="color: var(--fade-ink);">新版 V5 装备规则不同,见下方专门章节。</span></p>
             <table class="help-table"><tbody>
               <tr><td>+1 ~ +6</td><td>100% 必成</td></tr>
               <tr><td>+7</td><td>75%</td></tr>
@@ -2864,6 +2871,93 @@
               <tr><td>套装碎片</td><td>合成 6 套套装(烈阳/渊海/万木/雷罚/磐岩/虚空)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">上述道具可通过宗门商店购买,或打怪/成就掉落。</p>
+          </div>
+
+          <div class="help-section" style="border-left: 3px solid var(--gold-ink); padding-left: 8px;">
+            <div class="help-title" style="color: var(--gold-ink);">装备 V5（新版掉落）</div>
+            <p class="help-text">V5 与 V4 老装备并存。新版掉落都走 V5,老装备完全不受影响,可继续穿戴/强化/升品。</p>
+
+            <p class="help-text" style="margin-top: 8px;"><b>七槽位主属性</b></p>
+            <table class="help-table"><tbody>
+              <tr><td>武器</td><td>攻击力</td></tr>
+              <tr><td>灵戒</td><td>五行强化</td></tr>
+              <tr><td>法宝</td><td>神识</td></tr>
+              <tr><td>法袍</td><td>防御力</td></tr>
+              <tr><td>法冠</td><td>气血</td></tr>
+              <tr><td>灵佩</td><td>气血% / 防御% 各一半</td></tr>
+              <tr><td>步云靴</td><td>身法</td></tr>
+            </tbody></table>
+
+            <p class="help-text" style="margin-top: 8px;"><b>五行前缀与相生</b></p>
+            <p class="help-text" style="margin-top: 2px;">每件 V5 装备带一个五行前缀（金/木/水/火/土）。按槽位序号 1→2→3→…→7→1 形成相生链：<b>木生火、火生土、土生金、金生水、水生木</b>。每件最多 3 个「五行词条」（暗词条）：</p>
+            <table class="help-table"><tbody>
+              <tr><td>属性 1</td><td>上一件前缀相生本件前缀 → 蓝字生效（首件无前序，不生效）</td></tr>
+              <tr><td>属性 2</td><td>链上累计触发 ≥ 3 件（含本件） → 蓝字生效</td></tr>
+              <tr><td>属性 3</td><td>链上累计触发 ≥ 6 件（含本件） → 蓝字生效</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">未触发的五行词条灰色显示不生效。装备相生顺序 = 槽位序号顺序，调位无法换链。</p>
+
+            <p class="help-text" style="margin-top: 8px;"><b>灵根共鸣（同色加成）</b></p>
+            <p class="help-text" style="margin-top: 2px;">已穿戴装备前缀与角色灵根相同的件数 ≥ 3/5/7 时，攻/防/血/神识同时 +5%/+10%/+20%。</p>
+
+            <p class="help-text" style="margin-top: 8px;"><b>五行强化（wuxing_dmg）</b></p>
+            <p class="help-text" style="margin-top: 2px;">五行强化词条不再绑定装备前缀，而是按<b>已装备神通中出现最多的五行</b>生效。多数占优；平局按 金/木/水/火/土 顺序取第一个；若无任何神通带元素，回退到按装备前缀分摊。</p>
+          </div>
+
+          <div class="help-section" style="border-left: 3px solid var(--gold-ink); padding-left: 8px;">
+            <div class="help-title" style="color: var(--gold-ink);">装备 V5 · 强化</div>
+            <p class="help-text">V5 装备强化上限 <b>+9</b>（V4 装备仍为 +10）。每级主属性 +10%（满级 +90%）。失败退 1 级，最低 +6。</p>
+            <table class="help-table"><tbody>
+              <tr><td>+1 ~ +6</td><td>100% 必成</td></tr>
+              <tr><td>+7</td><td>75%</td></tr>
+              <tr><td>+8</td><td>55%</td></tr>
+              <tr><td>+9</td><td>40%</td></tr>
+            </tbody></table>
+
+            <p class="help-text" style="margin-top: 8px;"><b>副词条数量（出生时固定，不随强化增长）</b></p>
+            <table class="help-table"><tbody>
+              <tr><td>红装</td><td>4 条</td></tr>
+              <tr><td>金装</td><td>3 条</td></tr>
+              <tr><td>紫装</td><td>2 条</td></tr>
+              <tr><td>蓝装</td><td>1 条</td></tr>
+            </tbody></table>
+
+            <p class="help-text" style="margin-top: 8px;"><b>强化里程碑（+3 / +6 / +9）</b></p>
+            <p class="help-text" style="margin-top: 2px;">每次强化到 +3 / +6 / +9 时，<b>从现有副词条随机选一条 +30%</b>（最少 +1）。不新增词条，允许多个 milestone 反复加到同一条上 —— 极端运气可让一条副词条连续 ×1.3³ ≈ ×2.2。</p>
+
+            <p class="help-text" style="margin-top: 8px; color: var(--cinnabar);">T4+ 装备每次强化额外消耗 1 个对应 tier 的【强化石·TX】(成败都扣)。宗门商店可购【强化保护符】失败不退级、【强化大师符】+7 必成。</p>
+          </div>
+
+          <div class="help-section" style="border-left: 3px solid var(--gold-ink); padding-left: 8px;">
+            <div class="help-title" style="color: var(--gold-ink);">装备 V5 · 强化词条池</div>
+            <p class="help-text">V5 装备按槽位分两组共享强化词条池，每个位置独立抽取（允许同一池抽出 2 条同名词条）：</p>
+            <table class="help-table"><tbody>
+              <tr><td>攻击组</td><td>武器 / 灵戒 / 法宝</td></tr>
+              <tr><td>防御组</td><td>法袍 / 法冠 / 灵佩 / 步云靴</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;">防御组 pool 中原本的「五行抗性」词条在抽取时 <b>50/50 随机替换为「福缘」或「灵气浓度」</b>。福缘提升所有掉落概率，灵气浓度提升打怪修为。</p>
+          </div>
+
+          <div class="help-section" style="border-left: 3px solid var(--gold-ink); padding-left: 8px;">
+            <div class="help-title" style="color: var(--gold-ink);">装备 V5 · 传说套装 / Boss 秘宝</div>
+            <p class="help-text"><b>元始天尊套装（炫金）</b> · 修为真仙以上 / T8+ 副本掉落 / 极低概率：</p>
+            <table class="help-table"><tbody>
+              <tr><td>1 件</td><td>攻/防/血/神识/身法 +10%</td></tr>
+              <tr><td>3 件</td><td>神通伤害 +10%</td></tr>
+              <tr><td>5 件</td><td>全神通 CD -1，30% 概率刷新最短 CD 神通</td></tr>
+              <tr><td>7 件</td><td>10% 概率「天尊气场」：全体震慑 1 回合（无视免控必中）</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;"><b>Boss 秘宝（粉色）</b> · 固定 boss 掉落，基础属性同 T 级红装，但带 3 条同名五行词条（如虚空虫卵: 会心伤害×3）。</p>
+            <table class="help-table"><tbody>
+              <tr><td>T8 天帝</td><td>降魔伏鬼枪（武器 · 火 · 破甲×3）</td></tr>
+              <tr><td>T9 鸿蒙道尊</td><td>道尊拂尘（武器 · 木 · 攻击%×3）</td></tr>
+              <tr><td>T10 万界战神</td><td>不朽战铠（法袍 · 火 · 吸血×3）</td></tr>
+              <tr><td>T11 九霄玉帝</td><td>封天印（法宝 · 土 · 神识%×3）</td></tr>
+              <tr><td>T12 虚空之主</td><td>虚空虫卵（灵佩 · 水 · 会心伤害×3）</td></tr>
+              <tr><td>T13 天宇道君</td><td>道君云履（步云靴 · 木 · 身法%×3）</td></tr>
+              <tr><td>T14 时空之主</td><td>寰宇（灵戒 · 金/火双前缀 · 五行强化×3）</td></tr>
+              <tr><td>T15 终焉道祖</td><td>万道终焉（法宝 · 木/土双前缀 · 会心伤害×3）</td></tr>
+            </tbody></table>
           </div>
           <div class="help-section">
             <div class="help-title">功法系统</div>
@@ -3551,7 +3645,7 @@
           <!-- 自动出售 -->
           <div class="settings-section">
             <div class="settings-title">自动出售</div>
-            <p class="settings-desc">战斗掉落的装备同时满足品质和阶位条件时自动出售为灵石；套装件默认保留，可在右侧勾选不需要的套装一并自动出售；勾选"无套装"则散件按规则自动卖，取消勾选可保留所有无套装散件</p>
+            <p class="settings-desc">战斗掉落的装备同时满足品质和阶位条件时自动出售为灵石；右侧可勾选不需要的五行前缀，被勾选五行的装备会跟随品质/阶位规则被自动卖；元始天尊（五行全有）只有把 5 个五行全勾上才会被卖</p>
             <div class="auto-sell-group">
               <div class="auto-sell-col">
                 <div class="auto-sell-subtitle">品质筛选</div>
@@ -3572,15 +3666,11 @@
                 </div>
               </div>
               <div class="auto-sell-col">
-                <div class="auto-sell-subtitle">套装筛选（勾选 = 不要，会被自动卖）</div>
+                <div class="auto-sell-subtitle">五行筛选（勾选 = 不要，会被自动卖）</div>
                 <div class="auto-sell-options">
-                  <label class="auto-sell-label" title="无套装的散件装备">
-                    <input type="checkbox" v-model="autoSellNoSet" @change="saveSettings" />
-                    <span style="color: #aaaaaa;">无套装</span>
-                  </label>
-                  <label v-for="s in EQUIP_SETS" :key="s.setKey" class="auto-sell-label" :title="s.desc">
-                    <input type="checkbox" :value="s.setKey" v-model="autoSellSetBlacklist" @change="saveSettings" />
-                    <span style="color: #ffd35e;">{{ s.name }}</span>
+                  <label v-for="opt in wuxingFilterOptions" :key="opt.value" class="auto-sell-label" :title="opt.label + '前缀装备'">
+                    <input type="checkbox" :value="opt.value" v-model="autoSellWuxingBlacklist" @change="saveSettings" />
+                    <span :style="{ color: opt.color }">{{ opt.label }}</span>
                   </label>
                 </div>
               </div>
@@ -3589,8 +3679,7 @@
               当前: {{ autoSellThreshold === 'none' ? '不自动出售' :
                 '自动出售 ' + autoSellOptions.find(o => o.value === autoSellThreshold)?.label +
                 (autoSellTier > 0 ? ' 且 T' + autoSellTier + '及以下阶位' : '（不限阶位）') + ' 的装备' +
-                (autoSellNoSet ? '；含无套装散件' : '；保留无套装散件') +
-                (autoSellSetBlacklist.length > 0 ? '；含不要的套装：' + autoSellSetBlacklist.map(k => EQUIP_SET_MAP[k]?.name).filter(Boolean).join('、') : '；保留其他全部套装') }}
+                (autoSellWuxingBlacklist.length > 0 ? '；不要的五行：' + autoSellWuxingBlacklist.map(w => wuxingFilterOptions.find(o => o.value === w)?.label).filter(Boolean).join('、') : '；保留所有五行前缀的装备') }}
             </p>
           </div>
 
@@ -4261,10 +4350,16 @@ const autoSellTierOptions = [
   { value: 15, label: 'T15及以下' },
 ];
 const autoSellTier = ref(0);
-// 套装黑名单：勾选 = 这些套装的装备件不保留，会跟普通装备一起被自动出售
-const autoSellSetBlacklist = ref<string[]>([]);
-// 无套装散件：true = 按品质/阶位规则自动卖；false = 保护无套装散件不卖
-const autoSellNoSet = ref(true);
+// 五行前缀黑名单：勾选 = 这些五行前缀的装备不保留，会跟普通装备一起被自动出售
+// 元始天尊（5 元素全有）只有当 5 个五行全部在黑名单时才会被卖
+const autoSellWuxingBlacklist = ref<string[]>([]);
+const wuxingFilterOptions: Array<{ value: 'metal'|'wood'|'water'|'fire'|'earth'; label: string; color: string }> = [
+  { value: 'metal', label: '金', color: '#c9a85c' },
+  { value: 'wood',  label: '木', color: '#6baa7d' },
+  { value: 'water', label: '水', color: '#5b8eaa' },
+  { value: 'fire',  label: '火', color: '#c45c4a' },
+  { value: 'earth', label: '土', color: '#a08a60' },
+];
 
 // ===== 设置: 字体 & 战斗日志字体大小 =====
 const DEFAULT_FONT_FAMILY = "'Noto Serif SC', 'STSong', 'SimSun', serif";
@@ -4297,8 +4392,7 @@ function saveSettings() {
     customText: customTextColor.value,
     autoSell: autoSellThreshold.value,
     autoSellTier: autoSellTier.value,
-    autoSellSetBlacklist: autoSellSetBlacklist.value,
-    autoSellNoSet: autoSellNoSet.value,
+    autoSellWuxingBlacklist: autoSellWuxingBlacklist.value,
     uiFontFamily: uiFontFamily.value,
     battleLogFontSize: battleLogFontSize.value,
   };
@@ -4312,9 +4406,7 @@ function loadSettings() {
     const settings = JSON.parse(raw);
     autoSellThreshold.value = settings.autoSell || 'none';
     autoSellTier.value = settings.autoSellTier || 0;
-    autoSellSetBlacklist.value = Array.isArray(settings.autoSellSetBlacklist) ? settings.autoSellSetBlacklist : [];
-    // 旧存档无此字段时默认 true，保持原有"卖无套装散件"行为
-    autoSellNoSet.value = typeof settings.autoSellNoSet === 'boolean' ? settings.autoSellNoSet : true;
+    autoSellWuxingBlacklist.value = Array.isArray(settings.autoSellWuxingBlacklist) ? settings.autoSellWuxingBlacklist : [];
     if (settings.uiFontFamily) {
       uiFontFamily.value = settings.uiFontFamily;
       document.documentElement.style.setProperty('--ui-font-family', uiFontFamily.value);
@@ -5214,6 +5306,7 @@ const V5_STAT_TO_V4_KEY: Record<string, string> = {
   lifesteal: 'LIFESTEAL', dodge: 'DODGE',
   armor_pen: 'ARMOR_PEN', accuracy: 'ACCURACY',
   reflect: 'REFLECT_PCT', dot_dmg: 'DOT_DMG_PCT',
+  luck: 'LUCK', spirit_density: 'SPIRIT_DENSITY',
 }
 
 const equipBonus = computed(() => {
@@ -5225,12 +5318,17 @@ const equipBonus = computed(() => {
       bonus.DEF_PCT = (bonus.DEF_PCT || 0) + value / 2
       return
     }
-    // wuxing_dmg：按装备前缀分摊到对应五行 dmg
+    // wuxing_dmg：按已装备神通主属（最多者）生效；无神通则按装备前缀兜底
     if (stat === 'wuxing_dmg') {
       const map: Record<string, string> = { metal: 'METAL_DMG', wood: 'WOOD_DMG', water: 'WATER_DMG', fire: 'FIRE_DMG', earth: 'EARTH_DMG' }
-      for (const p of prefixes) {
-        const k = map[p]
-        if (k) bonus[k] = (bonus[k] || 0) + value
+      const dom = dominantSkillWuxing.value
+      if (dom) {
+        bonus[map[dom]] = (bonus[map[dom]] || 0) + value
+      } else {
+        for (const p of prefixes) {
+          const k = map[p]
+          if (k) bonus[k] = (bonus[k] || 0) + value
+        }
       }
       return
     }
@@ -5980,6 +6078,22 @@ const filteredSkillInventory = computed(() => {
 const equippedActive = ref<Skill | null>(null);
 const equippedDivines = ref<(Skill | null)[]>([null, null, null]);
 const equippedPassives = ref<(Skill | null)[]>([null, null, null]);
+
+// V5 五行强化（wuxing_dmg）按已装备神通主属（出现最多者）生效；平局按 metal/wood/water/fire/earth 取第一个
+const dominantSkillWuxing = computed<'metal' | 'wood' | 'water' | 'fire' | 'earth' | null>(() => {
+  const counts: Record<string, number> = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 };
+  const all: (Skill | null)[] = [equippedActive.value, ...equippedDivines.value, ...equippedPassives.value];
+  for (const s of all) {
+    if (s?.element && counts[s.element] !== undefined) counts[s.element]++;
+  }
+  const order: ('metal' | 'wood' | 'water' | 'fire' | 'earth')[] = ['metal', 'wood', 'water', 'fire', 'earth'];
+  let best: typeof order[number] | null = null;
+  let bestCount = 0;
+  for (const w of order) {
+    if (counts[w] > bestCount) { bestCount = counts[w]; best = w; }
+  }
+  return best;
+});
 
 // 功法槽位上限（按境界解锁）: 练气 1+1+1 → 筑基 1+2+2 → 金丹 1+2+3 → 元婴+ 1+3+3
 const skillSlotLimits = computed(() => {
@@ -7748,6 +7862,10 @@ async function toggleEquipLock(eq: any) {
 
 // 格式化副属性数值,百分比类加 %
 function formatStatValue(stat: string, value: number): string {
+  if (stat === 'hp_pct_or_def_pct') {
+    // db 存的是总值，addV5 实际拆 50/50 给 HP_PCT/DEF_PCT 各一半；显示侧也除以 2，配合 stat 名「气血/防御 各」自洽
+    return Math.floor(value / 2) + '%';
+  }
   if (PERCENT_STATS.has(stat)) return value + '%';
   return String(value);
 }
@@ -7777,8 +7895,8 @@ function parseSubs(subs: any): { stat: string; value: number }[] {
 const bagFilter = ref('all');
 const sellRarity = ref('white');
 const tierFilter = ref<'all' | number>('all');
-// 高级筛选：套装 / 属性 / 品质
-const setFilter = ref<'all' | 'none' | string>('all');
+// 高级筛选：五行 / 属性 / 品质
+const wuxingFilter = ref<'all' | 'metal' | 'wood' | 'water' | 'fire' | 'earth'>('all');
 // attrFilter：空数组 = 全部属性；多选取并集（OR 命中）
 const attrFilter = ref<string[]>([]);
 const rarityFilter = ref<'all' | string>('all');
@@ -7877,11 +7995,11 @@ const attrFilterButtonText = computed(() => {
 
 // 是否启用了任意高级筛选（用于决定是否显示"清除"按钮）
 const hasActiveAdvancedFilter = computed(() =>
-  setFilter.value !== 'all' || attrFilter.value.length > 0 || rarityFilter.value !== 'all'
+  wuxingFilter.value !== 'all' || attrFilter.value.length > 0 || rarityFilter.value !== 'all'
 );
 
 function clearAdvancedFilters() {
-  setFilter.value = 'all';
+  wuxingFilter.value = 'all';
   attrFilter.value = [];
   rarityFilter.value = 'all';
 }
@@ -7909,12 +8027,13 @@ const filteredBagList = computed(() => {
       list = list.filter(e => e.rarity === rarityFilter.value);
     }
   }
-  if (setFilter.value !== 'all') {
-    if (setFilter.value === 'none') {
-      list = list.filter(e => !e.set_id);
-    } else {
-      list = list.filter(e => e.set_id === setFilter.value);
-    }
+  if (wuxingFilter.value !== 'all') {
+    const want = wuxingFilter.value;
+    list = list.filter(e => {
+      const pfx = (e as any).wuxing_prefix;
+      const arr = Array.isArray(pfx) ? pfx : (pfx ? [pfx] : []);
+      return arr.includes(want);
+    });
   }
   if (attrFilter.value.length > 0) {
     const wants = attrFilter.value;
@@ -7949,7 +8068,7 @@ async function batchSell() {
         tier: tierFilter.value,
         baseSlot: bagFilter.value !== 'all' ? bagFilter.value : null,
         rarityEq: rarityFilter.value !== 'all' ? rarityFilter.value : null,
-        setKey: setFilter.value !== 'all' ? setFilter.value : null,
+        wuxingKey: wuxingFilter.value !== 'all' ? wuxingFilter.value : null,
         attr: attrFilter.value.length > 0 ? attrFilter.value : null,
       },
       headers: getAuthHeaders(),
@@ -8212,6 +8331,10 @@ const RARITY_NAMES: Record<string, string> = {
 };
 function getRarityName(rarity: string) {
   return RARITY_NAMES[rarity] || rarity;
+}
+
+function isV5Equip(eq: any): boolean {
+  return eq?.equipment_version === 5;
 }
 
 function getStatName(stat: string) {

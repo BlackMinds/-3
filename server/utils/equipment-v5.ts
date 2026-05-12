@@ -97,6 +97,7 @@ const V5_TO_V4_STAT: Record<string, string> = {
   accuracy: 'ACCURACY', dodge: 'DODGE',
   lifesteal: 'LIFESTEAL', armor_pen: 'ARMOR_PEN',
   crit_rate: 'CRIT_RATE', crit_dmg: 'CRIT_DMG',
+  luck: 'LUCK', spirit_density: 'SPIRIT_DENSITY',
   // V5 wuxing_dmg 是「装备前缀对应的某个具体五行 dmg」，强化词条里默认映射到 METAL_DMG range 取值
   wuxing_dmg: 'METAL_DMG',
 }
@@ -129,9 +130,9 @@ function calcBaseStat1Value(stat: string, tier: number, rarity: V5Rarity, level:
   const v4Stat = V5_TO_V4_STAT[stat] || stat.toUpperCase()
   const base = (EQUIP_PRIMARY_BASE as Record<string, number>)[v4Stat]
   if (!base) {
-    // 灵佩的 hp_pct_or_def_pct 在 V4 没有「混合主属性」；这里临时给一个保守 base
-    // 真正接入时，灵佩应该根据具体 hp_pct 还是 def_pct 各自查 base，留 TODO
-    if (stat === 'hp_pct_or_def_pct') return Math.floor(8 * getV5TierWeight(tier) * RARITY_STAT_MUL[RARITY_IDX_MAP[rarity]] * getV5EnhanceMul(level))
+    // 灵佩 hp_pct_or_def_pct：单条主词条产出后在 pages/index.vue addV5 里拆 50/50 进 HP_PCT / DEF_PCT
+    // base = 0.16 → T11 红 +0 = 4.8 → 4（拆后单属性 +2%），T15 红 +9 ≈ 15（拆后单属性 +7%），与副词条 HP_PCT [2,8] 一档对齐
+    if (stat === 'hp_pct_or_def_pct') return Math.max(1, Math.floor(0.16 * getV5TierWeight(tier) * RARITY_STAT_MUL[RARITY_IDX_MAP[rarity]] * getV5EnhanceMul(level)))
     return 1
   }
   const value = base * getV5TierWeight(tier) * RARITY_STAT_MUL[RARITY_IDX_MAP[rarity]] * getV5EnhanceMul(level)
@@ -166,6 +167,12 @@ function calcEnhanceAffixValue(stat: string, rarity: V5Rarity): number {
 
 // --------------------------- 强化词条抽取 ---------------------------
 
+/** res_pct 抽到时 50/50 替换为 luck 或 spirit_density（保留 design 文档 res_pct 占位） */
+function resolveResPctReplacement(stat: string): string {
+  if (stat !== 'res_pct') return stat
+  return Math.random() < 0.5 ? 'luck' : 'spirit_density'
+}
+
 function rollEnhanceAffixes(slotIndex: number, rarity: V5Rarity, level: number): V5StatValue[] {
   const count = getV5EnhanceAffixCount(rarity, level)
   if (count <= 0) return []
@@ -174,10 +181,36 @@ function rollEnhanceAffixes(slotIndex: number, rarity: V5Rarity, level: number):
   for (let pos = 0; pos < count; pos++) {
     const candidates = pool[pos]
     if (!candidates || candidates.length === 0) continue
-    const stat = candidates[Math.floor(Math.random() * candidates.length)]
+    const rawStat = candidates[Math.floor(Math.random() * candidates.length)]
+    const stat = resolveResPctReplacement(rawStat)
     out.push({ stat, value: calcEnhanceAffixValue(stat, rarity) })
   }
   return out
+}
+
+/**
+ * V5 强化 +3/+6/+9 milestone 触发的副词条变化
+ *   - 从现有副词条随机选一条 ×1.30（最少 +1），不新增词条
+ *   - 允许多个 milestone 重复加到同一条
+ *   - 词条数永远保持初始（按品质 V5_RARITY_TO_ENHANCE_AFFIX_COUNT 给定）
+ */
+export function applyV5EnhanceMilestone(
+  currentSubStats: V5StatValue[],
+  _slotIndex: number,
+  _rarity: V5Rarity,
+  _newLevel: number,
+): {
+  newSubStats: V5StatValue[]
+  added?: V5StatValue
+  boosted?: { stat: string; oldValue: number; newValue: number }
+} {
+  if (currentSubStats.length === 0) return { newSubStats: currentSubStats }
+  const idx = Math.floor(Math.random() * currentSubStats.length)
+  const old = currentSubStats[idx]
+  const newValue = Math.max(Math.floor(old.value * 1.30), old.value + 1)
+  const boosted = { stat: old.stat, oldValue: old.value, newValue }
+  const newSubStats = currentSubStats.map((s, i) => (i === idx ? { stat: s.stat, value: newValue } : s))
+  return { newSubStats, boosted }
 }
 
 // --------------------------- 主入口 ---------------------------
@@ -230,10 +263,13 @@ export function rollEquipmentV5(opts: RollEquipmentV5Options): V5EquipmentInstan
     // 双前缀的元始天尊【五行】：默认取第一个前缀（金）的词条；如需差异化交由 UI/逻辑层处理
     const lookupPrefix: WuxingPrefix = Array.isArray(actualPrefix) ? actualPrefix[0] : (actualPrefix as WuxingPrefix)
     const triple = V5_WUXING_AFFIX_TABLE[slotMeta.base_slot_v4][lookupPrefix]
+    const s0 = resolveResPctReplacement(triple[0])
+    const s1 = resolveResPctReplacement(triple[1])
+    const s2 = resolveResPctReplacement(triple[2])
     wuxingAffixes = [
-      { stat: triple[0], value: calcWuxingAffixValue(triple[0], tier, rarity) },
-      { stat: triple[1], value: calcWuxingAffixValue(triple[1], tier, rarity) },
-      { stat: triple[2], value: calcWuxingAffixValue(triple[2], tier, rarity) },
+      { stat: s0, value: calcWuxingAffixValue(s0, tier, rarity) },
+      { stat: s1, value: calcWuxingAffixValue(s1, tier, rarity) },
+      { stat: s2, value: calcWuxingAffixValue(s2, tier, rarity) },
     ]
   }
 

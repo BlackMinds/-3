@@ -16,7 +16,7 @@ import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/
 import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo } from '~/server/engine/battleEngine'
 import { aggregateEquipmentSetInfo } from '~/server/engine/equipSetData'
 import { WEAPON_BONUS } from '~/shared/balance'
-import { computeV5EquipmentDelta } from '~/server/utils/equipmentAggregateV5'
+import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
 
 export interface SnapshotOptions {
   forbidPills?: boolean       // 禁用战斗中丹药 (宗门战单挑用)
@@ -165,7 +165,7 @@ export async function buildCharacterSnapshot(
   }
 
   // === V5 装备聚合（design/system-equipment-v5-0-2.json）— 与 V4 并存 ===
-  const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null)
+  const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null, getDominantSkillWuxing(equippedSkills))
   atk += v5Delta.atk;  def += v5Delta.def;  maxHp += v5Delta.maxHp;  spd += v5Delta.spd;  spirit += v5Delta.spirit
   critRate += v5Delta.critRate;  critDmg += v5Delta.critDmg;  lifesteal += v5Delta.lifesteal;  dodge += v5Delta.dodge
   armorPen += v5Delta.armorPen;  accuracy += v5Delta.accuracy

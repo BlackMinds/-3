@@ -12,7 +12,7 @@ import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats, getEquipSellBase, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
 import { tryRollEquipmentV5DropSpec, tryRollV5SpecialDrop } from '~/server/utils/equipment-v5'
-import { computeV5EquipmentDelta } from '~/server/utils/equipmentAggregateV5'
+import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
 import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
@@ -395,7 +395,7 @@ function generateHerbDrop(tier: number, monsterElement: string | null, isBoss: b
 }
 
 // ===== 构建玩家战斗属性 =====
-export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows: any[]): { stats: BattlerStats; expBonusPercent: number; luckPercent: number } {
+export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows: any[], equippedSkills?: any): { stats: BattlerStats; expBonusPercent: number; luckPercent: number } {
   let atk = Number(char.atk)
   let def = Number(char.def)
   let maxHp = Number(char.max_hp)
@@ -424,10 +424,10 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   // 等级加成
   const lv = char.level || 1
   for (let i = 1; i < lv; i++) {
-    if (i <= 50)       { maxHp += 10; atk += 2;  def += 1; spd += 1 }
-    else if (i <= 100) { maxHp += 20; atk += 4;  def += 2; spd += 2 }
-    else if (i <= 150) { maxHp += 40; atk += 8;  def += 4; spd += 3 }
-    else               { maxHp += 80; atk += 15; def += 8; spd += 5 }
+    if (i <= 50)       { maxHp += 30;  atk += 2;  def += 1; spd += 1 }
+    else if (i <= 100) { maxHp += 60;  atk += 4;  def += 2; spd += 2 }
+    else if (i <= 150) { maxHp += 120; atk += 8;  def += 4; spd += 3 }
+    else               { maxHp += 240; atk += 15; def += 8; spd += 5 }
   }
 
   // 境界加成
@@ -492,8 +492,9 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   let v5RefreshShortestCdChance = 0
   let v5StunAllChance = 0
   let v5StunTurns = 0
-  const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null)
+  const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null, getDominantSkillWuxing(equippedSkills))
   atk += v5Delta.atk;  def += v5Delta.def;  maxHp += v5Delta.maxHp;  spd += v5Delta.spd;  spirit += v5Delta.spirit
+  luck += v5Delta.luck;  spiritDensity += v5Delta.spiritDensity
   critRate += v5Delta.critRate;  critDmg += v5Delta.critDmg;  lifesteal += v5Delta.lifesteal;  dodge += v5Delta.dodge
   armorPen += v5Delta.armorPen;  accuracy += v5Delta.accuracy
   equipAtkPct += v5Delta.equipAtkPct;  equipDefPct += v5Delta.equipDefPct;  equipHpPct += v5Delta.equipHpPct;  equipSpdPct += v5Delta.equipSpdPct
@@ -830,6 +831,15 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   nonPassiveHpPct  += awakenHpPct
   nonPassiveSpdPct += awakenSpdPct
 
+  // 道侣仙缘印记 — 四维 +3%~+15%（与面板 mainStats 同口径，design 3.6）
+  const sealPct = Number((char as any)._companion_seal_pct || 0)
+  if (sealPct > 0) {
+    nonPassiveAtkPct += sealPct
+    nonPassiveDefPct += sealPct
+    nonPassiveHpPct  += sealPct
+    nonPassiveSpdPct += sealPct
+  }
+
   // 加法池一次乘（不含功法被动 — 由 battleEngine.applyPassive 用 _flat/_pctSum 字段并池后再乘）
   // 记录 flat 段总和供 battleEngine 重算使用
   const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd
@@ -907,10 +917,10 @@ export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
     const body = await readBody(event)
-    const { map_id, auto_sell, auto_sell_tier, auto_sell_set_blacklist, auto_sell_no_set } = body
-    const setBlacklist: Set<string> = new Set(Array.isArray(auto_sell_set_blacklist) ? auto_sell_set_blacklist : [])
-    // 旧客户端不传该字段时默认 true，保持原"无套装散件按规则自动卖"的行为
-    const autoSellNoSet: boolean = typeof auto_sell_no_set === 'boolean' ? auto_sell_no_set : true
+    const { map_id, auto_sell, auto_sell_tier, auto_sell_wuxing_blacklist } = body
+    // 五行前缀黑名单：装备所有 wuxing_prefix 都在黑名单时才不保护（即会被自动卖）
+    // 元始天尊（5 元素全有）只有 5 个五行全部勾选才会被卖；旧装备无 wuxing_prefix 字段默认保护
+    const wuxingBlacklist: Set<string> = new Set(Array.isArray(auto_sell_wuxing_blacklist) ? auto_sell_wuxing_blacklist : [])
     const batchCount = Math.max(1, Math.min(BATCH_MAX, Number(body.batch_count) || 1))
     if (!map_id) return { code: 400, message: '缺少地图ID' }
 
@@ -923,21 +933,14 @@ export default defineEventHandler(async (event) => {
     const char = charRows[0]
 
     // 道侣仙缘印记 buff：已正式结侣后获得 +3%~+15% 全属性（design 3.6）
-    // 修改基础 atk/def/hp/spd（buildPlayerStats 会基于这些做派生计算，自然按比例放大）
+    // 挂到 char._companion_seal_pct，buildPlayerStats 内部并入 nonPassive×Pct 池（与面板 mainStats 同口径）
     const { rows: compRows } = await pool.query(
       'SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1',
       [char.id]
     )
     if (compRows[0]?.seal_level > 0) {
       const pct = COMPANION_SEAL_PCT[Math.min(compRows[0].seal_level, 5)] || 0
-      if (pct > 0) {
-        char.atk = Math.floor(char.atk * (1 + pct))
-        char.def = Math.floor(char.def * (1 + pct))
-        char.max_hp = Math.floor(char.max_hp * (1 + pct))
-        char.hp = Math.floor(char.hp * (1 + pct))
-        char.spd = Math.floor(char.spd * (1 + pct))
-        char._companion_seal_pct = pct  // 标记字段，供前端展示用
-      }
+      if (pct > 0) char._companion_seal_pct = pct
     }
 
     // 助战子女预算：查询 + 累加装备/天赋，先算出 buffed 值（cap 在 batch 循环里用 playerStats 做）
@@ -1140,7 +1143,7 @@ export default defineEventHandler(async (event) => {
     // -------- batch 循环 --------
     for (let bi = 0; bi < batchCount; bi++) {
       // char 上次结算后字段已 Object.assign 回来，buildPlayerStats 用最新 level/realm 重算
-      const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows)
+      const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows, equippedSkills)
       // v3.9: 把主修内蕴被动叠加进 awaken（与 v1.3 灵戒同字段共池，引擎复用 mainSkill* 钩子）
       applyInnateMainToAwaken((playerStats as any).awaken, equippedSkills.activeSkill)
 
@@ -1353,10 +1356,15 @@ export default defineEventHandler(async (event) => {
               const d = drop.data
               const itemIdx = RARITY_ORDER.indexOf(d.rarity)
               const itemTier = d.tier || 1
-              // 自动出售默认跳过套装件（玩家不需要手动锁定每件套装；批量出售保留 locked 字段控制）
-              // 但若该套装在黑名单内（玩家明确不想要），则跟普通装备一样按品质/阶位规则判定
-              // 无套装散件：autoSellNoSet=false 时同样保护（玩家想保留所有散件）
-              const isProtectedSet = (!!d.set_id && !setBlacklist.has(d.set_id)) || (!d.set_id && !autoSellNoSet)
+              // 自动出售按五行前缀黑名单判定：
+              // - 有 wuxing_prefix 且并非所有前缀都在黑名单 → 保护（玩家想留的五行）
+              // - 有 wuxing_prefix 且所有前缀都在黑名单 → 不保护（会按品质/阶位规则卖）
+              //   元始天尊（5 元素全有）需 5 个五行全勾上才会被卖
+              // - 无 wuxing_prefix（V4 白/绿散件）→ 不保护，按品质/阶位规则卖
+              const wuxingArr: string[] = Array.isArray((d as any).wuxing_prefix)
+                ? (d as any).wuxing_prefix
+                : ((d as any).wuxing_prefix ? [(d as any).wuxing_prefix] : [])
+              const isProtectedSet = wuxingArr.length > 0 && wuxingArr.some(w => !wuxingBlacklist.has(w))
               if (!isProtectedSet && autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
                 const price = Math.floor((getEquipSellBase(d) || 10) * (d.tier || 1))
                 autoSellIncome += price
