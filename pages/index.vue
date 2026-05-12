@@ -499,6 +499,10 @@
               v-for="slotDef in equipSlots"
               :key="slotDef.slot"
               class="equip-slot"
+              :class="{
+                'legendary-slot': getEquippedItem(slotDef.slot)?.legendary_set_id === 'yuanshi_tianzun',
+                'boss-treasure-slot': getEquippedItem(slotDef.slot)?.is_boss_treasure === true,
+              }"
               @click="openEquipPicker(slotDef.slot)"
               @mouseenter="hoverSlotEquip = getEquippedItem(slotDef.slot)"
               @mouseleave="hoverSlotEquip = null"
@@ -506,6 +510,8 @@
               <div class="equip-slot-label">{{ slotDef.name }}</div>
               <template v-if="getEquippedItem(slotDef.slot)">
                 <div class="equip-slot-name" :style="{ color: getEquipColor(getEquippedItem(slotDef.slot)) }">
+                  <span v-if="getEquippedItem(slotDef.slot)?.legendary_set_id === 'yuanshi_tianzun'" class="slot-legendary-mark">❖</span>
+                  <span v-if="getEquippedItem(slotDef.slot)?.is_boss_treasure === true" class="slot-boss-treasure-mark">◆</span>
                   {{ getEquippedItem(slotDef.slot).name }}
                   <span v-if="getEquippedItem(slotDef.slot).enhance_level > 0" class="enhance-tag">
                     +{{ getEquippedItem(slotDef.slot).enhance_level }}
@@ -516,7 +522,7 @@
               <div v-else class="equip-slot-empty">空</div>
               <!-- 悬浮提示 -->
               <div v-if="hoverSlotEquip && hoverSlotEquip === getEquippedItem(slotDef.slot)" class="slot-tooltip">
-                <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" :equipped-set-count="hoverSlotEquip.set_id ? (equippedSetCounts[hoverSlotEquip.set_id] || 0) : 0" />
+                <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" :equipped-set-count="hoverSlotEquip.set_id ? (equippedSetCounts[hoverSlotEquip.set_id] || 0) : 0" :wuxing-activation="getV5Activation(hoverSlotEquip)" :yuanshi-count="yuanshiCount" />
               </div>
             </div>
           </div>
@@ -550,6 +556,8 @@
                 <option value="purple">灵宝</option>
                 <option value="gold">仙器</option>
                 <option value="red">太古</option>
+                <option value="legendary">✦ 传奇（炫金）</option>
+                <option value="boss_treasure">◆ 秘宝（亮粉）</option>
               </select>
               <select v-model="setFilter" class="sell-select" title="按套装筛选">
                 <option value="all">全部套装</option>
@@ -644,6 +652,8 @@
                       :char-level="gameStore.charLevel"
                       :show-req-level="true"
                       :equipped-set-count="hoverEquip.set_id ? (equippedSetCounts[hoverEquip.set_id] || 0) : 0"
+                      :wuxing-activation="getV5Activation(hoverEquip)"
+                      :yuanshi-count="yuanshiCount"
                     />
                   </div>
                   <div class="bag-preview-col bag-preview-current" v-if="hoverCompareEquip">
@@ -652,6 +662,8 @@
                       :equip="hoverCompareEquip"
                       :show-req-level="true"
                       :equipped-set-count="hoverCompareEquip.set_id ? (equippedSetCounts[hoverCompareEquip.set_id] || 0) : 0"
+                      :wuxing-activation="getV5Activation(hoverCompareEquip)"
+                      :yuanshi-count="yuanshiCount"
                     />
                   </div>
                   <div class="bag-preview-col bag-preview-empty-slot" v-else-if="(hoverEquip.base_slot || hoverEquip.slot)">
@@ -1770,7 +1782,7 @@
     <!-- ==================== 装备点击面板 ==================== -->
     <Teleport to="body">
       <div v-if="clickedEquip" class="equip-action-panel" :style="{ top: clickedEquipY + 'px', left: clickedEquipX + 'px' }">
-        <EquipDetail :equip="clickedEquip" :char-level="gameStore.charLevel" :show-req-level="true" />
+        <EquipDetail :equip="clickedEquip" :char-level="gameStore.charLevel" :show-req-level="true" :wuxing-activation="getV5Activation(clickedEquip)" :yuanshi-count="yuanshiCount" />
         <div class="equip-action-btns">
           <button v-if="!clickedEquip.slot" class="equip-action-btn-green" @click="quickEquip(clickedEquip)">装备</button>
           <button v-if="(clickedEquip.enhance_level || 0) < 10" class="equip-action-btn-gold" @click="openEnhance(clickedEquip); clickedEquip = null">强化</button>
@@ -5178,11 +5190,80 @@ const mainStats = computed(() => {
 
 // 装备总加成 (含强化)
 // v4.0: 属性1 受强化、属性2 不受强化（老装备 primary_stat_2 = NULL，不影响）
+// V5 小写 stat → V4 大写累加 key 映射（用于客户端 equipBonus 聚合）
+const V5_STAT_TO_V4_KEY: Record<string, string> = {
+  atk: 'ATK', def: 'DEF', hp: 'HP', spd: 'SPD', spirit: 'SPIRIT',
+  atk_pct: 'ATK_PCT', def_pct: 'DEF_PCT', hp_pct: 'HP_PCT', spd_pct: 'SPD_PCT', spirit_pct: 'SPIRIT_PCT',
+  crit_rate: 'CRIT_RATE', crit_dmg: 'CRIT_DMG',
+  lifesteal: 'LIFESTEAL', dodge: 'DODGE',
+  armor_pen: 'ARMOR_PEN', accuracy: 'ACCURACY',
+  reflect: 'REFLECT_PCT', dot_dmg: 'DOT_DMG_PCT',
+}
+
 const equipBonus = computed(() => {
   const bonus: Record<string, number> = { ATK: 0, DEF: 0, HP: 0, SPD: 0, CRIT_RATE: 0, CRIT_DMG: 0, SPIRIT: 0 };
+  const addV5 = (stat: string, value: number, prefixes: string[]) => {
+    // 灵佩 hp_pct_or_def_pct：拆 50/50 给气血% 和防御%
+    if (stat === 'hp_pct_or_def_pct') {
+      bonus.HP_PCT = (bonus.HP_PCT || 0) + value / 2
+      bonus.DEF_PCT = (bonus.DEF_PCT || 0) + value / 2
+      return
+    }
+    // wuxing_dmg：按装备前缀分摊到对应五行 dmg
+    if (stat === 'wuxing_dmg') {
+      const map: Record<string, string> = { metal: 'METAL_DMG', wood: 'WOOD_DMG', water: 'WATER_DMG', fire: 'FIRE_DMG', earth: 'EARTH_DMG' }
+      for (const p of prefixes) {
+        const k = map[p]
+        if (k) bonus[k] = (bonus[k] || 0) + value
+      }
+      return
+    }
+    // res_pct：5 个抗性都加
+    if (stat === 'res_pct') {
+      for (const k of ['METAL_RES', 'WOOD_RES', 'WATER_RES', 'FIRE_RES', 'EARTH_RES']) {
+        bonus[k] = (bonus[k] || 0) + value
+      }
+      return
+    }
+    // 其余按表映射
+    const v4Key = V5_STAT_TO_V4_KEY[stat]
+    if (v4Key) bonus[v4Key] = (bonus[v4Key] || 0) + value
+  }
+
   for (const eq of equipList.value) {
     if (!eq.slot) continue;
     const enhLv = eq.enhance_level || 0;
+
+    if (eq.equipment_version === 5) {
+      // V5 装备：单独路径
+      const prefixes: string[] = Array.isArray(eq.wuxing_prefix) ? eq.wuxing_prefix : (typeof eq.wuxing_prefix === 'string' ? [eq.wuxing_prefix] : [])
+      // base_stat_1（受强化）
+      addV5(eq.primary_stat, getEnhancedPrimaryValue(eq.primary_value, enhLv), prefixes)
+      // 强化词条（sub_stats，小写 stat key，不受强化）
+      const enhances = typeof eq.sub_stats === 'string' ? JSON.parse(eq.sub_stats) : (eq.sub_stats || [])
+      if (Array.isArray(enhances)) {
+        for (const a of enhances) {
+          if (a && typeof a.stat === 'string' && typeof a.value === 'number') addV5(a.stat, a.value, prefixes)
+        }
+      }
+      // 五行词条（wuxing_affixes）：按触发状态决定哪几条生效
+      const wuxingArr = typeof eq.wuxing_affixes === 'string' ? JSON.parse(eq.wuxing_affixes) : eq.wuxing_affixes
+      if (Array.isArray(wuxingArr) && wuxingArr.length === 3) {
+        const slotIdx = V5_BASE_SLOT_INDEX[eq.base_slot] || 1
+        const act = wuxingActivationMap.value.get(slotIdx)
+        if (act) {
+          const flags = [act.affix_1_active, act.affix_2_active, act.affix_3_active]
+          for (let i = 0; i < 3; i++) {
+            if (!flags[i]) continue
+            const a = wuxingArr[i]
+            if (a && typeof a.stat === 'string' && typeof a.value === 'number') addV5(a.stat, a.value, prefixes)
+          }
+        }
+      }
+      continue
+    }
+
+    // V4 装备：原路径
     bonus[eq.primary_stat] = (bonus[eq.primary_stat] || 0) + getEnhancedPrimaryValue(eq.primary_value, enhLv);
     if (eq.primary_stat_2 && eq.primary_value_2) {
       bonus[eq.primary_stat_2] = (bonus[eq.primary_stat_2] || 0) + eq.primary_value_2;
@@ -7804,7 +7885,13 @@ const filteredBagList = computed(() => {
     list = list.filter(e => (e.tier || 1) === tierFilter.value);
   }
   if (rarityFilter.value !== 'all') {
-    list = list.filter(e => e.rarity === rarityFilter.value);
+    if (rarityFilter.value === 'legendary') {
+      list = list.filter((e: any) => e.legendary_set_id === 'yuanshi_tianzun');
+    } else if (rarityFilter.value === 'boss_treasure') {
+      list = list.filter((e: any) => e.is_boss_treasure === true);
+    } else {
+      list = list.filter(e => e.rarity === rarityFilter.value);
+    }
   }
   if (setFilter.value !== 'all') {
     if (setFilter.value === 'none') {
@@ -7991,6 +8078,58 @@ const equippedSetCounts = computed<Record<string, number>>(() => {
   return countEquippedSets(equipList.value.filter(e => e.slot));
 });
 
+// V5 五行触发状态：算一次全身相生，按 slot_index 索引
+import { computeV5WuxingActivation as _v5ComputeActivation, type V5EquippedItem as _V5EquippedItem } from '~/shared/balance-v5'
+const V5_BASE_SLOT_INDEX: Record<string, number> = { weapon: 1, ring: 2, treasure: 3, armor: 4, helmet: 5, pendant: 6, boots: 7 }
+const wuxingActivationMap = computed(() => {
+  const equipped: _V5EquippedItem[] = []
+  for (const eq of equipList.value) {
+    if (!eq.slot || eq.equipment_version !== 5 || !eq.wuxing_prefix) continue
+    const prefixes: string[] = Array.isArray(eq.wuxing_prefix) ? eq.wuxing_prefix : [eq.wuxing_prefix]
+    if (prefixes.length === 0) continue
+    equipped.push({
+      slotIndex: V5_BASE_SLOT_INDEX[eq.base_slot] || 1,
+      prefix: (prefixes.length === 1 ? prefixes[0] : prefixes) as any,
+    })
+  }
+  const result = new Map<number, { affix_1_active: boolean; affix_2_active: boolean; affix_3_active: boolean }>()
+  for (const a of _v5ComputeActivation(equipped)) result.set(a.slotIndex, a)
+  return result
+})
+function getV5Activation(equip: any) {
+  if (!equip || equip.equipment_version !== 5) return undefined
+  if (!equip.slot) return undefined  // 背包未穿戴装备：五行词条默认灰字未触发
+  return wuxingActivationMap.value.get(V5_BASE_SLOT_INDEX[equip.base_slot] || 1)
+}
+// 元始天尊：穿戴件数 + 全身五行链
+const yuanshiCount = computed(() =>
+  equipList.value.filter(e => e.slot && e.legendary_set_id === 'yuanshi_tianzun').length
+)
+const wuxingChainStrip = computed(() => {
+  // 按 slot_index 1~7 依次列前缀（缺位用 '空'）
+  const map: Record<number, string[]> = {}
+  for (const eq of equipList.value) {
+    if (!eq.slot || eq.equipment_version !== 5) continue
+    const idx = V5_BASE_SLOT_INDEX[eq.base_slot] || 0
+    const arr = Array.isArray(eq.wuxing_prefix) ? eq.wuxing_prefix : (typeof eq.wuxing_prefix === 'string' ? [eq.wuxing_prefix] : [])
+    if (idx > 0 && arr.length > 0) map[idx] = arr
+  }
+  const slotZh = ['武器','灵戒','法宝','法袍','法冠','灵佩','步云靴']
+  const prefixZh: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' }
+  const result: Array<{ slotIndex: number; slotName: string; prefixes: string; active: boolean }> = []
+  for (let i = 1; i <= 7; i++) {
+    const arr = map[i]
+    if (!arr) {
+      result.push({ slotIndex: i, slotName: slotZh[i-1], prefixes: '—', active: false })
+    } else {
+      const text = arr.length === 5 ? '【五行】' : arr.map(p => prefixZh[p] || p).join(' / ')
+      const act = wuxingActivationMap.value.get(i)
+      result.push({ slotIndex: i, slotName: slotZh[i-1], prefixes: text, active: !!act?.affix_1_active })
+    }
+  }
+  return result
+})
+
 // 已激活套装列表（已穿戴 ≥3 件），按件数从多到少排序
 const activeSetSummaries = computed(() => {
   const result: Array<{ setKey: string; name: string; count: number; tier: 0 | 3 | 5 | 7; activeDesc: string }> = [];
@@ -8026,6 +8165,9 @@ function getEquippedItem(slot: string) {
 }
 
 function getEquipColor(eq: any) {
+  // V5 传奇装备 > V5 boss 秘宝 > 普通品质
+  if (eq?.legendary_set_id === 'yuanshi_tianzun') return '#ffd700';  // 炫金
+  if (eq?.is_boss_treasure === true) return '#ff6faa';                // 亮粉
   return getRarityColor(eq.rarity);
 }
 
@@ -9710,6 +9852,77 @@ onUnmounted(() => {
   cursor: pointer;
   transition: border-color 0.2s;
   min-height: 60px;
+}
+
+/* V5 元始天尊装备格子：炫金流光边框 + 脉冲发光 */
+.equip-slot.legendary-slot {
+  border: 1px solid rgba(255, 215, 0, 0.6);
+  background:
+    linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 165, 0, 0.04) 50%, rgba(255, 215, 0, 0.08) 100%),
+    rgba(40, 30, 10, 0.4);
+  background-size: 200% 200%;
+  box-shadow:
+    0 0 12px rgba(255, 215, 0, 0.35),
+    inset 0 0 8px rgba(255, 215, 0, 0.15);
+  animation: legendary-pulse 2.4s ease-in-out infinite, legendary-shine 4s linear infinite;
+}
+.equip-slot.legendary-slot::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  border-radius: 4px;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 215, 0, 0.4) 50%, transparent 70%);
+  background-size: 200% 200%;
+  animation: legendary-edge-shine 3s linear infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+@keyframes legendary-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 215, 0, 0.35), inset 0 0 8px rgba(255, 215, 0, 0.15); }
+  50%      { box-shadow: 0 0 22px rgba(255, 215, 0, 0.65), inset 0 0 14px rgba(255, 215, 0, 0.3); }
+}
+@keyframes legendary-shine {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 200%; }
+}
+@keyframes legendary-edge-shine {
+  0% { background-position: -200% -200%; }
+  100% { background-position: 200% 200%; }
+}
+.slot-legendary-mark {
+  display: inline-block;
+  color: #ffd700;
+  margin-right: 3px;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.8), 0 0 12px rgba(255, 165, 0, 0.5);
+  animation: legendary-mark-spin 3s ease-in-out infinite;
+}
+@keyframes legendary-mark-spin {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50%      { transform: rotate(180deg) scale(1.2); }
+}
+
+/* V5 boss 秘宝装备格子：粉色光晕 */
+.equip-slot.boss-treasure-slot {
+  border: 1px solid rgba(255, 111, 170, 0.6);
+  box-shadow:
+    0 0 10px rgba(255, 111, 170, 0.3),
+    inset 0 0 6px rgba(255, 111, 170, 0.12);
+  animation: boss-pulse 2.8s ease-in-out infinite;
+}
+@keyframes boss-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 111, 170, 0.3), inset 0 0 6px rgba(255, 111, 170, 0.12); }
+  50%      { box-shadow: 0 0 18px rgba(255, 111, 170, 0.55), inset 0 0 10px rgba(255, 111, 170, 0.25); }
+}
+.slot-boss-treasure-mark {
+  display: inline-block;
+  color: #ff6faa;
+  margin-right: 3px;
+  text-shadow: 0 0 5px rgba(255, 111, 170, 0.7);
+  animation: boss-mark-pulse 1.8s ease-in-out infinite;
+}
+@keyframes boss-mark-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.15); opacity: 0.85; }
 }
 
 .equip-slot:hover {

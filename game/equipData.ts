@@ -279,6 +279,17 @@ export const STAT_NAMES: Record<string, string> = {
   LIFESTEAL: '吸血',
   DOT_DMG_PCT: 'DOT伤害',
   REFLECT_PCT: '反伤倍率',
+  // V5.0.2 小写 stat key（与 V4 大写并存）
+  atk: '攻击', def: '防御', hp: '气血', spd: '身法', spirit: '神识',
+  atk_pct: '攻击', def_pct: '防御', hp_pct: '气血', spd_pct: '身法', spirit_pct: '神识',
+  crit_rate: '会心率', crit_dmg: '会心伤害',
+  armor_pen: '破甲', accuracy: '命中',
+  dodge: '闪避', lifesteal: '吸血',
+  wuxing_dmg: '五行强化', dot_dmg: 'DOT伤害',
+  reflect: '反伤倍率', res_pct: '五行抗性',
+  dmg_reduction: '减伤', lifesteal_all: '全能吸血',
+  // V5 灵佩特殊主属性（气血% 或 防御%）
+  hp_pct_or_def_pct: '气血/防御',
 };
 
 // 哪些副属性是百分比 (显示时加 %)
@@ -293,6 +304,12 @@ export const PERCENT_STATS = new Set([
   'DODGE', 'LIFESTEAL',
   'ATK_PCT', 'DEF_PCT', 'HP_PCT', 'SPD_PCT',
   'DOT_DMG_PCT', 'REFLECT_PCT',
+  // V5 小写 stat key
+  'atk_pct', 'def_pct', 'hp_pct', 'spd_pct', 'spirit_pct',
+  'crit_rate', 'crit_dmg',
+  'armor_pen', 'accuracy', 'dodge', 'lifesteal',
+  'wuxing_dmg', 'dot_dmg', 'reflect', 'res_pct', 'dmg_reduction', 'lifesteal_all',
+  'hp_pct_or_def_pct',
 ]);
 
 // 品质颜色
@@ -311,7 +328,7 @@ export function getSlotName(slot: string): string {
 // 强化相关
 export function getEnhanceCost(rarity: string, currentLevel: number): number {
   const baseCosts: Record<string, number> = {
-    white: 50, green: 100, blue: 300, purple: 800, gold: 2000, red: 5000,
+    white: 50, green: 100, blue: 210, purple: 560, gold: 1400, red: 3500,
   };
   const baseCost = baseCosts[rarity] || 300;
   return Math.floor(baseCost * Math.pow(currentLevel + 2, 1.4));
