@@ -1,0 +1,352 @@
+{
+  "system_id": "equipment_v5_0_2",
+  "system_name": "装备系统 V5.0.2",
+  "source": "design/装备系统V5.0.2,包含五行前缀，词条，传奇装备，新增秘宝装备.xlsx",
+  "status": "design_only",
+  "note": "结构化设计资料，未接入代码。现役系统仍为 V4.0（见 shared/balance.ts 与 design/system-equipment.json）。",
+
+  "scaling_rules": {
+    "description": "强化与 T 级作用域不重叠（基础属性1 为交集）",
+    "enhance_affects": ["base_stat_1", "enhance_affix"],
+    "tier_affects": ["base_stat_1", "wuxing_affix"],
+    "baseline_setup": "满级满修 T15 + 9 红装、6 件触发 3 个五行词条 + 1 件不触发；副词条 21 会心率 + 21 会心伤害 + 6 五行强化 + 20 吸血 + 8 闪避 + 8 命中 + 9 破甲（含等级/境界，不计功法被动）",
+    "enhance_level_cap": 9,
+    "diff_vs_v4": "V4 现役 enhance cap = +15（shared/balance.ts:ENHANCE_SELL_MUL）；V5 baseline 是 +9 满强化，cap 下调到 +9"
+  },
+
+  "base_stat_1_enhance_curve": {
+    "formula_zh": "基础属性1 强化倍率 = 1 + level × 0.10（沿用 V4 ENHANCE_MUL_PER_LEVEL，cap 下调到 +9）",
+    "per_level_mul": 0.10,
+    "mul_table": {
+      "_layout": "{ level: mul }，level 0~9",
+      "0": 1.00,
+      "1": 1.10,
+      "2": 1.20,
+      "3": 1.30,
+      "4": 1.40,
+      "5": 1.50,
+      "6": 1.60,
+      "7": 1.70,
+      "8": 1.80,
+      "9": 1.90
+    },
+    "single_piece_formula": "single_piece_base_stat_1 = base_value(stat) × tier_weight(T) × rarity_mul(color) × (1 + level × 0.10)",
+    "note": "本曲线只作用于「基础属性1」；五行词条与强化词条不受影响，五行词条只看 T 级，强化词条只看 enhance_affix.unlock_levels"
+  },
+
+  "equipment_slots": [
+    { "index": 1, "slot_v5": "武器",    "base_slot_v4": "weapon",   "base_stat_1": "atk",                "base_stat_1_zh": "攻击力" },
+    { "index": 2, "slot_v5": "灵戒",    "base_slot_v4": "ring",     "base_stat_1": "wuxing_dmg",         "base_stat_1_zh": "五行强化" },
+    { "index": 3, "slot_v5": "法宝",    "base_slot_v4": "treasure", "base_stat_1": "spirit",             "base_stat_1_zh": "神识" },
+    { "index": 4, "slot_v5": "法袍",    "base_slot_v4": "armor",    "base_stat_1": "def",                "base_stat_1_zh": "防御力" },
+    { "index": 5, "slot_v5": "法冠",    "base_slot_v4": "helmet",   "base_stat_1": "hp",                 "base_stat_1_zh": "气血" },
+    { "index": 6, "slot_v5": "灵佩",    "base_slot_v4": "pendant",  "base_stat_1": "hp_pct_or_def_pct",  "base_stat_1_zh": "气血% / 防御力%" },
+    { "index": 7, "slot_v5": "步云靴",  "base_slot_v4": "boots",    "base_stat_1": "spd",                "base_stat_1_zh": "身法" }
+  ],
+
+  "wuxing": {
+    "prefix_order_on_slots": ["metal", "wood", "water", "fire", "earth"],
+    "prefix_zh": { "metal": "金", "wood": "木", "water": "水", "fire": "火", "earth": "土" },
+    "slot_chain_order": "1→2→3→4→5→6→7→1",
+    "sheng_chain": [
+      { "from": "wood",  "to": "fire"  },
+      { "from": "fire",  "to": "earth" },
+      { "from": "earth", "to": "metal" },
+      { "from": "metal", "to": "water" },
+      { "from": "water", "to": "wood"  }
+    ],
+    "trigger_rule": {
+      "default_state": "灰色字体不生效",
+      "active_state": "蓝色亮字生效",
+      "affix_1": "上一件装备前缀「相生」当前装备前缀 → 蓝字",
+      "affix_2": "在 affix_1 触发的前提下，链上累计触发 3 个 affix_1（含本件） → affix_2 蓝字",
+      "affix_3": "在 affix_1 触发的前提下，链上累计触发 6 个 affix_1（含本件） → affix_3 蓝字"
+    },
+    "dual_prefix": {
+      "description": "部分装备（如 T14/T15 boss 秘宝）前缀为双属性，同时算 2 种前缀触发自身/之后的相生，也同时触发 2 种灵根共鸣",
+      "examples": ["金/火", "木/土"]
+    }
+  },
+
+  "wuxing_affix_table": {
+    "_layout": "{ slot: { prefix: [属性1, 属性2, 属性3] } }",
+    "weapon": {
+      "metal": ["atk_pct",       "crit_rate",     "spirit_pct"],
+      "wood":  ["spirit_pct",    "wuxing_dmg",    "atk_pct"],
+      "water": ["spirit_pct",    "atk_pct",       "wuxing_dmg"],
+      "fire":  ["crit_dmg",      "crit_dmg",      "wuxing_dmg"],
+      "earth": ["lifesteal",     "reflect",       "wuxing_dmg"]
+    },
+    "ring": {
+      "metal": ["armor_pen",     "crit_rate",     "crit_dmg"],
+      "wood":  ["lifesteal",     "atk_pct",       "lifesteal_all"],
+      "water": ["accuracy",      "spirit_pct",    "crit_rate"],
+      "fire":  ["wuxing_dmg",    "spirit_pct",    "crit_dmg"],
+      "earth": ["res_pct",       "reflect",       "atk_pct"]
+    },
+    "treasure": {
+      "metal": ["atk_pct",       "wuxing_dmg",    "armor_pen"],
+      "wood":  ["spirit_pct",    "wuxing_dmg",    "crit_dmg"],
+      "water": ["spirit_pct",    "wuxing_dmg",    "crit_rate"],
+      "fire":  ["atk_pct",       "wuxing_dmg",    "armor_pen"],
+      "earth": ["lifesteal",     "wuxing_dmg",    "crit_rate"]
+    },
+    "armor": {
+      "metal": ["def_pct",       "lifesteal",     "wuxing_dmg"],
+      "wood":  ["hp_pct",        "lifesteal",     "spirit_pct"],
+      "water": ["hp_pct",        "def_pct",       "spirit_pct"],
+      "fire":  ["def_pct",       "lifesteal",     "wuxing_dmg"],
+      "earth": ["hp_pct",        "def_pct",       "spirit_pct"]
+    },
+    "helmet": {
+      "metal": ["def_pct",       "armor_pen",     "crit_dmg"],
+      "wood":  ["hp_pct",        "wuxing_dmg",    "crit_rate"],
+      "water": ["hp_pct",        "wuxing_dmg",    "crit_rate"],
+      "fire":  ["def_pct",       "armor_pen",     "crit_dmg"],
+      "earth": ["hp_pct",        "wuxing_dmg",    "crit_dmg"]
+    },
+    "pendant": {
+      "metal": ["spirit_pct",    "accuracy",      "armor_pen"],
+      "wood":  ["atk_pct",       "dodge",         "lifesteal"],
+      "water": ["atk_pct",       "dodge",         "lifesteal"],
+      "fire":  ["spirit_pct",    "accuracy",      "armor_pen"],
+      "earth": ["atk_pct",       "dodge",         "lifesteal"]
+    },
+    "boots": {
+      "metal": ["crit_dmg",      "wuxing_dmg",    "dodge"],
+      "wood":  ["crit_rate",     "wuxing_dmg",    "accuracy"],
+      "water": ["crit_rate",     "wuxing_dmg",    "accuracy"],
+      "fire":  ["crit_dmg",      "wuxing_dmg",    "dodge"],
+      "earth": ["crit_rate",     "wuxing_dmg",    "accuracy"]
+    }
+  },
+
+  "enhance_affix": {
+    "color_to_count": {
+      "red":    4,
+      "gold":   3,
+      "purple": 2,
+      "blue":   1
+    },
+    "unlock_levels": {
+      "description": "强化 +3/+6/+9 时获得一条新强化词条；若已满（4 条）则随机加现有词条数值",
+      "milestones": [3, 6, 9],
+      "rarity_progression": {
+        "_layout": "{ rarity: { level: 词条总数 } }，反映 +3/+6/+9 解锁后的强化词条数",
+        "red":    { "0": 4, "3": 4, "6": 4, "9": 4, "_note": "出生满 4 条，+3/+6/+9 全部为加值" },
+        "gold":   { "0": 3, "3": 4, "6": 4, "9": 4, "_note": "+3 解锁到满 4 条，+6/+9 加值" },
+        "purple": { "0": 2, "3": 3, "6": 4, "9": 4, "_note": "+3 加 1 条到 3，+6 加 1 条到满，+9 加值" },
+        "blue":   { "0": 1, "3": 2, "6": 3, "9": 4, "_note": "+3/+6/+9 各加 1 条，+9 达到满 4 条" }
+      }
+    },
+    "each_pool_independent": true,
+    "probability": "完全随机",
+    "pools": {
+      "_layout": "强化词条池按装备序号分两组共享：1/2/3 共享 group_attack，4/5/6/7 共享 group_defense。每组 4 个词条位独立抽。",
+      "group_attack": {
+        "slots_v5": ["武器", "灵戒", "法宝"],
+        "slot_indexes": [1, 2, 3],
+        "positions": [
+          ["atk", "atk_pct", "spirit", "spirit_pct"],
+          ["atk_pct", "spirit_pct", "crit_rate", "crit_dmg", "armor_pen", "lifesteal", "wuxing_dmg"],
+          ["atk_pct", "spirit_pct", "crit_rate", "crit_dmg", "armor_pen", "lifesteal", "wuxing_dmg"],
+          ["crit_rate", "crit_dmg", "armor_pen", "lifesteal", "wuxing_dmg", "dot_dmg"]
+        ]
+      },
+      "group_defense": {
+        "slots_v5": ["法袍", "法冠", "灵佩", "步云靴"],
+        "slot_indexes": [4, 5, 6, 7],
+        "positions": [
+          ["def", "def_pct", "hp", "hp_pct"],
+          ["def_pct", "hp_pct", "dmg_reduction", "res_pct", "crit_rate", "crit_dmg"],
+          ["dmg_reduction", "res_pct", "crit_rate", "crit_dmg", "dodge", "accuracy", "lifesteal"],
+          ["crit_rate", "crit_dmg", "dodge", "accuracy", "lifesteal", "wuxing_dmg"]
+        ]
+      }
+    }
+  },
+
+  "t15_red_plus9_baseline": {
+    "description": "T15 + 9 红装满级满修、6 件触发 3 个五行词条 + 1 件不触发、副词条配置见 scaling_rules.baseline_setup（含等级/境界、不计功法被动）",
+    "caps": [
+      { "stat": "atk",           "zh": "攻击力",      "value": 100000,  "note": "五行词条堆 atk_pct 最多时" },
+      { "stat": "def",           "zh": "防御力",      "value": 80000,   "note": "五行词条堆 def_pct 最多时" },
+      { "stat": "hp",            "zh": "气血",        "value": 2500000, "note": "五行词条堆 hp_pct 最多时" },
+      { "stat": "spirit",        "zh": "神识",        "value": 1500,    "note": "五行词条堆 spirit_pct 最多时" },
+      { "stat": "spd",           "zh": "身法",        "value": 5000,    "note": "五行词条堆 spd_pct 最多时" },
+      { "stat": "accuracy",      "zh": "命中",        "value": 500000,  "note": "五行词条堆 accuracy_pct 最多时" },
+      { "stat": "dodge_pct",     "zh": "闪避率",      "value": 0.50,    "note": "五行词条堆 dodge_pct 最多时 ≈ 50%" },
+      { "stat": "lifesteal_pct", "zh": "吸血率",      "value": 0.50,    "note": "原 xlsx ≈ 100%；2026-05-12 小夏削弱至 50%（避免「全回血」过强，与会心伤害 360% 强词条配比平衡）" },
+      { "stat": "armor_pen_pct", "zh": "破甲率",      "value": 0.50,    "note": "原 xlsx ≈ 100%；2026-05-12 小夏削弱至 50%（避免「全无视防御」过强，与会心伤害 360% 强词条配比平衡）" },
+      { "stat": "crit_rate_pct", "zh": "会心率",      "value": 0.80,    "note": "五行词条堆 crit_rate_pct 最多时 ≈ 80%" },
+      { "stat": "crit_dmg_pct",  "zh": "会心伤害",    "value": 3.60,    "note": "五行词条堆 crit_dmg_pct 最多时 ≈ 360%" },
+      { "stat": "wuxing_dmg",    "zh": "五行强化",    "value": 0.60,    "note": "五行词条堆 wuxing_dmg 最多时 ≈ 60%" },
+      { "stat": "dot_dmg",       "zh": "dot 增伤",    "value": 0.90,    "note": "五行词条堆 dot_dmg 最多时 ≈ 90%" }
+    ],
+    "tier_scaling_note": "T 级影响基础属性1 与五行词条数值；T15 为基准向下递减，具体曲线见下方 tier_scaling_curve"
+  },
+
+  "tier_scaling_curve": {
+    "source": "沿用 V4 现役 shared/balance.ts:getEquipTierWeight()，确保 V5 与 V4 数值跨度一致便于迁移",
+    "formula_zh": "T1~T10: weight = T；T11~T15: weight = 10 + (T-10) × 2；任一数值在 T 级时 = T15 基准 × (weight(T) / 20)",
+    "weights": {
+      "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "10": 10,
+      "11": 12, "12": 14, "13": 16, "14": 18, "15": 20
+    },
+    "design_intent": [
+      "T1~T10 线性增长，每 T +1 个 weight 单位（×0.05 of T15）",
+      "T11~T15 段加陡，每 T +2 个 weight 单位（×0.10 of T15），让 T11+ 高 tier 装备拉开档次",
+      "T10 数值 = T15 × 50%；T15 = 100% 顶点"
+    ],
+    "value_table": {
+      "_layout": "{ stat_key: [T1, T2, T3, ..., T14, T15] }，索引 i 对应 T(i+1)",
+      "atk":           [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 60000, 70000, 80000, 90000, 100000],
+      "def":           [4000, 8000, 12000, 16000, 20000, 24000, 28000, 32000, 36000, 40000, 48000, 56000, 64000, 72000, 80000],
+      "hp":            [125000, 250000, 375000, 500000, 625000, 750000, 875000, 1000000, 1125000, 1250000, 1500000, 1750000, 2000000, 2250000, 2500000],
+      "spirit":        [75, 150, 225, 300, 375, 450, 525, 600, 675, 750, 900, 1050, 1200, 1350, 1500],
+      "spd":           [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 3000, 3500, 4000, 4500, 5000],
+      "accuracy":      [25000, 50000, 75000, 100000, 125000, 150000, 175000, 200000, 225000, 250000, 300000, 350000, 400000, 450000, 500000],
+      "dodge_pct":     [0.025, 0.05, 0.075, 0.10, 0.125, 0.15, 0.175, 0.20, 0.225, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50],
+      "lifesteal_pct": [0.025, 0.05, 0.075, 0.10, 0.125, 0.15, 0.175, 0.20, 0.225, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50],
+      "armor_pen_pct": [0.025, 0.05, 0.075, 0.10, 0.125, 0.15, 0.175, 0.20, 0.225, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50],
+      "crit_rate_pct": [0.04, 0.08, 0.12, 0.16, 0.20, 0.24, 0.28, 0.32, 0.36, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80],
+      "crit_dmg_pct":  [0.18, 0.36, 0.54, 0.72, 0.90, 1.08, 1.26, 1.44, 1.62, 1.80, 2.16, 2.52, 2.88, 3.24, 3.60],
+      "wuxing_dmg":    [0.03, 0.06, 0.09, 0.12, 0.15, 0.18, 0.21, 0.24, 0.27, 0.30, 0.36, 0.42, 0.48, 0.54, 0.60],
+      "dot_dmg":       [0.045, 0.09, 0.135, 0.18, 0.225, 0.27, 0.315, 0.36, 0.405, 0.45, 0.54, 0.63, 0.72, 0.81, 0.90]
+    },
+    "value_table_note": "该表给出的是「6 件触发 3 个五行词条 + 1 件不触发」时，13 个数值的满堆上限。单件装备的五行词条数值需要除以件数（约 18 条）再分配；基础属性1 的单件数值另由 V4 公式推（base_value × tier_weight × rarity_mul，单件）。本表用于上限校验，不是单件公式。"
+  },
+
+  "per_wuxing_affix_value": {
+    "formula_zh": "单条五行词条数值 = T15 满堆上限 / 18 × (tier_weight(T) / 20)",
+    "active_affix_total": 18,
+    "active_affix_basis": "baseline「6 件 × 3 档生效 = 18 条」；不触发的第 7 件五行词条不计入。",
+    "tier_3_affix_distribution": "默认属性 1 / 2 / 3 同值；如需差异化（属性 1 高、2/3 递减），后续调整 distribution_ratio 字段",
+    "distribution_ratio": [1, 1, 1],
+    "value_table_t15": {
+      "_layout": "{ stat_key: T15 单条数值 }",
+      "atk":           5556,
+      "def":           4444,
+      "hp":            138889,
+      "spirit":        83,
+      "spd":           278,
+      "accuracy":      27778,
+      "dodge_pct":     0.0278,
+      "lifesteal_pct": 0.0278,
+      "armor_pen_pct": 0.0278,
+      "crit_rate_pct": 0.0444,
+      "crit_dmg_pct":  0.20,
+      "wuxing_dmg":    0.0333,
+      "dot_dmg":       0.05
+    },
+    "value_table_t1_to_t15": {
+      "_layout": "{ stat_key: [T1, T2, ..., T15] }",
+      "atk":           [278, 556, 833, 1111, 1389, 1667, 1944, 2222, 2500, 2778, 3333, 3889, 4444, 5000, 5556],
+      "def":           [222, 444, 667, 889, 1111, 1333, 1556, 1778, 2000, 2222, 2667, 3111, 3556, 4000, 4444],
+      "hp":            [6944, 13889, 20833, 27778, 34722, 41667, 48611, 55556, 62500, 69444, 83333, 97222, 111111, 125000, 138889],
+      "spirit":        [4, 8, 12, 17, 21, 25, 29, 33, 38, 42, 50, 58, 67, 75, 83],
+      "spd":           [14, 28, 42, 56, 69, 83, 97, 111, 125, 139, 167, 194, 222, 250, 278],
+      "accuracy":      [1389, 2778, 4167, 5556, 6944, 8333, 9722, 11111, 12500, 13889, 16667, 19444, 22222, 25000, 27778],
+      "dodge_pct":     [0.0014, 0.0028, 0.0042, 0.0056, 0.0069, 0.0083, 0.0097, 0.0111, 0.0125, 0.0139, 0.0167, 0.0194, 0.0222, 0.025, 0.0278],
+      "lifesteal_pct": [0.0014, 0.0028, 0.0042, 0.0056, 0.0069, 0.0083, 0.0097, 0.0111, 0.0125, 0.0139, 0.0167, 0.0194, 0.0222, 0.025, 0.0278],
+      "armor_pen_pct": [0.0014, 0.0028, 0.0042, 0.0056, 0.0069, 0.0083, 0.0097, 0.0111, 0.0125, 0.0139, 0.0167, 0.0194, 0.0222, 0.025, 0.0278],
+      "crit_rate_pct": [0.0022, 0.0044, 0.0067, 0.0089, 0.0111, 0.0133, 0.0156, 0.0178, 0.02, 0.0222, 0.0267, 0.0311, 0.0356, 0.04, 0.0444],
+      "crit_dmg_pct":  [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20],
+      "wuxing_dmg":    [0.0017, 0.0033, 0.005, 0.0067, 0.0083, 0.01, 0.0117, 0.0133, 0.015, 0.0167, 0.02, 0.0233, 0.0267, 0.03, 0.0333],
+      "dot_dmg":       [0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175, 0.02, 0.0225, 0.025, 0.03, 0.035, 0.04, 0.045, 0.05]
+    },
+    "note": "本表是「单件装备的单条五行词条」数值，不区分属性 1/2/3 档位（默认同值）。属性 1 触发不需要前置条件、属性 2/3 需要相生链累计触发，但单条数值上目前不做差异化。装备实际数值 = 这里的数值（按 stat），最终战斗加成 = 单条数值 × 触发条数。"
+  },
+
+  "lingen_resonance": {
+    "description": "身上装备的灵根属性与角色灵根相同的件数到达 3/5/7 件",
+    "tiers": [
+      { "pieces": 3, "bonus": { "atk_pct": 0.05, "def_pct": 0.05, "hp_pct": 0.05, "spirit_pct": 0.05 }, "label": "+5%" },
+      { "pieces": 5, "bonus": { "atk_pct": 0.10, "def_pct": 0.10, "hp_pct": 0.10, "spirit_pct": 0.10 }, "label": "+10%" },
+      { "pieces": 7, "bonus": { "atk_pct": 0.20, "def_pct": 0.20, "hp_pct": 0.20, "spirit_pct": 0.20 }, "label": "+20%" }
+    ]
+  },
+
+  "legendary_set_yuanshi_tianzun": {
+    "name": "元始天尊",
+    "color": "炫金",
+    "color_hex": "#FFD700",
+    "requirement": "修为 真仙 以上",
+    "drop": {
+      "min_tier": 8,
+      "sources": [
+        { "where": "正常图 boss",      "rate": 0.00001 },
+        { "where": "秘境第 5 波 boss", "rate": 0.0001  },
+        { "where": "秘境第 7 波 boss", "rate": 0.0005  }
+      ]
+    },
+    "base_stat_1_multiplier": 1.5,
+    "prefix": "【五行】",
+    "prefix_description": "包含金木水火土全部五行前缀，可触发任意相生",
+    "tier_restriction": "T8 以下副本不掉传说装备（rollEquipmentV5 内置兜底，违反时抛错）",
+    "pieces": [
+      { "slot_v5": "武器",   "name": "盘古幡",       "base_slot_v4": "weapon",   "base_stat_1": "atk" },
+      { "slot_v5": "灵戒",   "name": "三宝玉如意",   "base_slot_v4": "ring",     "base_stat_1": "wuxing_dmg" },
+      { "slot_v5": "法宝",   "name": "封神榜",       "base_slot_v4": "treasure", "base_stat_1": "spirit" },
+      { "slot_v5": "法袍",   "name": "诸天庆云",     "base_slot_v4": "armor",    "base_stat_1": "def" },
+      { "slot_v5": "法冠",   "name": "戊己杏黄旗",   "base_slot_v4": "helmet",   "base_stat_1": "hp" },
+      { "slot_v5": "灵佩",   "name": "玲珑宝塔",     "base_slot_v4": "pendant",  "base_stat_1": "hp_pct_or_def_pct" },
+      { "slot_v5": "步云靴", "name": "九龙沉香辇",   "base_slot_v4": "boots",    "base_stat_1": "spd" }
+    ],
+    "set_effects": [
+      { "pieces": 1, "effect_zh": "攻/防/血/神识/身法 +10%",
+        "effect": { "atk_pct": 0.10, "def_pct": 0.10, "hp_pct": 0.10, "spirit_pct": 0.10, "spd_pct": 0.10 } },
+      { "pieces": 3, "effect_zh": "神通伤害 +10%",
+        "effect": { "skill_dmg_pct": 0.10 } },
+      { "pieces": 5, "effect_zh": "全神通 cd -1，释放神通时 30% 概率刷新 cd 最短的神通",
+        "effect": { "skill_cd_minus": 1, "refresh_shortest_cd_chance": 0.30 } },
+      { "pieces": 7, "effect_zh": "行动时 10% 概率触发「天尊气场」，全体震慑 1 回合（眩晕，无视免控必中）",
+        "effect": { "stun_all_chance": 0.10, "stun_turns": 1, "ignore_immune": true, "guaranteed_hit": true } }
+    ]
+  },
+
+  "boss_treasures": {
+    "color": "粉色",
+    "color_hex": "#FF6FAA",
+    "description": "固定 boss 掉落，基础属性与强化词条池同 T 级红装，五行属性数值同 T 级红装",
+    "drop_rate": {
+      "normal_map": 0.001,
+      "secret_realm": 0.005
+    },
+    "items": [
+      { "tier": 8,  "boss_zh": "天帝",       "prefix": ["fire"],          "slot_v5": "武器",   "base_slot_v4": "weapon",   "name": "降魔伏鬼枪", "base_stat_1": "atk",      "wuxing_affixes": ["armor_pen", "armor_pen", "armor_pen"] },
+      { "tier": 9,  "boss_zh": "鸿蒙道尊",   "prefix": ["wood"],          "slot_v5": "武器",   "base_slot_v4": "weapon",   "name": "道尊拂尘",   "base_stat_1": "atk",      "wuxing_affixes": ["atk_pct", "atk_pct", "atk_pct"] },
+      { "tier": 10, "boss_zh": "万界战神",   "prefix": ["fire"],          "slot_v5": "法袍",   "base_slot_v4": "armor",    "name": "不朽战铠",   "base_stat_1": "def",      "wuxing_affixes": ["lifesteal", "lifesteal", "lifesteal"] },
+      { "tier": 11, "boss_zh": "九霄玉帝",   "prefix": ["earth"],         "slot_v5": "法宝",   "base_slot_v4": "treasure", "name": "封天印",     "base_stat_1": "spirit",   "wuxing_affixes": ["spirit_pct", "spirit_pct", "spirit_pct"] },
+      { "tier": 12, "boss_zh": "虚空之主",   "prefix": ["water"],         "slot_v5": "灵佩",   "base_slot_v4": "pendant",  "name": "虚空虫卵",   "base_stat_1": "spirit_pct","wuxing_affixes": ["crit_dmg", "crit_dmg", "crit_dmg"] },
+      { "tier": 13, "boss_zh": "天宇道君",   "prefix": ["wood"],          "slot_v5": "步云靴", "base_slot_v4": "boots",    "name": "道君云履",   "base_stat_1": "spd",      "wuxing_affixes": ["spd_pct", "spd_pct", "spd_pct"] },
+      { "tier": 14, "boss_zh": "时空之主",   "prefix": ["metal", "fire"], "slot_v5": "灵戒",   "base_slot_v4": "ring",     "name": "寰宇",       "base_stat_1": "wuxing_dmg","wuxing_affixes": ["wuxing_dmg", "wuxing_dmg", "wuxing_dmg"], "dual_prefix": true },
+      { "tier": 15, "boss_zh": "终焉道祖",   "prefix": ["wood", "earth"], "slot_v5": "法宝",   "base_slot_v4": "treasure", "name": "万道终焉",   "base_stat_1": "crit_dmg", "wuxing_affixes": ["crit_dmg", "crit_dmg", "crit_dmg"], "dual_prefix": true }
+    ]
+  },
+
+  "stat_key_glossary": {
+    "atk": "攻击力",
+    "atk_pct": "攻击力%",
+    "def": "防御力",
+    "def_pct": "防御力%",
+    "hp": "气血",
+    "hp_pct": "气血%",
+    "spirit": "神识",
+    "spirit_pct": "神识%",
+    "spd": "身法",
+    "spd_pct": "身法%",
+    "accuracy": "命中%",
+    "dodge": "闪避%",
+    "lifesteal": "吸血%",
+    "lifesteal_all": "全能吸血%",
+    "armor_pen": "破甲%",
+    "crit_rate": "会心率%",
+    "crit_dmg": "会心伤害%",
+    "wuxing_dmg": "五行强化（金木水火土对应增伤）",
+    "reflect": "反伤%",
+    "res_pct": "抗性%",
+    "dmg_reduction": "减伤%",
+    "dot_dmg": "dot 增伤%"
+  }
+}
