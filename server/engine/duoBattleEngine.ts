@@ -13,6 +13,7 @@ import {
   buildActiveSetTiers,
   type SetEffectsState,
   type ActiveDebuff,
+  type ActiveBuff,
   type BattlerStats,
   type BattleLogEntry,
   type MonsterTemplate,
@@ -24,7 +25,7 @@ import {
   tickMonsterCds,
   type MonsterSkillState,
 } from './battleEngine';
-import type { DebuffType } from './skillData';
+import type { DebuffType, BuffType } from './skillData';
 import type { ChildSkill } from './childSkillData';
 import { BATTLE_FORMULA, PLAYER_CAPS } from '../../shared/balance';
 
@@ -100,22 +101,22 @@ export function runDuoWaveBattle(
   // 1. 初始化玩家（应用功法被动 → 与 runWaveBattle 一致）
   const player: any = { ...playerStats, hp: playerStats.maxHp, buffs: [], debuffs: [], frozenTurns: 0 };
   if (equippedSkills?.passiveEffects) {
-    const p = equippedSkills.passiveEffects;
+    const p: any = equippedSkills.passiveEffects;
     const ps: any = playerStats as any;
     if (ps._flatAtk !== undefined) {
-      player.atk   = Math.floor(ps._flatAtk * (1 + (ps._pctSumAtk || 0) + p.atkPercent / 100));
-      player.def   = Math.floor(ps._flatDef * (1 + (ps._pctSumDef || 0) + p.defPercent / 100));
-      player.maxHp = Math.floor(ps._flatHp  * (1 + (ps._pctSumHp  || 0) + p.hpPercent / 100));
+      player.atk   = Math.floor(ps._flatAtk * (1 + (ps._pctSumAtk || 0) + (p.atkPercent || 0) / 100));
+      player.def   = Math.floor(ps._flatDef * (1 + (ps._pctSumDef || 0) + (p.defPercent || 0) / 100));
+      player.maxHp = Math.floor(ps._flatHp  * (1 + (ps._pctSumHp  || 0) + (p.hpPercent  || 0) / 100));
       player.spd   = Math.floor(ps._flatSpd * (1 + (ps._pctSumSpd || 0) + (p.spdPercent || 0) / 100));
     } else {
-      player.atk = Math.floor(player.atk * (1 + p.atkPercent / 100));
-      player.def = Math.floor(player.def * (1 + p.defPercent / 100));
-      player.maxHp = Math.floor(player.maxHp * (1 + p.hpPercent / 100));
+      player.atk = Math.floor(player.atk * (1 + (p.atkPercent || 0) / 100));
+      player.def = Math.floor(player.def * (1 + (p.defPercent || 0) / 100));
+      player.maxHp = Math.floor(player.maxHp * (1 + (p.hpPercent || 0) / 100));
       player.spd = Math.floor(player.spd * (1 + (p.spdPercent || 0) / 100));
     }
     player.hp = player.maxHp;
-    player.crit_rate += p.critRate;
-    player.crit_dmg += p.critDmg;
+    player.crit_rate += p.critRate || 0;
+    player.crit_dmg += p.critDmg || 0;
     player.dodge += p.dodge || 0;
     player.lifesteal += p.lifesteal || 0;
     if (!player.resists) player.resists = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: 0 };
@@ -183,6 +184,12 @@ export function runDuoWaveBattle(
     if (aw.burnOnHitTaken)   pe.burnOnHitTaken   = Math.max(pe.burnOnHitTaken   || 0, aw.burnOnHitTaken);
     if (aw.reflectOnCrit)    pe.reflectOnCrit    = Math.max(pe.reflectOnCrit    || 0, aw.reflectOnCrit);
   }
+  // ✦ 开场狂怒：注入 atk_up buff 持续 4 回合
+  if (aw.frenzyOpening && aw.frenzyOpening > 0) {
+    (player.buffs as ActiveBuff[]).push({ type: 'atk_up' as BuffType, remaining: 4, value: aw.frenzyOpening });
+  }
+  // 不灭金身：复活一次标记
+  let reviveAvailable = equippedSkills?.passiveEffects?.reviveOnce || false;
 
   // 1.5 套装系统：buildSetEffects + 静态加成（sword/blade/fan）— 仅玩家享受
   const playerWeaponType = (playerStats as any).weaponType || null;
@@ -519,6 +526,124 @@ export function runDuoWaveBattle(
     return Math.max(1, Math.floor(d));
   };
 
+  // ===== Phase 2c-2: 玩家 buff 系统 / 反伤池 / 复活 =====
+  const sumPlayerBuff = (type: BuffType): number => {
+    if (!player.buffs) return 0;
+    let sum = 0;
+    for (const b of player.buffs as ActiveBuff[]) {
+      if (b.type === type && typeof b.value === 'number') sum += b.value;
+    }
+    return sum;
+  };
+  const hasPlayerBuff = (type: BuffType): boolean => {
+    if (!player.buffs) return false;
+    return (player.buffs as ActiveBuff[]).some(b => b.type === type);
+  };
+  const applyPlayerBuff = (b: { type: BuffType; duration: number; value?: number; valuePercent?: number }, skillName: string, turn: number) => {
+    const buffs = player.buffs as ActiveBuff[];
+    let shieldHp: number | undefined;
+    if (b.type === 'shield' && b.value) shieldHp = Math.max(0, Math.floor(player.atk * b.value));
+    const exists = buffs.find(x => x.type === b.type);
+    if (exists) {
+      exists.remaining = Math.max(exists.remaining, b.duration);
+      if (b.value !== undefined) exists.value = b.value;
+      if (b.valuePercent !== undefined) exists.valuePercent = b.valuePercent;
+      if (shieldHp !== undefined) exists.shieldHp = (exists.shieldHp || 0) + shieldHp;
+    } else {
+      buffs.push({ type: b.type, remaining: b.duration, value: b.value, valuePercent: b.valuePercent, shieldHp });
+    }
+    const desc: Record<string, string> = {
+      shield: `获得护盾 ${shieldHp || 0} 点`,
+      immune: `受到伤害减半`,
+      atk_up: `攻击+${((b.value || 0) * 100).toFixed(0)}%`,
+      def_up: `防御+${((b.value || 0) * 100).toFixed(0)}%`,
+      spd_up: `身法+${((b.value || 0) * 100).toFixed(0)}%`,
+      crit_up: `会心+${((b.value || 0) * 100).toFixed(0)}%`,
+      regen: `每回合回复 ${(((b.valuePercent || 0)) * 100).toFixed(0)}% 气血`,
+      reflect: `反弹${((b.value || 0) * 100).toFixed(0)}%伤害`,
+    };
+    const effText = desc[b.type] || '增益';
+    logs.push({ turn, text: `  【${skillName}】${effText}，持续 ${b.duration} 回合`, type: 'buff', actor: 'player', ...snap() });
+  };
+  const runPlayerBuffTurnStart = (turn: number) => {
+    if (!player.buffs) return;
+    for (const b of player.buffs as ActiveBuff[]) {
+      if (b.type === 'regen' && b.valuePercent && player.hp > 0 && player.hp < player.maxHp) {
+        const heal = Math.max(1, Math.floor(player.maxHp * b.valuePercent));
+        const before = player.hp;
+        player.hp = Math.min(player.maxHp, player.hp + heal);
+        if (player.hp > before) {
+          logs.push({ turn, text: `  ✦【回复】回复 ${player.hp - before} 点气血`, type: 'buff', actor: 'player', ...snap() });
+        }
+      }
+    }
+  };
+  const tickPlayerBuffs = () => {
+    if (!player.buffs) return;
+    const buffs = player.buffs as ActiveBuff[];
+    for (let i = buffs.length - 1; i >= 0; i--) {
+      buffs[i].remaining--;
+      if (buffs[i].remaining <= 0) buffs.splice(i, 1);
+    }
+  };
+
+  // 玩家受伤主链：brittle → awakenReduction → immune × 0.5 → shield 吸收 → 反伤池触发
+  // 返回最终扣血值（已应用所有减免）；shield 吸收完独立扣，返回剩余 dmg
+  const applyPlayerIncoming = (dmg: number, isCrit: boolean, turn: number): number => {
+    let d = dmg;
+    // 1. 附灵受伤减免
+    d = applyAwakenIncomingReduction(d, isCrit);
+    // 2. 玩家 buff: immune 半伤
+    if (hasPlayerBuff('immune')) d = Math.max(1, Math.floor(d * 0.5));
+    // 3. 玩家 buff: shield 吸收
+    const buffs = player.buffs as ActiveBuff[];
+    if (buffs && d > 0) {
+      const shield = buffs.find(b => b.type === 'shield' && (b.shieldHp || 0) > 0);
+      if (shield && shield.shieldHp && shield.shieldHp > 0) {
+        const absorbed = Math.min(d, shield.shieldHp);
+        shield.shieldHp -= absorbed;
+        d -= absorbed;
+        if (absorbed > 0) {
+          logs.push({ turn, text: `  【护盾】吸收 ${absorbed} 点伤害`, type: 'buff', actor: 'player', ...snap() });
+        }
+        if (shield.shieldHp <= 0) {
+          buffs.splice(buffs.indexOf(shield), 1);
+          logs.push({ turn, text: `  【护盾】破碎`, type: 'buff', actor: 'player', ...snap() });
+        }
+      }
+    }
+    return d;
+  };
+
+  // 反伤池触发（玩家受击后）
+  const triggerReflectPool = (dmg: number, sourceMonster: MonsterRuntime, turn: number) => {
+    const pe = equippedSkills?.passiveEffects as any;
+    const reflectSum = (pe?.reflectPercent || 0)
+                     + sumPlayerBuff('reflect' as BuffType)
+                     + ((player as any).reflectPctBonus || 0);
+    if (reflectSum > 0 && dmg > 0) {
+      const reflectCap = Math.floor(player.atk * 6);
+      const baseRf = Math.min(Math.floor(dmg * reflectSum), reflectCap);
+      const hpBonus = Math.floor(player.maxHp * 0.08);
+      const rf = baseRf + hpBonus;
+      if (rf > 0) {
+        sourceMonster.stats.hp = Math.max(0, sourceMonster.stats.hp - rf);
+        logs.push({ turn, text: `  【反伤】反弹 ${rf} 点伤害给${sourceMonster.stats.name}`, type: 'normal', actor: 'player', ...snap() });
+      }
+    }
+  };
+
+  // 复活检查：玩家 hp <= 0 时尝试触发不灭金身；返回是否被复活
+  const tryRevive = (turn: number): boolean => {
+    if (reviveAvailable && player.hp <= 0) {
+      reviveAvailable = false;
+      player.hp = Math.floor(player.maxHp * 0.20);
+      logs.push({ turn, text: `[第${turn}回合] 【不灭金身】发动！`, type: 'buff', actor: 'player', ...snap() });
+      return true;
+    }
+    return false;
+  };
+
   const killCheck = (target: MonsterRuntime, turn: number, killerName: string) => {
     if (target.alive && target.stats.hp <= 0) {
       target.alive = false;
@@ -572,6 +697,33 @@ export function runDuoWaveBattle(
     // v1.3 灵戒附灵·心法贯通：主修伤害倍率 +X%
     if (isMainSkill && player.awakenState?.mainSkillMultBonus) {
       mul *= 1 + player.awakenState.mainSkillMultBonus;
+    }
+
+    // 玩家 buff: atk_up 通过 mul 放大；crit_up 临时调会心
+    const atkUpSum = sumPlayerBuff('atk_up' as BuffType);
+    if (atkUpSum > 0) mul *= (1 + atkUpSum);
+    const critUpSum = sumPlayerBuff('crit_up' as BuffType);
+    const origCritRate = player.crit_rate;
+    if (critUpSum > 0) player.crit_rate = Math.min(0.95, origCritRate + critUpSum);
+
+    // buff/治疗类神通（mul=0）：施放 buff，不攻击
+    const usedSkill = chosenSkill || (isMainSkill ? activeSkillRef : null);
+    if (mul === 0 && usedSkill) {
+      logs.push({ turn, text: `[第${turn}回合] 你施展了【${activeName}】`, type: 'buff', actor: 'player', ...snap() });
+      if (usedSkill.healAtkRatio) {
+        const healAmp = 1 + ((player as any).healAmpPct || 0) / 100;
+        const heal = Math.floor(player.atk * usedSkill.healAtkRatio * healAmp);
+        player.hp = Math.min(player.maxHp, player.hp + heal);
+        logs.push({ turn, text: `  【${usedSkill.name}】回复 ${heal} 点气血`, type: 'buff', actor: 'player', ...snap() });
+      }
+      if ((usedSkill as any).buff) {
+        applyPlayerBuff((usedSkill as any).buff, usedSkill.name, turn);
+      }
+      if (critUpSum > 0) player.crit_rate = origCritRate;
+      if (chosenSkill && chosenIdx >= 0) {
+        playerDivineCds[chosenIdx] = chosenSkill.cdTurns || 0;
+      }
+      return;
     }
 
     // atk_down 折扣（临时改 player.atk，攻击后还原）
@@ -744,6 +896,9 @@ export function runDuoWaveBattle(
       }
     }
 
+    // 还原 crit_up 临时加成
+    if (critUpSum > 0) player.crit_rate = origCritRate;
+
     // 击杀检查
     killCheck(tgt, turn, '你');
 
@@ -863,6 +1018,11 @@ export function runDuoWaveBattle(
     const origAtk = m.stats.atk;
     if (atkDownMul < 1) m.stats.atk = Math.max(1, Math.floor(m.stats.atk * atkDownMul));
 
+    // 玩家 buff: def_up — 怪物攻击玩家时玩家 def 临时放大
+    const defUp = pick.isPlayer ? sumPlayerBuff('def_up' as BuffType) : 0;
+    const origPlayerDef = player.def;
+    if (defUp > 0) player.def = Math.floor(origPlayerDef * (1 + defUp));
+
     if (hits > 1) {
       logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}施展了【${skillName}】(${hits}段) → ${tgtName}!`, type: 'crit', actor: 'monster', ...snap() });
     }
@@ -874,12 +1034,12 @@ export function runDuoWaveBattle(
         logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}的攻击被${tgtName}闪避了`, type: 'normal', actor: 'monster', ...snap() });
         continue;
       }
-      // 目标 brittle → 受伤加深
+      // 目标 brittle → 受伤加深（所有目标）
       let dealt = r.damage;
       const brittle = getBrittleBonus(pick.ref);
       if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
-      // ✦ v1.2 附灵：仅玩家受伤享受 damageReduction / critTakenReduction / lowHpDefBonus
-      if (pick.isPlayer) dealt = applyAwakenIncomingReduction(dealt, r.isCrit);
+      // 玩家受伤主链：awakenReduction → immune × 0.5 → shield 吸收
+      if (pick.isPlayer) dealt = applyPlayerIncoming(dealt, r.isCrit, turn);
       pick.ref.hp -= dealt;
       anyHit = true;
       const critText = r.isCrit ? '会心!' : '';
@@ -888,8 +1048,7 @@ export function runDuoWaveBattle(
       } else {
         logs.push({ turn, text: `[第${turn}回合] ${m.stats.name}${mSkill ? '施展【' + skillName + '】' : ''}攻击了${tgtName}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'monster', ...snap() });
       }
-      // ✦ v1.2 附灵：玩家被命中时反向触发 DOT/反伤池（poisonOnHitTaken / burnOnHitTaken / reflectOnCrit）
-      // pe.* 字段在 player 初始化时已与 awaken Max-Merge 合并
+      // 玩家被击：反 DOT / 反伤池 / reflectOnCrit
       if (pick.isPlayer) {
         const pe = equippedSkills?.passiveEffects as any;
         if (pe?.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
@@ -905,16 +1064,22 @@ export function runDuoWaveBattle(
             logs.push({ turn, text: `  ✦【反伤】对${m.stats.name}反弹 ${reflectDmg} 点伤害`, type: 'buff', actor: 'player', ...snap() });
           }
         }
+        // 统一反伤池（passive reflectPercent + reflect buff + 副属性 reflectPctBonus）
+        triggerReflectPool(dealt, m, turn);
       }
       if (pick.ref.hp <= 0) {
         pick.ref.hp = 0;
-        if (!pick.isPlayer) {
+        // 玩家死亡 → 尝试不灭金身
+        if (pick.isPlayer) {
+          tryRevive(turn);
+        } else {
           logs.push({ turn, text: `${assist.name}·助战倒下了`, type: 'death', actor: 'assist', ...snap() });
         }
-        break;
+        if (pick.ref.hp <= 0) break;
       }
     }
     m.stats.atk = origAtk;
+    if (defUp > 0) player.def = origPlayerDef;
 
     // 怪物技能 debuff → 玩家或助战（inflictor='monster' 不享受加成）
     if (anyHit && mSkill?.debuff && pick.ref.hp > 0) {
@@ -936,6 +1101,8 @@ export function runDuoWaveBattle(
 
     // ✦ v1.2 附灵：回合开始 — 回春（regenPerTurn）+ 洗髓（cleanseInterval）
     runAwakenTurnStart(turn);
+    // 玩家 buff regen 回合开始结算
+    runPlayerBuffTurnStart(turn);
 
     // ==== 回合开始：DOT 结算 ====
     // 玩家 DOT
@@ -943,11 +1110,14 @@ export function runDuoWaveBattle(
     if (pDot > 0) {
       player.hp -= pDot;
       if (player.hp <= 0) {
-        logs.push({ turn, text: '你在持续伤害中陨落了…3回合后原地复活', type: 'death', actor: 'player', ...snap() });
-        return {
-          won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats,
-          finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: !assist._isNoop && assist.hp <= 0,
-        };
+        // DOT 致死 → 尝试不灭金身复活
+        if (!tryRevive(turn)) {
+          logs.push({ turn, text: '你在持续伤害中陨落了…3回合后原地复活', type: 'death', actor: 'player', ...snap() });
+          return {
+            won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats,
+            finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: !assist._isNoop && assist.hp <= 0,
+          };
+        }
       }
     }
     // 助战 DOT
@@ -982,9 +1152,12 @@ export function runDuoWaveBattle(
     if (monsters.every(m => !m.alive)) break;
 
     // 行动顺序：按身法降序排（玩家、助战、所有存活怪物）
+    // 玩家 buff: spd_up 临时放大身法用于排序
+    const spdUp = sumPlayerBuff('spd_up' as BuffType);
+    const effPlayerSpd = spdUp > 0 ? Math.floor((player.spd || 0) * (1 + spdUp)) : (player.spd || 0);
     interface Actor { kind: 'player' | 'assist' | 'monster'; spd: number; idx: number; }
     const actors: Actor[] = [];
-    actors.push({ kind: 'player', spd: player.spd || 0, idx: -1 });
+    actors.push({ kind: 'player', spd: effPlayerSpd, idx: -1 });
     if (!assist._isNoop && assist.hp > 0) actors.push({ kind: 'assist', spd: assist.spd || 0, idx: -1 });
     monsters.forEach((m, i) => { if (m.alive) actors.push({ kind: 'monster', spd: m.stats.spd || 0, idx: i }); });
     // 同身法随机
@@ -1029,7 +1202,7 @@ export function runDuoWaveBattle(
       }
     }
 
-    // 回合末：递减 CD
+    // 回合末：递减 CD + 玩家 buff 衰减
     if (isAssistDivine && assistSkillCd.current > 0) assistSkillCd.current--;
     for (let i = 0; i < playerDivineCds.length; i++) {
       if (playerDivineCds[i] > 0) playerDivineCds[i]--;
@@ -1037,6 +1210,7 @@ export function runDuoWaveBattle(
     for (const m of monsters) {
       if (m.alive) tickMonsterCds(m.skillState);
     }
+    tickPlayerBuffs();
   }
 
   const aliveAtEnd = monsters.filter(m => m.alive);

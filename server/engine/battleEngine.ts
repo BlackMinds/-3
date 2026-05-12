@@ -337,7 +337,7 @@ export interface ActiveDebuff {
   sourceName?: string;
 }
 
-interface ActiveBuff {
+export interface ActiveBuff {
   type: BuffType;
   remaining: number;
   value?: number;
