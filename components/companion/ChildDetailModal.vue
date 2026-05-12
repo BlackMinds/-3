@@ -20,12 +20,12 @@
         <div class="section">
           <div class="row"><span class="lbl">阶段</span><span class="val">{{ detail.stageName }} · Lv.{{ detail.level }}</span></div>
           <div class="row"><span class="lbl">灵根</span><span class="val">{{ rootName(detail.spiritualRoot) }}灵根</span></div>
-          <div class="row"><span class="lbl">气血</span><span class="val">{{ detail.maxHp }}</span></div>
-          <div class="row"><span class="lbl">攻击</span><span class="val">{{ detail.atk }}</span></div>
-          <div class="row"><span class="lbl">防御</span><span class="val">{{ detail.def }}</span></div>
-          <div class="row"><span class="lbl">身法</span><span class="val">{{ detail.spd }}</span></div>
-          <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate) }}</span></div>
-          <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg) }}</span></div>
+          <div class="row"><span class="lbl">气血</span><span class="val">{{ detail.maxHp + equipBonus.max_hp }}<span v-if="equipBonus.max_hp" class="eq-bonus">(+{{ equipBonus.max_hp }})</span></span></div>
+          <div class="row"><span class="lbl">攻击</span><span class="val">{{ detail.atk + equipBonus.atk }}<span v-if="equipBonus.atk" class="eq-bonus">(+{{ equipBonus.atk }})</span></span></div>
+          <div class="row"><span class="lbl">防御</span><span class="val">{{ detail.def + equipBonus.def }}<span v-if="equipBonus.def" class="eq-bonus">(+{{ equipBonus.def }})</span></span></div>
+          <div class="row"><span class="lbl">身法</span><span class="val">{{ detail.spd + equipBonus.spd }}<span v-if="equipBonus.spd" class="eq-bonus">(+{{ equipBonus.spd }})</span></span></div>
+          <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate + equipBonus.crit_rate) }}<span v-if="equipBonus.crit_rate" class="eq-bonus">(+{{ pct(equipBonus.crit_rate) }})</span></span></div>
+          <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg + equipBonus.crit_dmg) }}<span v-if="equipBonus.crit_dmg" class="eq-bonus">(+{{ pct(equipBonus.crit_dmg) }})</span></span></div>
           <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge) }}</span></div>
           <div class="row"><span class="lbl">吸血</span><span class="val">{{ pct(detail.lifesteal) }}</span></div>
           <div class="row"><span class="lbl">神识</span><span class="val">{{ detail.spirit }}</span></div>
@@ -335,6 +335,22 @@ const equippedBySlot = computed(() => {
 const bagEquips = computed(() => equipList.value.filter(e => !e.isEquipped))
 const equippedCount = computed(() => equipList.value.filter(e => e.isEquipped).length)
 
+// 已穿戴装备的总加成（主属性 + 副词条按 stat 累加）— 用于子女面板"基础+装备=总"显示
+const equipBonus = computed(() => {
+  const bonus: Record<string, number> = { atk: 0, def: 0, max_hp: 0, spd: 0, crit_rate: 0, crit_dmg: 0 }
+  for (const e of equipList.value) {
+    if (!e.isEquipped) continue
+    const ps = e.primaryStat
+    if (ps && bonus[ps.stat] !== undefined) bonus[ps.stat] += Number(ps.value || 0)
+    for (const s of (e.subStats || [])) {
+      if (bonus[s.stat] !== undefined) bonus[s.stat] += Number(s.value || 0)
+    }
+  }
+  // 整数字段四舍五入
+  for (const k of ['atk', 'def', 'max_hp', 'spd']) bonus[k] = Math.floor(bonus[k])
+  return bonus
+})
+
 function pct(v: any): string {
   const n = Number(v || 0)
   return (n * 100).toFixed(1) + '%'
@@ -441,6 +457,7 @@ onMounted(async () => {
 .row { display: flex; gap: 8px; padding: 3px 0; font-size: 13px; }
 .lbl { color: #aaa; min-width: 60px; }
 .val { color: #fff; }
+.eq-bonus { color: #5fcf6f; font-size: 11px; margin-left: 4px; }
 
 .skill-line, .talent-line {
   display: flex; flex-direction: column; gap: 2px;
