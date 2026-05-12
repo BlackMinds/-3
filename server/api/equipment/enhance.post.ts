@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
 
     // 消耗计算
     const baseCosts: Record<string, number> = {
-      white: 50, green: 100, blue: 300, purple: 800, gold: 2000, red: 5000,
+      white: 50, green: 100, blue: 210, purple: 560, gold: 1400, red: 3500,
     }
     const baseCost = baseCosts[eq.rarity] || 300
     const cost = Math.floor(baseCost * Math.pow(currentLevel + 2, 1.4))
