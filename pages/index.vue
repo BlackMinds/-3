@@ -5197,11 +5197,11 @@ const mainStats = computed(() => {
   if (permHpPct  > 0) hpPctEntries.push({  source: '道果结晶', pct: permHpPct  / 100 });
 
   // 4e') V5 灵根共鸣（穿戴装备前缀匹配角色灵根 3/5/7 件 → 5%/10%/20%）
-  const lb = lingenResonance.value.bonus_pct;
-  if (lb > 0) {
-    atkPctEntries.push({ source: 'V5 灵根共鸣', pct: lb, note: `${lingenResonance.value.matched}/7 件匹配` });
-    defPctEntries.push({ source: 'V5 灵根共鸣', pct: lb });
-    hpPctEntries.push({  source: 'V5 灵根共鸣', pct: lb });
+  const lrb = lingenResonance.value.bonus_pct;
+  if (lrb > 0) {
+    atkPctEntries.push({ source: 'V5 灵根共鸣', pct: lrb, note: `${lingenResonance.value.matched}/7 件匹配` });
+    defPctEntries.push({ source: 'V5 灵根共鸣', pct: lrb });
+    hpPctEntries.push({  source: 'V5 灵根共鸣', pct: lrb });
   }
 
   // 4f) 宗门等级
