@@ -441,3 +441,9 @@ export function getBreakthroughRateAt(tier: number, stage: number, maxStage: num
   }
   return BREAKTHROUGH_BIG_RATES[tier] ?? 0
 }
+
+// =====================================================================
+// 装备 V5.0.2 常量与函数（design_only，与 V4 并存，未接入装备生成器）
+// 详细见 shared/balance-v5.ts 与 design/system-equipment-v5-0-2.json
+// =====================================================================
+export * from './balance-v5'
