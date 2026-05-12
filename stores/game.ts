@@ -153,10 +153,10 @@ export const useGameStore = defineStore('game', () => {
     const lv = charLevel.value
     let hp = 0, atk = 0, def = 0, spd = 0
     for (let i = 1; i < lv; i++) {
-      if (i <= 50)       { hp += 5;  atk += 2;  def += 1; spd += 1 }
-      else if (i <= 100) { hp += 10; atk += 4;  def += 2; spd += 2 }
-      else if (i <= 150) { hp += 20; atk += 8;  def += 4; spd += 3 }
-      else               { hp += 40; atk += 15; def += 8; spd += 5 }
+      if (i <= 50)       { hp += 30;  atk += 2;  def += 1; spd += 1 }
+      else if (i <= 100) { hp += 60;  atk += 4;  def += 2; spd += 2 }
+      else if (i <= 150) { hp += 120; atk += 8;  def += 4; spd += 3 }
+      else               { hp += 240; atk += 15; def += 8; spd += 5 }
     }
     return { hp, atk, def, spd }
   })
@@ -372,14 +372,12 @@ export const useGameStore = defineStore('game', () => {
     try {
       let autoSell = 'none'
       let autoSellTier = 0
-      let autoSellSetBlacklist: string[] = []
-      let autoSellNoSet = true
+      let autoSellWuxingBlacklist: string[] = []
       try {
         const s = JSON.parse(localStorage.getItem('xiantu_settings') || '{}')
         autoSell = s.autoSell || 'none'
         autoSellTier = s.autoSellTier || 0
-        autoSellSetBlacklist = Array.isArray(s.autoSellSetBlacklist) ? s.autoSellSetBlacklist : []
-        autoSellNoSet = typeof s.autoSellNoSet === 'boolean' ? s.autoSellNoSet : true
+        autoSellWuxingBlacklist = Array.isArray(s.autoSellWuxingBlacklist) ? s.autoSellWuxingBlacklist : []
       } catch {}
 
       const isDummy = currentMapId.value === 'dummy_arena'
@@ -394,8 +392,7 @@ export const useGameStore = defineStore('game', () => {
               map_id: currentMapId.value,
               auto_sell: autoSell,
               auto_sell_tier: autoSellTier,
-              auto_sell_set_blacklist: autoSellSetBlacklist,
-              auto_sell_no_set: autoSellNoSet,
+              auto_sell_wuxing_blacklist: autoSellWuxingBlacklist,
               batch_count: BATCH_COUNT,
             },
           })

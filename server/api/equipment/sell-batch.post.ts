@@ -5,10 +5,11 @@ import { checkAchievements } from '~/server/engine/achievementData'
 
 const RARITY_ORDER = ['white', 'green', 'blue', 'purple', 'gold', 'red']
 const VALID_BASE_SLOTS = new Set(['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant'])
+const VALID_WUXING = new Set(['metal', 'wood', 'water', 'fire', 'earth'])
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
-  const { rarity, tier, baseSlot, rarityEq, setKey, attr } = await readBody(event)
+  const { rarity, tier, baseSlot, rarityEq, wuxingKey, attr } = await readBody(event)
   const maxIdx = RARITY_ORDER.indexOf(rarity)
   if (maxIdx < 0) return { code: 400, message: '品质参数错误' }
 
@@ -29,9 +30,9 @@ export default defineEventHandler(async (event) => {
     return { code: 200, message: '没有可出售的装备', data: { price: 0, count: 0, soldIds: [], newSpiritStone: null } }
   }
 
-  // setKey 过滤：'none' = 无套装；其他字符串 = 指定套装
-  const useSetNone = setKey === 'none'
-  const useSetEq = typeof setKey === 'string' && setKey !== 'none' && setKey.length > 0
+  // wuxingKey 过滤：指定五行前缀（命中 wuxing_prefix 数组中任一元素）
+  // 元始天尊（5 元素全有）会被任一五行命中
+  const useWuxing = typeof wuxingKey === 'string' && VALID_WUXING.has(wuxingKey)
 
   // attr 过滤（主属性或副属性命中）后置在 JS 里做，避免复杂 JSON SQL
   // 兼容旧的单值字符串与新的数组（多选 OR 命中）
@@ -73,11 +74,9 @@ export default defineEventHandler(async (event) => {
       params.push(baseSlot)
       where.push(`base_slot = $${params.length}`)
     }
-    if (useSetNone) {
-      where.push(`set_id IS NULL`)
-    } else if (useSetEq) {
-      params.push(setKey)
-      where.push(`set_id = $${params.length}`)
+    if (useWuxing) {
+      params.push(wuxingKey)
+      where.push(`wuxing_prefix IS NOT NULL AND $${params.length} = ANY(wuxing_prefix)`)
     }
 
     const sql = `SELECT id, rarity, tier, enhance_level, primary_stat, primary_stat_2, sub_stats
