@@ -4,6 +4,7 @@ import type { Pool } from 'pg'
 import { rand } from '~/server/utils/random'
 import {
   rollTalentByAptitude,
+  CHILD_TALENTS,
   type ChildAptitude,
   type ChildTalent,
 } from '~/server/engine/childTalentData'
@@ -307,18 +308,47 @@ export async function feedChild(
     }
     const newStage = getStageByLevel(newLevel)
     const newStats = calcChildBaseStats(child.aptitude as ChildAptitude, newLevel)
+
+    // 天赋觉醒（design 5.6.3）：每 20 级 1 个，最多 7 个槽位 (20/40/60/80/100/120/140)
+    const TALENT_LEVELS = [20, 40, 60, 80, 100, 120, 140]
+    const existingTalents = Array.isArray(child.awakened_talents) ? child.awakened_talents : []
+    const newAwakened: Array<{ level: number; talent_id: string; rarity: string }> = [...existingTalents]
+    for (const lv of TALENT_LEVELS) {
+      // 已跨过该等级且尚未觉醒该槽位
+      if (newLevel >= lv && !existingTalents.some((t: any) => t.level === lv)) {
+        const t = rollTalentByAptitude(child.aptitude as ChildAptitude)
+        newAwakened.push({ level: lv, talent_id: t.id, rarity: t.rarity })
+      }
+    }
+    const newTalentsCount = newAwakened.length - existingTalents.length
+
     await client.query(
       `UPDATE children SET
         level = $1, level_exp = $2, stage = $3,
         max_hp = $4, atk = $5, def = $6, spd = $7,
-        feed_count_today = $8, feed_date = $9::date
-       WHERE id = $10`,
+        feed_count_today = $8, feed_date = $9::date,
+        awakened_talents = $10::jsonb
+       WHERE id = $11`,
       [newLevel, remainExp, newStage,
        newStats.maxHp, newStats.atk, newStats.def, newStats.spd,
-       feedCnt + 1, today, childId]
+       feedCnt + 1, today, JSON.stringify(newAwakened), childId]
     )
     await client.query('COMMIT')
-    return { ok: true, message: `经验 +${expGain}`, data: { level: newLevel, stage: newStage, expGain } }
+    const newTalentNames = newAwakened.slice(existingTalents.length).map((t: any) => {
+      const def = CHILD_TALENTS.find(x => x.id === t.talent_id)
+      return def ? `${def.name}(${def.rarity})` : t.talent_id
+    })
+    const msg = newTalentsCount > 0
+      ? `经验 +${expGain}，觉醒天赋：${newTalentNames.join(' / ')}`
+      : `经验 +${expGain}`
+
+    // 成就触发：子女成年（升级到 100 级）
+    if (child.level < 100 && newLevel >= 100) {
+      const { checkAchievements } = await import('~/server/engine/achievementData')
+      checkAchievements(characterId, 'child_adult', 1).catch(() => {})
+    }
+
+    return { ok: true, message: msg, data: { level: newLevel, stage: newStage, expGain, newTalents: newTalentsCount } }
   } catch (e) {
     await client.query('ROLLBACK')
     throw e

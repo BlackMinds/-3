@@ -113,6 +113,12 @@ export default defineEventHandler(async (event) => {
       client.release()
     }
 
+    // 成就触发 — 累计和离次数
+    const { rows: dvRows } = await pool.query(
+      'SELECT COUNT(*)::int AS cnt FROM divorce_history WHERE character_id = $1', [char.id])
+    const { checkAchievements } = await import('~/server/engine/achievementData')
+    checkAchievements(char.id, 'divorce_count', dvRows[0]?.cnt || 0).catch(() => {})
+
     return {
       code: 200,
       message: `已与「${c.name}」和离，红尘梦碎`,

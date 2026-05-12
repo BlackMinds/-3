@@ -57,6 +57,20 @@ export default defineEventHandler(async (event) => {
       client.release()
     }
 
+    // 成就触发（每个新生婴儿计 1 次出生，觉醒子女单独计）
+    const { checkAchievements } = await import('~/server/engine/achievementData')
+    for (const b of births) {
+      checkAchievements(char.id, 'child_born', 1).catch(() => {})
+      if (b.child.awakened) checkAchievements(char.id, 'awakened_child_born', 1).catch(() => {})
+    }
+    // 子女总数 + 觉醒子女总数（含离家）— design 风格"含饴弄孙" 4 = 总数
+    const { rows: cntRows } = await pool.query(
+      'SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE awakened) ::int AS awakened FROM children WHERE character_id = $1',
+      [char.id]
+    )
+    checkAchievements(char.id, 'children_count', cntRows[0]?.total || 0).catch(() => {})
+    checkAchievements(char.id, 'awakened_child_count', cntRows[0]?.awakened || 0).catch(() => {})
+
     return {
       code: 200,
       data: { births },

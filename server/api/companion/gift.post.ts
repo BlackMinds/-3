@@ -108,6 +108,10 @@ export default defineEventHandler(async (event) => {
     const { rows: cur } = await pool.query('SELECT intimacy FROM companions WHERE id = $1', [companionId])
     const newIntimacy = cur[0]?.intimacy || 0
 
+    // 亲密度峰值成就 (intimacy_peak threshold 5000/9999)
+    const { checkAchievements } = await import('~/server/engine/achievementData')
+    checkAchievements(char.id, 'intimacy_peak', newIntimacy).catch(() => {})
+
     return {
       code: 200,
       data: {

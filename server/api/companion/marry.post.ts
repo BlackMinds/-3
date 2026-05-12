@@ -50,6 +50,10 @@ export default defineEventHandler(async (event) => {
       client.release()
     }
 
+    // 成就触发
+    const { checkAchievements } = await import('~/server/engine/achievementData')
+    checkAchievements(char.id, 'companion_marry', 1).catch(() => {})
+
     return {
       code: 200,
       message: `与「${c.name}」结为道侣，仙缘印记 LV 1 已激活（全属性 +3%）`,

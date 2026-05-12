@@ -860,9 +860,10 @@ export default defineEventHandler(async (event) => {
 
     // 助战子女 buff：按 cap 70% 把子女属性加到玩家（design 5.6.1 简化版）
     // 子女阶段 multiplier：少年 0.3 / 青年 0.6 / 成年 1.0
+    // 子女天赋（design 5.6.3）：先按 PassiveEffect 放大子女自身属性，再走 cap
     if (char.battling_child_id) {
       const { rows: childRows } = await pool.query(
-        'SELECT atk, def, max_hp, spd, stage FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
+        'SELECT atk, def, max_hp, spd, stage, awakened_talents FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
         [char.battling_child_id, char.id]
       )
       if (childRows[0]) {
@@ -870,12 +871,30 @@ export default defineEventHandler(async (event) => {
         const STAGE_MUL: Record<string, number> = { youth: 0.3, adult_youth: 0.6, adult: 1.0 }
         const stageMul = STAGE_MUL[c.stage] || 0
         if (stageMul > 0) {
+          // 天赋 PassiveEffect 应用于子女自身（仅基础 stat percent，更复杂的 dot/dodge/revive 暂不接）
+          const { CHILD_TALENT_MAP } = await import('~/server/engine/childTalentData')
+          const talents = Array.isArray(c.awakened_talents) ? c.awakened_talents : []
+          let atkPct = 0, defPct = 0, hpPct = 0, spdPct = 0
+          for (const t of talents) {
+            const def = (CHILD_TALENT_MAP as any)[t.talent_id]
+            if (!def) continue
+            const e = def.effect || {}
+            atkPct += e.ATK_percent || 0
+            defPct += e.DEF_percent || 0
+            hpPct += e.HP_percent || 0
+            spdPct += e.SPD_percent || 0
+          }
+          const buffedAtk = Math.floor(c.atk * (1 + atkPct / 100))
+          const buffedDef = Math.floor(c.def * (1 + defPct / 100))
+          const buffedHp = Math.floor(c.max_hp * (1 + hpPct / 100))
+          const buffedSpd = Math.floor(c.spd * (1 + spdPct / 100))
+
           const cap = 0.70
-          // 子女实际贡献 = min(子女属性 × 阶段, 父母属性 × cap)
-          const addAtk = Math.floor(Math.min(c.atk * stageMul, char.atk * cap))
-          const addDef = Math.floor(Math.min(c.def * stageMul, char.def * cap))
-          const addHp = Math.floor(Math.min(c.max_hp * stageMul, char.max_hp * cap))
-          const addSpd = Math.floor(Math.min(c.spd * stageMul, char.spd * cap))
+          // 子女实际贡献 = min(子女属性(含天赋) × 阶段, 父母属性 × cap)
+          const addAtk = Math.floor(Math.min(buffedAtk * stageMul, char.atk * cap))
+          const addDef = Math.floor(Math.min(buffedDef * stageMul, char.def * cap))
+          const addHp = Math.floor(Math.min(buffedHp * stageMul, char.max_hp * cap))
+          const addSpd = Math.floor(Math.min(buffedSpd * stageMul, char.spd * cap))
           char.atk += addAtk
           char.def += addDef
           char.max_hp += addHp
@@ -884,6 +903,7 @@ export default defineEventHandler(async (event) => {
           char._child_battle_atk = addAtk
           char._child_battle_def = addDef
           char._child_battle_hp = addHp
+          char._child_talents_count = talents.length
         }
       }
     }
@@ -1046,8 +1066,23 @@ export default defineEventHandler(async (event) => {
 
       const expMul = 1 + (expBonusPercent || 0) / 100
       const catchUpMul = getCatchUpMultiplier(char.level || 1, avgLevel)
+      // 双修被动修为加成（design 3.4）：已结侣按道侣品质 +3~25%，1500 亲密度后 ×2
+      // 凡=3% / 下=5% / 中=8% / 上=12% / 极=18% / 仙=25%
+      let dualCultMul = 1
+      try {
+        const { rows: cmpExpRows } = await pool.query(
+          'SELECT quality, intimacy FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1',
+          [char.id]
+        )
+        if (cmpExpRows[0]) {
+          const CULT_PCT = [3, 5, 8, 12, 18, 25]
+          const pct = CULT_PCT[Math.min(cmpExpRows[0].quality, 5)] || 0
+          const doubleMul = (cmpExpRows[0].intimacy || 0) >= 1500 ? 2 : 1
+          dualCultMul = 1 + (pct * doubleMul) / 100
+        }
+      } catch {}
       // v3.4.3: 历练经验整体 ×0.7（修为/等级双经验同步缩）
-      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul * 0.7)
+      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul * dualCultMul * 0.7)
       const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
       void stoneTierBonus
       // 怪物掉落灵石已停发；保留 totalStone 变量名以兼容下游 DB/前端接口，固定为 0

@@ -76,6 +76,17 @@ export default defineEventHandler(async (event) => {
 
     const companion = await insertCompanion(pool, char.id, pending, initialIntimacy)
 
+    // 道侣成就触发（design 10.10）
+    const { checkAchievements } = await import('~/server/engine/achievementData')
+    checkAchievements(char.id, 'companion_encounter', 1).catch(() => {})
+    if (companion.quality === 5) {
+      checkAchievements(char.id, 'companion_immortal', 1).catch(() => {})
+    }
+    // 同时拥有的红颜总数（含已结侣 + 未结侣）
+    const { rows: totalRows } = await pool.query(
+      'SELECT COUNT(*)::int AS cnt FROM companions WHERE character_id = $1', [char.id])
+    checkAchievements(char.id, 'companion_total', totalRows[0]?.cnt || 0).catch(() => {})
+
     return {
       code: 200,
       data: {

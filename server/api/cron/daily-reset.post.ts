@@ -66,6 +66,11 @@ export default defineEventHandler(async (event) => {
       `UPDATE characters SET red_jade = red_jade + 5 WHERE id = ANY($1::int[])`,
       [charIds]
     )
+    // 成就 companionship_days 每日 +1（counter 类型，accumulate）
+    const { checkAchievements } = await import('~/server/engine/achievementData')
+    for (const cid of charIds) {
+      checkAchievements(cid, 'companionship_days', 1).catch(() => {})
+    }
   }
 
   // 4. 怀胎到期邮件提醒（pregnant_until 已到期 + pregnant_count > 0，未走 conceive-claim）

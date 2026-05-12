@@ -46,6 +46,18 @@ jobs:
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             --max-time 30
+      - name: Companion conceive auto-claim (怀胎到期自动出生)
+        run: |
+          curl -sfL -X POST "$APP_URL/api/cron/companion-conceive-claim" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 30
+      - name: Child auto-grow (婴幼/童年期每日 +1 级)
+        run: |
+          curl -sfL -X POST "$APP_URL/api/cron/child-grow" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 30
 
   weekly-reset:
     if: github.event.schedule == '0 16 * * 1' || github.event_name == 'workflow_dispatch'

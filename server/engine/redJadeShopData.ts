@@ -69,6 +69,14 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     give: { itemId: 'awaken_reroll', qty: 1, kind: 'pill' },
   },
   {
+    id: 'reset_root',
+    name: '天道洗髓丹 ×1',
+    desc: '子女天赋单槽重铸 / 玩家灵根定向转换',
+    price: 1500,
+    limit: { type: 'week', count: 2 },
+    give: { itemId: 'reset_root', qty: 1, kind: 'pill' },
+  },
+  {
     id: 'fate_pill',
     name: '夺天造化丹 ×1',
     desc: '子女资质重铸（极昂贵，月限购）',
