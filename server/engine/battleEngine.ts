@@ -1922,6 +1922,16 @@ export function runWaveBattle(
     turnLifestealTotal = 0;
     turnMainSkillHealTotal = 0;
 
+    // V5 元始天尊 7 件套：行动时 10% 概率触发「天尊气场」，全体震慑 1 回合（无视免控必中）
+    const stunAllChance = (player as any).v5StunAllChance || 0;
+    const stunTurns = (player as any).v5StunTurns || 1;
+    if (stunAllChance > 0 && Math.random() < stunAllChance) {
+      for (const m of aliveMonsters) {
+        m.frozenTurns = Math.max(m.frozenTurns, stunTurns);
+      }
+      logs.push({ turn, text: `[第${turn}回合] 【天尊气场】爆发！全体震慑 ${stunTurns} 回合`, type: 'buff', ...snap() });
+    }
+
     // v1.2 附灵每回合开始：回春 + 洗髓
     runAwakenTurnStart(turn);
     // 玩家 buff 回合开始：结算 regen（灵泉术/生生不息/天地归元）
@@ -2024,15 +2034,43 @@ export function runWaveBattle(
       logs.push({ turn, text: `  你被封印,无法使用神通`, type: 'normal', ...snap() });
     }
     const divines = (silenced || setEffects.basicBackBanDivine) ? [] : (equippedSkills?.divineSkills || []);
+    let usedDivineIdx = -1;
     for (let i = 0; i < divines.length; i++) {
       if (divineCds[i] <= 0) {
         usedSkill = divines[i];
         divineCds[i] = Math.max(1, (divines[i].cdTurns || 5) - cdReduction);
         isDivine = true;
+        usedDivineIdx = i;
         break;
       }
     }
     for (let i = 0; i < divineCds.length; i++) { if (divineCds[i] > 0) divineCds[i]--; }
+
+    // V5 元始天尊 5 件套：释放神通时所有其他神通 CD-1 + 30% 概率刷新最短 CD
+    if (isDivine && usedDivineIdx >= 0) {
+      const cdMinus = (player as any).v5SkillCdMinus || 0;
+      if (cdMinus > 0) {
+        for (let j = 0; j < divineCds.length; j++) {
+          if (j !== usedDivineIdx && divineCds[j] > 0) {
+            divineCds[j] = Math.max(0, divineCds[j] - cdMinus);
+          }
+        }
+      }
+      const refreshChance = (player as any).v5RefreshShortestCdChance || 0;
+      if (refreshChance > 0 && Math.random() < refreshChance) {
+        let shortestIdx = -1, shortestCd = Infinity;
+        for (let j = 0; j < divineCds.length; j++) {
+          if (j !== usedDivineIdx && divineCds[j] > 0 && divineCds[j] < shortestCd) {
+            shortestCd = divineCds[j];
+            shortestIdx = j;
+          }
+        }
+        if (shortestIdx >= 0) {
+          divineCds[shortestIdx] = 0;
+          logs.push({ turn, text: `  【天尊·神通续接】刷新了 ${divines[shortestIdx].name} 的冷却`, type: 'buff', ...snap() });
+        }
+      }
+    }
 
     // v1.3 灵戒附灵·主修判定：仅 active skill (主修) 触发 mainSkill* 钩子
     const isMainSkill = (usedSkill === activeSkill);

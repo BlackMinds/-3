@@ -16,6 +16,7 @@ import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/
 import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo } from '~/server/engine/battleEngine'
 import { aggregateEquipmentSetInfo } from '~/server/engine/equipSetData'
 import { WEAPON_BONUS } from '~/shared/balance'
+import { computeV5EquipmentDelta } from '~/server/utils/equipmentAggregateV5'
 
 export interface SnapshotOptions {
   forbidPills?: boolean       // 禁用战斗中丹药 (宗门战单挑用)
@@ -163,8 +164,50 @@ export async function buildCharacterSnapshot(
     else if (stat === 'EARTH_DMG') elementDmg.earth += value
   }
 
+  // === V5 装备聚合（design/system-equipment-v5-0-2.json）— 与 V4 并存 ===
+  const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null)
+  atk += v5Delta.atk;  def += v5Delta.def;  maxHp += v5Delta.maxHp;  spd += v5Delta.spd;  spirit += v5Delta.spirit
+  critRate += v5Delta.critRate;  critDmg += v5Delta.critDmg;  lifesteal += v5Delta.lifesteal;  dodge += v5Delta.dodge
+  armorPen += v5Delta.armorPen;  accuracy += v5Delta.accuracy
+  equipAtkPct += v5Delta.equipAtkPct;  equipDefPct += v5Delta.equipDefPct;  equipHpPct += v5Delta.equipHpPct;  equipSpdPct += v5Delta.equipSpdPct
+  weaponSpiritPct += v5Delta.weaponSpiritPct
+  equipReflectPct += v5Delta.equipReflectPct
+  elementDmg.metal += v5Delta.elementDmg.metal
+  elementDmg.wood  += v5Delta.elementDmg.wood
+  elementDmg.water += v5Delta.elementDmg.water
+  elementDmg.fire  += v5Delta.elementDmg.fire
+  elementDmg.earth += v5Delta.elementDmg.earth
+  // V5 专属 stat：lifestealAllPct + resistAllPct 接到 BattlerStats 标准字段
+  lifesteal += v5Delta.lifestealAllPct
+  equipResist.metal += v5Delta.resistAllPct
+  equipResist.wood  += v5Delta.resistAllPct
+  equipResist.water += v5Delta.resistAllPct
+  equipResist.fire  += v5Delta.resistAllPct
+  equipResist.earth += v5Delta.resistAllPct
+  // TODO: v5Delta.dotDmgPct / dmgReductionPct 在 battleSnapshot 没有出口（简化版无 awaken/equipDotDmgPct）
+  //       接入需扩展返回的 BattlerStats 字段，等宗门战 V5 实测需求再补
+  // 元始天尊套装效果（1 件 +10% 攻防血神识身法）
+  for (const eff of v5Delta.legendarySetEffects) {
+    const e = eff.effect as any
+    if (typeof e.atk_pct === 'number') nonPassiveAtkPct += e.atk_pct
+    if (typeof e.def_pct === 'number') nonPassiveDefPct += e.def_pct
+    if (typeof e.hp_pct === 'number')  nonPassiveHpPct  += e.hp_pct
+    if (typeof e.spd_pct === 'number') nonPassiveSpdPct += e.spd_pct
+    if (typeof e.spirit_pct === 'number' && e.spirit_pct > 0) spirit = Math.floor(spirit * (1 + e.spirit_pct))
+    // 3 件套 skill_dmg_pct / 5 件套 CD-1 / 7 件套眩晕 — battleSnapshot 简化版暂不接（TODO）
+  }
+  // 灵根共鸣 → 加法池
+  if (v5Delta.lingenBonusPct > 0) {
+    nonPassiveAtkPct += v5Delta.lingenBonusPct
+    nonPassiveDefPct += v5Delta.lingenBonusPct
+    nonPassiveHpPct  += v5Delta.lingenBonusPct
+    if (spirit > 0) spirit = Math.floor(spirit * (1 + v5Delta.lingenBonusPct))
+  }
+  // === V5 装备聚合结束 ===
+
   for (const eq of equipRows) {
     if (!eq.slot) continue
+    if (eq.equipment_version === 5) continue  // V5 装备已由 computeV5EquipmentDelta 聚合，跳过 V4 路径
     const enhLv = eq.enhance_level || 0
     // 属性1：受强化（base × (1 + 0.10 × enhLv)）
     const primary1 = Math.floor(eq.primary_value * (1 + enhLv * 0.10))

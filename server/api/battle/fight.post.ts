@@ -483,6 +483,11 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   }
 
   // === V5 装备聚合（design/system-equipment-v5-0-2.json）— 与 V4 并存 ===
+  // 5/7 件套触发性效果：透传给 battleEngine
+  let v5SkillCdMinus = 0
+  let v5RefreshShortestCdChance = 0
+  let v5StunAllChance = 0
+  let v5StunTurns = 0
   const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null)
   atk += v5Delta.atk;  def += v5Delta.def;  maxHp += v5Delta.maxHp;  spd += v5Delta.spd;  spirit += v5Delta.spirit
   critRate += v5Delta.critRate;  critDmg += v5Delta.critDmg;  lifesteal += v5Delta.lifesteal;  dodge += v5Delta.dodge
@@ -518,6 +523,12 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
     if (typeof e.skill_dmg_pct === 'number' && e.skill_dmg_pct > 0) {
       awaken.mainSkillMultBonus = (awaken.mainSkillMultBonus || 0) + e.skill_dmg_pct
     }
+    // 5 件套：神通 CD-1 + 30% 概率刷新最短 CD
+    if (typeof e.skill_cd_minus === 'number') v5SkillCdMinus = Math.max(v5SkillCdMinus, e.skill_cd_minus)
+    if (typeof e.refresh_shortest_cd_chance === 'number') v5RefreshShortestCdChance = Math.max(v5RefreshShortestCdChance, e.refresh_shortest_cd_chance)
+    // 7 件套：10% 全体眩晕 1 回合（无视免控必中）
+    if (typeof e.stun_all_chance === 'number') v5StunAllChance = Math.max(v5StunAllChance, e.stun_all_chance)
+    if (typeof e.stun_turns === 'number') v5StunTurns = Math.max(v5StunTurns, e.stun_turns)
   }
   if (v5Delta.lingenBonusPct > 0) {
     nonPassiveAtkPct += v5Delta.lingenBonusPct
@@ -870,6 +881,11 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
       _flatAtk, _flatDef, _flatHp, _flatSpd,
       _pctSumAtk: nonPassiveAtkPct, _pctSumDef: nonPassiveDefPct,
       _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
+      // V5 元始天尊套装运行时效果（5/7 件触发性，由 battleEngine 读取）
+      v5SkillCdMinus,
+      v5RefreshShortestCdChance,
+      v5StunAllChance,
+      v5StunTurns,
     } as any,
     expBonusPercent: expBonusPercent + spiritDensity + awakenExpBonus * 100 + awakenSpiritDensityBonus * 100,
     luckPercent: luck + awakenLuckBonus * 100,
