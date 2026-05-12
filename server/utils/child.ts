@@ -182,8 +182,8 @@ export function calcChildBaseStats(
   return {
     maxHp: Math.floor(200 + level * 250 * mul),
     atk: Math.floor(20 + level * 22 * mul),
-    def: Math.floor(15 + level * 14 * mul),
-    spd: Math.floor(30 + level * 3.5 * mul),
+    def: Math.floor(15 + level * 10 * mul),
+    spd: Math.floor(30 + level * 2.5 * mul),
     critRate: rollRange(APTITUDE_CRIT_RATE[aptIdx]),
     critDmg: rollRange(APTITUDE_CRIT_DMG[aptIdx]),
     dodge: rollRange(APTITUDE_DODGE[aptIdx]),
