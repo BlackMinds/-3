@@ -9,6 +9,9 @@ import {
   calcDotDamage,
   getElementMultiplier,
   DEBUFF_NAMES,
+  buildSetEffects,
+  buildActiveSetTiers,
+  type SetEffectsState,
   type ActiveDebuff,
   type BattlerStats,
   type BattleLogEntry,
@@ -23,7 +26,7 @@ import {
 } from './battleEngine';
 import type { DebuffType } from './skillData';
 import type { ChildSkill } from './childSkillData';
-import { BATTLE_FORMULA } from '../../shared/balance';
+import { BATTLE_FORMULA, PLAYER_CAPS } from '../../shared/balance';
 
 // ---- 类型 ----
 export interface DuoAssistInput {
@@ -124,6 +127,30 @@ export function runDuoWaveBattle(
     player.resists.ctrl  += p.resistCtrl  || 0;
   }
 
+  // 1.5 套装系统：buildSetEffects + 静态加成（sword/blade/fan）— 仅玩家享受
+  const playerWeaponType = (playerStats as any).weaponType || null;
+  const setEffects: SetEffectsState = buildSetEffects((playerStats as any).equipSetCounts, playerWeaponType);
+  player.setEffects = setEffects;
+  player.spearStacks = 0;
+  player.guaranteedCritNext = false;
+  player.armorPen = (player.armorPen || 0) + setEffects.spearArmorPen;
+  player.lifesteal = Math.min(0.25, (player.lifesteal || 0) + setEffects.spearLifesteal);
+  if (setEffects.swordActive) {
+    player.atk = Math.floor(player.atk * (1 + setEffects.swordAtkPct));
+    player.def = Math.floor(player.def * (1 + setEffects.swordDefPct));
+    player.crit_rate = Math.min(PLAYER_CAPS.critRate, (player.crit_rate || 0) + setEffects.swordCritRateFlat);
+  }
+  if (setEffects.bladeActive) {
+    player.crit_rate = Math.min(PLAYER_CAPS.critRate, (player.crit_rate || 0) + setEffects.bladeBaseCritRate);
+    player.crit_dmg = Math.min(PLAYER_CAPS.critDmg, (player.crit_dmg || 0) + setEffects.bladeBaseCritDmg);
+  }
+  if (setEffects.fanActive && setEffects.fanSpiritPct > 0) {
+    player.spirit = Math.floor((player.spirit || 0) * (1 + setEffects.fanSpiritPct));
+  }
+  player._bladeAddedRate = 0;
+  player._bladeAddedDmg = 0;
+  player._bladeStackCount = 0;
+
   // 2. 初始化助战子女（独立 hp / cd）
   const assistStats = assistInput.stats;
   const assist: any = {
@@ -171,6 +198,13 @@ export function runDuoWaveBattle(
     bossKilledByTurn3: false,
   };
 
+  // 开战时打印已激活套装
+  const activeSets = buildActiveSetTiers((playerStats as any).equipSetCounts);
+  for (const s of activeSets) {
+    logs.push({ turn: 0, text: `❖ 套装激活：${s.name} (${s.count}/7 · ${s.tier} 件套)`, type: 'set', actor: 'player', playerHp: player.hp, playerMaxHp: player.maxHp, monstersHp: monsters.map(m => Math.max(0, m.stats.hp)) });
+    logs.push({ turn: 0, text: `  ${s.desc}`, type: 'set', actor: 'player', playerHp: player.hp, playerMaxHp: player.maxHp, monstersHp: monsters.map(m => Math.max(0, m.stats.hp)) });
+  }
+
   // ---- helpers ----
   const snap = (): DuoLogExtra & Pick<BattleLogEntry, 'playerHp' | 'playerMaxHp' | 'monstersHp'> => ({
     playerHp: Math.max(0, player.hp),
@@ -186,8 +220,8 @@ export function runDuoWaveBattle(
   // 目标类型：玩家 / 助战 / 怪物 — 共有字段 debuffs/frozenTurns
   type DebuffTarget = { debuffs: ActiveDebuff[]; frozenTurns: number; stats?: any; maxHp?: number; resists?: any };
 
-  // 施加 debuff（简化版，省去套装 dmgMul/instantMul 与附灵 main 元素 amp — 留待 Phase 2b/2c）
-  // inflictor === 'player' 时享受 dotAmpPct / elementDmg / 五行抗性（与 battleEngine 一致）
+  // 施加 debuff
+  // inflictor === 'player' 时享受 dotAmpPct / elementDmg / 五行抗性 / 套装效果（火神/万毒/血魔/极寒/基本功）
   const tryApplyDebuff = (
     target: DebuffTarget,
     targetName: string,
@@ -195,10 +229,22 @@ export function runDuoWaveBattle(
     attackerAtk: number,
     turn: number,
     inflictor: 'player' | 'assist' | 'monster',
+    isPlayerMainSkill: boolean = false,
   ): boolean => {
-    if (Math.random() >= debuff.chance) return false;
+    let effChance = debuff.chance;
+    let tag = '';
+    // ❖ 极寒套：玩家施加 freeze 时 chance +X
+    if (inflictor === 'player' && debuff.type === 'freeze' && setEffects.freezeChanceBonus > 0) {
+      effChance = Math.min(1, effChance + setEffects.freezeChanceBonus);
+      tag += ` ❖极寒+${(setEffects.freezeChanceBonus * 100).toFixed(0)}%`;
+    }
+    // ❖ 回归基本功 7 件套：玩家主修攻击触发 debuff 概率 × basicBackDebuffMul
+    if (inflictor === 'player' && isPlayerMainSkill && setEffects.basicBackDebuffMul > 1) {
+      effChance = Math.min(1, effChance * setEffects.basicBackDebuffMul);
+      tag += ` ❖本源×${setEffects.basicBackDebuffMul.toFixed(1)}`;
+    }
+    if (Math.random() >= effChance) return false;
     const isCtrl = debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root' || debuff.type === 'silence';
-    // 控制类抗性（cap 70%）
     if (isCtrl) {
       const r = Math.min(0.7, target.resists?.ctrl || target.stats?.resists?.ctrl || 0);
       if (r > 0 && Math.random() < r) {
@@ -206,17 +252,16 @@ export function runDuoWaveBattle(
         return false;
       }
     }
-    const duration = debuff.duration;
+    let duration = debuff.duration;
     if (debuff.type === 'freeze' || debuff.type === 'stun' || debuff.type === 'root') {
       target.frozenTurns = Math.max(target.frozenTurns, duration);
-      logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合`, type: 'normal', ...snap() });
+      logs.push({ turn, text: `  ${targetName}被${DEBUFF_NAMES[debuff.type]} ${duration} 回合${tag}`, type: 'normal', ...snap() });
       return true;
     }
     // DOT / brittle / atk_down / silence
     const targetMaxHp = target.stats?.maxHp || target.maxHp || 0;
     let dmg = calcDotDamage(debuff.type, targetMaxHp, attackerAtk);
     const isDotType = debuff.type === 'poison' || debuff.type === 'burn' || debuff.type === 'bleed';
-    // 玩家施加 DOT → v3 万毒归一 + 元素强化 + 元素克制 + 抗性（与 runWaveBattle 同公式）
     if (isDotType && inflictor === 'player') {
       if ((player as any).dotAmpPct) dmg = Math.max(1, Math.floor(dmg * (1 + (player as any).dotAmpPct / 100)));
       const dotElem: Record<string, string> = { burn: 'fire', poison: 'wood', bleed: 'metal' };
@@ -231,8 +276,20 @@ export function runDuoWaveBattle(
         const resist = Math.min(BATTLE_FORMULA.maxResistRate, resistRaw);
         if (resist > 0) dmg = Math.max(1, Math.floor(dmg * (1 - resist)));
       }
+      // ❖ 火神/万毒/血魔套：玩家施加 DOT 时每跳伤害 × dmgMul（v3.8.5）
+      let dmgMul = 1;
+      if (debuff.type === 'burn'   && setEffects.burnDmgMul   > 1) dmgMul = setEffects.burnDmgMul;
+      if (debuff.type === 'poison' && setEffects.poisonDmgMul > 1) dmgMul = setEffects.poisonDmgMul;
+      if (debuff.type === 'bleed'  && setEffects.bleedDmgMul  > 1) dmgMul = setEffects.bleedDmgMul;
+      if (dmgMul > 1) dmg = Math.max(1, Math.floor(dmg * dmgMul));
     }
     const exists = target.debuffs.find(d => d.type === debuff.type);
+    // ❖ 火神 7 件套：已灼烧再施加时延长 +N 回合（cap burnDurationCap）
+    if (exists && inflictor === 'player' && debuff.type === 'burn' && setEffects.burnExtendIfStacked > 0) {
+      const newRemain = Math.min(setEffects.burnDurationCap, exists.remaining + setEffects.burnExtendIfStacked);
+      duration = newRemain;
+      tag += ` ❖焚天延+${setEffects.burnExtendIfStacked}`;
+    }
     if (exists) {
       exists.remaining = duration;
       exists.value = debuff.value;
@@ -247,7 +304,29 @@ export function runDuoWaveBattle(
     else if (debuff.type === 'brittle') text += ` (受伤+${(((debuff.value || 0.15)) * 100).toFixed(0)}%)`;
     else if (debuff.type === 'atk_down') text += ` (攻击-${(((debuff.value || 0.15)) * 100).toFixed(0)}%)`;
     else if (debuff.type === 'silence') text += ` (无法使用神通)`;
-    logs.push({ turn, text: `  ${text}`, type: 'normal', ...snap() });
+    logs.push({ turn, text: `  ${text}${tag}`, type: 'normal', ...snap() });
+
+    // ❖ 火神/万毒/血魔套：玩家施加 burn/poison/bleed 时立即多结算 (instantMul - 1) 跳额外伤害
+    // 每场每目标每种 debuff 每回合限触发 1 次（避免多段技能滚雪球）
+    if (inflictor === 'player' && isDotType && target.stats) {
+      let instantMul = 1;
+      let setName = '';
+      if (debuff.type === 'burn'   && setEffects.burnInstantMul   > 1) { instantMul = setEffects.burnInstantMul;   setName = '火神套'; }
+      if (debuff.type === 'poison' && setEffects.poisonInstantMul > 1) { instantMul = setEffects.poisonInstantMul; setName = '万毒套'; }
+      if (debuff.type === 'bleed'  && setEffects.bleedInstantMul  > 1) { instantMul = setEffects.bleedInstantMul;  setName = '血魔套'; }
+      if (instantMul > 1) {
+        const t = target as any;
+        if (!t._setInstantTriggered) t._setInstantTriggered = {};
+        const key = `${debuff.type}_${turn}`;
+        if (!t._setInstantTriggered[key]) {
+          t._setInstantTriggered[key] = true;
+          const extra = instantMul - 1;
+          const totalDmg = dmg * extra;
+          target.stats.hp = Math.max(0, target.stats.hp - totalDmg);
+          logs.push({ turn, text: `  ❖【${setName}】${DEBUFF_NAMES[debuff.type]}立即额外结算 ${extra} 跳，对${targetName}造成 ${totalDmg} 伤害`, type: 'set', ...snap() });
+        }
+      }
+    }
     return true;
   };
 
@@ -303,14 +382,15 @@ export function runDuoWaveBattle(
     if (!tgt) return;
     if (player.hp <= 0) return;
 
-    // silence → 屏蔽神通
+    // silence / 回归基本功套 → 屏蔽神通
     const silenced = hasSilence(player);
     if (silenced) logs.push({ turn, text: `  你被封印,无法使用神通`, type: 'normal', ...snap() });
+    const banDivine = silenced || setEffects.basicBackBanDivine;
 
     // 选神通：第一个 CD ≤ 0 的 divineSkill
     let chosenSkill: SkillRefInfo | null = null;
     let chosenIdx = -1;
-    if (!silenced && equippedSkills?.divineSkills?.length) {
+    if (!banDivine && equippedSkills?.divineSkills?.length) {
       for (let i = 0; i < equippedSkills.divineSkills.length; i++) {
         if (playerDivineCds[i] <= 0) {
           chosenSkill = equippedSkills.divineSkills[i];
@@ -319,11 +399,13 @@ export function runDuoWaveBattle(
         }
       }
     }
+    const isMainSkill = !chosenSkill; // 用基础 activeSkill 即视为主修
 
     const activeName = chosenSkill?.name || '普通攻击';
     const mul = chosenSkill?.multiplier ?? 1.0;
     const elem = chosenSkill?.element ?? null;
     const hits = chosenSkill?.hitCount || 1;
+    const ignoreDef = chosenSkill?.ignoreDef || 0;
 
     // atk_down 折扣（临时改 player.atk，攻击后还原）
     const atkDownMul = getAtkDownMul(player);
@@ -335,44 +417,141 @@ export function runDuoWaveBattle(
     }
     let totalDealt = 0;
     let anyHit = false;
+    let anyCrit = false;
     for (let h = 0; h < hits; h++) {
       if (!tgt.alive) break;
       const perMul = hits > 1 ? mul / hits : mul;
-      const r = calculateDamage(player, tgt.stats, perMul, elem, chosenSkill?.ignoreDef || 0);
+      // ❖ 极寒套：目标冻结时不可闪避
+      const ignoreDodge = !!(setEffects.frozenCannotDodge && tgt.frozenTurns > 0);
+      const r = calculateDamage(player, tgt.stats, perMul, elem, ignoreDef, ignoreDodge);
       if (r.damage === 0) {
         logs.push({ turn, text: `[第${turn}回合] 你${chosenSkill ? `的【${activeName}】` : '的攻击'}被${tgt.stats.name}闪避了`, type: 'normal', actor: 'player', ...snap() });
         continue;
       }
-      // 目标 brittle → 受伤增加
       let dealt = r.damage;
+      // 目标 brittle → 受伤增加
       const brittle = getBrittleBonus(tgt);
       if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
+      // ❖ 极寒套：对冻结目标伤害 ×(1+dmgVsFrozen)
+      if (setEffects.dmgVsFrozen > 0 && tgt.frozenTurns > 0) {
+        dealt = Math.floor(dealt * (1 + setEffects.dmgVsFrozen));
+      }
+      // ❖ 万毒套蚀骨：目标中毒时玩家造成伤害 ×(1+poisonDmgAmpVsTarget)
+      if (setEffects.poisonDmgAmpVsTarget > 0) {
+        const tgtPoisoned = tgt.debuffs.some(d => d.type === 'poison' && d.remaining > 0);
+        if (tgtPoisoned) dealt = Math.floor(dealt * (1 + setEffects.poisonDmgAmpVsTarget));
+      }
+      // ❖ 十三枪：命中后累加 spearStacks，下一击按 stack × perStack 加伤
+      if (setEffects.spearActive && player.spearStacks > 0) {
+        dealt = Math.floor(dealt * (1 + player.spearStacks * setEffects.spearStackDmgPerLevel));
+      }
       tgt.stats.hp -= dealt;
       totalDealt += dealt;
       anyHit = true;
+      if (r.isCrit) anyCrit = true;
       const critText = r.isCrit ? '会心!' : '';
       if (hits > 1) {
         logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'player', ...snap() });
       } else {
         logs.push({ turn, text: `[第${turn}回合] 你${chosenSkill ? `施展【${activeName}】` : ''}攻击了${tgt.stats.name}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'player', ...snap() });
       }
+      // ❖ 十三枪：命中累层（每段 1 命中 → 1 层），满层标记下一击必会心
+      if (setEffects.spearActive && setEffects.spearStackPerHit > 0) {
+        const before = player.spearStacks;
+        if (before < setEffects.spearMaxStacks) {
+          const next = Math.min(setEffects.spearMaxStacks, before + setEffects.spearStackPerHit);
+          player.spearStacks = next;
+          if (next === setEffects.spearMaxStacks && setEffects.spearGuaranteedCritOnMax && !player.guaranteedCritNext) {
+            player.guaranteedCritNext = true;
+            logs.push({ turn, text: `  ❖【十三枪】满 ${setEffects.spearMaxStacks} 层！下一击必会心`, type: 'set', actor: 'player', ...snap() });
+          }
+        } else if (setEffects.spearGuaranteedCritOnMax && r.isCrit) {
+          // 满层 + 这一击是必会心，消费完重置叠层
+          player.spearStacks = 0;
+        }
+      }
+      // ❖ 刀狂：非会心 → 叠 critRate/critDmg；会心 → 重置 _bladeStackCount
+      if (setEffects.bladeActive) {
+        if (!r.isCrit) {
+          player._bladeStackCount++;
+          const oldRate = player._bladeAddedRate || 0;
+          const oldDmg  = player._bladeAddedDmg  || 0;
+          const newRate = Math.min(PLAYER_CAPS.critRate, player.crit_rate + setEffects.bladeStackCritRate);
+          const newDmg  = Math.min(PLAYER_CAPS.critDmg,  player.crit_dmg  + setEffects.bladeStackCritDmg);
+          player.crit_rate = newRate;
+          player.crit_dmg  = newDmg;
+          player._bladeAddedRate = oldRate + (newRate - (newRate - setEffects.bladeStackCritRate));
+          player._bladeAddedDmg  = oldDmg  + (newDmg  - (newDmg  - setEffects.bladeStackCritDmg));
+        } else if (player._bladeStackCount > 0) {
+          // 重置叠加
+          player.crit_rate = Math.max(0, player.crit_rate - (player._bladeAddedRate || 0));
+          player.crit_dmg  = Math.max(1, player.crit_dmg  - (player._bladeAddedDmg  || 0));
+          player._bladeAddedRate = 0;
+          player._bladeAddedDmg  = 0;
+          player._bladeStackCount = 0;
+        }
+      }
     }
     // 还原 atk
     player.atk = origAtk;
 
-    // 吸血
-    if (totalDealt > 0 && player.lifesteal > 0 && player.hp > 0) {
-      const heal = Math.floor(totalDealt * player.lifesteal);
-      if (heal > 0 && player.hp < player.maxHp) {
-        const actual = Math.min(heal, player.maxHp - player.hp);
-        player.hp += actual;
-        logs.push({ turn, text: `  【吸血】回复 ${actual} 点气血`, type: 'buff', actor: 'player', ...snap() });
+    // 吸血（❖ 血魔套：目标流血时吸血加成）
+    if (totalDealt > 0 && player.hp > 0) {
+      let lsRate = player.lifesteal || 0;
+      const tgtBleeding = tgt.debuffs.some(d => d.type === 'bleed' && d.remaining > 0);
+      if (tgtBleeding && setEffects.bleedLifestealIfBleeding > 0) {
+        lsRate = Math.min(0.25, lsRate + setEffects.bleedLifestealIfBleeding);
+      }
+      if (lsRate > 0) {
+        const heal = Math.floor(totalDealt * lsRate);
+        if (heal > 0 && player.hp < player.maxHp) {
+          const actual = Math.min(heal, player.maxHp - player.hp);
+          player.hp += actual;
+          logs.push({ turn, text: `  【吸血】回复 ${actual} 点气血`, type: 'buff', actor: 'player', ...snap() });
+        }
       }
     }
 
     // 神通 debuff 施加（命中过 ≥1 次才尝试，与 battleEngine 一致）
     if (anyHit && chosenSkill?.debuff && tgt.alive) {
-      tryApplyDebuff(tgt, tgt.stats.name, chosenSkill.debuff, player.atk, turn, 'player');
+      tryApplyDebuff(tgt, tgt.stats.name, chosenSkill.debuff, player.atk, turn, 'player', isMainSkill);
+    }
+
+    // ❖ 剑仙套：神通后额外触发 swordQiHits 次剑气（swordQiMul 倍）
+    if (chosenSkill && setEffects.swordActive && setEffects.swordQiHits > 0 && tgt.alive) {
+      for (let i = 0; i < setEffects.swordQiHits; i++) {
+        if (!tgt.alive) break;
+        const ignoreDodgeQi = !!(setEffects.frozenCannotDodge && tgt.frozenTurns > 0);
+        const dr = calculateDamage(player, tgt.stats, setEffects.swordQiMul, chosenSkill.element, ignoreDef, ignoreDodgeQi);
+        if (dr.damage === 0) {
+          logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${setEffects.swordQiHits}】被${tgt.stats.name}闪避`, type: 'set', actor: 'player', ...snap() });
+          continue;
+        }
+        let qiDmg = dr.damage;
+        const brittle = getBrittleBonus(tgt);
+        if (brittle > 0) qiDmg = Math.floor(qiDmg * (1 + brittle));
+        tgt.stats.hp -= qiDmg;
+        logs.push({ turn, text: `  ❖【剑仙·剑气 ${i + 1}/${setEffects.swordQiHits}】${dr.isCrit ? '会心!' : ''}对${tgt.stats.name}造成 ${qiDmg} 伤害`, type: 'set', actor: 'player', ...snap() });
+      }
+    }
+
+    // ❖ 天机套：神通后额外释放 fanExtraCasts 次同 mul × fanExtraMul
+    if (chosenSkill && setEffects.fanActive && setEffects.fanExtraCasts > 0 && setEffects.fanExtraMul > 0 && tgt.alive) {
+      const fanMul = mul * setEffects.fanExtraMul;
+      for (let i = 0; i < setEffects.fanExtraCasts; i++) {
+        if (!tgt.alive) break;
+        const ignoreDodgeFan = !!(setEffects.frozenCannotDodge && tgt.frozenTurns > 0);
+        const fr = calculateDamage(player, tgt.stats, fanMul, elem, ignoreDef, ignoreDodgeFan);
+        if (fr.damage === 0) {
+          logs.push({ turn, text: `  ❖【天机·额外段 ${i + 1}/${setEffects.fanExtraCasts}】被${tgt.stats.name}闪避`, type: 'set', actor: 'player', ...snap() });
+          continue;
+        }
+        let fanDmg = fr.damage;
+        const brittle = getBrittleBonus(tgt);
+        if (brittle > 0) fanDmg = Math.floor(fanDmg * (1 + brittle));
+        tgt.stats.hp -= fanDmg;
+        logs.push({ turn, text: `  ❖【天机·额外段 ${i + 1}/${setEffects.fanExtraCasts}】${fr.isCrit ? '会心!' : ''}【${activeName}】对${tgt.stats.name}造成 ${fanDmg} 伤害`, type: 'set', actor: 'player', ...snap() });
+      }
     }
 
     // 击杀检查
