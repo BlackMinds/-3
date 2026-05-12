@@ -261,6 +261,21 @@ export const EQUIP_SELL_PRICES: Record<string, number> = {
   white: 15, green: 50, blue: 150, purple: 400, gold: 1000, red: 3000,
 }
 
+// V5 传奇 / Boss 秘宝卖价 base（2026-05-12）：高于太古红装一档
+// 传奇 ×2 / 秘宝 ×1.5 vs 红装 3000
+export const V5_LEGENDARY_SELL_BASE = 6000
+export const V5_BOSS_TREASURE_SELL_BASE = 4500
+
+/**
+ * 装备卖价 base — V5 传奇/秘宝优先，其次按 rarity 查表
+ * @param eq character_equipment 行对象（需含 legendary_set_id / is_boss_treasure / rarity）
+ */
+export function getEquipSellBase(eq: any): number {
+  if (eq?.legendary_set_id === 'yuanshi_tianzun') return V5_LEGENDARY_SELL_BASE
+  if (eq?.is_boss_treasure === true) return V5_BOSS_TREASURE_SELL_BASE
+  return EQUIP_SELL_PRICES[eq?.rarity] ?? 0
+}
+
 // 强化售价倍率（阶梯）：+0~+5 每级 +0.10，+5~+10 每级 +0.20，+10~+15 每级 +0.30
 // WHY: 原线性 (1+enh×0.10) 满级仅 ×2.5，远低于 +15 装备实际属性增益；中后段加速以贴近真实价值
 const ENHANCE_SELL_MUL = [

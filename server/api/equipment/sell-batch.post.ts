@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getCharId, EQUIP_SELL_PRICES, getEnhanceSellMul } from '~/server/utils/equipment'
+import { getCharId, getEquipSellBase, getEnhanceSellMul } from '~/server/utils/equipment'
 import { updateSectDailyTask } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 
@@ -110,7 +110,7 @@ export default defineEventHandler(async (event) => {
     const ids: number[] = []
     for (const eq of filteredRows) {
       const enhLv = eq.enhance_level || 0
-      total += Math.floor((EQUIP_SELL_PRICES[eq.rarity] || 10) * eq.tier * getEnhanceSellMul(enhLv))
+      total += Math.floor((getEquipSellBase(eq) || 10) * eq.tier * getEnhanceSellMul(enhLv))
       ids.push(eq.id)
     }
 

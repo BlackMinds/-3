@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getCharId, EQUIP_SELL_PRICES, getEnhanceSellMul, removeEquipsFromAllLoadouts } from '~/server/utils/equipment'
+import { getCharId, getEquipSellBase, getEnhanceSellMul, removeEquipsFromAllLoadouts } from '~/server/utils/equipment'
 import { updateSectDailyTask } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
 
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const enhLv = equipRows[0].enhance_level || 0
-    const price = Math.floor((EQUIP_SELL_PRICES[equipRows[0].rarity] || 10) * equipRows[0].tier * getEnhanceSellMul(enhLv))
+    const price = Math.floor((getEquipSellBase(equipRows[0]) || 10) * equipRows[0].tier * getEnhanceSellMul(enhLv))
 
     // 删装备前清掉所有装备方案中的引用，避免 loadout 指向已删除装备
     await removeEquipsFromAllLoadouts(charId, [equip_id])

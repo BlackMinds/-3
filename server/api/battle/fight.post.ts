@@ -10,7 +10,7 @@ import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/util
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
-import { rollSubStats, EQUIP_SELL_PRICES, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
+import { rollSubStats, getEquipSellBase, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
 import { tryRollEquipmentV5DropSpec, tryRollV5SpecialDrop } from '~/server/utils/equipment-v5'
 import { computeV5EquipmentDelta } from '~/server/utils/equipmentAggregateV5'
 import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
@@ -1358,14 +1358,14 @@ export default defineEventHandler(async (event) => {
               // 无套装散件：autoSellNoSet=false 时同样保护（玩家想保留所有散件）
               const isProtectedSet = (!!d.set_id && !setBlacklist.has(d.set_id)) || (!d.set_id && !autoSellNoSet)
               if (!isProtectedSet && autoSellIdx >= 0 && itemIdx <= autoSellIdx && (autoSellTierLimit === 0 || itemTier <= autoSellTierLimit)) {
-                const price = Math.floor((EQUIP_SELL_PRICES[d.rarity] || 10) * (d.tier || 1))
+                const price = Math.floor((getEquipSellBase(d) || 10) * (d.tier || 1))
                 autoSellIncome += price
                 result.logs.push({ turn: 0, text: `自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
                 continue
               }
               // 背包满（含套装件）→ 转灵石返还
               if (bagCount >= EQUIP_BAG_LIMIT) {
-                const price = Math.floor((EQUIP_SELL_PRICES[d.rarity] || 10) * (d.tier || 1))
+                const price = Math.floor((getEquipSellBase(d) || 10) * (d.tier || 1))
                 autoSellIncome += price
                 result.logs.push({ turn: 0, text: `背包已满，自动出售【${d.name}】获得 ${price} 灵石`, type: 'system', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
                 continue

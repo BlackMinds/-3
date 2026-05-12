@@ -23,15 +23,20 @@ export default defineEventHandler(async (event) => {
 
     const currentLevel = eq.enhance_level || 0
 
-    if (currentLevel >= 10) {
+    // V5 装备 cap = +9，V4 装备 cap = +10
+    const isV5 = eq.equipment_version === 5
+    const maxEnhance = isV5 ? 9 : 10
+    if (currentLevel >= maxEnhance) {
       return { code: 400, message: '已达最大强化等级' }
     }
 
-    // 消耗计算
+    // 消耗计算：传奇 ×1.5 / Boss 秘宝 ×1.2 / 普通按 rarity
     const baseCosts: Record<string, number> = {
       white: 50, green: 100, blue: 210, purple: 560, gold: 1400, red: 3500,
     }
-    const baseCost = baseCosts[eq.rarity] || 300
+    let baseCost = baseCosts[eq.rarity] || 300
+    if (eq.legendary_set_id === 'yuanshi_tianzun') baseCost = Math.floor(baseCost * 1.5)
+    else if (eq.is_boss_treasure === true)        baseCost = Math.floor(baseCost * 1.2)
     const cost = Math.floor(baseCost * Math.pow(currentLevel + 2, 1.4))
 
     // 检查灵石
