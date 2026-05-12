@@ -21,18 +21,15 @@
 // --------------------------- Feature Flag ---------------------------
 
 /**
- * V5 装备掉落灰度开关
+ * V5 装备掉落开关（2026-05-12 默认开启）
  *
- * - false（默认）：所有掉落入口仍走 V4 decideEquipPrimariesV4 + rollSubStatsV4
- * - true：掉落入口改走 V5 rollEquipmentV5，DB 写入 V5 字段
+ * - true（默认）：掉落入口走 V5 rollEquipmentV5，DB 写入 V5 字段
+ * - 显式关闭：环境变量 V5_DROP_ENABLED=false
  *
- * 启用方式：
- *   - 服务端环境变量：V5_DROP_ENABLED=true
- *   - 或代码硬开（开发用）：把下面的判断改成 true
- *
- * 注意：开启前先确保 `npm run migrate` 已执行（V5 字段就位）。
+ * V5 与 V4 装备并存：老装备完全不动，仅新掉落走 V5。
+ * 开启前提：`npm run migrate` 已执行（V5 字段就位）— 已在 commit f4976ea 合入。
  */
-export const V5_DROP_FLAG: boolean = process.env.V5_DROP_ENABLED === 'true'
+export const V5_DROP_FLAG: boolean = process.env.V5_DROP_ENABLED !== 'false'
 
 // --------------------------------- 类型 ---------------------------------
 
