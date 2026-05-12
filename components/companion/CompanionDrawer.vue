@@ -22,6 +22,9 @@
           子嗣
           <span v-if="store.children.length" class="tab-badge">{{ store.children.length }}</span>
         </button>
+        <button :class="['tab', { active: tab === 'shop' }]" @click="switchTab('shop')">
+          红尘玉商店
+        </button>
       </div>
 
       <!-- ===== 花名册 Tab ===== -->
@@ -115,6 +118,31 @@
         <ChildrenTab />
       </div>
 
+      <!-- ===== 红尘玉商店 Tab ===== -->
+      <div v-if="tab === 'shop'" class="tab-content">
+        <div v-if="!shopData" class="empty-hint">加载中...</div>
+        <template v-else>
+          <div class="shop-header">
+            <span class="shop-balance">余额：<b>{{ shopData.redJade }}</b> 红尘玉</span>
+          </div>
+          <div class="shop-list">
+            <div v-for="item in shopData.items" :key="item.id"
+                 :class="['shop-item', { disabled: item.remaining <= 0 || shopData.redJade < item.price }]">
+              <div class="si-head">
+                <span class="si-name">{{ item.name }}</span>
+                <span class="si-price">{{ item.price }} 红尘玉</span>
+              </div>
+              <div class="si-desc">{{ item.desc }}</div>
+              <div class="si-foot">
+                <span class="si-limit">本{{ item.limitType === 'week' ? '周' : '月' }}剩余 {{ item.remaining }}/{{ item.limitCount }}</span>
+                <button class="btn-buy" :disabled="buying || item.remaining <= 0 || shopData.redJade < item.price"
+                        @click="onBuy(item.id)">购买</button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
       <!-- ===== 邂逅弹窗 ===== -->
       <EncounterModal
         v-if="store.pendingEncounter && store.pendingScript"
@@ -164,7 +192,31 @@ const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 
 const store = useCompanionStore()
-const tab = ref<'roster' | 'expedition' | 'children'>('roster')
+const tab = ref<'roster' | 'expedition' | 'children' | 'shop'>('roster')
+
+// ===== 红尘玉商店 =====
+const shopData = ref<{ items: any[]; redJade: number } | null>(null)
+const buying = ref(false)
+async function loadShop() {
+  const api = useApi()
+  const res = await api<{ code: number; data?: any }>('/companion/red-jade-shop/list')
+  if (res.code === 200) shopData.value = res.data
+}
+async function onBuy(itemId: string) {
+  if (buying.value) return
+  buying.value = true
+  try {
+    const api = useApi()
+    const res = await api<{ code: number; message?: string }>('/companion/red-jade-shop/buy', {
+      method: 'POST',
+      body: { item_id: itemId },
+    })
+    alert(res.message || '操作完成')
+    if (res.code === 200) await loadShop()
+  } finally {
+    buying.value = false
+  }
+}
 const selectedLocation = ref<string>('')
 const detailCompanionId = ref<number | null>(null)
 const showResultModal = ref(false)
@@ -192,11 +244,12 @@ function close() {
   emit('update:modelValue', false)
 }
 
-function switchTab(t: 'roster' | 'expedition' | 'children') {
+function switchTab(t: 'roster' | 'expedition' | 'children' | 'shop') {
   tab.value = t
   if (t === 'expedition' && store.expeditionLocations.length === 0) {
     store.loadExpeditionLocations()
   }
+  if (t === 'shop') loadShop()
   if (t === 'children') {
     store.loadChildren()
   }
@@ -488,4 +541,38 @@ watch(() => props.modelValue, async (open) => {
 }
 .result-body :deep(b) { color: #ffd700; }
 .result-body :deep(i) { color: #c8a8ff; font-style: italic; }
+
+/* ===== 红尘玉商店 ===== */
+.shop-header {
+  padding: 10px 14px;
+  background: rgba(255,215,0,0.08);
+  border: 1px solid #b8860b;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  text-align: right;
+}
+.shop-balance { color: #ddd; font-size: 13px; }
+.shop-balance b { color: #ffd700; font-size: 15px; font-weight: bold; margin: 0 4px; }
+
+.shop-list { display: flex; flex-direction: column; gap: 8px; }
+.shop-item {
+  padding: 12px 14px;
+  background: rgba(40,20,60,0.5);
+  border: 1px solid #4a2a6a;
+  border-radius: 8px;
+}
+.shop-item.disabled { opacity: 0.5; }
+.si-head { display: flex; justify-content: space-between; align-items: center; }
+.si-name { color: #fff; font-size: 14px; font-weight: bold; }
+.si-price { color: #ffd700; font-size: 13px; }
+.si-desc { color: #c8a8ff; font-size: 12px; margin: 4px 0; }
+.si-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.si-limit { color: #aaa; font-size: 11px; }
+.btn-buy {
+  background: linear-gradient(135deg, #b070ff, #6a4a8a);
+  color: #fff; border: none;
+  padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;
+}
+.btn-buy:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-buy:hover:not(:disabled) { background: linear-gradient(135deg, #c080ff, #7a5a9a); }
 </style>

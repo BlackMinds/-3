@@ -1718,3 +1718,21 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_week_number INT NOT N
 -- 玩家把图发给作者，作者用 SQL UPDATE 直接赋值到该字段。
 -- 支持外链 URL 或 base64 data URL；前端按"有 custom 用 custom，否则用 SVG 占位"渲染。
 ALTER TABLE companions ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT DEFAULT NULL;
+
+-- ========================================
+-- 红尘玉商店限购计数 (2026-05-12, design 3.7.2)
+-- ========================================
+-- 周/月限购通过 (period_type, period_key) 隐式隔离，跨周/月自动新计数行
+-- period_key: week=YYYYWW (ISO 周) / month=YYYYMM
+CREATE TABLE IF NOT EXISTS character_red_jade_purchases (
+  id            SERIAL PRIMARY KEY,
+  character_id  INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  item_id       VARCHAR(40) NOT NULL,
+  period_type   VARCHAR(8) NOT NULL,
+  period_key    INT NOT NULL,
+  count         INT NOT NULL DEFAULT 0,
+  created_at    TIMESTAMP DEFAULT NOW(),
+  UNIQUE (character_id, item_id, period_type, period_key)
+);
+CREATE INDEX IF NOT EXISTS idx_red_jade_purchases_char
+  ON character_red_jade_purchases(character_id, period_type, period_key);
