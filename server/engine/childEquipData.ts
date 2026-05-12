@@ -67,16 +67,33 @@ export function generateChildEquipment(slot: ChildSlot, rarity: ChildRarity, chi
   }
   const subCount = SUB_COUNT_BY_RARITY[rarity] || 0
   const sub_stats: Array<{ stat: string; value: number }> = []
-  const candPool = ['atk', 'def', 'max_hp', 'spd', 'crit_rate', 'crit_dmg']
+  // 副词条候选池：4 基础 + 6 二级（10 种）
+  const candPool = [
+    'atk', 'def', 'max_hp', 'spd',
+    'crit_rate', 'crit_dmg', 'dodge', 'lifesteal', 'resist_ctrl', 'spirit',
+  ]
+  // 同件装备避免出现 2 条相同 stat
+  const usedStats = new Set<string>()
   for (let i = 0; i < subCount; i++) {
-    const stat = candPool[Math.floor(Math.random() * candPool.length)]
+    let stat = ''
+    for (let tries = 0; tries < 12; tries++) {
+      const candidate = candPool[Math.floor(Math.random() * candPool.length)]
+      if (!usedStats.has(candidate)) { stat = candidate; break }
+    }
+    if (!stat) break
+    usedStats.add(stat)
+
     let value = 0
-    if (stat === 'crit_rate') value = +(rand(2, 5) * mul / 100).toFixed(2)        // 2-5%
-    else if (stat === 'crit_dmg') value = +(rand(5, 15) * mul / 100).toFixed(2)   // 5-15%
-    else if (stat === 'atk') value = Math.floor(2 * lvBase * mul * 0.3)
-    else if (stat === 'def') value = Math.floor(1.5 * lvBase * mul * 0.3)
-    else if (stat === 'max_hp') value = Math.floor(8 * lvBase * mul * 0.3)
-    else if (stat === 'spd') value = Math.floor(1 * lvBase * mul * 0.3)
+    if (stat === 'crit_rate')        value = +(rand(2, 5) * mul / 100).toFixed(4)    // 2-5% × mul
+    else if (stat === 'crit_dmg')    value = +(rand(5, 15) * mul / 100).toFixed(4)   // 5-15%
+    else if (stat === 'dodge')       value = +(rand(1, 3) * mul / 100).toFixed(4)    // 1-3%
+    else if (stat === 'lifesteal')   value = +(rand(1, 3) * mul / 100).toFixed(4)    // 1-3%
+    else if (stat === 'resist_ctrl') value = +(rand(2, 5) * mul / 100).toFixed(4)    // 2-5%
+    else if (stat === 'spirit')      value = Math.floor(0.5 * lvBase * mul * 0.3)    // 神识：30% 同档基础
+    else if (stat === 'atk')         value = Math.floor(2 * lvBase * mul * 0.3)
+    else if (stat === 'def')         value = Math.floor(1.5 * lvBase * mul * 0.3)
+    else if (stat === 'max_hp')      value = Math.floor(8 * lvBase * mul * 0.3)
+    else if (stat === 'spd')         value = Math.floor(1 * lvBase * mul * 0.3)
     sub_stats.push({ stat, value })
   }
 

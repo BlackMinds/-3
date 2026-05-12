@@ -9,7 +9,8 @@ import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats, EQUIP_SELL_PRICES, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
-import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance'
+import { tryRollEquipmentV5DropSpec } from '~/server/utils/equipment-v5'
+import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
 
 // 战斗锁: 防止同一角色并发刷战斗
@@ -292,6 +293,13 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const slot = slots[slotIdx]
   const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
   const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
+
+  // V5 灰度（V5_DROP_FLAG=true 且品质 ≥ blue 时走 V5）
+  const v5Spec = tryRollEquipmentV5DropSpec({
+    baseSlot: slot as any, rarity: rarities[idx], tier, weaponType,
+  })
+  if (v5Spec) return v5Spec
+
   // v4.0：双主属性 + 副词条按部位分桶
   const v4 = pickV4SlotInfo(slot, weaponType)
   const primaries = decideEquipPrimariesV4(v4.slotKey, v4.subType, rarities[idx], tier)
@@ -306,6 +314,12 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
     sub_stats: JSON.stringify(subStats),
     set_id: setKey, tier, weapon_type: weaponType,
     base_slot: slot, req_level: tierReqLevels[tier] || 1, enhance_level: 0,
+    // V5 字段（V4 路径全 null/4/false）
+    equipment_version: 4,
+    wuxing_prefix: null,
+    wuxing_affixes: null,
+    legendary_set_id: null,
+    is_boss_treasure: false,
   }
 }
 
@@ -846,8 +860,7 @@ export default defineEventHandler(async (event) => {
       [char.id]
     )
     if (compRows[0]?.seal_level > 0) {
-      const SEAL_PCT = [0, 0.03, 0.05, 0.08, 0.12, 0.15]
-      const pct = SEAL_PCT[Math.min(compRows[0].seal_level, 5)] || 0
+      const pct = COMPANION_SEAL_PCT[Math.min(compRows[0].seal_level, 5)] || 0
       if (pct > 0) {
         char.atk = Math.floor(char.atk * (1 + pct))
         char.def = Math.floor(char.def * (1 + pct))
@@ -891,19 +904,26 @@ export default defineEventHandler(async (event) => {
             [char.battling_child_id]
           )
           let eqAtk = 0, eqDef = 0, eqHp = 0, eqSpd = 0
-          for (const er of equipRows) {
-            const ps = er.primary_stat || {}
-            if (ps.stat === 'atk') eqAtk += ps.value || 0
-            else if (ps.stat === 'def') eqDef += ps.value || 0
-            else if (ps.stat === 'max_hp') eqHp += ps.value || 0
-            else if (ps.stat === 'spd') eqSpd += ps.value || 0
-            const ss = Array.isArray(er.sub_stats) ? er.sub_stats : []
-            for (const s of ss) {
-              if (s.stat === 'atk') eqAtk += s.value || 0
-              else if (s.stat === 'def') eqDef += s.value || 0
-              else if (s.stat === 'max_hp') eqHp += s.value || 0
-              else if (s.stat === 'spd') eqSpd += s.value || 0
+          let eqCritR = 0, eqCritD = 0, eqDodge = 0, eqLs = 0, eqRctrl = 0, eqSpirit = 0
+          const addStat = (s: any) => {
+            if (!s) return
+            const v = Number(s.value || 0)
+            switch (s.stat) {
+              case 'atk':         eqAtk += v; break
+              case 'def':         eqDef += v; break
+              case 'max_hp':      eqHp += v; break
+              case 'spd':         eqSpd += v; break
+              case 'crit_rate':   eqCritR += v; break
+              case 'crit_dmg':    eqCritD += v; break
+              case 'dodge':       eqDodge += v; break
+              case 'lifesteal':   eqLs += v; break
+              case 'resist_ctrl': eqRctrl += v; break
+              case 'spirit':      eqSpirit += v; break
             }
+          }
+          for (const er of equipRows) {
+            addStat(er.primary_stat)
+            for (const s of (Array.isArray(er.sub_stats) ? er.sub_stats : [])) addStat(s)
           }
           const buffedAtk = Math.floor((c.atk + eqAtk) * (1 + atkPct / 100))
           const buffedDef = Math.floor((c.def + eqDef) * (1 + defPct / 100))
@@ -926,15 +946,21 @@ export default defineEventHandler(async (event) => {
           char._child_battle_hp = addHp
           char._child_talents_count = talents.length
 
-          // 子女二级属性 → 玩家本体（cap 70%，按阶段 multiplier 缩放）
+          // 子女二级属性（裸 + 装备）→ 玩家本体（cap 70%，按阶段 multiplier 缩放）
           // crit_dmg 是"增量"加到玩家身上（如子女 1.5 → 加 0.5），不是覆盖
           const cap2 = 0.70
-          const addCritRate  = Math.min(Number(c.crit_rate || 0)  * stageMul, Number(char.crit_rate || 0)  * cap2)
-          const addCritDmgInc = Math.min(Math.max(0, Number(c.crit_dmg || 1) - 1) * stageMul, Math.max(0, Number(char.crit_dmg || 1) - 1) * cap2)
-          const addDodge     = Math.min(Number(c.dodge || 0)      * stageMul, Number(char.dodge || 0)      * cap2)
-          const addLifesteal = Math.min(Number(c.lifesteal || 0)  * stageMul, Number(char.lifesteal || 0)  * cap2)
-          const addSpirit    = Math.floor(Math.min((c.spirit || 0) * stageMul, (char.spirit || 0) * cap2))
-          const addResistCtrl = Math.min(Number(c.resist_ctrl || 0) * stageMul, Number(char.resist_ctrl || 0) * cap2)
+          const childCritR = Number(c.crit_rate || 0) + eqCritR
+          const childCritD = Number(c.crit_dmg || 1) + eqCritD
+          const childDodge = Number(c.dodge || 0) + eqDodge
+          const childLs    = Number(c.lifesteal || 0) + eqLs
+          const childRctrl = Number(c.resist_ctrl || 0) + eqRctrl
+          const childSpirit = (c.spirit || 0) + eqSpirit
+          const addCritRate  = Math.min(childCritR * stageMul, Number(char.crit_rate || 0)  * cap2)
+          const addCritDmgInc = Math.min(Math.max(0, childCritD - 1) * stageMul, Math.max(0, Number(char.crit_dmg || 1) - 1) * cap2)
+          const addDodge     = Math.min(childDodge * stageMul, Number(char.dodge || 0)      * cap2)
+          const addLifesteal = Math.min(childLs    * stageMul, Number(char.lifesteal || 0)  * cap2)
+          const addSpirit    = Math.floor(Math.min(childSpirit * stageMul, (char.spirit || 0) * cap2))
+          const addResistCtrl = Math.min(childRctrl * stageMul, Number(char.resist_ctrl || 0) * cap2)
           char.crit_rate  = Number(char.crit_rate || 0)  + addCritRate
           char.crit_dmg   = Number(char.crit_dmg || 1)   + addCritDmgInc
           char.dodge      = Number(char.dodge || 0)      + addDodge
@@ -1221,9 +1247,23 @@ export default defineEventHandler(async (event) => {
                 continue
               }
               await client.query(
-                `INSERT INTO character_equipment (character_id, name, rarity, primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, set_id, tier, weapon_type, base_slot, req_level, enhance_level)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 0)`,
-                [char.id, d.name, d.rarity, d.primary_stat, d.primary_value, d.primary_stat_2 || null, d.primary_value_2 || null, d.sub_stats, d.set_id, d.tier, d.weapon_type, d.base_slot, d.req_level]
+                `INSERT INTO character_equipment (
+                   character_id, name, rarity, primary_stat, primary_value,
+                   primary_stat_2, primary_value_2, sub_stats, set_id, tier,
+                   weapon_type, base_slot, req_level, enhance_level,
+                   equipment_version, wuxing_prefix, wuxing_affixes, legendary_set_id, is_boss_treasure
+                 ) VALUES (
+                   $1, $2, $3, $4, $5,
+                   $6, $7, $8, $9, $10,
+                   $11, $12, $13, 0,
+                   $14, $15, $16, $17, $18
+                 )`,
+                [
+                  char.id, d.name, d.rarity, d.primary_stat, d.primary_value,
+                  d.primary_stat_2 || null, d.primary_value_2 || null, d.sub_stats, d.set_id, d.tier,
+                  d.weapon_type, d.base_slot, d.req_level,
+                  d.equipment_version ?? 4, d.wuxing_prefix ?? null, d.wuxing_affixes ?? null, d.legendary_set_id ?? null, d.is_boss_treasure ?? false,
+                ]
               )
               bagCount++
               keptDropNames.push(d.name)

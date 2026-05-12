@@ -26,10 +26,10 @@
           <div class="row"><span class="lbl">身法</span><span class="val">{{ detail.spd + equipBonus.spd }}<span v-if="equipBonus.spd" class="eq-bonus">(+{{ equipBonus.spd }})</span></span></div>
           <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate + equipBonus.crit_rate) }}<span v-if="equipBonus.crit_rate" class="eq-bonus">(+{{ pct(equipBonus.crit_rate) }})</span></span></div>
           <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg + equipBonus.crit_dmg) }}<span v-if="equipBonus.crit_dmg" class="eq-bonus">(+{{ pct(equipBonus.crit_dmg) }})</span></span></div>
-          <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge) }}</span></div>
-          <div class="row"><span class="lbl">吸血</span><span class="val">{{ pct(detail.lifesteal) }}</span></div>
-          <div class="row"><span class="lbl">神识</span><span class="val">{{ detail.spirit }}</span></div>
-          <div class="row"><span class="lbl">控制抗性</span><span class="val">{{ pct(detail.resistCtrl) }}</span></div>
+          <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge + equipBonus.dodge) }}<span v-if="equipBonus.dodge" class="eq-bonus">(+{{ pct(equipBonus.dodge) }})</span></span></div>
+          <div class="row"><span class="lbl">吸血</span><span class="val">{{ pct(detail.lifesteal + equipBonus.lifesteal) }}<span v-if="equipBonus.lifesteal" class="eq-bonus">(+{{ pct(equipBonus.lifesteal) }})</span></span></div>
+          <div class="row"><span class="lbl">神识</span><span class="val">{{ detail.spirit + equipBonus.spirit }}<span v-if="equipBonus.spirit" class="eq-bonus">(+{{ equipBonus.spirit }})</span></span></div>
+          <div class="row"><span class="lbl">控制抗性</span><span class="val">{{ pct(detail.resistCtrl + equipBonus.resist_ctrl) }}<span v-if="equipBonus.resist_ctrl" class="eq-bonus">(+{{ pct(equipBonus.resist_ctrl) }})</span></span></div>
           <div class="row">
             <span class="lbl">经验</span>
             <span class="val">{{ detail.levelExp }} / {{ detail.nextLevelExp }}</span>
@@ -337,7 +337,10 @@ const equippedCount = computed(() => equipList.value.filter(e => e.isEquipped).l
 
 // 已穿戴装备的总加成（主属性 + 副词条按 stat 累加）— 用于子女面板"基础+装备=总"显示
 const equipBonus = computed(() => {
-  const bonus: Record<string, number> = { atk: 0, def: 0, max_hp: 0, spd: 0, crit_rate: 0, crit_dmg: 0 }
+  const bonus: Record<string, number> = {
+    atk: 0, def: 0, max_hp: 0, spd: 0,
+    crit_rate: 0, crit_dmg: 0, dodge: 0, lifesteal: 0, resist_ctrl: 0, spirit: 0,
+  }
   for (const e of equipList.value) {
     if (!e.isEquipped) continue
     const ps = e.primaryStat
@@ -347,7 +350,7 @@ const equipBonus = computed(() => {
     }
   }
   // 整数字段四舍五入
-  for (const k of ['atk', 'def', 'max_hp', 'spd']) bonus[k] = Math.floor(bonus[k])
+  for (const k of ['atk', 'def', 'max_hp', 'spd', 'spirit']) bonus[k] = Math.floor(bonus[k])
   return bonus
 })
 
