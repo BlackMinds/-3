@@ -142,17 +142,14 @@ export function calcChildBaseStats(
   spirit: number; resistCtrl: number
 } {
   const mul = APTITUDE_MULTIPLIER[aptitude] || 1
-  // 二级属性比基础属性增长慢，避免子女在堆资质后会心率飞天
-  // crit_rate: 凡品 lv1 = 3% / 仙品 lv100 = 18%
-  // crit_dmg:  凡品 lv1 = 100% / 仙品 lv100 = 175%
-  // dodge:     凡品 0 / 仙品 lv100 = 9%
-  // spirit:    凡品 lv1=5 / 仙品 lv100 ≈ 155
-  // resist_ctrl: 凡品 5% / 仙品 lv100 = 20%
+  // 2026-05-12 数值调强 ×3：让子女基础属性能跟上高境界本体（lv200+ 玩家 atk 数万级）
+  // 圣品 lv200: atk=15020 / def=9015 / hp=150200 / spd=4530
+  // 二级属性增长保留原节奏（避免会心率超 cap 浪费）
   return {
-    maxHp: Math.floor(200 + level * 50 * mul),
-    atk: Math.floor(20 + level * 5 * mul),
-    def: Math.floor(15 + level * 3 * mul),
-    spd: Math.floor(30 + level * 1.5 * mul),
+    maxHp: Math.floor(200 + level * 150 * mul),
+    atk: Math.floor(20 + level * 15 * mul),
+    def: Math.floor(15 + level * 9 * mul),
+    spd: Math.floor(30 + level * 4.5 * mul),
     critRate: +(0.03 + level * 0.0005 * mul).toFixed(4),
     critDmg: +(1.00 + level * 0.0025 * mul).toFixed(4),
     dodge: +(level * 0.0003 * mul).toFixed(4),
