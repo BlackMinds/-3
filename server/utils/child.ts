@@ -150,8 +150,8 @@ export function calcChildBaseStats(
     atk: Math.floor(20 + level * 15 * mul),
     def: Math.floor(15 + level * 9 * mul),
     spd: Math.floor(30 + level * 4.5 * mul),
-    critRate: +(0.03 + level * 0.0005 * mul).toFixed(4),
-    critDmg: +(1.00 + level * 0.0025 * mul).toFixed(4),
+    critRate: +(0.03 + level * 0.00025 * mul).toFixed(4),
+    critDmg: +(1.00 + level * 0.00125 * mul).toFixed(4),
     dodge: +(level * 0.0003 * mul).toFixed(4),
     lifesteal: 0,                                              // 默认 0，靠装备/天赋获取
     spirit: Math.floor(5 + level * 0.5 * mul),
