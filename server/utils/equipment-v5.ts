@@ -21,6 +21,7 @@ import {
   V5_PER_WUXING_AFFIX_T15,
   V5_RARITY_TO_ENHANCE_AFFIX_COUNT,
   V5_LEGENDARY_SET_YUANSHI,
+  V5_BOSS_TREASURES,
   V5_DROP_FLAG,
   getV5EnhanceMul,
   getV5TierWeight,
@@ -329,6 +330,31 @@ export function getV5SlotIndexByBaseSlot(baseSlot: V5BaseSlot): number {
   return meta?.index ?? 1
 }
 
+/** V5 装备实例 → V4 兼容 drop spec（共享 helper） */
+function instanceToDropSpec(inst: V5EquipmentInstance, weaponType: string | null): V5CompatibleDropSpec {
+  const fields = v5InstanceToDbInsert(inst, weaponType)
+  return {
+    name: fields.name,
+    rarity: fields.rarity,
+    primary_stat: fields.primary_stat,
+    primary_value: fields.primary_value,
+    primary_stat_2: null,
+    primary_value_2: null,
+    sub_stats: fields.sub_stats,
+    set_id: null,
+    tier: fields.tier,
+    weapon_type: fields.weapon_type,
+    base_slot: fields.base_slot,
+    req_level: fields.req_level,
+    enhance_level: fields.enhance_level,
+    equipment_version: 5,
+    wuxing_prefix: fields.wuxing_prefix,
+    wuxing_affixes: fields.wuxing_affixes,
+    legendary_set_id: fields.legendary_set_id,
+    is_boss_treasure: fields.is_boss_treasure,
+  }
+}
+
 /** 与 V4 drop spec 兼容的 V5 装备 drop 对象（含 V5 字段，让 INSERT 句子可统一处理） */
 export interface V5CompatibleDropSpec {
   name: string
@@ -376,27 +402,59 @@ export function tryRollEquipmentV5DropSpec(opts: {
     rarity: opts.rarity as V5Rarity,
     tier: opts.tier,
   })
-  const fields = v5InstanceToDbInsert(inst, opts.weaponType ?? null)
-  return {
-    name: fields.name,
-    rarity: fields.rarity,
-    primary_stat: fields.primary_stat,
-    primary_value: fields.primary_value,
-    primary_stat_2: null,
-    primary_value_2: null,
-    sub_stats: fields.sub_stats,
-    set_id: null,
-    tier: fields.tier,
-    weapon_type: fields.weapon_type,
-    base_slot: fields.base_slot,
-    req_level: fields.req_level,
-    enhance_level: fields.enhance_level,
-    equipment_version: 5,
-    wuxing_prefix: fields.wuxing_prefix,
-    wuxing_affixes: fields.wuxing_affixes,
-    legendary_set_id: fields.legendary_set_id,
-    is_boss_treasure: fields.is_boss_treasure,
+  return instanceToDropSpec(inst, opts.weaponType ?? null)
+}
+
+/**
+ * 传奇 / Boss 秘宝 极低概率掉落（按 xlsx 设计）
+ *
+ * 调用顺序应是：tryRollV5SpecialDrop → tryRollEquipmentV5DropSpec → V4 路径。
+ * 只在 boss 战且 tier ≥ 8 时尝试 roll。
+ *
+ * 概率（V5_LEGENDARY_SET_YUANSHI.drop_rates）：
+ *   - 元始天尊：正常图 boss 0.001% / 秘境 boss 0.05%（按 wave7 计）
+ *   - Boss 秘宝：正常图 0.1% / 秘境 0.5%，按当前 tier 匹配 V5_BOSS_TREASURES
+ */
+export function tryRollV5SpecialDrop(opts: {
+  tier: number
+  isBoss: boolean
+  source: 'normal' | 'secret_realm'
+}): V5CompatibleDropSpec | null {
+  if (!V5_DROP_FLAG) return null
+  if (opts.tier < V5_LEGENDARY_SET_YUANSHI.min_tier) return null
+  if (!opts.isBoss) return null
+
+  // 1) 元始天尊
+  const yuanshiRate = opts.source === 'secret_realm'
+    ? V5_LEGENDARY_SET_YUANSHI.drop_rates.secret_realm_wave7
+    : V5_LEGENDARY_SET_YUANSHI.drop_rates.normal_boss
+  if (Math.random() < yuanshiRate) {
+    const slotIndex = Math.floor(Math.random() * 7) + 1
+    const inst = rollEquipmentV5({
+      slotIndex,
+      rarity: 'red',
+      tier: opts.tier,
+      legendary: 'yuanshi_tianzun',
+    })
+    const meta = V5_EQUIPMENT_SLOTS[slotIndex - 1]
+    return instanceToDropSpec(inst, meta.base_slot_v4 === 'weapon' ? 'sword' : null)
   }
+
+  // 2) Boss 秘宝（按 tier 匹配；T8~T15 共 8 个固定 boss）
+  const bossTreasure = V5_BOSS_TREASURES.find(b => b.tier === opts.tier)
+  if (bossTreasure) {
+    const treasureRate = opts.source === 'secret_realm' ? 0.005 : 0.001
+    if (Math.random() < treasureRate) {
+      const inst = rollEquipmentV5({
+        slotIndex: getV5SlotIndexByBaseSlot(bossTreasure.base_slot_v4),
+        rarity: 'red',
+        tier: opts.tier,
+        bossTreasure,
+      })
+      return instanceToDropSpec(inst, bossTreasure.base_slot_v4 === 'weapon' ? 'sword' : null)
+    }
+  }
+  return null
 }
 
 /**

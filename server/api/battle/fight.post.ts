@@ -11,7 +11,7 @@ import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { rollSubStats, EQUIP_SELL_PRICES, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
-import { tryRollEquipmentV5DropSpec } from '~/server/utils/equipment-v5'
+import { tryRollEquipmentV5DropSpec, tryRollV5SpecialDrop } from '~/server/utils/equipment-v5'
 import { computeV5EquipmentDelta } from '~/server/utils/equipmentAggregateV5'
 import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
@@ -275,6 +275,10 @@ function getNormalDropRate(tier: number): number {
 function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, monsterElement: string | null = null): any | null {
   const rate = (isBoss ? 1.0 : getNormalDropRate(tier)) * luckMul
   if (Math.random() >= rate) return null
+
+  // V5 传奇 / Boss 秘宝（T8+ boss 才尝试，按 xlsx 概率）
+  const special = tryRollV5SpecialDrop({ tier, isBoss, source: 'normal' })
+  if (special) return special
   const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
   // T1-T2 品质权重上调（前期装备更新频繁带来爽感）
   // T11/T12 顶级图：紫品起步、金/红主流，白绿全砍

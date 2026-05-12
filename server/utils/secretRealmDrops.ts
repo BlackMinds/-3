@@ -4,7 +4,7 @@
 import { generateEquipName } from '../engine/equipNameData'
 import { rollEquipSet } from '../engine/equipSetData'
 import { decideEquipPrimariesV4, rollSubStatsV4 } from './equipment'
-import { tryRollEquipmentV5DropSpec } from './equipment-v5'
+import { tryRollEquipmentV5DropSpec, tryRollV5SpecialDrop } from './equipment-v5'
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -79,6 +79,10 @@ export function generateSecretRealmEquip(
     13: 260, 14: 285, 15: 310,
   }
   const weaponType = slot === 'weapon' ? ['sword', 'blade', 'spear', 'fan'][rand(0, 3)] : null
+
+  // V5 传奇 / Boss 秘宝（boss 才尝试 — xlsx：秘境第 7 波 boss 0.05% 元始天尊 / 0.5% Boss 秘宝）
+  const special = tryRollV5SpecialDrop({ tier, isBoss, source: 'secret_realm' })
+  if (special) return special
 
   // V5 灰度
   const v5Spec = tryRollEquipmentV5DropSpec({ baseSlot: slot as any, rarity: RARITIES[rarityIdx], tier, weaponType })
