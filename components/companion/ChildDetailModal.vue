@@ -54,27 +54,49 @@
 
         <!-- 装备 -->
         <div v-if="!detail.hasLeftHome" class="section">
-          <div class="section-head">装备</div>
+          <div class="section-head">装备（已穿戴 {{ equippedCount }}/4）</div>
           <div class="equip-slots">
             <div v-for="slot in SLOT_LIST" :key="slot.id" class="equip-slot">
               <div class="es-name">{{ slot.label }}</div>
               <div v-if="equippedBySlot[slot.id]" class="es-item">
-                <span :class="['es-rarity', `rar-${equippedBySlot[slot.id].rarity}`]">{{ equippedBySlot[slot.id].name }}</span>
-                <span class="es-pri">{{ statLabel(equippedBySlot[slot.id].primaryStat.stat) }} +{{ equippedBySlot[slot.id].primaryStat.value }}</span>
-                <button class="btn-mini" @click="unequipItem(equippedBySlot[slot.id].id)">卸</button>
+                <div class="es-row1">
+                  <span :class="['es-rarity', `rar-${equippedBySlot[slot.id].rarity}`]">{{ equippedBySlot[slot.id].name }}</span>
+                  <button class="btn-mini" @click="unequipItem(equippedBySlot[slot.id].id)">卸下</button>
+                </div>
+                <div class="es-stat es-pri">
+                  ◆ {{ statLabel(equippedBySlot[slot.id].primaryStat.stat) }}
+                  <b>{{ formatStatVal(equippedBySlot[slot.id].primaryStat.stat, equippedBySlot[slot.id].primaryStat.value) }}</b>
+                </div>
+                <div
+                  v-for="(s, i) in (equippedBySlot[slot.id].subStats || [])"
+                  :key="i"
+                  class="es-stat es-sub"
+                >
+                  · {{ statLabel(s.stat) }} {{ formatStatVal(s.stat, s.value) }}
+                </div>
               </div>
               <div v-else class="es-empty">未装备</div>
             </div>
           </div>
           <div v-if="bagEquips.length > 0" class="equip-bag">
-            <div class="section-head" style="margin-top:8px">装备背包</div>
-            <div v-for="e in bagEquips" :key="e.id" class="bag-row" :class="`rar-${e.rarity}`">
-              <span class="br-slot">[{{ e.slotName }}]</span>
-              <span class="br-name">{{ e.name }}</span>
-              <span class="br-pri">{{ statLabel(e.primaryStat.stat) }} +{{ e.primaryStat.value }}</span>
-              <span v-if="e.subStats && e.subStats.length" class="br-sub">+{{ e.subStats.length }}副</span>
-              <button class="btn-mini" @click="equipItem(e.id)">穿戴</button>
-              <button class="btn-mini btn-sell" @click="sellItem(e.id, e.name)">出售</button>
+            <div class="section-head" style="margin-top:10px">装备背包（{{ bagEquips.length }} 件）</div>
+            <div v-for="e in bagEquips" :key="e.id" class="bag-card" :class="`rar-${e.rarity}`">
+              <div class="bc-head">
+                <span class="bc-slot">[{{ e.slotName }}]</span>
+                <span class="bc-name">{{ e.name }}</span>
+                <button class="btn-mini" @click="equipItem(e.id)">穿戴</button>
+                <button class="btn-mini btn-sell" @click="sellItem(e.id, e.name)">出售</button>
+              </div>
+              <div class="bc-stat bc-pri">
+                ◆ {{ statLabel(e.primaryStat.stat) }} <b>{{ formatStatVal(e.primaryStat.stat, e.primaryStat.value) }}</b>
+              </div>
+              <div
+                v-for="(s, i) in (e.subStats || [])"
+                :key="i"
+                class="bc-stat bc-sub"
+              >
+                · {{ statLabel(s.stat) }} {{ formatStatVal(s.stat, s.value) }}
+              </div>
             </div>
           </div>
           <div v-else class="equip-tip">无背包装备，可去「红尘玉商店」购买子女宝箱</div>
@@ -311,6 +333,7 @@ const equippedBySlot = computed(() => {
   return map
 })
 const bagEquips = computed(() => equipList.value.filter(e => !e.isEquipped))
+const equippedCount = computed(() => equipList.value.filter(e => e.isEquipped).length)
 
 function pct(v: any): string {
   const n = Number(v || 0)
@@ -318,7 +341,20 @@ function pct(v: any): string {
 }
 
 function statLabel(s: string): string {
-  return ({ atk: '攻击', def: '防御', max_hp: '气血', spd: '身法', crit_rate: '会心率', crit_dmg: '会心伤害' } as any)[s] || s
+  return ({
+    atk: '攻击', def: '防御', max_hp: '气血', spd: '身法',
+    crit_rate: '会心率', crit_dmg: '会心伤害',
+    dodge: '闪避', lifesteal: '吸血', resist_ctrl: '控抗', spirit: '神识',
+  } as any)[s] || s
+}
+
+// 百分比类（小数 → +X.X%），其它类（atk/def/hp/spd/spirit）整数 +N
+const PERCENT_STATS = new Set(['crit_rate', 'crit_dmg', 'dodge', 'lifesteal', 'resist_ctrl'])
+function formatStatVal(stat: string, value: number): string {
+  if (PERCENT_STATS.has(stat)) {
+    return '+' + (Number(value || 0) * 100).toFixed(1) + '%'
+  }
+  return '+' + Math.floor(Number(value || 0))
 }
 
 async function equipItem(id: number) {
@@ -432,33 +468,41 @@ onMounted(async () => {
 .btn-action.btn-reroll:hover:not(:disabled) { background: rgba(176,112,255,0.3); }
 
 /* 装备区 */
-.equip-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.equip-slot { padding: 6px 10px; background: rgba(40,20,60,0.6); border: 1px solid #3a2050; border-radius: 4px; font-size: 12px; }
-.es-name { color: #c8a8ff; margin-bottom: 3px; }
-.es-item { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.es-rarity { font-weight: bold; flex: 1; }
+.equip-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.equip-slot { padding: 8px 10px; background: rgba(40,20,60,0.6); border: 1px solid #3a2050; border-radius: 6px; font-size: 12px; min-width: 0; }
+.es-name { color: #c8a8ff; margin-bottom: 4px; font-size: 11px; }
+.es-item { display: flex; flex-direction: column; gap: 3px; }
+.es-row1 { display: flex; align-items: center; gap: 6px; }
+.es-rarity { font-weight: bold; flex: 1; font-size: 12px; }
 .es-rarity.rar-white { color: #ddd; }
 .es-rarity.rar-green { color: #5fcf6f; }
 .es-rarity.rar-blue { color: #5fa0e8; }
 .es-rarity.rar-purple { color: #c87aff; }
 .es-rarity.rar-gold { color: #ffd366; }
 .es-rarity.rar-red { color: #ff8888; }
-.es-pri { color: #ffd700; font-size: 11px; }
-.es-empty { color: #555; font-style: italic; }
+.es-stat { font-size: 11px; line-height: 1.4; }
+.es-pri { color: #ffd700; }
+.es-pri b { color: #fff; }
+.es-sub { color: #c8a8ff; }
+.es-empty { color: #555; font-style: italic; padding: 4px 0; }
 
-.equip-bag { margin-top: 8px; }
-.bag-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: rgba(0,0,0,0.3); border-radius: 4px; font-size: 11px; margin-bottom: 4px; flex-wrap: wrap; }
-.bag-row.rar-white { border-left: 2px solid #ddd; }
-.bag-row.rar-green { border-left: 2px solid #5fcf6f; }
-.bag-row.rar-blue { border-left: 2px solid #5fa0e8; }
-.bag-row.rar-purple { border-left: 2px solid #c87aff; }
-.bag-row.rar-gold { border-left: 2px solid #ffd366; }
-.bag-row.rar-red { border-left: 2px solid #ff8888; }
-.br-slot { color: #aaa; }
-.br-name { color: #fff; flex: 1; }
-.br-pri { color: #ffd700; }
-.br-sub { color: #c8a8ff; }
-.btn-mini { background: #555; color: #fff; border: none; padding: 2px 8px; border-radius: 3px; font-size: 10px; cursor: pointer; }
+.equip-bag { margin-top: 10px; }
+.bag-card { padding: 8px 10px; background: rgba(0,0,0,0.35); border-radius: 6px; margin-bottom: 6px; font-size: 11px; border-left: 3px solid #555; }
+.bag-card.rar-white { border-left-color: #ddd; }
+.bag-card.rar-green { border-left-color: #5fcf6f; }
+.bag-card.rar-blue { border-left-color: #5fa0e8; }
+.bag-card.rar-purple { border-left-color: #c87aff; box-shadow: 0 0 6px rgba(200,122,255,0.15); }
+.bag-card.rar-gold { border-left-color: #ffd366; box-shadow: 0 0 8px rgba(255,211,102,0.2); }
+.bag-card.rar-red { border-left-color: #ff8888; box-shadow: 0 0 10px rgba(255,136,136,0.3); }
+.bc-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.bc-slot { color: #aaa; font-size: 10px; }
+.bc-name { color: #fff; flex: 1; font-weight: bold; }
+.bc-stat { line-height: 1.5; padding-left: 6px; }
+.bc-pri { color: #ffd700; }
+.bc-pri b { color: #fff; }
+.bc-sub { color: #c8a8ff; }
+
+.btn-mini { background: #555; color: #fff; border: none; padding: 3px 10px; border-radius: 3px; font-size: 10px; cursor: pointer; }
 .btn-mini:hover { background: #777; }
 .btn-mini.btn-sell { background: #774a2a; }
 .btn-mini.btn-sell:hover { background: #946238; }
