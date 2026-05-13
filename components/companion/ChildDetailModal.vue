@@ -279,7 +279,8 @@ const childLevelCap = computed(() => APTITUDE_LEVEL_CAP[detail.value?.aptitude |
 const canFeed = computed(() => detail.value && detail.value.feedCountToday < detail.value.feedDailyMax && detail.value.level < childLevelCap.value && !detail.value.hasLeftHome)
 // 成年弹窗按"已达资质上限"判定（凡品 lv50 = 成年）
 const isAdult = computed(() => detail.value && detail.value.level >= childLevelCap.value)
-const canBattle = computed(() => detail.value && detail.value.level >= 31 && !detail.value.hasLeftHome && !isAdult.value)
+// 2026-05-13: 移除 !isAdult 限制 —— 成年子女是「A 留家助战」选项的目标，必须能设助战
+const canBattle = computed(() => detail.value && detail.value.level >= 31 && !detail.value.hasLeftHome)
 const canReroll = computed(() => detail.value && !detail.value.hasLeftHome)
 
 const APTITUDE_NAMES = ['凡品', '下品', '中品', '上品', '极品', '仙品', '圣品']
