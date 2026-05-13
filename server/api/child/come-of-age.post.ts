@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       code: 200,
-      message: `「${c.name}」外出历练，每 10 天回家一次给予永久属性加成`,
+      message: `「${c.name}」外出历练，每 3 天回家一次给予永久属性加成`,
       data: { childId, hasLeftHome: true },
     }
   } catch (error) {

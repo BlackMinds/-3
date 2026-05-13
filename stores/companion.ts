@@ -422,6 +422,43 @@ export const useCompanionStore = defineStore('companion', () => {
     }
   }
 
+  async function recallChildHome(childId: number): Promise<{ ok: boolean; message?: string; data?: any }> {
+    const api = useApi()
+    acting.value = true
+    try {
+      const res = await api<{ code: number; message?: string; data?: any }>('/child/recall-home', {
+        method: 'POST',
+        body: { child_id: childId },
+      })
+      if (res.code === 200) {
+        await loadChildren()
+        return { ok: true, message: res.message, data: res.data }
+      }
+      return { ok: false, message: res.message }
+    } finally {
+      acting.value = false
+    }
+  }
+
+  async function abandonChild(childId: number): Promise<{ ok: boolean; message?: string; data?: any }> {
+    const api = useApi()
+    acting.value = true
+    try {
+      const res = await api<{ code: number; message?: string; data?: any }>('/child/abandon', {
+        method: 'POST',
+        body: { child_id: childId },
+      })
+      if (res.code === 200) {
+        await loadChildren()
+        if (battlingChildId.value === childId) battlingChildId.value = null
+        return { ok: true, message: res.message, data: res.data }
+      }
+      return { ok: false, message: res.message }
+    } finally {
+      acting.value = false
+    }
+  }
+
   return {
     companions, officialCompanion, detailCache, divorceCooldownUntil,
     expeditionStatus, expeditionLocations,
@@ -440,6 +477,7 @@ export const useCompanionStore = defineStore('companion', () => {
     feedChild, setBattlingChild,
     clearLastBirths,
     // Phase 4
-    divorceCompanion, rerollChildAptitude, comeOfAgeChild,
+    divorceCompanion, rerollChildAptitude, comeOfAgeChild, recallChildHome,
+    abandonChild,
   }
 })

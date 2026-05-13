@@ -107,8 +107,11 @@
           <div class="leave-title">🌿 外出历练中</div>
           <div class="leave-body">
             上次回家：{{ formatVisitDate(detail.lastVisitAt) }}<br />
-            累计永久属性加成：<b>+{{ permanentBuffPct }}%</b>（每 10 天回家 +0.5%，上限 +20%）
+            累计永久属性加成：<b>+{{ permanentBuffPct }}%</b>（每 3 天回家 +0.5%，上限 +20%）
           </div>
+          <button class="btn-recall" :disabled="store.acting" @click="recallConfirm = true">
+            📯 召回回家（保留已累计加成）
+          </button>
         </div>
 
         <div class="section actions">
@@ -121,6 +124,39 @@
           <button v-if="canReroll" class="btn-action btn-reroll" :disabled="store.acting" @click="onReroll">
             🔮 资质重铸（消耗 夺天造化丹 ×1）
           </button>
+        </div>
+
+        <!-- 危险操作：放弃子女 -->
+        <div class="section danger-zone">
+          <div class="section-head" style="color:#ff8c8c; border-left-color:#d4514c">⚠ 危险操作</div>
+          <button class="btn-abandon" :disabled="store.acting" @click="abandonConfirm = true">
+            💔 放弃子女（消耗 断缘符 ×1 + 灵石）
+          </button>
+          <div class="abandon-tip">缘尽于此 · 永久失去该子女及其装备/累计 buff</div>
+        </div>
+
+        <!-- 放弃子女确认 -->
+        <div v-if="abandonConfirm" class="confirm-overlay" @click.self="abandonConfirm = false">
+          <div class="confirm-modal">
+            <div class="confirm-title" style="color:#ff8c8c">💔 放弃子女</div>
+            <div class="confirm-body">
+              确定放弃 <b>{{ detail.name }}</b>？此操作<b style="color:#ff8c8c">不可撤销</b>。<br /><br />
+              · 消耗 <b>断缘符 ×1</b><br />
+              · 消耗 <b>灵石 {{ abandonStoneCost.toLocaleString() }}</b>（按境界缩放）<br />
+              <span v-if="detail.hasLeftHome">
+                · 累计 <b style="color:#ff8c8c">+{{ permanentBuffPct }}%</b> 永久 buff 一并清零<br />
+              </span>
+              · 该子女所有装备一并销毁<br />
+              · 释放名册槽位（在家 + 离家合计上限 5）
+            </div>
+            <div class="confirm-actions">
+              <button class="btn-secondary" @click="abandonConfirm = false">取消</button>
+              <button class="btn-danger" style="border-color:#d4514c;background:rgba(212,81,76,0.3)"
+                      :disabled="store.acting" @click="confirmAbandon">
+                确认放弃
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- 资质重铸结果展示 -->
@@ -144,8 +180,25 @@
               </button>
               <button class="coa-choice" :disabled="store.acting" @click="onComeOfAge('leave')">
                 <b>B. 外出历练</b>
-                <span class="coa-desc">每 10 天回家 +0.5% 永久属性（上限 +20%），不再助战</span>
+                <span class="coa-desc">每 3 天回家 +0.5% 永久属性（上限 +20%），不再助战</span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 召回回家确认 -->
+        <div v-if="recallConfirm" class="confirm-overlay" @click.self="recallConfirm = false">
+          <div class="confirm-modal">
+            <div class="confirm-title">📯 召回回家</div>
+            <div class="confirm-body">
+              确定召回 <b>{{ detail.name }}</b> 回家？<br /><br />
+              · 已累计 <b>+{{ permanentBuffPct }}%</b> 永久属性加成将<b>完整保留</b><br />
+              · 召回后可重新设为助战，或再次选择外出历练继续累积<br />
+              · 召回后回家计时清零，下次外出从 3 天开始
+            </div>
+            <div class="confirm-actions">
+              <button class="btn-secondary" @click="recallConfirm = false">取消</button>
+              <button class="btn-danger" :disabled="store.acting" @click="confirmRecall">确认召回</button>
             </div>
           </div>
         </div>
@@ -194,12 +247,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useCompanionStore } from '~/stores/companion'
+import { useGameStore } from '~/stores/game'
 import { childAvatarDataUrl } from '~/game/companionAvatar'
 
 const props = defineProps<{ childId: number }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const store = useCompanionStore()
+const gameStore = useGameStore()
 const detail = ref<any>(null)
 const feedPanelOpen = ref(false)
 const feedOptions = ref<any[]>([])
@@ -256,6 +311,36 @@ async function onComeOfAge(choice: 'stay' | 'leave') {
   if (res.ok) {
     comeOfAgeDismissed.value = true
     detail.value = await store.loadChildDetail(props.childId)
+  }
+}
+
+// 放弃子女
+const abandonConfirm = ref(false)
+// 与后端 calcAbandonStoneCost 保持一致：5000 × 50 × max(1, realmTier-2)
+const abandonStoneCost = computed(() => {
+  const tier = Number(gameStore.character?.realm_tier ?? 3)
+  return 5000 * 50 * Math.max(1, tier - 2)
+})
+async function confirmAbandon() {
+  if (!detail.value) return
+  const res = await store.abandonChild(detail.value.id)
+  abandonConfirm.value = false
+  showToast(res.message || (res.ok ? '已放弃' : '操作失败'))
+  if (res.ok) {
+    emit('close')
+  }
+}
+
+// 召回回家
+const recallConfirm = ref(false)
+async function confirmRecall() {
+  if (!detail.value) return
+  const res = await store.recallChildHome(detail.value.id)
+  recallConfirm.value = false
+  showToast(res.message || (res.ok ? '已召回' : '召回失败'))
+  if (res.ok) {
+    detail.value = await store.loadChildDetail(props.childId)
+    await loadEquipments()
   }
 }
 
@@ -528,6 +613,21 @@ onMounted(async () => {
 .btn-mini.btn-sell:hover { background: #946238; }
 .equip-tip { color: #888; font-size: 11px; padding: 8px; text-align: center; font-style: italic; }
 
+/* 放弃子女区 */
+.danger-zone {
+  background: rgba(212,81,76,0.08);
+  border: 1px solid rgba(212,81,76,0.5);
+}
+.btn-abandon {
+  width: 100%;
+  background: rgba(212,81,76,0.18); color: #ffb0b0;
+  border: 1px solid #d4514c; border-radius: 6px;
+  padding: 8px; cursor: pointer; font-size: 12px;
+}
+.btn-abandon:hover:not(:disabled) { background: rgba(212,81,76,0.35); color: #fff; }
+.btn-abandon:disabled { opacity: 0.5; cursor: not-allowed; }
+.abandon-tip { color: #888; font-size: 11px; text-align: center; margin-top: 6px; }
+
 /* 离家 banner */
 .leave-banner {
   background: rgba(95,207,111,0.12);
@@ -536,6 +636,14 @@ onMounted(async () => {
 .leave-title { color: #5fcf6f; font-weight: bold; font-size: 13px; margin-bottom: 6px; }
 .leave-body { color: #d8c4f0; font-size: 12px; line-height: 1.6; }
 .leave-body b { color: #ffd700; }
+.btn-recall {
+  margin-top: 10px; width: 100%;
+  background: rgba(95,207,111,0.18); color: #c4f0c4;
+  border: 1px solid #5fcf6f; border-radius: 6px;
+  padding: 8px; cursor: pointer; font-size: 12px;
+}
+.btn-recall:hover:not(:disabled) { background: rgba(95,207,111,0.32); color: #fff; }
+.btn-recall:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* 重铸结果 */
 .reroll-result {

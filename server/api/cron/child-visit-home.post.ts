@@ -1,5 +1,5 @@
 // 离家子女回家 cron - POST /api/cron/child-visit-home
-// 每天调用一次：扫所有 has_left_home=TRUE 且 last_visit_at < NOW() - 10 天 的子女
+// 每天调用一次：扫所有 has_left_home=TRUE 且 last_visit_at < NOW() - 3 天 的子女
 // → permanent_buff_pct += 0.005（上限 0.20 = 40 次回家）
 // → 更新 last_visit_at = NOW()
 // → 发邮件提醒父母
@@ -8,7 +8,7 @@
 import { getPool } from '~/server/database/db'
 import { sendMail } from '~/server/utils/mail'
 
-const VISIT_INTERVAL_DAYS = 10
+const VISIT_INTERVAL_DAYS = 3
 const BUFF_PER_VISIT = 0.005
 const BUFF_CAP = 0.20
 
