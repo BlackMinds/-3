@@ -8,7 +8,7 @@ import { countChildren } from '~/server/utils/child'
 import { INTIMACY_CONFIG } from '~/server/engine/companionData'
 
 const MAX_CHILDREN = 5  // 总子女上限（在家 + 离家 合计），2026-05-11 小夏调整
-const PREGNANCY_HOURS = 48
+const PREGNANCY_HOURS = 24
 const COST_GOLDEN_LOTUS = 1
 const COST_SPIRIT_STONE = 1000000
 
@@ -85,7 +85,7 @@ export default defineEventHandler(async (event) => {
         pregnantCount,
         message: pregnantCount === 3 ? '🎉 三胎之喜！' : pregnantCount === 2 ? '🎉 双胎之喜！' : '怀胎已开始',
       },
-      message: `48 小时后将迎来 ${pregnantCount === 3 ? '三胎' : pregnantCount === 2 ? '双胎' : '新生命'}`,
+      message: `${PREGNANCY_HOURS} 小时后将迎来 ${pregnantCount === 3 ? '三胎' : pregnantCount === 2 ? '双胎' : '新生命'}`,
     }
   } catch (error) {
     console.error('求子失败:', error)

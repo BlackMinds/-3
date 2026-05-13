@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
   // 一次性给所有正式道侣发放陪伴亲密度，但跳过怀胎中（pregnant_until > NOW()）的
   const companionshipResult = await pool.query(`
     UPDATE companions
-       SET intimacy = LEAST(9999, intimacy + 20),
+       SET intimacy = LEAST(8000, intimacy + 20),
            last_companion_settle = CURRENT_DATE
      WHERE is_official = TRUE
        AND (last_companion_settle IS NULL OR last_companion_settle < CURRENT_DATE)

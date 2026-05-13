@@ -368,10 +368,10 @@ export const INTIMACY_STAGES: IntimacyStage[] = [
   { threshold: 100,  stageName: '知己',     description: '解锁修为加成（被动 +3%~+25%，按品质）' },
   { threshold: 250,  stageName: '心动',     description: '解锁约会事件（每日 3 次随机）' },
   { threshold: 600,  stageName: '结侣',     description: '正式结为道侣，永久仙缘印记 + 每日陪伴亲密度 +20' },
-  { threshold: 1000, stageName: '结发',     description: '解锁怀胎/生育系统' },
-  { threshold: 1500, stageName: '心心相印', description: '修为加成翻倍' },
-  { threshold: 5000, stageName: '同体',     description: '道侣属性 30% 反哺本体' },
-  { threshold: 9999, stageName: '道心',     description: '完美道侣终态，专属称号「比翼连理」' },
+  { threshold: 800,  stageName: '结发',     description: '解锁怀胎/生育系统' },
+  { threshold: 1200, stageName: '心心相印', description: '修为加成翻倍' },
+  { threshold: 4000, stageName: '同体',     description: '道侣属性 30% 反哺本体' },
+  { threshold: 8000, stageName: '道心',     description: '完美道侣终态，专属称号「比翼连理」' },
 ]
 
 // 亲密度配置
@@ -386,7 +386,7 @@ export const INTIMACY_CONFIG = {
 
   // 结侣阈值
   marryThreshold: 600,
-  conceiveThreshold: 1000,
+  conceiveThreshold: 800,
 }
 
 // ============================================================
@@ -394,11 +394,11 @@ export const INTIMACY_CONFIG = {
 // ============================================================
 
 export const SEAL_LEVEL_CONFIG = [
-  { level: 1, allStatPct: 3,  costRedJade: 0 },     // 结侣赠送
-  { level: 2, allStatPct: 5,  costRedJade: 500 },
-  { level: 3, allStatPct: 8,  costRedJade: 2000 },
-  { level: 4, allStatPct: 12, costRedJade: 8000 },
-  { level: 5, allStatPct: 15, costRedJade: 30000 },
+  { level: 1, allStatPct: 2,  costRedJade: 0 },     // 结侣赠送
+  { level: 2, allStatPct: 4,  costRedJade: 500 },
+  { level: 3, allStatPct: 6,  costRedJade: 2000 },
+  { level: 4, allStatPct: 9,  costRedJade: 8000 },
+  { level: 5, allStatPct: 12, costRedJade: 30000 },
 ]
 
 // ============================================================

@@ -193,7 +193,7 @@ export async function addIntimacy(
   delta: number
 ): Promise<number> {
   const { rows } = await pool.query(
-    `UPDATE companions SET intimacy = GREATEST(0, LEAST(9999, intimacy + $1))
+    `UPDATE companions SET intimacy = GREATEST(0, LEAST(8000, intimacy + $1))
      WHERE id = $2 RETURNING intimacy`,
     [delta, companionId]
   )

@@ -154,13 +154,13 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'cmp_04', name: '含饴弄孙',   desc: '拥有 3 名子女',                category: 'companion', type: 'threshold', target: 3,    event: 'children_count',       reward: { spirit_stone: 50000 } },
   { id: 'cmp_05', name: '仙品姻缘',   desc: '邂逅仙品道侣',                 category: 'companion', type: 'counter',   target: 1,    event: 'companion_immortal',   reward: { spirit_stone: 30000 }, title: '天作之合' },
   { id: 'cmp_06', name: '桃花朵朵',   desc: '同时拥有 5 位红颜（含已结侣）', category: 'companion', type: 'threshold', target: 5,    event: 'companion_total',      reward: { spirit_stone: 20000 }, title: '风流剑客' },
-  { id: 'cmp_07', name: '始终如一',   desc: '道侣亲密度达到 9999',          category: 'companion', type: 'threshold', target: 9999, event: 'intimacy_peak',        reward: { spirit_stone: 80000 }, title: '比翼连理' },
+  { id: 'cmp_07', name: '始终如一',   desc: '道侣亲密度达到 8000',          category: 'companion', type: 'threshold', target: 8000, event: 'intimacy_peak',        reward: { spirit_stone: 80000 }, title: '比翼连理' },
   { id: 'cmp_08', name: '后继有人',   desc: '子女达到 100 级（成年）',       category: 'companion', type: 'counter',   target: 1,    event: 'child_adult',          reward: { spirit_stone: 30000 }, title: '传承之人' },
   { id: 'cmp_09', name: '血脉觉醒',   desc: '生育 1 名血脉觉醒子女',         category: 'companion', type: 'counter',   target: 1,    event: 'awakened_child_born',  reward: { spirit_stone: 15000 }, title: '血脉传承' },
   { id: 'cmp_10', name: '一门英才',   desc: '拥有 3 名觉醒子女',            category: 'companion', type: 'threshold', target: 3,    event: 'awakened_child_count', reward: { spirit_stone: 80000 }, title: '满门桃李' },
   { id: 'cmp_11', name: '红尘历劫',   desc: '经历 3 次和离',                category: 'companion', type: 'counter',   target: 3,    event: 'divorce_count',        reward: { spirit_stone: 10000 }, title: '红尘断肠人' },
   { id: 'cmp_12', name: '百年好合',   desc: '已结侣陪伴累计 100 天',         category: 'companion', type: 'counter',   target: 100,  event: 'companionship_days',   reward: { spirit_stone: 300000 } },
-  { id: 'cmp_13', name: '同心同体',   desc: '亲密度达到 5000',              category: 'companion', type: 'threshold', target: 5000, event: 'intimacy_peak',        reward: { spirit_stone: 30000 }, title: '形影不离' },
+  { id: 'cmp_13', name: '同心同体',   desc: '亲密度达到 4000',              category: 'companion', type: 'threshold', target: 4000, event: 'intimacy_peak',        reward: { spirit_stone: 30000 }, title: '形影不离' },
 ];
 
 // 按事件名索引，加速查找

@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
       await client.query('BEGIN')
       await client.query(
         `UPDATE companions
-            SET intimacy = LEAST(9999, intimacy + $1),
+            SET intimacy = LEAST(8000, intimacy + $1),
                 last_companion_settle = $2::date
           WHERE id = $3`,
         [intimacyDelta, today.toISOString().slice(0, 10), c.id]

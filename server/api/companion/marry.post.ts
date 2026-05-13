@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       code: 200,
-      message: `与「${c.name}」结为道侣，仙缘印记 LV 1 已激活（全属性 +3%）`,
+      message: `与「${c.name}」结为道侣，仙缘印记 LV 1 已激活（全属性 +2%）`,
       data: { companionId: id, sealLevel: 1 },
     }
   } catch (error) {

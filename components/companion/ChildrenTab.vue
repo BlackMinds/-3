@@ -1,7 +1,7 @@
 <template>
   <div class="children-tab">
     <div v-if="store.children.length === 0" class="empty-hint">
-      暂无子女。<br>正式结侣后亲密度 ≥ 1000 可在道侣详情中"求子"。
+      暂无子女。<br>正式结侣后亲密度 ≥ 800 可在道侣详情中"求子"。
     </div>
 
     <div v-else>

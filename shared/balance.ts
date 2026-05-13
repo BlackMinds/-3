@@ -170,10 +170,10 @@ export const PILL_PCT_CAP = 0.40
 export const PASSIVE_PCT_CAP = 40 // atkPercent/defPercent/hpPercent/spdPercent 各独立 cap
 
 // =====================================================================
-// 八、道侣仙缘印记 — LV0~LV5 全属性加成（小数, 0.15 = 15%）
+// 八、道侣仙缘印记 — LV0~LV5 全属性加成（小数, 0.12 = 12%）
 // 战斗 (fight.post.ts) 与角色面板 (index.vue mainStats) 共用此表
 // =====================================================================
-export const COMPANION_SEAL_PCT = [0, 0.03, 0.05, 0.08, 0.12, 0.15] as const
+export const COMPANION_SEAL_PCT = [0, 0.02, 0.04, 0.06, 0.09, 0.12] as const
 
 // =====================================================================
 // 装备 v4.0（2026-05-07）— 神兵锻造总纲 PDF 落地

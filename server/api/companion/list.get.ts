@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     const list = companions.map(c => {
       const stage = getIntimacyStage(c.intimacy)
       const nextThreshold = c.is_official
-        ? (c.intimacy < INTIMACY_CONFIG.conceiveThreshold ? INTIMACY_CONFIG.conceiveThreshold : 9999)
+        ? (c.intimacy < INTIMACY_CONFIG.conceiveThreshold ? INTIMACY_CONFIG.conceiveThreshold : 8000)
         : INTIMACY_CONFIG.marryThreshold
       return {
         id: c.id,

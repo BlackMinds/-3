@@ -85,7 +85,7 @@ export default defineEventHandler(async (event) => {
       // 改亲密度
       await client.query(
         `UPDATE companions
-            SET intimacy = GREATEST(0, LEAST(9999, intimacy + $1))
+            SET intimacy = GREATEST(0, LEAST(8000, intimacy + $1))
           WHERE id = $2`,
         [totalDelta, companionId]
       )
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
     const { rows: cur } = await pool.query('SELECT intimacy FROM companions WHERE id = $1', [companionId])
     const newIntimacy = cur[0]?.intimacy || 0
 
-    // 亲密度峰值成就 (intimacy_peak threshold 5000/9999)
+    // 亲密度峰值成就 (intimacy_peak threshold 4000/8000)
     const { checkAchievements } = await import('~/server/engine/achievementData')
     checkAchievements(char.id, 'intimacy_peak', newIntimacy).catch(() => {})
 

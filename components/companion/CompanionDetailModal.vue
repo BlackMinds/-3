@@ -34,7 +34,7 @@
           </div>
           <div class="row">
             <span class="label">亲密度</span>
-            <span class="intimacy-text">{{ detail.intimacy }} / {{ detail.isOfficial ? 9999 : 600 }}</span>
+            <span class="intimacy-text">{{ detail.intimacy }} / {{ detail.isOfficial ? 8000 : 600 }}</span>
           </div>
           <div v-if="detail.isOfficial" class="row">
             <span class="label">仙缘印记</span>
@@ -242,7 +242,7 @@ const canConceive = computed(() => detail.value
 const canClaimBirth = computed(() => detail.value?.pregnantUntil && pregnantRemain.value === 0)
 
 async function onConceive() {
-  if (!confirm('开始怀胎？\n消耗：金莲花露 ×1 + 灵石 ×100万\n怀胎周期：48 小时')) return
+  if (!confirm('开始怀胎？\n消耗：金莲花露 ×1 + 灵石 ×100万\n怀胎周期：24 小时')) return
   const res = await store.conceive()
   showToast(res.message || (res.ok ? '怀胎已开始' : res.message || '操作失败'))
   if (res.ok) detail.value = await store.loadDetail(props.companionId, true)
@@ -314,7 +314,7 @@ function openGift() { giftPanelOpen.value = true }
 
 async function onMarry() {
   if (!detail.value) return
-  if (!confirm(`确定与「${detail.value.name}」结为道侣？\n仙缘印记 LV1（+3% 全属性）将永久激活。`)) return
+  if (!confirm(`确定与「${detail.value.name}」结为道侣？\n仙缘印记 LV1（+2% 全属性）将永久激活。`)) return
   const res = await store.marryCompanion(detail.value.id)
   showToast(res.message || (res.ok ? '结侣成功' : '结侣失败'))
   if (res.ok) {

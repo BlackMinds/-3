@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
 
       // 1. 加亲密度
       await client.query(
-        `UPDATE companions SET intimacy = LEAST(9999, GREATEST(0, intimacy + $1)) WHERE id = $2`,
+        `UPDATE companions SET intimacy = LEAST(8000, GREATEST(0, intimacy + $1)) WHERE id = $2`,
         [choice.intimacy, c.id]
       )
 
