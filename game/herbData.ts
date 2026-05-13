@@ -37,12 +37,12 @@ export const HERBS: HerbDef[] = [
 
 // 灵草品质（种植时间不按品质分档；真实成熟时间由 server/api/cave/plant.post.ts 按灵田等级统一计算）
 export const HERB_QUALITIES: HerbQualityDef[] = [
-  { id: 'white',  name: '凡品', color: '#CCCCCC', multiplier: 1.00, baseYield: 3, unlockPlotLevel: 1  },
-  { id: 'green',  name: '灵品', color: '#00CC00', multiplier: 1.10, baseYield: 3, unlockPlotLevel: 1  },
-  { id: 'blue',   name: '玄品', color: '#0066FF', multiplier: 1.25, baseYield: 4, unlockPlotLevel: 4  },
-  { id: 'purple', name: '地品', color: '#9933FF', multiplier: 1.50, baseYield: 4, unlockPlotLevel: 7  },
-  { id: 'gold',   name: '天品', color: '#FFAA00', multiplier: 2.00, baseYield: 5, unlockPlotLevel: 10 },
-  { id: 'red',    name: '仙品', color: '#FF3333', multiplier: 3.00, baseYield: 5, unlockPlotLevel: 13 },
+  { id: 'white',  name: '凡品', color: '#CCCCCC', multiplier: 1.00, baseYield: 9,  unlockPlotLevel: 1  },
+  { id: 'green',  name: '灵品', color: '#00CC00', multiplier: 1.10, baseYield: 9,  unlockPlotLevel: 1  },
+  { id: 'blue',   name: '玄品', color: '#0066FF', multiplier: 1.25, baseYield: 12, unlockPlotLevel: 4  },
+  { id: 'purple', name: '地品', color: '#9933FF', multiplier: 1.50, baseYield: 12, unlockPlotLevel: 7  },
+  { id: 'gold',   name: '天品', color: '#FFAA00', multiplier: 2.00, baseYield: 15, unlockPlotLevel: 10 },
+  { id: 'red',    name: '仙品', color: '#FF3333', multiplier: 3.00, baseYield: 15, unlockPlotLevel: 13 },
 ];
 
 // 灵田等级配置

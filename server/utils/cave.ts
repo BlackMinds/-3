@@ -39,12 +39,12 @@ export const HERBS: Record<string, { id: string; element: string | null; unlockP
 
 // 种植时间不按品质分档：真实成熟时间由 server/api/cave/plant.post.ts 按灵田等级统一计算
 export const QUALITIES: Record<string, { id: string; multiplier: number; baseYield: number; unlockPlotLevel: number }> = {
-  white:  { id: 'white',  multiplier: 1.00, baseYield: 3, unlockPlotLevel: 1  },
-  green:  { id: 'green',  multiplier: 1.10, baseYield: 3, unlockPlotLevel: 1  },
-  blue:   { id: 'blue',   multiplier: 1.25, baseYield: 4, unlockPlotLevel: 4  },
-  purple: { id: 'purple', multiplier: 1.50, baseYield: 4, unlockPlotLevel: 7  },
-  gold:   { id: 'gold',   multiplier: 2.00, baseYield: 5, unlockPlotLevel: 10 },
-  red:    { id: 'red',    multiplier: 3.00, baseYield: 5, unlockPlotLevel: 13 },
+  white:  { id: 'white',  multiplier: 1.00, baseYield: 9,  unlockPlotLevel: 1  },
+  green:  { id: 'green',  multiplier: 1.10, baseYield: 9,  unlockPlotLevel: 1  },
+  blue:   { id: 'blue',   multiplier: 1.25, baseYield: 12, unlockPlotLevel: 4  },
+  purple: { id: 'purple', multiplier: 1.50, baseYield: 12, unlockPlotLevel: 7  },
+  gold:   { id: 'gold',   multiplier: 2.00, baseYield: 15, unlockPlotLevel: 10 },
+  red:    { id: 'red',    multiplier: 3.00, baseYield: 15, unlockPlotLevel: 13 },
 }
 
 export function getPlotConfig(herbFieldLevel: number): { plotCount: number; maxQualityIndex: number } {
@@ -130,6 +130,6 @@ export function randomHarvestQuality(herbFieldLevel: number): { quality: string;
     if (r <= 0) { qIdx = i; break }
   }
 
-  const yields = [3, 3, 4, 4, 5, 5]
+  const yields = [9, 9, 12, 12, 15, 15]
   return { quality: qOrder[qIdx], count: yields[qIdx] }
 }
