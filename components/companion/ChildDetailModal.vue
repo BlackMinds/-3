@@ -130,7 +130,7 @@
         <div class="section danger-zone">
           <div class="section-head" style="color:#ff8c8c; border-left-color:#d4514c">⚠ 危险操作</div>
           <button class="btn-abandon" :disabled="store.acting" @click="abandonConfirm = true">
-            💔 放弃子女（消耗 断缘符 ×1 + 灵石）
+            💔 放弃子女（消耗 灵石）
           </button>
           <div class="abandon-tip">缘尽于此 · 永久失去该子女及其装备/累计 buff</div>
         </div>
@@ -141,7 +141,6 @@
             <div class="confirm-title" style="color:#ff8c8c">💔 放弃子女</div>
             <div class="confirm-body">
               确定放弃 <b>{{ detail.name }}</b>？此操作<b style="color:#ff8c8c">不可撤销</b>。<br /><br />
-              · 消耗 <b>断缘符 ×1</b><br />
               · 消耗 <b>灵石 {{ abandonStoneCost.toLocaleString() }}</b>（按境界缩放）<br />
               <span v-if="detail.hasLeftHome">
                 · 累计 <b style="color:#ff8c8c">+{{ permanentBuffPct }}%</b> 永久 buff 一并清零<br />
