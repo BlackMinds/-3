@@ -258,12 +258,21 @@ export const V5_RARITY_TO_ENHANCE_AFFIX_COUNT: Record<V5Rarity, number> = {
 /** 强化里程碑（解锁/加值时机） */
 export const V5_ENHANCE_MILESTONES = [3, 6, 9] as const
 
+/** 强化词条上限（红装初始即满，其他品质通过 milestone 解锁追平） */
+export const V5_ENHANCE_AFFIX_MAX = 4
+
 /**
- * 强化词条数 = 装备品质对应的初始数量，不随强化等级变化
- * 强化 +3/+6/+9 milestone 只随机加值（不新增词条），见 applyV5EnhanceMilestone
+ * 强化词条数：初始数 + 已跨过的 milestone 数量，封顶 4
+ *   - 红 4：初始就 4 条满，三档都走「加值」分支
+ *   - 金 3：+3 → 4 条满，后续两档加值
+ *   - 紫 2：+3 → 3，+6 → 4 满，+9 加值
+ *   - 蓝 1：+3 → 2，+6 → 3，+9 → 4 满
  */
-export function getV5EnhanceAffixCount(rarity: V5Rarity, _level: number): number {
-  return V5_RARITY_TO_ENHANCE_AFFIX_COUNT[rarity] ?? 1
+export function getV5EnhanceAffixCount(rarity: V5Rarity, level: number): number {
+  const base = V5_RARITY_TO_ENHANCE_AFFIX_COUNT[rarity] ?? 1
+  let passed = 0
+  for (const m of V5_ENHANCE_MILESTONES) if (level >= m) passed++
+  return Math.min(V5_ENHANCE_AFFIX_MAX, base + passed)
 }
 
 // --------------------- 基础属性 1：强化曲线 ---------------------

@@ -169,10 +169,11 @@ export default defineEventHandler(async (event) => {
 
     // 副属性突破：
     //   V4 装备：+5 / +10 时随机一条 ×1.30
-    //   V5 装备：+3 / +6 / +9 milestone 时随机一条 ×1.30，不新增词条，允许重复
+    //   V5 装备：+3 / +6 / +9 milestone — 词条数 < 4 时占位新增，= 4 时随机一条 ×1.30
     let breakthroughStat: string | null = null
     let breakthroughOldVal = 0
     let breakthroughNewVal = 0
+    let addedStat: { stat: string; value: number } | null = null
 
     if (isV5 && (V5_ENHANCE_MILESTONES as readonly number[]).includes(nextLevel)) {
       let subStats = eq.sub_stats
@@ -184,6 +185,9 @@ export default defineEventHandler(async (event) => {
         'UPDATE character_equipment SET sub_stats = $1 WHERE id = $2',
         [JSON.stringify(milestoneResult.newSubStats), equip_id]
       )
+      if (milestoneResult.added) {
+        addedStat = { stat: milestoneResult.added.stat, value: milestoneResult.added.value }
+      }
       if (milestoneResult.boosted) {
         breakthroughStat = milestoneResult.boosted.stat
         breakthroughOldVal = milestoneResult.boosted.oldValue
@@ -225,6 +229,7 @@ export default defineEventHandler(async (event) => {
           oldValue: breakthroughOldVal,
           newValue: breakthroughNewVal,
         } : null,
+        addedAffix: addedStat,
       },
     }
   } catch (error) {

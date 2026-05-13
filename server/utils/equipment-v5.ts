@@ -190,20 +190,31 @@ function rollEnhanceAffixes(slotIndex: number, rarity: V5Rarity, level: number):
 
 /**
  * V5 强化 +3/+6/+9 milestone 触发的副词条变化
- *   - 从现有副词条随机选一条 ×1.30（最少 +1），不新增词条
- *   - 允许多个 milestone 重复加到同一条
- *   - 词条数永远保持初始（按品质 V5_RARITY_TO_ENHANCE_AFFIX_COUNT 给定）
+ *   - 当前词条数 < 4：占位生成新词条（取下一个空位的 pool candidates）
+ *   - 当前词条数 = 4：从现有副词条随机选一条 ×1.30（最少 +1），允许重复
  */
 export function applyV5EnhanceMilestone(
   currentSubStats: V5StatValue[],
-  _slotIndex: number,
-  _rarity: V5Rarity,
+  slotIndex: number,
+  rarity: V5Rarity,
   _newLevel: number,
 ): {
   newSubStats: V5StatValue[]
   added?: V5StatValue
   boosted?: { stat: string; oldValue: number; newValue: number }
 } {
+  // 分支 1：还有空位 → 加新词条
+  if (currentSubStats.length < 4) {
+    const pool = getV5EnhanceAffixPool(slotIndex)
+    const candidates = pool[currentSubStats.length]
+    if (candidates && candidates.length > 0) {
+      const rawStat = candidates[Math.floor(Math.random() * candidates.length)]
+      const stat = resolveResPctReplacement(rawStat)
+      const added: V5StatValue = { stat, value: calcEnhanceAffixValue(stat, rarity) }
+      return { newSubStats: [...currentSubStats, added], added }
+    }
+  }
+  // 分支 2：4 条已满 → 随机一条 ×1.30
   if (currentSubStats.length === 0) return { newSubStats: currentSubStats }
   const idx = Math.floor(Math.random() * currentSubStats.length)
   const old = currentSubStats[idx]
