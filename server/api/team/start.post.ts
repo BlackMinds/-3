@@ -91,8 +91,48 @@ async function buildPlayerBattleStats(char: any): Promise<{
     else if (stat === 'EARTH_DMG') elementDmg.earth += value
   }
 
+  // 双修副本：附灵静态加成累加器（运行时触发类 hooks 因 teamBattleEngine 不支持暂留 TODO）
+  let awakenAtkPct = 0, awakenDefPct = 0, awakenHpPct = 0, awakenSpdPct = 0
+
   for (const eq of equipRows) {
     if (!eq.slot) continue
+
+    // === 附灵静态加成（V4/V5 通用，必须在 V5 跳过前）===
+    // teamBattleEngine 不消费 awakenState，所以 burnOnHit/chainAttack/reflectPct 等运行时触发类暂时失效
+    // TODO: 双修副本接入完整 awakenState 需要在 teamBattleEngine 里织入 hooks
+    const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
+    if (aw && aw.stat) {
+      const v = Number(aw.value) || 0
+      switch (aw.stat) {
+        // 静态属性加成 — 直接累加
+        case 'lifesteal':     lifesteal += v; break
+        case 'critRate':      critRate += v; break
+        case 'critDmg':       critDmg += v; break
+        case 'dodge':         dodge += v; break
+        case 'spirit':        spirit += v; break
+        case 'atkPct':        awakenAtkPct += v; break
+        case 'defPct':        awakenDefPct += v; break
+        case 'hpPct':         awakenHpPct  += v; break
+        case 'spdPct':        awakenSpdPct += v; break
+        case 'harmonyPct':
+          awakenAtkPct += v; awakenDefPct += v; awakenHpPct += v; break
+        // 五行元素伤害（小数 → ×100 进 elementDmg）
+        case 'FIRE_DMG_PCT':  elementDmg.fire  += v * 100; break
+        case 'METAL_DMG_PCT': elementDmg.metal += v * 100; break
+        case 'WATER_DMG_PCT': elementDmg.water += v * 100; break
+        case 'WOOD_DMG_PCT':  elementDmg.wood  += v * 100; break
+        case 'EARTH_DMG_PCT': elementDmg.earth += v * 100; break
+        // 命中 / 抗性
+        case 'accuracyBonus': accuracy += v; break
+        case 'ctrlResist':    equipResist.ctrl += v; break
+        case 'allResistBonus':
+          equipResist.metal += v; equipResist.wood += v; equipResist.water += v
+          equipResist.fire  += v; equipResist.earth += v
+          break
+        // 运行时触发类暂不接（reflectPct/burnOnHit/chainAttack 等）— teamBattleEngine 不消费
+      }
+    }
+
     const enhLv = eq.enhance_level || 0
     // 属性1：受强化
     applyEquipPrimary(eq.primary_stat, Math.floor(eq.primary_value * (1 + enhLv * 0.10)))
@@ -158,6 +198,12 @@ async function buildPlayerBattleStats(char: any): Promise<{
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
   lifesteal += weaponLifestealFlat / 100
+
+  // 附灵静态加成 → 加法池
+  nonPassiveAtkPct += awakenAtkPct
+  nonPassiveDefPct += awakenDefPct
+  nonPassiveHpPct  += awakenHpPct
+  nonPassiveSpdPct += awakenSpdPct
 
   // 丹药 → 加法池（保留 team 原有的简化数值 0.15/0.20/0.10）
   for (const buff of buffRows) {

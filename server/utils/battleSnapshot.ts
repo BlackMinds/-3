@@ -13,7 +13,7 @@
 import { getPool } from '~/server/database/db'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
-import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo } from '~/server/engine/battleEngine'
+import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo, type PlayerAwakenState } from '~/server/engine/battleEngine'
 import { aggregateEquipmentSetInfo } from '~/server/engine/equipSetData'
 import { WEAPON_BONUS } from '~/shared/balance'
 import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
@@ -205,14 +205,92 @@ export async function buildCharacterSnapshot(
   }
   // === V5 装备聚合结束 ===
 
+  // 附灵运行时状态（与 fight.post.ts 同名累加器对齐，最终塞进 stats.awaken）
+  const awaken: PlayerAwakenState = {}
+  let awakenAtkPct = 0, awakenDefPct = 0, awakenHpPct = 0, awakenSpdPct = 0
+
   for (const eq of equipRows) {
     if (!eq.slot) continue
 
-    // 附灵聚合（V4/V5 通用）— 必须在 V5 跳过判断前，反伤附灵才能对 V5 装备生效
-    // battleSnapshot 简化版仅消费 reflectPct（其他 awaken hooks 由 fight.post.ts 完整处理）
-    const awEarly = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
-    if (awEarly && awEarly.stat === 'reflectPct') {
-      equipReflectPct += Number(awEarly.value) || 0
+    // === 附灵聚合（V4/V5 通用）===
+    // 必须在 V5 跳过判断前，V5 装备的反伤/会心/burn 等 awaken hook 才能在 PK/宗门战/灵脉生效
+    const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
+    if (aw && aw.stat) {
+      const v = Number(aw.value) || 0
+      const meta = aw.meta || null
+      switch (aw.stat) {
+        // 属性加成类
+        case 'lifesteal':          lifesteal += v; break
+        case 'critRate':           critRate += v; break
+        case 'critDmg':            critDmg += v; break
+        case 'dodge':              dodge += v; break
+        case 'spirit':             spirit += v; break
+        case 'atkPct':             awakenAtkPct += v; break
+        case 'defPct':             awakenDefPct += v; break
+        case 'hpPct':              awakenHpPct  += v; break
+        case 'spdPct':             awakenSpdPct += v; break
+        case 'harmonyPct':
+          awakenAtkPct += v; awakenDefPct += v; awakenHpPct += v; break
+        // 五行·X 元素伤害（value 是 0-1 小数，elementDmg 用百分比值）
+        case 'FIRE_DMG_PCT':       elementDmg.fire  += v * 100; break
+        case 'METAL_DMG_PCT':      elementDmg.metal += v * 100; break
+        case 'WATER_DMG_PCT':      elementDmg.water += v * 100; break
+        case 'WOOD_DMG_PCT':       elementDmg.wood  += v * 100; break
+        case 'EARTH_DMG_PCT':      elementDmg.earth += v * 100; break
+        // 命中
+        case 'accuracyBonus':      accuracy += v; break
+        // 控制抗性 / 五系抗性（accumulate 后统一加到 equipResist）
+        case 'ctrlResist':         equipResist.ctrl += v; break
+        case 'allResistBonus':
+          equipResist.metal += v; equipResist.wood += v; equipResist.water += v
+          equipResist.fire  += v; equipResist.earth += v
+          break
+        // 反伤副词条/附灵
+        case 'reflectPct':         equipReflectPct += v; break
+        // 运行时触发 / 受击触发（由 multiBattleEngine.awakenState 通道消费）
+        case 'armorPenPct':        awaken.armorPenPct = (awaken.armorPenPct || 0) + v; break
+        case 'poisonOnHitTaken':   awaken.poisonOnHitTaken = Math.max(awaken.poisonOnHitTaken || 0, v); break
+        case 'burnOnHitTaken':     awaken.burnOnHitTaken   = Math.max(awaken.burnOnHitTaken || 0, v); break
+        case 'reflectOnCrit':      awaken.reflectOnCrit    = Math.max(awaken.reflectOnCrit || 0, v); break
+        case 'burnOnHitChance':    awaken.burnOnHitChance   = (awaken.burnOnHitChance || 0) + v; break
+        case 'poisonOnHitChance':  awaken.poisonOnHitChance = (awaken.poisonOnHitChance || 0) + v; break
+        case 'bleedOnHitChance':   awaken.bleedOnHitChance  = (awaken.bleedOnHitChance || 0) + v; break
+        case 'chainAttackChance':  awaken.chainAttackChance = (awaken.chainAttackChance || 0) + v; break
+        case 'executeBonus':       awaken.executeBonus      = (awaken.executeBonus || 0) + v; break
+        case 'lowHpAtkBonus':      awaken.lowHpAtkBonus     = (awaken.lowHpAtkBonus || 0) + v; break
+        case 'lowHpDefBonus':      awaken.lowHpDefBonus     = (awaken.lowHpDefBonus || 0) + v; break
+        case 'damageReduction':    awaken.damageReduction   = Math.min(0.20, (awaken.damageReduction || 0) + v); break
+        case 'critTakenReduction': awaken.critTakenReduction = Math.min(0.50, (awaken.critTakenReduction || 0) + v); break
+        case 'regenPerTurn':       awaken.regenPerTurn      = (awaken.regenPerTurn || 0) + v; break
+        case 'cleanseInterval':
+          if (v > 0) awaken.cleanseInterval = awaken.cleanseInterval ? Math.min(awaken.cleanseInterval, v) : v
+          break
+        case 'frenzyOpening':      awaken.frenzyOpening      = (awaken.frenzyOpening || 0) + v; break
+        case 'vsBossBonus':        awaken.vsBossBonus        = (awaken.vsBossBonus || 0) + v; break
+        case 'vsEliteBonus':       awaken.vsEliteBonus       = (awaken.vsEliteBonus || 0) + v; break
+        case 'debuffDurationBonus':awaken.debuffDurationBonus = (awaken.debuffDurationBonus || 0) + v; break
+        // 灵戒主修功法附灵
+        case 'mainSkillMultBonus':  awaken.mainSkillMultBonus  = (awaken.mainSkillMultBonus || 0) + v; break
+        case 'mainSkillCritRate':   awaken.mainSkillCritRate   = (awaken.mainSkillCritRate || 0) + v; break
+        case 'mainSkillArmorPen':   awaken.mainSkillArmorPen   = (awaken.mainSkillArmorPen || 0) + v; break
+        case 'mainSkillLifesteal':  awaken.mainSkillLifesteal  = (awaken.mainSkillLifesteal || 0) + v; break
+        case 'mainSkillBleedAmp':
+          awaken.mainSkillBleedAmp = v; awaken.mainSkillBleedAmpElem = meta?.requireElement; break
+        case 'mainSkillPoisonAmp':
+          awaken.mainSkillPoisonAmp = v; awaken.mainSkillPoisonAmpElem = meta?.requireElement; break
+        case 'mainSkillFreezeChance':
+          awaken.mainSkillFreezeChance = v; awaken.mainSkillFreezeChanceElem = meta?.requireElement; break
+        case 'mainSkillBurnDuration':
+          awaken.mainSkillBurnDuration = v; awaken.mainSkillBurnDurationElem = meta?.requireElement; break
+        case 'mainSkillBurnAmp':
+          awaken.mainSkillBurnAmp = v; awaken.mainSkillBurnAmpElem = meta?.requireElement; break
+        case 'mainSkillBrittleAmp':
+          awaken.mainSkillBrittleAmp = v; awaken.mainSkillBrittleAmpElem = meta?.requireElement; break
+        case 'mainSkillChainChance': awaken.mainSkillChainChance = (awaken.mainSkillChainChance || 0) + v; break
+        case 'mainSkillCritCdCut':   awaken.mainSkillCritCdCut   = true; break
+        case 'mainSkillExecute':
+          awaken.mainSkillExecuteBonus = v; awaken.mainSkillExecuteThr = meta?.threshold ?? 0.20; break
+      }
     }
 
     if (eq.equipment_version === 5) continue  // V5 装备已由 computeV5EquipmentDelta 聚合，跳过 V4 主属/副属
@@ -282,6 +360,12 @@ export async function buildCharacterSnapshot(
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
   lifesteal += weaponLifestealFlat / 100
+
+  // 附灵静态加成（atkPct/defPct/hpPct/spdPct/harmonyPct）→ 加法池
+  nonPassiveAtkPct += awakenAtkPct
+  nonPassiveDefPct += awakenDefPct
+  nonPassiveHpPct  += awakenHpPct
+  nonPassiveSpdPct += awakenSpdPct
 
   // 丹药 buff（除非 forbidPills）
   if (!forbidPills) {
@@ -409,6 +493,8 @@ export async function buildCharacterSnapshot(
     _flatAtk, _flatDef, _flatHp, _flatSpd,
     _pctSumAtk: nonPassiveAtkPct, _pctSumDef: nonPassiveDefPct,
     _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
+    // 附灵运行时状态：buildPvpFighter 从 s.awaken.* 透传到 awakenState
+    awaken,
   } as any
 
   // 战力综合评分（用于匹配/赔率）
