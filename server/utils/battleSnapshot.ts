@@ -207,7 +207,15 @@ export async function buildCharacterSnapshot(
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
-    if (eq.equipment_version === 5) continue  // V5 装备已由 computeV5EquipmentDelta 聚合，跳过 V4 路径
+
+    // 附灵聚合（V4/V5 通用）— 必须在 V5 跳过判断前，反伤附灵才能对 V5 装备生效
+    // battleSnapshot 简化版仅消费 reflectPct（其他 awaken hooks 由 fight.post.ts 完整处理）
+    const awEarly = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
+    if (awEarly && awEarly.stat === 'reflectPct') {
+      equipReflectPct += Number(awEarly.value) || 0
+    }
+
+    if (eq.equipment_version === 5) continue  // V5 装备已由 computeV5EquipmentDelta 聚合，跳过 V4 主属/副属
     const enhLv = eq.enhance_level || 0
     // 属性1：受强化（base × (1 + 0.10 × enhLv)）
     const primary1 = Math.floor(eq.primary_value * (1 + enhLv * 0.10))
@@ -262,12 +270,7 @@ export async function buildCharacterSnapshot(
       // v4.0 控制概率 → ctrlChance（battleEngine status apply 处加成）
       else if (sub.stat === 'CTRL_CHANCE') equipCtrlChance += sub.value / 100
     }
-
-    // v3.7 反伤附灵：reflectPct (明镜甲/玄镜佩) 汇入同池
-    const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
-    if (aw && aw.stat === 'reflectPct') {
-      equipReflectPct += Number(aw.value) || 0
-    }
+    // v3.7 反伤附灵 reflectPct 已在循环顶部统一处理（V4/V5 通用），此处不再重复
   }
 
   // 武器 + 装备副属性百分比 → 加法池

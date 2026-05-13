@@ -143,6 +143,15 @@ export async function getOrCreateDailyQuota(
 // 构造装备快照（用于挂单的 item_snapshot 与邮件附件）
 // ============================================
 export function snapshotEquipment(eq: any): EquipmentSnapshot {
+  // V5 装备的 wuxing_affixes 在 DB 是 JSONB / 字符串 / 数组三态，统一成数组存进 snapshot
+  let wuxingAffixes: Array<{ stat: string; value: number }> | null = null
+  if (eq.wuxing_affixes) {
+    if (typeof eq.wuxing_affixes === 'string') {
+      try { wuxingAffixes = JSON.parse(eq.wuxing_affixes) } catch { wuxingAffixes = null }
+    } else if (Array.isArray(eq.wuxing_affixes)) {
+      wuxingAffixes = eq.wuxing_affixes
+    }
+  }
   return {
     name: eq.name,
     base_slot: eq.base_slot ?? eq.slot ?? null,
@@ -158,6 +167,12 @@ export function snapshotEquipment(eq: any): EquipmentSnapshot {
     enhance_level: eq.enhance_level ?? 0,
     req_level: eq.req_level ?? 1,
     tier: eq.tier ?? 1,
+    // V5 装备字段（V4 装备恒为 null）
+    equipment_version: eq.equipment_version === 5 ? 5 : 4,
+    wuxing_prefix: eq.wuxing_prefix ?? null,
+    wuxing_affixes: wuxingAffixes,
+    legendary_set_id: eq.legendary_set_id ?? null,
+    is_boss_treasure: eq.is_boss_treasure === true ? true : null,
   }
 }
 

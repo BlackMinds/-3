@@ -27,6 +27,12 @@ export interface EquipmentSnapshot {
   enhance_level?: number
   req_level?: number
   tier?: number
+  // V5 装备字段（V4 装备恒为 null/4）
+  equipment_version?: 4 | 5
+  wuxing_prefix?: string[] | string | null
+  wuxing_affixes?: Array<{ stat: string; value: number }> | null
+  legendary_set_id?: string | null
+  is_boss_treasure?: boolean | null
 }
 
 export type MailAttachment =
@@ -248,13 +254,19 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
       break
     case 'equipment': {
       const s = att.snapshot
+      // V5 字段在 V4 装备的 snapshot 里恒为 null/默认；老挂单 snapshot 里没有 V5 字段也兼容
+      const wuxingPrefix = s.wuxing_prefix
+        ? (Array.isArray(s.wuxing_prefix) ? s.wuxing_prefix : [s.wuxing_prefix])
+        : null
       await client.query(
         `INSERT INTO character_equipment
           (character_id, slot, base_slot, weapon_type, name, rarity,
            primary_stat, primary_value, primary_stat_2, primary_value_2, sub_stats, awaken_effect, set_id,
-           enhance_level, req_level, tier, locked, is_bound)
+           enhance_level, req_level, tier, locked, is_bound,
+           equipment_version, wuxing_prefix, wuxing_affixes, legendary_set_id, is_boss_treasure)
          VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12,
-                 $13, $14, $15, FALSE, FALSE)`,
+                 $13, $14, $15, FALSE, FALSE,
+                 $16, $17, $18::jsonb, $19, $20)`,
         [
           characterId,
           s.base_slot || null,
@@ -271,6 +283,11 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
           s.enhance_level ?? 0,
           s.req_level ?? 1,
           s.tier ?? 1,
+          s.equipment_version ?? 4,
+          wuxingPrefix,
+          s.wuxing_affixes ? JSON.stringify(s.wuxing_affixes) : null,
+          s.legendary_set_id ?? null,
+          s.is_boss_treasure === true,
         ]
       )
       break
