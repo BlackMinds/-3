@@ -176,11 +176,11 @@ export function calcChildBaseStats(
 } {
   const mul = APTITUDE_MULTIPLIER[aptitude] || 1
   const aptIdx = Math.min(Math.max(aptitude, 0), 6)
-  // 基础四属性：按 level + 资质倍率成长（2026-05-12 调整：hp↑ atk↑ def↑ spd↓）
+  // 基础四属性：按 level + 资质倍率成长（2026-05-13 hp 系数上调：250 → 500，圣品 Lv.400 ≈ 100w）
   // 二级属性会心率/会心伤害/闪避：浮动范围，**仅出生时滚一次**（详见上方 APTITUDE_CRIT_* 表）
   // 神识/控抗：依然按 level 成长（修仙叙事属性，不影响战斗 cap）
   return {
-    maxHp: Math.floor(200 + level * 250 * mul),
+    maxHp: Math.floor(200 + level * 500 * mul),
     atk: Math.floor(20 + level * 22 * mul),
     def: Math.floor(15 + level * 10 * mul),
     spd: Math.floor(30 + level * 2.5 * mul),

@@ -2,6 +2,8 @@ import { getPool } from '~/server/database/db'
 import { generateMonsterStats, buildEquippedSkillInfo, runWaveBattle, buildMonsterSkillDescriptions, makeHealerTemplate, applyInnateMainToAwaken, type BattlerStats, type MonsterTemplate } from '~/server/engine/battleEngine'
 import { runDuoWaveBattle } from '~/server/engine/duoBattleEngine'
 import { CHILD_SKILL_MAP } from '~/server/engine/childSkillData'
+import { calcChildBaseStats } from '~/server/utils/child'
+import type { ChildAptitude } from '~/server/engine/childTalentData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { generateEquipName } from '~/server/engine/equipNameData'
@@ -834,7 +836,7 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   nonPassiveHpPct  += awakenHpPct
   nonPassiveSpdPct += awakenSpdPct
 
-  // 道侣仙缘印记 — 四维 +3%~+15%（与面板 mainStats 同口径，design 3.6）
+  // 道侣仙缘印记 — 四维 +2%~+12%（与面板 mainStats 同口径，design 3.6）
   const sealPct = Number((char as any)._companion_seal_pct || 0)
   if (sealPct > 0) {
     nonPassiveAtkPct += sealPct
@@ -935,7 +937,7 @@ export default defineEventHandler(async (event) => {
     if (charRows.length === 0) return { code: 400, message: '角色不存在' }
     const char = charRows[0]
 
-    // 道侣仙缘印记 buff：已正式结侣后获得 +3%~+15% 全属性（design 3.6）
+    // 道侣仙缘印记 buff：已正式结侣后获得 +2%~+12% 全属性（design 3.6）
     // 挂到 char._companion_seal_pct，buildPlayerStats 内部并入 nonPassive×Pct 池（与面板 mainStats 同口径）
     const { rows: compRows } = await pool.query(
       'SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1',
@@ -961,13 +963,20 @@ export default defineEventHandler(async (event) => {
     } | null = null
     if (char.battling_child_id) {
       const { rows: childRows } = await pool.query(
-        'SELECT atk, def, max_hp, spd, stage, awakened_talents, crit_rate, crit_dmg, dodge, lifesteal, spirit, resist_ctrl, spiritual_root, learned_skills FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
+        'SELECT aptitude, level, atk, def, max_hp, spd, stage, awakened_talents, crit_rate, crit_dmg, dodge, lifesteal, spirit, resist_ctrl, spiritual_root, learned_skills FROM children WHERE id = $1 AND character_id = $2 AND is_battling = TRUE',
         [char.battling_child_id, char.id]
       )
       if (childRows[0]) {
         const c = childRows[0]
         const STAGE_MUL: Record<string, number> = { youth: 0.5, adult_youth: 0.8, adult: 1.0 }
         const stageMul = STAGE_MUL[c.stage] || 0
+        // 2026-05-13 起：基础四属性即时按 calcChildBaseStats(aptitude, level) 重算
+        // 避免公式调整后存量子女 max_hp/atk/def/spd 字段不刷新
+        const baseStats = calcChildBaseStats(c.aptitude as ChildAptitude, c.level)
+        c.atk = baseStats.atk
+        c.def = baseStats.def
+        c.max_hp = baseStats.maxHp
+        c.spd = baseStats.spd
         if (stageMul > 0) {
           const { CHILD_TALENT_MAP } = await import('~/server/engine/childTalentData')
           const talents = Array.isArray(c.awakened_talents) ? c.awakened_talents : []

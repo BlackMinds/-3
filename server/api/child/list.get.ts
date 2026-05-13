@@ -2,7 +2,8 @@
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
-import { getChildrenByCharacter, APTITUDE_NAMES } from '~/server/utils/child'
+import { getChildrenByCharacter, APTITUDE_NAMES, calcChildBaseStats } from '~/server/utils/child'
+import type { ChildAptitude } from '~/server/engine/childTalentData'
 
 const STAGE_NAMES: Record<string, string> = {
   infant: '婴幼期', child: '童年期', youth: '少年期',
@@ -41,6 +42,9 @@ export default defineEventHandler(async (event) => {
     }
     const list = children.map(c => {
       const eq = equipBonusMap.get(c.id) || { atk: 0, def: 0, max_hp: 0, spd: 0 }
+      // 2026-05-13 起：基础四属性即时按 calcChildBaseStats(aptitude, level) 重算，
+      // 不再读 children.max_hp/atk/def/spd 字段；规避公式调整后存量子女不刷新的问题
+      const base = calcChildBaseStats(c.aptitude as ChildAptitude, c.level)
       return {
         id: c.id,
         name: c.name,
@@ -54,10 +58,10 @@ export default defineEventHandler(async (event) => {
         stage: c.stage,
         stageName: STAGE_NAMES[c.stage] || c.stage,
         // 列表显示"含装备"的总值（详情页另有"裸 + 装备加成"分离显示）
-        maxHp: c.max_hp + Math.floor(eq.max_hp),
-        atk:   c.atk    + Math.floor(eq.atk),
-        def:   c.def    + Math.floor(eq.def),
-        spd:   c.spd    + Math.floor(eq.spd),
+        maxHp: base.maxHp + Math.floor(eq.max_hp),
+        atk:   base.atk   + Math.floor(eq.atk),
+        def:   base.def   + Math.floor(eq.def),
+        spd:   base.spd   + Math.floor(eq.spd),
         equipBonus: { atk: Math.floor(eq.atk), def: Math.floor(eq.def), maxHp: Math.floor(eq.max_hp), spd: Math.floor(eq.spd) },
         isBattling: c.is_battling,
         hasLeftHome: c.has_left_home,
