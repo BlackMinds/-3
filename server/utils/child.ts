@@ -124,6 +124,11 @@ export const APTITUDE_LEVEL_CAP = [100, 150, 200, 250, 300, 350, 400]
 export function getChildLevelCap(aptitude: number): number {
   return APTITUDE_LEVEL_CAP[Math.min(Math.max(aptitude, 0), 6)] || 100
 }
+// 资质 → 外出历练永久 buff 上限（2026-05-13 小夏调整）：上高低平梯度，圣品 22% 封顶
+export const APTITUDE_VISIT_CAP = [0.14, 0.16, 0.18, 0.20, 0.21, 0.215, 0.22]
+export function getChildVisitCap(aptitude: number): number {
+  return APTITUDE_VISIT_CAP[Math.min(Math.max(aptitude, 0), 6)] ?? 0.20
+}
 
 // 资质 → 会心率/会心伤害/闪避 浮动范围（出生时随机一次锁定，升级不会重滚）
 // 同资质子女会有"天生体质"差异，运气好可以多 30~50% 多余面板属性

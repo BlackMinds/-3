@@ -3258,9 +3258,9 @@
             <div class="help-title">子女成年选择（Lv.100）</div>
             <table class="help-table"><tbody>
               <tr><td>A 留家助战</td><td>继续作为助战单位，按成年阶段 100% 倍率（高资质子女可超越本体面板）</td></tr>
-              <tr><td>B 外出历练</td><td>退出助战，每 <b style="color:#5fcf6f">3 天回家一次 +0.5% 永久全属性</b>，上限 +20%（40 次回家），可随时召回</td></tr>
+              <tr><td>B 外出历练</td><td>退出助战，每 <b style="color:#5fcf6f">3 天回家一次 +0.5% 永久全属性</b>，<b style="color:#ffd700">上限按资质</b>（凡14/下16/中18/上20/极21/仙21.5/<b>圣22%</b>），可随时召回</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px;">外出子女回家时发邮件提醒。多个外出子女 buff 叠加（理论上限 4 个 × 20% = 80% 永久加成，但实际需 120 天养成）。在详情卡片可随时「召回回家」，已累计加成保留。</p>
+            <p class="help-text" style="margin-top: 4px;">外出子女回家时发邮件提醒。多个外出子女 buff 叠加（理论极限：4 个圣品 × 22% = 88% 永久加成，但圣品需夺天造化丹重铸极稀有；常规上品 4 × 20% = 80%）。在详情卡片可随时「召回回家」，已累计加成保留。</p>
           </div>
           <div class="help-section">
             <div class="help-title">资质重铸（夺天造化丹）</div>
