@@ -502,15 +502,28 @@
                 <span v-if="lingenResonance.bonus_pct > 0" class="lingen-bonus">攻防血神识 +{{ (lingenResonance.bonus_pct * 100).toFixed(0) }}%</span>
                 <span v-else class="lingen-bonus-pending">下一档需 {{ lingenResonance.nextThreshold }} 件</span>
               </div>
-              <div class="equip-grid">
+              <div class="equip-ring">
+            <!-- 中央：五行相生环（金→水→木→火→土→金） -->
+            <div class="wuxing-center">
+              <div class="wx-circle">
+                <span class="wx wx-metal" title="金 → 水">金</span>
+                <span class="wx wx-water" title="水 → 木">水</span>
+                <span class="wx wx-wood" title="木 → 火">木</span>
+                <span class="wx wx-fire" title="火 → 土">火</span>
+                <span class="wx wx-earth" title="土 → 金">土</span>
+              </div>
+            </div>
             <div
               v-for="slotDef in equipSlots"
               :key="slotDef.slot"
               class="equip-slot"
-              :class="{
-                'legendary-slot': getEquippedItem(slotDef.slot)?.legendary_set_id === 'yuanshi_tianzun',
-                'boss-treasure-slot': getEquippedItem(slotDef.slot)?.is_boss_treasure === true,
-              }"
+              :class="[
+                'ring-pos-' + ringPos(slotDef.slot),
+                {
+                  'legendary-slot': getEquippedItem(slotDef.slot)?.legendary_set_id === 'yuanshi_tianzun',
+                  'boss-treasure-slot': getEquippedItem(slotDef.slot)?.is_boss_treasure === true,
+                }
+              ]"
               @click="openEquipPicker(slotDef.slot)"
               @mouseenter="hoverSlotEquip = getEquippedItem(slotDef.slot)"
               @mouseleave="hoverSlotEquip = null"
@@ -1912,11 +1925,11 @@
                 <tr><th>等级</th><th>地块数</th><th>最高品质</th></tr>
               </thead>
               <tbody>
-                <tr><td>Lv.1-3</td><td>2</td><td style="color: #00CC00;">灵品</td></tr>
-                <tr><td>Lv.4-6</td><td>3</td><td style="color: #0066FF;">玄品</td></tr>
-                <tr><td>Lv.7-9</td><td>4</td><td style="color: #9933FF;">地品</td></tr>
-                <tr><td>Lv.10-12</td><td>5</td><td style="color: #FFAA00;">天品</td></tr>
-                <tr><td>Lv.13-15</td><td>6</td><td style="color: #FF3333;">仙品</td></tr>
+                <tr><td>Lv.1-3</td><td>4</td><td style="color: #00CC00;">灵品</td></tr>
+                <tr><td>Lv.4-6</td><td>5</td><td style="color: #0066FF;">玄品</td></tr>
+                <tr><td>Lv.7-9</td><td>6</td><td style="color: #9933FF;">地品</td></tr>
+                <tr><td>Lv.10-12</td><td>7</td><td style="color: #FFAA00;">天品</td></tr>
+                <tr><td>Lv.13-15</td><td>8</td><td style="color: #FF3333;">仙品</td></tr>
               </tbody>
             </table>
           </div>
@@ -2074,8 +2087,8 @@
           <!-- 掉落概率总览 -->
           <div class="drop-rate-info" style="margin-bottom: 12px;">
             <table class="help-table"><tbody>
-              <tr><td>装备</td><td>普怪 20% / Boss 100%</td></tr>
-              <tr><td>功法</td><td>普怪 15% / Boss 50%</td></tr>
+              <tr><td>装备</td><td>普怪 T1-2=20% / T3-6=12% / T7+=8% · Boss 100%</td></tr>
+              <tr><td>功法</td><td>T1-3 普怪 1.5% / Boss 15% · T4+ 普怪 0.8% / Boss 10%</td></tr>
               <tr><td>灵草</td><td>普怪 30% / Boss 80%</td></tr>
               <tr><td>Boss</td><td>每波 1% 概率出现</td></tr>
             </tbody></table>
@@ -2105,8 +2118,8 @@
           <div class="drop-section" style="margin-top: 12px;">
             <div class="map-name">装备品质分布</div>
             <table class="help-table"><tbody>
-              <tr><td>T1</td><td>凡器60% 灵器30% 法器9% 灵宝1%</td></tr>
-              <tr><td>T2</td><td>凡器40% 灵器35% 法器18% 灵宝6% 仙器1%</td></tr>
+              <tr><td>T1</td><td>凡器40% 灵器40% 法器17% 灵宝3%</td></tr>
+              <tr><td>T2</td><td>凡器30% 灵器40% 法器22% 灵宝7% 仙器1%</td></tr>
               <tr><td>T3</td><td>凡器20% 灵器35% 法器25% 灵宝15% 仙器4.5% 太古0.5%</td></tr>
               <tr><td>T4</td><td>凡器5% 灵器25% 法器30% 灵宝25% 仙器13% 太古2%</td></tr>
               <tr><td>T5</td><td>灵器10% 法器30% 灵宝35% 仙器22% 太古3%</td></tr>
@@ -2331,6 +2344,10 @@
             </template>
             <template v-else-if="enhanceResult.success">
               强化成功! +{{ enhanceTarget.enhance_level }}
+              <div v-if="enhanceResult.addedAffix" style="color: #5b9be6; margin-top: 4px;">
+                新增强化词条！{{ getStatName(enhanceResult.addedAffix.stat) }}:
+                +{{ formatStatValue(enhanceResult.addedAffix.stat, enhanceResult.addedAffix.value) }}
+              </div>
               <div v-if="enhanceResult.breakthrough" style="color: var(--gold-ink); margin-top: 4px;">
                 副属性突破! {{ getStatName(enhanceResult.breakthrough.stat) }}:
                 {{ formatStatValue(enhanceResult.breakthrough.stat, enhanceResult.breakthrough.oldValue) }}
@@ -2580,7 +2597,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">基本操作</div>
-            <p class="help-text">选择地图 → 开始历练 → 自动战斗打怪 → 获得修为/灵石/等级经验/装备/功法/灵草。每波随机 1-5 只怪物同时出现,低概率遇到 Boss。战斗完全在服务器计算,无法作弊。</p>
+            <p class="help-text">选择地图 → 开始历练 → 自动战斗打怪 → 获得修为/灵石/等级经验/装备/功法/灵草。每波怪物数按 tier：T1-T2 = 1-2 只 / T3-T4 = 1-4 只 / T5+ = 2-4 只（含 1 只奶妈）。1% 概率遇到 Boss。战斗完全在服务器计算,无法作弊。</p>
           </div>
           <div class="help-section">
             <div class="help-title">六个标签页</div>
@@ -2614,16 +2631,16 @@
             <div class="help-title">等级系统</div>
             <p class="help-text">等级上限 400 级,打怪获得等级经验自动升级。等级提供属性加成,按段递增:</p>
             <table class="help-table"><tbody>
-              <tr><td>1-50 级</td><td>每级: 气血+5 攻击+2 防御+1 身法+1</td></tr>
-              <tr><td>51-100 级</td><td>每级: 气血+10 攻击+4 防御+2 身法+2</td></tr>
-              <tr><td>101-150 级</td><td>每级: 气血+20 攻击+8 防御+4 身法+3</td></tr>
-              <tr><td>151-400 级</td><td>每级: 气血+40 攻击+15 防御+8 身法+5</td></tr>
+              <tr><td>1-50 级</td><td>每级: 气血+30 攻击+2 防御+1 身法+1</td></tr>
+              <tr><td>51-100 级</td><td>每级: 气血+60 攻击+4 防御+2 身法+2</td></tr>
+              <tr><td>101-150 级</td><td>每级: 气血+120 攻击+8 防御+4 身法+3</td></tr>
+              <tr><td>151-400 级</td><td>每级: 气血+240 攻击+15 防御+8 身法+5</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">装备有等级需求,高阶装备需要对应等级才能穿戴。</p>
           </div>
           <div class="help-section">
             <div class="help-title">战斗机制</div>
-            <p class="help-text">回合制自动战斗,每波 1-5 只怪同时出现。玩家每回合攻击血量最低的怪,所有存活怪每回合攻击玩家。主修功法每回合施展,神通按 CD 自动释放(优先级更高)。</p>
+            <p class="help-text">回合制自动战斗,每波 1-4 只怪同时出现（T5+ 含 1 只奶妈）。玩家每回合攻击血量最低的怪,所有存活怪每回合攻击玩家。主修功法每回合施展,神通按 CD 自动释放(优先级更高)。</p>
             <p class="help-text" style="margin-top: 4px;">10 种异常状态:</p>
             <table class="help-table"><tbody>
               <tr><td style="color: #c45c4a;">灼烧</td><td>每回合受攻击力×20%火伤</td></tr>
@@ -2806,9 +2823,9 @@
               <tr><td>问道魁首</td><td>累计 3 次论道之星,授予永久称号</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;"><b>押注系统:</b>所有玩家可在周一晚~周二晚押注"宗门胜方",单场上限 5 万灵石。<span style="color: #c45c4a;">⚠ 禁止押注自家宗门(防内部套利)</span>。手续费 5%。</p>
-            <p class="help-text" style="margin-top: 6px;"><b>PvP 平衡系数</b>(区别于单人历练,让战斗更有策略深度):</p>
+            <p class="help-text" style="margin-top: 6px;"><b>PvP 平衡系数</b>(与斗法台共用同一套常量 PVP_BALANCE):</p>
             <table class="help-table"><tbody>
-              <tr><td>单挑 1v1</td><td>角色 HP ×1.3,伤害 ×0.7,DOT ×0.6,会伤 -15%。战斗约 4~8 回合</td></tr>
+              <tr><td>单挑 1v1</td><td>角色 HP ×1.8,伤害 ×0.6,DOT ×0.5,会伤 -35%。战斗约 5~10 回合</td></tr>
               <tr><td>团战 3v3</td><td>角色 HP ×1.5,伤害 ×0.5,DOT ×0.5,会伤 -20%。战斗约 5~10 回合</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: #8a8a7a;">※ 同一角色在宗门战和历练中看到的血量会不同:宗门战下的 HP 会放大,让单次会心 AoE 不再一击制胜,给神通 CD、debuff 持续、灵根相克等策略留出博弈空间。</p>
@@ -3177,16 +3194,16 @@
             <p class="help-text"><b style="color:#ffd700">总子女上限 5 名</b>（在家 + 已离家 合计）。出生时按"<b>道侣品质</b>"决定资质上限、"<b>玩家资质</b>"决定下限，5% 概率血脉觉醒突破上限。资质 7 档：凡/下/中/上/极/仙/圣（圣品仅夺天造化丹重铸可得）。</p>
             <p class="help-text" style="margin-top: 4px;">五行继承：父灵根 45% / 母灵根 45% / 随机 9% / 双灵根混灵 1%。</p>
             <p class="help-text" style="margin-top: 4px;"><b>成长阶段</b>：婴幼(1-10) / 童年(11-30) / 少年(31-60) / 青年(61-99) / 成年(100)。喂养灵草升级，每日上限 5 次。Lv.31 起可设为<b>助战</b>。</p>
-            <p class="help-text" style="margin-top: 4px;"><b>助战 buff</b>：少年 30% / 青年 60% / 成年 100% 阶段倍率，但实际贡献被 <b style="color:#ff6b6b">cap 在父母属性 70%</b> 之内，避免子女超越本体。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>助战机制</b>：子女作为<b style="color:#ffd700">独立战斗单位</b>出战（独立 hp / 功法 / buff，能被打死），面板按阶段缩水 <b style="color:#5fcf6f">少年 50% / 青年 80% / 成年 100%</b>。高资质子女成年后可超越本体面板，是真正意义上的次主力。</p>
             <p class="help-text" style="margin-top: 4px;">每个子女出生时根据主灵根<b style="color:#d4b0ff">血脉觉醒</b>独有功法（攻击/肉盾/回复/Buff 4 类，品质按资质映射）。功法跟随等级自然提升，不消耗资源。</p>
           </div>
           <div class="help-section">
             <div class="help-title">子女成年选择（Lv.100）</div>
             <table class="help-table"><tbody>
-              <tr><td>A 留家助战</td><td>继续作为助战单位，按成年阶段 100% 倍率（受 70% cap）</td></tr>
-              <tr><td>B 外出历练</td><td>退出助战，每 <b style="color:#5fcf6f">10 天回家一次 +0.5% 永久全属性</b>，上限 +20%（40 次回家）</td></tr>
+              <tr><td>A 留家助战</td><td>继续作为助战单位，按成年阶段 100% 倍率（高资质子女可超越本体面板）</td></tr>
+              <tr><td>B 外出历练</td><td>退出助战，每 <b style="color:#5fcf6f">3 天回家一次 +0.5% 永久全属性</b>，上限 +20%（40 次回家），可随时召回</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px;">外出子女回家时发邮件提醒。多个外出子女 buff 叠加（理论上限 4 个 × 20% = 80% 永久加成，但实际需 800 天养成）。</p>
+            <p class="help-text" style="margin-top: 4px;">外出子女回家时发邮件提醒。多个外出子女 buff 叠加（理论上限 4 个 × 20% = 80% 永久加成，但实际需 120 天养成）。在详情卡片可随时「召回回家」，已累计加成保留。</p>
           </div>
           <div class="help-section">
             <div class="help-title">资质重铸（夺天造化丹）</div>
@@ -8095,6 +8112,15 @@ async function batchSell() {
 }
 
 const equipSlots = EQUIP_SLOTS;
+
+// 环形装备布局：slot → 顺序位置 1~7（按 V5 五行链）
+//   1 兵器（顶 / 金）→ 2 灵戒 → 3 法宝 → 4 法袍 → 5 法冠 → 6 灵佩 → 7 步云靴
+const RING_POS_MAP: Record<string, number> = {
+  weapon: 1, ring: 2, treasure: 3, armor: 4, helmet: 5, pendant: 6, boots: 7,
+};
+function ringPos(slot: string): number {
+  return RING_POS_MAP[slot] || 1;
+}
 const equipList = ref<any[]>([]);
 const showEquipPicker = ref(false);
 const currentPickSlot = ref('');
@@ -9917,11 +9943,151 @@ onUnmounted(() => {
 }
 
 /* ========== 装备系统 ========== */
+/* 旧 grid 保留兼容（如有其他引用） */
 .equip-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
+
+/* ============= 环形装备布局（V5 五行链：金→水→木→火→土） ============= */
+.equip-ring {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 1 / 1;
+  margin: 12px auto 4px;
+  /* 背景星光 + 极暗的同心圆轮廓暗示环形 */
+  background:
+    radial-gradient(circle at 50% 50%, rgba(184, 154, 90, 0.04) 0%, transparent 62%),
+    radial-gradient(circle at 50% 50%, transparent 38%, rgba(184, 154, 90, 0.10) 39%, transparent 40%);
+}
+/* 中央五行小环 */
+.wuxing-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.wx-circle {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(8, 12, 24, 0.55) 0%, rgba(8, 12, 24, 0.25) 70%, transparent 100%);
+  box-shadow:
+    inset 0 0 18px rgba(91, 155, 230, 0.12),
+    0 0 22px rgba(91, 155, 230, 0.08);
+}
+.wx-circle::before {
+  content: '';
+  position: absolute;
+  top: 6%; left: 6%; right: 6%; bottom: 6%;
+  border-radius: 50%;
+  border: 1px dashed rgba(184, 154, 90, 0.28);
+}
+.wx {
+  position: absolute;
+  width: 32%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  pointer-events: auto;
+  cursor: help;
+  text-shadow: 0 0 8px currentColor;
+}
+/* 五行按相生顺序排环：金顶(0°) → 水(72°) → 木(144°) → 火(216°) → 土(288°) */
+.wx-metal { top: 4%;   left: 50%; transform: translate(-50%, -0%); color: #e8cc8a; background: radial-gradient(circle, rgba(232, 204, 138, 0.22), rgba(232, 204, 138, 0.04)); border: 1px solid rgba(232, 204, 138, 0.5); }
+.wx-water { top: 36%;  left: 96%; transform: translate(-50%, -50%); color: #5b9be6; background: radial-gradient(circle, rgba(91, 155, 230, 0.22), rgba(91, 155, 230, 0.04)); border: 1px solid rgba(91, 155, 230, 0.5); }
+.wx-wood  { top: 88%;  left: 78%; transform: translate(-50%, -50%); color: #6ec77b; background: radial-gradient(circle, rgba(110, 199, 123, 0.22), rgba(110, 199, 123, 0.04)); border: 1px solid rgba(110, 199, 123, 0.5); }
+.wx-fire  { top: 88%;  left: 22%; transform: translate(-50%, -50%); color: #e85d5d; background: radial-gradient(circle, rgba(232, 93, 93, 0.22), rgba(232, 93, 93, 0.04)); border: 1px solid rgba(232, 93, 93, 0.5); }
+.wx-earth { top: 36%;  left: 4%;  transform: translate(-50%, -50%); color: #c19a5b; background: radial-gradient(circle, rgba(193, 154, 91, 0.22), rgba(193, 154, 91, 0.04)); border: 1px solid rgba(193, 154, 91, 0.5); }
+
+/* 7 个装备槽：按 V5 顺序 360/7 ≈ 51.43° 分布，weapon 在 12 点钟 */
+.equip-ring .equip-slot {
+  position: absolute;
+  width: 26%;
+  min-height: 60px;
+  padding: 6px 4px;
+  background: rgba(8, 12, 24, 0.55);
+  border: 1px solid rgba(184, 154, 90, 0.25);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  z-index: 1;
+}
+.equip-ring .equip-slot:hover {
+  border-color: rgba(232, 204, 138, 0.6);
+  transform: translate(-50%, -50%) scale(1.06);
+  z-index: 3;
+  box-shadow: 0 0 14px rgba(232, 204, 138, 0.18);
+}
+/* 各位置坐标（half-circle 半径 = 38%，槽位中心 = 50% ± R*sin/cos） */
+.equip-ring .ring-pos-1 { top: 12.0%;  left: 50.0%; }  /* 兵器   0° */
+.equip-ring .ring-pos-2 { top: 26.3%;  left: 79.7%; }  /* 灵戒  51.4° */
+.equip-ring .ring-pos-3 { top: 58.5%;  left: 87.0%; }  /* 法宝 102.9° */
+.equip-ring .ring-pos-4 { top: 84.2%;  left: 66.5%; }  /* 法袍 154.3° */
+.equip-ring .ring-pos-5 { top: 84.2%;  left: 33.5%; }  /* 法冠 205.7° */
+.equip-ring .ring-pos-6 { top: 58.5%;  left: 13.0%; }  /* 灵佩 257.1° */
+.equip-ring .ring-pos-7 { top: 26.3%;  left: 20.3%; }  /* 步云靴 308.6° */
+
+.equip-ring .equip-slot-label {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-bottom: 2px;
+  letter-spacing: 1px;
+}
+.equip-ring .equip-slot-name {
+  font-size: 12px;
+  line-height: 1.15;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
+}
+.equip-ring .equip-slot-empty {
+  font-size: 12px;
+  color: rgba(184, 154, 90, 0.5);
+}
+.equip-ring .enhance-slot-btn {
+  margin-top: 3px;
+  font-size: 10px;
+  padding: 0 4px;
+}
+.equip-ring .enhance-tag {
+  font-size: 10px;
+}
+/* hover 提示：从槽位向外延伸，避免遮中央五行 */
+.equip-ring .slot-tooltip {
+  z-index: 99;
+}
+@media (max-width: 600px) {
+  .equip-ring { max-width: 360px; }
+  .wx { font-size: 14px; }
+  .equip-ring .equip-slot { width: 28%; min-height: 52px; padding: 4px 2px; }
+}
+/* ===================== 环形布局结束 ===================== */
 
 /* 装备页 "法宝装备" 标题行：左标题 + 右 1/2/3 方案切换按钮 */
 .equip-title-row {
