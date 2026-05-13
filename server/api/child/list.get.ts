@@ -2,7 +2,7 @@
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
-import { getChildrenByCharacter, APTITUDE_NAMES, calcChildBaseStats } from '~/server/utils/child'
+import { getChildrenByCharacter, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct } from '~/server/utils/child'
 import type { ChildAptitude } from '~/server/engine/childTalentData'
 
 const STAGE_NAMES: Record<string, string> = {
@@ -45,6 +45,10 @@ export default defineEventHandler(async (event) => {
       // 2026-05-13 起：基础四属性即时按 calcChildBaseStats(aptitude, level) 重算，
       // 不再读 children.max_hp/atk/def/spd 字段；规避公式调整后存量子女不刷新的问题
       const base = calcChildBaseStats(c.aptitude as ChildAptitude, c.level)
+      // 与战斗 buffedXxx 同公式：(base + 装备) × (1 + 天赋 %)，让面板显示与助战实际战斗值一致
+      const tb = calcChildTalentBonusPct(c.awakened_talents)
+      const eqAtk = Math.floor(eq.atk), eqDef = Math.floor(eq.def)
+      const eqHp = Math.floor(eq.max_hp), eqSpd = Math.floor(eq.spd)
       return {
         id: c.id,
         name: c.name,
@@ -57,12 +61,13 @@ export default defineEventHandler(async (event) => {
         level: c.level,
         stage: c.stage,
         stageName: STAGE_NAMES[c.stage] || c.stage,
-        // 列表显示"含装备"的总值（详情页另有"裸 + 装备加成"分离显示）
-        maxHp: base.maxHp + Math.floor(eq.max_hp),
-        atk:   base.atk   + Math.floor(eq.atk),
-        def:   base.def   + Math.floor(eq.def),
-        spd:   base.spd   + Math.floor(eq.spd),
-        equipBonus: { atk: Math.floor(eq.atk), def: Math.floor(eq.def), maxHp: Math.floor(eq.max_hp), spd: Math.floor(eq.spd) },
+        // 列表显示"含装备 + 天赋"的最终战斗值（与 fight.post.ts buffedXxx 同口径）
+        maxHp: Math.floor((base.maxHp + eqHp)  * (1 + tb.hpPct  / 100)),
+        atk:   Math.floor((base.atk   + eqAtk) * (1 + tb.atkPct / 100)),
+        def:   Math.floor((base.def   + eqDef) * (1 + tb.defPct / 100)),
+        spd:   Math.floor((base.spd   + eqSpd) * (1 + tb.spdPct / 100)),
+        equipBonus: { atk: eqAtk, def: eqDef, maxHp: eqHp, spd: eqSpd },
+        talentBonusPct: tb,
         isBattling: c.is_battling,
         hasLeftHome: c.has_left_home,
         permanentBuffPct: Number(c.permanent_buff_pct || 0),

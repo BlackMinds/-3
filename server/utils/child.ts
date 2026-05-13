@@ -5,6 +5,7 @@ import { rand } from '~/server/utils/random'
 import {
   rollTalentByAptitude,
   CHILD_TALENTS,
+  CHILD_TALENT_MAP,
   type ChildAptitude,
   type ChildTalent,
 } from '~/server/engine/childTalentData'
@@ -191,6 +192,26 @@ export function calcChildBaseStats(
     spirit: Math.floor(5 + level * 0.5 * mul),
     resistCtrl: +(0.05 + level * 0.0005 * mul).toFixed(4),
   }
+}
+
+// 子女天赋四维百分比加成累加（与 fight.post.ts buildedXxx 同公式）
+// 返回百分点（如 21 表示 +21%），调用方按 × (1 + pct/100) 应用
+export function calcChildTalentBonusPct(awakenedTalents: any[] | null | undefined): {
+  atkPct: number; defPct: number; hpPct: number; spdPct: number
+} {
+  let atkPct = 0, defPct = 0, hpPct = 0, spdPct = 0
+  if (Array.isArray(awakenedTalents)) {
+    for (const t of awakenedTalents) {
+      const def = CHILD_TALENT_MAP[t.talent_id]
+      if (!def) continue
+      const e = def.effect || {}
+      atkPct += e.ATK_percent || 0
+      defPct += e.DEF_percent || 0
+      hpPct  += e.HP_percent  || 0
+      spdPct += e.SPD_percent || 0
+    }
+  }
+  return { atkPct, defPct, hpPct, spdPct }
 }
 
 // 阶段判定

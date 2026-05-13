@@ -20,10 +20,10 @@
         <div class="section">
           <div class="row"><span class="lbl">阶段</span><span class="val">{{ detail.stageName }} · Lv.{{ detail.level }}</span></div>
           <div class="row"><span class="lbl">灵根</span><span class="val">{{ rootName(detail.spiritualRoot) }}灵根</span></div>
-          <div class="row"><span class="lbl">气血</span><span class="val">{{ detail.maxHp + equipBonus.max_hp }}<span v-if="equipBonus.max_hp" class="eq-bonus">(+{{ equipBonus.max_hp }})</span></span></div>
-          <div class="row"><span class="lbl">攻击</span><span class="val">{{ detail.atk + equipBonus.atk }}<span v-if="equipBonus.atk" class="eq-bonus">(+{{ equipBonus.atk }})</span></span></div>
-          <div class="row"><span class="lbl">防御</span><span class="val">{{ detail.def + equipBonus.def }}<span v-if="equipBonus.def" class="eq-bonus">(+{{ equipBonus.def }})</span></span></div>
-          <div class="row"><span class="lbl">身法</span><span class="val">{{ detail.spd + equipBonus.spd }}<span v-if="equipBonus.spd" class="eq-bonus">(+{{ equipBonus.spd }})</span></span></div>
+          <div class="row"><span class="lbl">气血</span><span class="val">{{ finalStats.maxHp }}<span v-if="finalStats.maxHp - detail.maxHp" class="eq-bonus">(装备 +{{ equipBonus.max_hp }}{{ talentPct.hpPct ? ` / 天赋 +${talentPct.hpPct}%` : '' }})</span></span></div>
+          <div class="row"><span class="lbl">攻击</span><span class="val">{{ finalStats.atk }}<span v-if="finalStats.atk - detail.atk" class="eq-bonus">(装备 +{{ equipBonus.atk }}{{ talentPct.atkPct ? ` / 天赋 +${talentPct.atkPct}%` : '' }})</span></span></div>
+          <div class="row"><span class="lbl">防御</span><span class="val">{{ finalStats.def }}<span v-if="finalStats.def - detail.def" class="eq-bonus">(装备 +{{ equipBonus.def }}{{ talentPct.defPct ? ` / 天赋 +${talentPct.defPct}%` : '' }})</span></span></div>
+          <div class="row"><span class="lbl">身法</span><span class="val">{{ finalStats.spd }}<span v-if="finalStats.spd - detail.spd" class="eq-bonus">(装备 +{{ equipBonus.spd }}{{ talentPct.spdPct ? ` / 天赋 +${talentPct.spdPct}%` : '' }})</span></span></div>
           <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate + equipBonus.crit_rate) }}<span v-if="equipBonus.crit_rate" class="eq-bonus">(+{{ pct(equipBonus.crit_rate) }})</span></span></div>
           <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg + equipBonus.crit_dmg) }}<span v-if="equipBonus.crit_dmg" class="eq-bonus">(+{{ pct(equipBonus.crit_dmg) }})</span></span></div>
           <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge + equipBonus.dodge) }}<span v-if="equipBonus.dodge" class="eq-bonus">(+{{ pct(equipBonus.dodge) }})</span></span></div>
@@ -437,6 +437,24 @@ const equipBonus = computed(() => {
   // 整数字段四舍五入
   for (const k of ['atk', 'def', 'max_hp', 'spd', 'spirit']) bonus[k] = Math.floor(bonus[k])
   return bonus
+})
+
+// 天赋加成 % — 与 fight.post.ts buffedXxx 同公式 (base + eq) × (1 + pct/100)
+// 后端 server/api/child/detail/[id].get.ts 已返回 talentBonusPct，保证助战实际战斗值与面板一致
+const talentPct = computed(() => {
+  return (detail.value as any)?.talentBonusPct || { atkPct: 0, defPct: 0, hpPct: 0, spdPct: 0 }
+})
+
+// 含「装备 + 天赋」的最终战斗值（= helper.calcChildTalentBonusPct 同公式）
+const finalStats = computed(() => {
+  if (!detail.value) return { maxHp: 0, atk: 0, def: 0, spd: 0 }
+  const eb = equipBonus.value, tp = talentPct.value
+  return {
+    maxHp: Math.floor((detail.value.maxHp + eb.max_hp) * (1 + tp.hpPct / 100)),
+    atk:   Math.floor((detail.value.atk   + eb.atk)    * (1 + tp.atkPct / 100)),
+    def:   Math.floor((detail.value.def   + eb.def)    * (1 + tp.defPct / 100)),
+    spd:   Math.floor((detail.value.spd   + eb.spd)    * (1 + tp.spdPct / 100)),
+  }
 })
 
 function pct(v: any): string {

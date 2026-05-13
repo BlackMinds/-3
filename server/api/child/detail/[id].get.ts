@@ -2,7 +2,7 @@
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
-import { getChildById, APTITUDE_NAMES, calcChildBaseStats } from '~/server/utils/child'
+import { getChildById, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct } from '~/server/utils/child'
 import { CHILD_TALENT_MAP, type ChildAptitude } from '~/server/engine/childTalentData'
 import { CHILD_SKILL_MAP } from '~/server/engine/childSkillData'
 
@@ -50,10 +50,13 @@ export default defineEventHandler(async (event) => {
         stage: c.stage,
         stageName: STAGE_NAMES[c.stage] || c.stage,
         // 2026-05-13 起：基础四属性即时按 calcChildBaseStats 重算，与 list.get.ts 保持一致
+        // 这里 maxHp/atk/def/spd 仍是「裸 base」，组件配合 talentBonusPct + equipBonus 算最终战斗值
         ...(() => {
           const b = calcChildBaseStats(c.aptitude as ChildAptitude, c.level)
           return { maxHp: b.maxHp, atk: b.atk, def: b.def, spd: b.spd }
         })(),
+        // 天赋四维百分比加成（与 fight.post.ts buffedXxx 同公式）— 前端用 (base + eq) × (1 + pct/100)
+        talentBonusPct: calcChildTalentBonusPct(c.awakened_talents),
         critRate: Number(c.crit_rate || 0),
         critDmg: Number(c.crit_dmg || 0),
         dodge: Number(c.dodge || 0),
