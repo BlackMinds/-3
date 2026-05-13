@@ -12,7 +12,7 @@ import { generateSecretRealmDrops, generateSecretRealmEquip, distributeEquipment
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_SELL_PRICES } from '~/server/utils/equipment'
-import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT } from '~/shared/balance'
+import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -258,6 +258,23 @@ async function buildPlayerBattleStats(char: any): Promise<{
         nonPassiveDefPct += effects.all_percent / 100
         nonPassiveHpPct  += effects.all_percent / 100
         nonPassiveSpdPct += effects.all_percent / 100
+      }
+    }
+  }
+
+  // 道侣仙缘印记 — 四维 +2%~+12%（与 fight.post.ts / 面板 mainStats 同口径）
+  {
+    const { rows: compRows } = await pool.query(
+      `SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1`,
+      [char.id]
+    )
+    if (compRows[0]?.seal_level > 0) {
+      const sealPct = COMPANION_SEAL_PCT[Math.min(compRows[0].seal_level, 5)] || 0
+      if (sealPct > 0) {
+        nonPassiveAtkPct += sealPct
+        nonPassiveDefPct += sealPct
+        nonPassiveHpPct  += sealPct
+        nonPassiveSpdPct += sealPct
       }
     }
   }

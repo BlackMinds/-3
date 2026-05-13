@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { ALL_MAPS, buildPlayerStats } from '~/server/api/battle/fight.post'
 import { buildEquippedSkillInfo } from '~/server/engine/battleEngine'
+import { getCompanionSealPct } from '~/server/utils/companion'
 
 /**
  * 离线挂机开启 v2：快照角色完整战斗输入
@@ -65,8 +66,12 @@ export default defineEventHandler(async (event) => {
       char._sectSkills = sectSkillRows
     }
 
-    const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows)
+    // 道侣仙缘印记 buff（与 fight.post.ts 同口径）
+    const sealPct = await getCompanionSealPct(pool, char.id)
+    if (sealPct > 0) (char as any)._companion_seal_pct = sealPct
+
     const equippedSkills = buildEquippedSkillInfo(skillRows)
+    const { stats: playerStats, expBonusPercent, luckPercent } = buildPlayerStats(char, equipRows, buffRows, caveRows, equippedSkills)
 
     const snapshot = {
       version: 2,

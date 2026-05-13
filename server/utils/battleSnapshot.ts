@@ -15,7 +15,7 @@ import { getRealmBonusAtLevel } from '~/server/engine/realmData'
 import { getSectLevelConfig, getSectSkill, calcSectSkillEffect } from '~/server/engine/sectData'
 import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo, type PlayerAwakenState } from '~/server/engine/battleEngine'
 import { aggregateEquipmentSetInfo } from '~/server/engine/equipSetData'
-import { WEAPON_BONUS } from '~/shared/balance'
+import { WEAPON_BONUS, COMPANION_SEAL_PCT } from '~/shared/balance'
 import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
 
 export interface SnapshotOptions {
@@ -96,6 +96,18 @@ export async function buildCharacterSnapshot(
       [characterId]
     )
     sectSkills = ssRows
+  }
+
+  // 7. 道侣仙缘印记（与 fight.post.ts / 面板 mainStats 同口径）
+  let companionSealPct = 0
+  {
+    const { rows: compRows } = await pool.query(
+      `SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1`,
+      [characterId]
+    )
+    if (compRows[0]?.seal_level > 0) {
+      companionSealPct = COMPANION_SEAL_PCT[Math.min(compRows[0].seal_level, 5)] || 0
+    }
   }
 
   // ===== 开始构建属性 =====
@@ -455,6 +467,14 @@ export async function buildCharacterSnapshot(
   if (timedAgg.hp_pct)  nonPassiveHpPct  += timedAgg.hp_pct / 100
   if (timedAgg.spd_pct) nonPassiveSpdPct += timedAgg.spd_pct / 100
   if (timedAgg.crit_rate) critRate += timedAgg.crit_rate / 100
+
+  // 道侣仙缘印记 — 四维 +2%~+12%（与 fight.post.ts / 面板 mainStats 同口径）
+  if (companionSealPct > 0) {
+    nonPassiveAtkPct += companionSealPct
+    nonPassiveDefPct += companionSealPct
+    nonPassiveHpPct  += companionSealPct
+    nonPassiveSpdPct += companionSealPct
+  }
 
   // 加法池一次乘（不含功法被动 — buildPvpFighter 把功法 % 加进 _pctSum 后再一次乘）
   const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd

@@ -18,6 +18,7 @@ import {
 } from '~/server/engine/towerData'
 import { checkAchievements } from '~/server/engine/achievementData'
 import { ACTIVE_SKILLS } from '~/server/engine/skillData'
+import { COMPANION_SEAL_PCT } from '~/shared/balance'
 // "今日"判定全部走 SQL 层 (NOW() AT TIME ZONE 'UTC')::DATE，北京时间 8:00 重置（与秘境一致）
 
 // v3.9 紫品主修池（仅通天塔每 10 层节点掉落）
@@ -122,8 +123,18 @@ export default defineEventHandler(async (event) => {
       ;(char as any)._sectSkills = sectSkillRows
     }
 
+    // 道侣仙缘印记 buff：已正式结侣后获得 +2%~+12% 全属性（与 fight.post.ts 同口径）
+    const { rows: compRows } = await pool.query(
+      'SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1',
+      [char.id]
+    )
+    if (compRows[0]?.seal_level > 0) {
+      const pct = COMPANION_SEAL_PCT[Math.min(compRows[0].seal_level, 5)] || 0
+      if (pct > 0) (char as any)._companion_seal_pct = pct
+    }
+
     const equippedSkills = buildEquippedSkillInfo(skillRows)
-    const { stats: playerStats } = buildPlayerStats(char, equipRows, buffRows, caveRows)
+    const { stats: playerStats } = buildPlayerStats(char, equipRows, buffRows, caveRows, equippedSkills)
 
     // 生成怪物（应用 trait）
     const setup = buildFloorMonsters(floor)

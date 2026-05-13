@@ -5933,6 +5933,9 @@ onMounted(async () => {
   }
   // 仙缘印记加成要算进 mainStats，不阻塞首屏；没结道侣 list 为空也无副作用
   companionStore.loadCompanions().catch(() => {});
+  // 功法被动 hp%/atk%/def% 也要算进 mainStats（passHpPct 等），首屏必须加载
+  // 否则停在角色 tab 时面板加成明细漏「功法被动」行，与战斗 maxHp 不一致
+  loadSkillInventory().catch(() => {});
   // 天道造化轮询：120 秒一次（合并 pending + broadcast 调用）
   eventStore.startPolling();
   // P5: 以下数据按需加载（切到对应 tab 时 watch 触发）

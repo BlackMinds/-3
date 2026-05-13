@@ -21,6 +21,7 @@ import {
   type GiftReaction,
 } from '~/server/engine/companionData'
 import { GIFT_RECIPE_MAP, calcGiftIntimacy } from '~/server/engine/giftRecipeData'
+import { COMPANION_SEAL_PCT } from '~/shared/balance'
 
 // ============================================================
 // 类型
@@ -143,6 +144,17 @@ export async function getOfficialCompanion(pool: Pool, characterId: number): Pro
     [characterId]
   )
   return (rows[0] as CompanionRow) || null
+}
+
+// 取角色当前正式道侣的仙缘印记加成（小数，0.12 = 12%；无道侣则 0）
+// 所有战斗入口（fight / tower / dummy / offline / battleSnapshot 等）共用
+export async function getCompanionSealPct(pool: Pool, characterId: number): Promise<number> {
+  const { rows } = await pool.query(
+    `SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1`,
+    [characterId]
+  )
+  if (!rows[0]?.seal_level) return 0
+  return COMPANION_SEAL_PCT[Math.min(rows[0].seal_level, 5)] || 0
 }
 
 export async function countUnmarriedCompanions(pool: Pool, characterId: number): Promise<number> {

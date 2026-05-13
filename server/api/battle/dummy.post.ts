@@ -12,6 +12,7 @@ import {
   type MonsterTemplate,
 } from '~/server/engine/battleEngine'
 import { buildPlayerStats } from '~/server/api/battle/fight.post'
+import { getCompanionSealPct } from '~/server/utils/companion'
 
 interface DummyStatsInput {
   maxHp?: number
@@ -76,8 +77,12 @@ export default defineEventHandler(async (event) => {
       char._sectSkills = sectSkillRows
     }
 
+    // 道侣仙缘印记 buff（与 fight.post.ts 同口径）
+    const sealPct = await getCompanionSealPct(pool, char.id)
+    if (sealPct > 0) (char as any)._companion_seal_pct = sealPct
+
     const equippedSkills = buildEquippedSkillInfo(skillRows)
-    const { stats: playerStats } = buildPlayerStats(char, equipRows, buffRows, caveRows)
+    const { stats: playerStats } = buildPlayerStats(char, equipRows, buffRows, caveRows, equippedSkills)
 
     // 构造木桩 BattlerStats（直接采纳玩家输入，跳过 generateMonsterStats）
     const validElements = new Set(['metal', 'wood', 'water', 'fire', 'earth'])
