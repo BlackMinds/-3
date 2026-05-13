@@ -545,72 +545,9 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
-    if (eq.equipment_version === 5) continue  // V5 装备已由 computeV5EquipmentDelta 聚合
-    if (eq.set_id) {
-      equipSetCounts[eq.set_id] = (equipSetCounts[eq.set_id] || 0) + 1
-    }
-    if (eq.slot === 'weapon' && eq.weapon_type) {
-      playerWeaponType = eq.weapon_type
-    }
-    const enhLv = eq.enhance_level || 0
-    // 属性1：受强化
-    applyEquipPrimary(eq.primary_stat, Math.floor(eq.primary_value * (1 + enhLv * 0.10)))
-    // 属性2：不受强化（v4.0 新增，老装备 NULL 跳过）
-    if (eq.primary_stat_2 && eq.primary_value_2) {
-      applyEquipPrimary(eq.primary_stat_2, eq.primary_value_2)
-    }
 
-    // 武器类型加成
-    if (eq.weapon_type && WEAPON_BONUS[eq.weapon_type]) {
-      const wb = WEAPON_BONUS[eq.weapon_type]
-      if (wb.ATK_pct) weaponAtkPct += wb.ATK_pct
-      if (wb.SPD_pct) weaponSpdPct += wb.SPD_pct
-      if (wb.SPIRIT_pct) weaponSpiritPct += wb.SPIRIT_pct
-      if (wb.CRIT_RATE_flat) weaponCritRateFlat += wb.CRIT_RATE_flat
-      if (wb.CRIT_DMG_flat) weaponCritDmgFlat += wb.CRIT_DMG_flat
-      if (wb.LIFESTEAL_flat) weaponLifestealFlat += wb.LIFESTEAL_flat
-    }
-
-    const subs = typeof eq.sub_stats === 'string' ? JSON.parse(eq.sub_stats) : (eq.sub_stats || [])
-    for (const sub of subs) {
-      if (sub.stat === 'ATK') atk += sub.value
-      else if (sub.stat === 'DEF') def += sub.value
-      else if (sub.stat === 'HP') maxHp += sub.value
-      else if (sub.stat === 'SPD') spd += sub.value
-      else if (sub.stat === 'CRIT_RATE') critRate += sub.value / 100
-      else if (sub.stat === 'CRIT_DMG') critDmg += sub.value / 100
-      else if (sub.stat === 'LIFESTEAL') lifesteal += sub.value / 100
-      else if (sub.stat === 'DODGE') dodge += sub.value / 100
-      else if (sub.stat === 'ARMOR_PEN') armorPen += sub.value
-      else if (sub.stat === 'ACCURACY') accuracy += sub.value
-      else if (sub.stat === 'METAL_DMG') elementDmg.metal += sub.value
-      else if (sub.stat === 'WOOD_DMG') elementDmg.wood += sub.value
-      else if (sub.stat === 'WATER_DMG') elementDmg.water += sub.value
-      else if (sub.stat === 'FIRE_DMG') elementDmg.fire += sub.value
-      else if (sub.stat === 'EARTH_DMG') elementDmg.earth += sub.value
-      else if (sub.stat === 'SPIRIT') spirit += sub.value
-      else if (sub.stat === 'SPIRIT_DENSITY') spiritDensity += sub.value
-      else if (sub.stat === 'LUCK') luck += sub.value
-      else if (sub.stat === 'ATK_PCT') equipAtkPct += sub.value
-      else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
-      else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
-      else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
-      else if (sub.stat === 'SPIRIT_PCT') weaponSpiritPct += sub.value      // v4.0 神识%
-      else if (sub.stat === 'DOT_DMG_PCT') equipDotDmgPct += sub.value / 100
-      else if (sub.stat === 'REFLECT_PCT') equipReflectPct += sub.value / 100
-      // v4.0 五行抗性（接入 stats.resists.* → battleEngine 已用作 DOT 减免 + 元素减伤）
-      else if (sub.stat === 'METAL_RES') equipResist.metal += sub.value / 100
-      else if (sub.stat === 'WOOD_RES')  equipResist.wood  += sub.value / 100
-      else if (sub.stat === 'WATER_RES') equipResist.water += sub.value / 100
-      else if (sub.stat === 'FIRE_RES')  equipResist.fire  += sub.value / 100
-      else if (sub.stat === 'EARTH_RES') equipResist.earth += sub.value / 100
-      // v4.0 控制抗性（接入 stats.resists.ctrl → battleEngine 已用作 freeze/stun/root 抵抗）
-      else if (sub.stat === 'CTRL_RES') equipResist.ctrl += sub.value / 100
-      // v4.0 控制概率（接入 stats.ctrlChance → battleEngine 在 status apply 处加成）
-      else if (sub.stat === 'CTRL_CHANCE') equipCtrlChance += sub.value / 100
-    }
-
-    // v1.2 附灵聚合（weapon/armor/pendant + v1.3 ring 主修增幅）
+    // === 附灵聚合（V4/V5 通用）===
+    // 必须在 V5 装备跳过判断之前，否则 V5 装备的反伤/会心/burn 等 awaken 全部失效
     const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
     if (aw && aw.stat) {
       const v = Number(aw.value) || 0
@@ -721,6 +658,72 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
           break
       }
     }
+
+    if (eq.equipment_version === 5) continue  // V5 装备已由 computeV5EquipmentDelta 聚合
+    if (eq.set_id) {
+      equipSetCounts[eq.set_id] = (equipSetCounts[eq.set_id] || 0) + 1
+    }
+    if (eq.slot === 'weapon' && eq.weapon_type) {
+      playerWeaponType = eq.weapon_type
+    }
+    const enhLv = eq.enhance_level || 0
+    // 属性1：受强化
+    applyEquipPrimary(eq.primary_stat, Math.floor(eq.primary_value * (1 + enhLv * 0.10)))
+    // 属性2：不受强化（v4.0 新增，老装备 NULL 跳过）
+    if (eq.primary_stat_2 && eq.primary_value_2) {
+      applyEquipPrimary(eq.primary_stat_2, eq.primary_value_2)
+    }
+
+    // 武器类型加成
+    if (eq.weapon_type && WEAPON_BONUS[eq.weapon_type]) {
+      const wb = WEAPON_BONUS[eq.weapon_type]
+      if (wb.ATK_pct) weaponAtkPct += wb.ATK_pct
+      if (wb.SPD_pct) weaponSpdPct += wb.SPD_pct
+      if (wb.SPIRIT_pct) weaponSpiritPct += wb.SPIRIT_pct
+      if (wb.CRIT_RATE_flat) weaponCritRateFlat += wb.CRIT_RATE_flat
+      if (wb.CRIT_DMG_flat) weaponCritDmgFlat += wb.CRIT_DMG_flat
+      if (wb.LIFESTEAL_flat) weaponLifestealFlat += wb.LIFESTEAL_flat
+    }
+
+    const subs = typeof eq.sub_stats === 'string' ? JSON.parse(eq.sub_stats) : (eq.sub_stats || [])
+    for (const sub of subs) {
+      if (sub.stat === 'ATK') atk += sub.value
+      else if (sub.stat === 'DEF') def += sub.value
+      else if (sub.stat === 'HP') maxHp += sub.value
+      else if (sub.stat === 'SPD') spd += sub.value
+      else if (sub.stat === 'CRIT_RATE') critRate += sub.value / 100
+      else if (sub.stat === 'CRIT_DMG') critDmg += sub.value / 100
+      else if (sub.stat === 'LIFESTEAL') lifesteal += sub.value / 100
+      else if (sub.stat === 'DODGE') dodge += sub.value / 100
+      else if (sub.stat === 'ARMOR_PEN') armorPen += sub.value
+      else if (sub.stat === 'ACCURACY') accuracy += sub.value
+      else if (sub.stat === 'METAL_DMG') elementDmg.metal += sub.value
+      else if (sub.stat === 'WOOD_DMG') elementDmg.wood += sub.value
+      else if (sub.stat === 'WATER_DMG') elementDmg.water += sub.value
+      else if (sub.stat === 'FIRE_DMG') elementDmg.fire += sub.value
+      else if (sub.stat === 'EARTH_DMG') elementDmg.earth += sub.value
+      else if (sub.stat === 'SPIRIT') spirit += sub.value
+      else if (sub.stat === 'SPIRIT_DENSITY') spiritDensity += sub.value
+      else if (sub.stat === 'LUCK') luck += sub.value
+      else if (sub.stat === 'ATK_PCT') equipAtkPct += sub.value
+      else if (sub.stat === 'DEF_PCT') equipDefPct += sub.value
+      else if (sub.stat === 'HP_PCT') equipHpPct += sub.value
+      else if (sub.stat === 'SPD_PCT') equipSpdPct += sub.value
+      else if (sub.stat === 'SPIRIT_PCT') weaponSpiritPct += sub.value      // v4.0 神识%
+      else if (sub.stat === 'DOT_DMG_PCT') equipDotDmgPct += sub.value / 100
+      else if (sub.stat === 'REFLECT_PCT') equipReflectPct += sub.value / 100
+      // v4.0 五行抗性（接入 stats.resists.* → battleEngine 已用作 DOT 减免 + 元素减伤）
+      else if (sub.stat === 'METAL_RES') equipResist.metal += sub.value / 100
+      else if (sub.stat === 'WOOD_RES')  equipResist.wood  += sub.value / 100
+      else if (sub.stat === 'WATER_RES') equipResist.water += sub.value / 100
+      else if (sub.stat === 'FIRE_RES')  equipResist.fire  += sub.value / 100
+      else if (sub.stat === 'EARTH_RES') equipResist.earth += sub.value / 100
+      // v4.0 控制抗性（接入 stats.resists.ctrl → battleEngine 已用作 freeze/stun/root 抵抗）
+      else if (sub.stat === 'CTRL_RES') equipResist.ctrl += sub.value / 100
+      // v4.0 控制概率（接入 stats.ctrlChance → battleEngine 在 status apply 处加成）
+      else if (sub.stat === 'CTRL_CHANCE') equipCtrlChance += sub.value / 100
+    }
+
   }
 
   // 武器类型 + 装备副属性 X_PCT 进加法池（spirit 不在 4 项主属性池里，单独乘）
@@ -963,7 +966,7 @@ export default defineEventHandler(async (event) => {
       )
       if (childRows[0]) {
         const c = childRows[0]
-        const STAGE_MUL: Record<string, number> = { youth: 0.3, adult_youth: 0.6, adult: 1.0 }
+        const STAGE_MUL: Record<string, number> = { youth: 0.5, adult_youth: 0.8, adult: 1.0 }
         const stageMul = STAGE_MUL[c.stage] || 0
         if (stageMul > 0) {
           const { CHILD_TALENT_MAP } = await import('~/server/engine/childTalentData')
@@ -1038,7 +1041,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 离家子女永久 buff：所有 has_left_home 子女的 permanent_buff_pct 求和后给本体全属性放大
-    // (design 5.8: 每 10 天回家 +0.5%, 上限单子女 20%)
+    // (design 5.8: 每 3 天回家 +0.5%, 上限单子女 20%)
     {
       const { rows: leftRows } = await pool.query(
         `SELECT COALESCE(SUM(permanent_buff_pct), 0)::numeric AS total
@@ -1147,26 +1150,20 @@ export default defineEventHandler(async (event) => {
       // v3.9: 把主修内蕴被动叠加进 awaken（与 v1.3 灵戒同字段共池，引擎复用 mainSkill* 钩子）
       applyInnateMainToAwaken((playerStats as any).awaken, equippedSkills.activeSkill)
 
-      // 助战子女 cap + 组装：cap 用 playerStats（运行时合成）而非 char.* (DB 基础值)
-      // 否则子女 50w 真实血量会被 cap 到 char.max_hp(=500)×0.7=350 这种小值
+      // 助战子女属性组装：仅按阶段倍率缩水，不再对标本体 70% cap
+      // (2026-05-13 小夏决策：去除 70% cap，让高资质子女可超越本体)
       if (_assistPrep) {
         const a = _assistPrep
-        const cap = 0.70
-        const psCritR = Number((playerStats as any).crit_rate || 0)
-        const psCritD = Number((playerStats as any).crit_dmg || 1)
-        const psDodge = Number((playerStats as any).dodge || 0)
-        const psLs    = Number((playerStats as any).lifesteal || 0)
-        const psRctrl = Number((playerStats as any).resists?.ctrl || 0)
-        const assistAtk = Math.floor(Math.min(a.buffedAtk * a.stageMul, playerStats.atk * cap))
-        const assistDef = Math.floor(Math.min(a.buffedDef * a.stageMul, playerStats.def * cap))
-        const assistHp  = Math.floor(Math.min(a.buffedHp  * a.stageMul, playerStats.maxHp * cap))
-        const assistSpd = Math.floor(Math.min(a.buffedSpd * a.stageMul, playerStats.spd * cap))
-        const assistCritRate = Math.min(a.childCritR * a.stageMul, psCritR * cap)
-        const assistCritDmg  = Math.max(1, 1 + Math.min(Math.max(0, a.childCritD - 1) * a.stageMul, Math.max(0, psCritD - 1) * cap))
-        const assistDodgeV   = Math.min(a.childDodge * a.stageMul, psDodge * cap)
-        const assistLs       = Math.min(a.childLs    * a.stageMul, psLs    * cap)
-        const assistRctrl    = Math.min(a.childRctrl * a.stageMul, psRctrl * cap)
-        const assistSpirit   = Math.floor(Math.min(a.childSpirit * a.stageMul, (playerStats.spirit || 0) * cap))
+        const assistAtk = Math.floor(a.buffedAtk * a.stageMul)
+        const assistDef = Math.floor(a.buffedDef * a.stageMul)
+        const assistHp  = Math.floor(a.buffedHp  * a.stageMul)
+        const assistSpd = Math.floor(a.buffedSpd * a.stageMul)
+        const assistCritRate = a.childCritR * a.stageMul
+        const assistCritDmg  = Math.max(1, 1 + Math.max(0, a.childCritD - 1) * a.stageMul)
+        const assistDodgeV   = a.childDodge * a.stageMul
+        const assistLs       = a.childLs    * a.stageMul
+        const assistRctrl    = a.childRctrl * a.stageMul
+        const assistSpirit   = Math.floor(a.childSpirit * a.stageMul)
         ;(char as any)._duo_assist_stats = {
           name: a.name,
           maxHp: assistHp, hp: assistHp,

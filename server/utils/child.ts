@@ -113,7 +113,7 @@ export function generateChildName(
 }
 
 // ============================================================
-// 子女属性计算（cap = 父母 70%）
+// 子女属性计算
 // ============================================================
 
 // 资质 → 属性倍率（参考 5.5.2）
@@ -160,8 +160,8 @@ function rollRange(r: [number, number]): number {
 const STAGE_MULTIPLIER: Record<string, number> = {
   infant: 0,        // 婴幼期不能出战
   child: 0,         // 童年期不能出战
-  youth: 0.3,       // 少年 30%
-  adult_youth: 0.6, // 青年 60%
+  youth: 0.5,       // 少年 50%（2026-05-13 上调，原 30%，让体验期更早有存在感）
+  adult_youth: 0.8, // 青年 80%（2026-05-13 上调，原 60%）
   adult: 1.0,       // 成年 100%
   grown: 1.0,       // 已离家 (回家时按 1.0)
 }
@@ -202,24 +202,24 @@ export function getStageByLevel(level: number): string {
   return 'adult'
 }
 
-// 计算子女出战时的属性贡献（已应用 cap 70%）
+// 计算子女出战时的属性贡献（仅按阶段倍率缩水，2026-05-13 起去除 70% cap）
+// 注：实际战斗已不调此函数，fight.post.ts 自行装配；保留以备脚本/快照使用。
 export function calcChildBattleStats(
   child: ChildRow,
-  parentAtk: number,
-  parentDef: number,
-  parentMaxHp: number,
-  parentSpd: number
+  _parentAtk: number,
+  _parentDef: number,
+  _parentMaxHp: number,
+  _parentSpd: number
 ) {
   const stageMul = STAGE_MULTIPLIER[child.stage] || 0
   if (stageMul === 0) {
     return { atk: 0, def: 0, maxHp: 0, spd: 0, active: false }
   }
-  const cap = 0.70  // 文档 v1.14
   return {
-    atk: Math.floor(Math.min(child.atk * stageMul, parentAtk * cap)),
-    def: Math.floor(Math.min(child.def * stageMul, parentDef * cap)),
-    maxHp: Math.floor(Math.min(child.max_hp * stageMul, parentMaxHp * cap)),
-    spd: Math.floor(Math.min(child.spd * stageMul, parentSpd * cap)),
+    atk: Math.floor(child.atk * stageMul),
+    def: Math.floor(child.def * stageMul),
+    maxHp: Math.floor(child.max_hp * stageMul),
+    spd: Math.floor(child.spd * stageMul),
     active: true,
   }
 }

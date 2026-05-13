@@ -1722,7 +1722,7 @@ ALTER TABLE companions ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT DEFAULT N
 -- ========================================
 -- 子女二级属性 (2026-05-12)
 -- 让子女有完整的会心/闪避/吸血/神识/控抗，与玩家本体属性体系对齐
--- 助战时按 cap 70% 加到本体
+-- 助战时作为独立单位上场（duoBattleEngine），属性按阶段倍率缩水，无 cap（2026-05-13 起去除 70% cap）
 -- ========================================
 ALTER TABLE children ADD COLUMN IF NOT EXISTS crit_rate   DECIMAL(5,4) NOT NULL DEFAULT 0.0300;
 ALTER TABLE children ADD COLUMN IF NOT EXISTS crit_dmg    DECIMAL(5,4) NOT NULL DEFAULT 1.0000;
@@ -1792,3 +1792,22 @@ ALTER TABLE character_equipment ADD  CONSTRAINT character_equipment_v5_required_
       wuxing_prefix IS NOT NULL AND wuxing_affixes IS NOT NULL
     )
   );
+
+-- ========================================
+-- 放弃子女历史 (2026-05-13, design/system-companion.md 5.9)
+-- ========================================
+-- 玩家可消耗 断缘符 + 灵石 放弃任一子女（DELETE FROM children）。
+-- 离家子女被放弃后 permanent_buff_pct 一并消失，buff 不转存。
+-- 用本表保留历史用于 FAQ / 成就追踪 "曾放弃 N 位子女"。
+CREATE TABLE IF NOT EXISTS child_abandon_history (
+  id                    SERIAL PRIMARY KEY,
+  character_id          INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  child_name            VARCHAR(8) NOT NULL,
+  aptitude              SMALLINT NOT NULL,
+  level                 INT NOT NULL,
+  stage                 VARCHAR(10) NOT NULL,
+  permanent_buff_pct    DECIMAL(5,4) NOT NULL DEFAULT 0,  -- 被放弃前累计的永久 buff（仅做记录）
+  had_left_home         BOOLEAN NOT NULL DEFAULT FALSE,
+  abandoned_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_child_abandon_char ON child_abandon_history(character_id);
