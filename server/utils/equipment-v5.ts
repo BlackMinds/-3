@@ -144,37 +144,26 @@ function calcBaseStat1Value(stat: string, tier: number, rarity: V5Rarity, level:
   return Math.max(1, Math.floor(value))
 }
 
-// --------------------------- 五行词条数值（修复版，2026-05-12）---------------------------
-
-// 旧版查 V5_PER_WUXING_AFFIX_T15 表，但表 key 是 atk/spirit 等「面板数值」，
-// 与 V5_WUXING_AFFIX_TABLE 用的 atk_pct/spirit_pct 等「百分比词条」对不上 → 返回 0。
-// (Y) 方案：沿用 V4 SUB_STAT_RANGE_V4 + 品质乘子，单条 random 落在 [min,max] × qualityMul × tier_mul。
-// tier_mul 用 V5_TIER_WEIGHT / 20：T15 = 1.0、T10 = 0.5、T1 = 0.05；与 base_stat_1 的 tier 缩放一致。
-
-function calcWuxingAffixValue(stat: string, tier: number, rarity: V5Rarity = 'red'): number {
-  const [min, max] = v5StatRange(stat)
-  const rarityIdx = RARITY_IDX_MAP[rarity] ?? 0
-  const qualityMul = 1 + rarityIdx * 0.15
-  const tierMul = getV5TierWeight(tier) / 20
-  const base = Math.floor(Math.random() * (max - min + 1)) + min
-  return Math.max(1, Math.ceil(base * qualityMul * tierMul))
-}
-
-// --------------------------- 强化词条数值（V5.0.3 副词条公式） ---------------------------
+// --------------------------- 五行词条数值（V5.0.3 大数值规模，2026-05-13 互换）---------------------------
 
 /**
- * 单条强化词条数值
+ * 单条五行词条数值（V5.0.3 数值规模 — 互换后的主力贡献者）
  *
- * V5.0.3 规则（区分 flat 和 pct）：
+ * 规则：
  * - flat 类（atk/def/hp/spd/spirit/luck/spirit_density/accuracy）：
  *     value = floor(EQUIP_PRIMARY_BASE[stat] × tier_weight × RARITY_STAT_MUL × V5_SUB_STAT_FLAT_RATIO)
- *     T 级影响 flat 副词条数值（与 V5.0.2「T 级只影响 base_stat_1 + wuxing_affix」不同；V5.0.3 修正）
- * - 百分比类：random [min, max] × V5_RARITY_TO_QUALITY_MUL[rarity]，不受 T 级
+ * - 百分比类：random [V5_SUB_STAT_RANGE_PCT[min, max]] × V5_RARITY_TO_QUALITY_MUL × (tier_weight / 20)
  *
- * 反推基准：T15+9 红装 3 次同条强化（每次 ×1.30）后达到 V5.0.3 目标值（攻击力% 45 / 会心伤害% 84 等）
+ * T15 红装单条 max（百分比类，未触发档累计）：
+ *   atk_pct  ≈ ceil(12 × 1.75 × 1.0) = 21%
+ *   crit_dmg ≈ ceil(22 × 1.75 × 1.0) = 39%
+ *   luck_pct ≈ ceil(21 × 1.75 × 1.0) = 37%
+ *
+ * 6 件触发 × 3 档 = 18 条同 stat 满堆（T15 红）：18 × 21% = 378% atk_pct
+ * → 与主属性 1 配合，最终面板 atk ≈ base × (1 + 3.78) ≈ V5.0.3 cap 10w
  */
-function calcEnhanceAffixValue(stat: string, rarity: V5Rarity, tier: number): number {
-  // flat 类：T 级 + 品质 → 主属性面板的 10%
+function calcWuxingAffixValue(stat: string, tier: number, rarity: V5Rarity = 'red'): number {
+  // flat 类：T 级 × 品质 × 主属性面板 base × 10%
   if (V5_SUB_STAT_FLAT_SET.has(stat)) {
     const baseKey = stat.toUpperCase()
     const base = (EQUIP_PRIMARY_BASE as Record<string, number>)[baseKey]
@@ -183,12 +172,34 @@ function calcEnhanceAffixValue(stat: string, rarity: V5Rarity, tier: number): nu
       const rarityMul = RARITY_STAT_MUL[RARITY_IDX_MAP[rarity]] ?? 1
       return Math.max(1, Math.floor(base * tierWeight * rarityMul * V5_SUB_STAT_FLAT_RATIO))
     }
-    // luck/spirit_density/accuracy 没 EQUIP_PRIMARY_BASE 条目 → fallback 到 V5 pct 范围
+    // luck/spirit_density/accuracy 没 EQUIP_PRIMARY_BASE → fallback 到 V5 pct 范围
   }
-  // 百分比类：random [min, max] × qualityMul
+  // 百分比类：V5.0.3 范围 × qualityMul × tierMul（受 T 级影响）
   const range = V5_SUB_STAT_RANGE_PCT[stat] ?? [1, 3]
   const qualityMul = V5_RARITY_TO_QUALITY_MUL[rarity] ?? 1
+  const tierMul = getV5TierWeight(tier) / 20
   const base = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]
+  return Math.max(1, Math.ceil(base * qualityMul * tierMul))
+}
+
+// --------------------------- 强化词条数值（V4 兼容，小数值辅助 — 2026-05-13 互换）---------------------------
+
+/**
+ * 单条强化词条数值（V4 副词条数值规模 — 互换后的辅助贡献者）
+ *
+ * 不受 T 级影响（V5 设计：T 级只影响 base_stat_1 + 五行词条）；3 次 +3/+6/+9 milestone 每次 ×1.30
+ *
+ * T15 红装单条 max（首次 roll）:
+ *   atk_pct: V4 [1,3] → ceil(3 × 1.75) = 6%
+ *   crit_dmg: V4 [2,6] → ceil(6 × 1.75) = 11%
+ * 3 stack 后约：atk_pct ~13%, crit_dmg ~24%
+ */
+function calcEnhanceAffixValue(stat: string, rarity: V5Rarity, _tier: number): number {
+  // 沿用 V4 SUB_STAT_RANGE_V4 + qualityMul（V4 副词条规模，无 T 缩放）
+  const [min, max] = v5StatRange(stat)
+  const rarityIdx = RARITY_IDX_MAP[rarity] ?? 0
+  const qualityMul = 1 + rarityIdx * 0.15
+  const base = Math.floor(Math.random() * (max - min + 1)) + min
   return Math.max(1, Math.ceil(base * qualityMul))
 }
 
