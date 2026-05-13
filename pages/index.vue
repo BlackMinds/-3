@@ -546,6 +546,21 @@
                 <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" :equipped-set-count="hoverSlotEquip.set_id ? (equippedSetCounts[hoverSlotEquip.set_id] || 0) : 0" :wuxing-activation="getV5Activation(hoverSlotEquip)" :yuanshi-count="yuanshiCount" />
               </div>
             </div>
+            <!-- 顺序箭头：装备槽位间（外圈 1→2→…→7→1）+ 五行环内（金→水→木→火→土→金）-->
+            <div class="ring-arrows" aria-hidden="true">
+              <span
+                v-for="(arr, i) in slotArrows"
+                :key="`s${i}`"
+                class="ring-arrow ring-arrow--slot"
+                :style="{ top: arr.y + '%', left: arr.x + '%', transform: `translate(-50%, -50%) rotate(${arr.rot}deg)` }"
+              >➤</span>
+              <span
+                v-for="(arr, i) in wuxingArrows"
+                :key="`w${i}`"
+                class="ring-arrow ring-arrow--wx"
+                :style="{ top: arr.y + '%', left: arr.x + '%', transform: `translate(-50%, -50%) rotate(${arr.rot}deg)` }"
+              >➤</span>
+            </div>
           </div>
 
           <!-- 装备背包 -->
@@ -3168,8 +3183,8 @@
             <table class="help-table"><tbody>
               <tr><td>0 - 250</td><td>陌路/相识</td></tr>
               <tr><td>250+</td><td>心动 · 解锁<b style="color:#ff7eb3">约会</b>（每天 3 次）</td></tr>
-              <tr><td>600+</td><td>解锁<b style="color:#ffd700">正式结侣</b>（仙缘印记自动 LV1，+3% 全属性）</td></tr>
-              <tr><td>1000+</td><td>解锁<b style="color:#ffaa00">求子</b>（怀胎 48h，消耗 100 万灵石 + 金莲花露 ×1）</td></tr>
+              <tr><td>600+</td><td>解锁<b style="color:#ffd700">正式结侣</b>（仙缘印记自动 LV1，+2% 全属性）</td></tr>
+              <tr><td>800+</td><td>解锁<b style="color:#ffaa00">求子</b>（怀胎 48h，消耗 100 万灵石 + 金莲花露 ×1）</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">已结侣每天自动 +20 亲密度（怀胎中跳过）+5 红尘玉到玩家。离线最多累计 7 天。</p>
           </div>
@@ -3181,11 +3196,11 @@
           <div class="help-section">
             <div class="help-title">仙缘印记（结侣后永久 buff）</div>
             <table class="help-table"><tbody>
-              <tr><td>LV 1</td><td>全属性 +3%（结侣赠送）</td></tr>
-              <tr><td>LV 2</td><td>+5%（消耗 500 红尘玉）</td></tr>
-              <tr><td>LV 3</td><td>+8%（2000 红尘玉）</td></tr>
-              <tr><td>LV 4</td><td>+12%（8000 红尘玉）</td></tr>
-              <tr><td>LV 5</td><td>+15%（30000 红尘玉）</td></tr>
+              <tr><td>LV 1</td><td>全属性 +2%（结侣赠送）</td></tr>
+              <tr><td>LV 2</td><td>+4%（消耗 500 红尘玉）</td></tr>
+              <tr><td>LV 3</td><td>+6%（2000 红尘玉）</td></tr>
+              <tr><td>LV 4</td><td>+9%（8000 红尘玉）</td></tr>
+              <tr><td>LV 5</td><td>+12%（30000 红尘玉）</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">直接放大本体 atk/def/hp/spd，与装备/丹药/天赋三个 cap <b>独立</b>不挤占池。</p>
           </div>
@@ -5271,7 +5286,7 @@ const mainStats = computed(() => {
   if (passHpPct  > 0) hpPctEntries.push({  source: '功法被动', pct: passHpPct  / 100, note: passNote });
   if (passSpdPct > 0) spdPctEntries.push({ source: '功法被动', pct: passSpdPct / 100, note: passNote });
 
-  // 4i) 道侣仙缘印记 — 已正式结侣给全属性 +3%~+15%（与 server/api/battle/fight.post.ts 同表）
+  // 4i) 道侣仙缘印记 — 已正式结侣给全属性 +2%~+12%（与 server/api/battle/fight.post.ts 同表）
   const sealLv = companionStore.officialCompanion?.sealLevel || 0;
   if (sealLv > 0) {
     const sealPct = COMPANION_SEAL_PCT[Math.min(sealLv, 5)] || 0;
@@ -8121,6 +8136,42 @@ const RING_POS_MAP: Record<string, number> = {
 function ringPos(slot: string): number {
   return RING_POS_MAP[slot] || 1;
 }
+
+// 顺序箭头：装备 7 槽位间（外圈 1→2→…→7→1），放在槽位内边缘 (~R25) 与五行环外缘 (~R18) 之间
+const slotArrows = (() => {
+  const R = 22;
+  return Array.from({ length: 7 }, (_, i) => {
+    const theta = (360 / 7) * (i + 0.5); // 相邻两槽位中点的角度（从顶部顺时针）
+    const rad = (theta * Math.PI) / 180;
+    return {
+      x: 50 + R * Math.sin(rad),
+      y: 50 - R * Math.cos(rad),
+      rot: theta, // ➤ 默认指右，旋转 θ 对齐顺时针切线方向
+    };
+  });
+})();
+
+// 顺序箭头：五行环内（金→水→木→火→土→金），坐标对应 .wx-metal/.wx-water/.wx-wood/.wx-fire/.wx-earth
+const wuxingArrows = (() => {
+  const centers = [
+    { x: 50,    y: 39.2  }, // 金
+    { x: 66.56, y: 44.96 }, // 水
+    { x: 60.08, y: 63.68 }, // 木
+    { x: 39.92, y: 63.68 }, // 火
+    { x: 33.44, y: 44.96 }, // 土
+  ];
+  return centers.map((c, i) => {
+    const next = centers[(i + 1) % centers.length];
+    const dx = next.x - c.x;
+    const dy = next.y - c.y;
+    return {
+      x: c.x + dx * 0.5,
+      y: c.y + dy * 0.5,
+      rot: (Math.atan2(dy, dx) * 180) / Math.PI,
+    };
+  });
+})();
+
 const equipList = ref<any[]>([]);
 const showEquipPicker = ref(false);
 const currentPickSlot = ref('');
@@ -10082,10 +10133,42 @@ onUnmounted(() => {
 .equip-ring .slot-tooltip {
   z-index: 99;
 }
+/* 顺序箭头：装备槽位间（外）+ 五行环内（内）*/
+.equip-ring .ring-arrows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.equip-ring .ring-arrow {
+  position: absolute;
+  line-height: 1;
+  font-weight: 700;
+  display: inline-block;
+  user-select: none;
+}
+.equip-ring .ring-arrow--slot {
+  font-size: 16px;
+  color: #ffe6a5;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.95),
+    0 0 5px rgba(0, 0, 0, 0.7),
+    0 0 8px rgba(232, 204, 138, 0.55);
+}
+.equip-ring .ring-arrow--wx {
+  font-size: 15px;
+  color: #fff6d0;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.95),
+    0 0 6px rgba(0, 0, 0, 0.75),
+    0 0 9px rgba(255, 230, 165, 0.55);
+}
 @media (max-width: 600px) {
   .equip-ring { max-width: 360px; }
   .wx { font-size: 14px; }
   .equip-ring .equip-slot { width: 28%; min-height: 52px; padding: 4px 2px; }
+  .equip-ring .ring-arrow--slot { font-size: 13px; }
+  .equip-ring .ring-arrow--wx { font-size: 12px; }
 }
 /* ===================== 环形布局结束 ===================== */
 
