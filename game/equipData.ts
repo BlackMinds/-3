@@ -289,6 +289,8 @@ export const STAT_NAMES: Record<string, string> = {
   reflect: '反伤倍率', res_pct: '五行抗性',
   dmg_reduction: '减伤', lifesteal_all: '全能吸血',
   luck: '福缘', spirit_density: '灵气浓度',
+  // V5.0.3 新增副词条：福缘%/灵气%/命中%
+  luck_pct: '福缘加成', spirit_density_pct: '灵气加成', accuracy_pct: '命中加成',
   // V5 灵佩特殊主属性（实际拆 50/50 给 HP_PCT/DEF_PCT 各一半）
   hp_pct_or_def_pct: '气血/防御 各',
 };
@@ -312,6 +314,8 @@ export const PERCENT_STATS = new Set([
   'wuxing_dmg', 'dot_dmg', 'reflect', 'res_pct', 'dmg_reduction', 'lifesteal_all',
   'hp_pct_or_def_pct',
   'luck', 'spirit_density',
+  // V5.0.3
+  'luck_pct', 'spirit_density_pct', 'accuracy_pct',
 ]);
 
 // 品质颜色

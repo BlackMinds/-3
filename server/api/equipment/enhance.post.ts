@@ -180,7 +180,7 @@ export default defineEventHandler(async (event) => {
       if (typeof subStats === 'string') subStats = JSON.parse(subStats)
       const currentSubs = Array.isArray(subStats) ? subStats : []
       const slotIndex = getV5SlotIndexByBaseSlot(eq.base_slot as V5BaseSlot)
-      const milestoneResult = applyV5EnhanceMilestone(currentSubs, slotIndex, eq.rarity as V5Rarity, nextLevel)
+      const milestoneResult = applyV5EnhanceMilestone(currentSubs, slotIndex, eq.rarity as V5Rarity, nextLevel, eqTier)
       await pool.query(
         'UPDATE character_equipment SET sub_stats = $1 WHERE id = $2',
         [JSON.stringify(milestoneResult.newSubStats), equip_id]

@@ -102,8 +102,8 @@ describe('单条五行词条 getV5PerWuxingAffixValue', () => {
   it('atk T10 = T15 × 50%', () => {
     assert.equal(getV5PerWuxingAffixValue('atk', 10), 2778)
   })
-  it('crit_dmg_pct T15 = 0.20', () => {
-    assert.equal(getV5PerWuxingAffixValue('crit_dmg_pct', 15), 0.20)
+  it('crit_dmg_pct T15 = 0.1667（V5.0.3 削弱后 300%/18）', () => {
+    assert.equal(getV5PerWuxingAffixValue('crit_dmg_pct', 15), 0.1667)
   })
   it('lifesteal_pct T15 = 0.0278（削弱后）', () => {
     assert.equal(getV5PerWuxingAffixValue('lifesteal_pct', 15), 0.0278)
@@ -304,7 +304,7 @@ describe('装备生成 rollEquipmentV5（boss 秘宝）', () => {
     assert.equal(eq.name, '降魔伏鬼枪')
     assert.equal(eq.is_boss_treasure, true)
     assert.deepEqual(eq.wuxing_affixes.map(a => a.stat), ['armor_pen', 'armor_pen', 'armor_pen'])
-    assert.deepEqual(eq.wuxing_prefix as readonly string[], ['fire'])
+    assert.deepEqual(eq.wuxing_prefix as readonly string[], ['metal'])
   })
   it('T14 时空之主 → 双前缀 [metal, fire]', () => {
     const shikong = V5_BOSS_TREASURES.find(b => b.tier === 14)!

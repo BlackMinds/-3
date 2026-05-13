@@ -502,7 +502,19 @@
                 <span v-if="lingenResonance.bonus_pct > 0" class="lingen-bonus">攻防血神识 +{{ (lingenResonance.bonus_pct * 100).toFixed(0) }}%</span>
                 <span v-else class="lingen-bonus-pending">下一档需 {{ lingenResonance.nextThreshold }} 件</span>
               </div>
+              <!-- 灵根共鸣分档说明：装备与灵根同属性件数 3/5/7 触发对应加成 -->
+              <div v-if="lingenResonance.matched > 0" class="lingen-tier-row">
+                <span class="lingen-tier-title">装备 / 灵根同属性</span>
+                <span class="lingen-tier" :class="{ active: lingenResonance.matched >= 3 }">3 件 +5%</span>
+                <span class="lingen-tier-sep">·</span>
+                <span class="lingen-tier" :class="{ active: lingenResonance.matched >= 5 }">5 件 +10%</span>
+                <span class="lingen-tier-sep">·</span>
+                <span class="lingen-tier" :class="{ active: lingenResonance.matched >= 7 }">7 件 +20%</span>
+              </div>
               <div class="equip-ring">
+            <!-- 装饰：深蓝夜空 + 远山云雾 + 金色装饰外框 -->
+            <div class="ring-decor-frame" aria-hidden="true"></div>
+            <div class="ring-decor-stars" aria-hidden="true"></div>
             <!-- 中央：五行相生环（金→水→木→火→土→金） -->
             <div class="wuxing-center">
               <div class="wx-circle">
@@ -528,7 +540,7 @@
               @mouseenter="hoverSlotEquip = getEquippedItem(slotDef.slot)"
               @mouseleave="hoverSlotEquip = null"
             >
-              <div class="equip-slot-label">{{ slotDef.name }}</div>
+              <div class="equip-slot-badge"><span class="equip-slot-badge-num">{{ ringPos(slotDef.slot) }}</span>. {{ slotDef.name }}</div>
               <template v-if="getEquippedItem(slotDef.slot)">
                 <div class="equip-slot-name" :style="{ color: getEquipColor(getEquippedItem(slotDef.slot)) }">
                   <span v-if="getEquippedItem(slotDef.slot)?.legendary_set_id === 'yuanshi_tianzun'" class="slot-legendary-mark">❖</span>
@@ -543,7 +555,7 @@
               <div v-else class="equip-slot-empty">空</div>
               <!-- 悬浮提示 -->
               <div v-if="hoverSlotEquip && hoverSlotEquip === getEquippedItem(slotDef.slot)" class="slot-tooltip">
-                <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" :equipped-set-count="hoverSlotEquip.set_id ? (equippedSetCounts[hoverSlotEquip.set_id] || 0) : 0" :wuxing-activation="getV5Activation(hoverSlotEquip)" :yuanshi-count="yuanshiCount" />
+                <EquipDetail :equip="hoverSlotEquip" :char-level="gameStore.charLevel" :show-req-level="true" :equipped-set-count="hoverSlotEquip.set_id ? (equippedSetCounts[hoverSlotEquip.set_id] || 0) : 0" :wuxing-activation="getV5Activation(hoverSlotEquip)" :wuxing-diagnosis="getV5Diagnosis(hoverSlotEquip)" :yuanshi-count="yuanshiCount" />
               </div>
             </div>
             <!-- 顺序箭头：装备槽位间（外圈 1→2→…→7→1）+ 五行环内（金→水→木→火→土→金）-->
@@ -692,6 +704,7 @@
                       :show-req-level="true"
                       :equipped-set-count="hoverEquip.set_id ? (equippedSetCounts[hoverEquip.set_id] || 0) : 0"
                       :wuxing-activation="getV5Activation(hoverEquip)"
+                      :wuxing-diagnosis="getV5Diagnosis(hoverEquip)"
                       :yuanshi-count="yuanshiCount"
                     />
                   </div>
@@ -702,6 +715,7 @@
                       :show-req-level="true"
                       :equipped-set-count="hoverCompareEquip.set_id ? (equippedSetCounts[hoverCompareEquip.set_id] || 0) : 0"
                       :wuxing-activation="getV5Activation(hoverCompareEquip)"
+                      :wuxing-diagnosis="getV5Diagnosis(hoverCompareEquip)"
                       :yuanshi-count="yuanshiCount"
                     />
                   </div>
@@ -716,6 +730,28 @@
                 <div class="bag-preview-empty-icon">❖</div>
                 <div class="bag-preview-empty-text">悬停背包格子查看详情</div>
                 <div class="bag-preview-empty-sub">支持与当前穿戴对比</div>
+                <!-- 装备环·相生秘要（信纸样式） -->
+                <div class="bag-letter">
+                  <div class="bag-letter-title">— 装备环·相生秘要 —</div>
+                  <div class="bag-letter-section">
+                    <div class="bag-letter-line"><span class="bag-letter-tag">外圈</span> 兵器 → 灵戒 → 法宝 → 法袍 → 法冠 → 灵佩 → 步云靴 →（循环）</div>
+                    <div class="bag-letter-line"><span class="bag-letter-tag">内圈</span> <span class="wx-letter wx-letter-metal">金</span> → <span class="wx-letter wx-letter-water">水</span> → <span class="wx-letter wx-letter-wood">木</span> → <span class="wx-letter wx-letter-fire">火</span> → <span class="wx-letter wx-letter-earth">土</span> →（循环）</div>
+                  </div>
+                  <div class="bag-letter-divider"></div>
+                  <div class="bag-letter-section">
+                    <div class="bag-letter-rule">按箭头顺序，前一装备五行属性与下一装备五行属性符合相生（内圈顺序）：</div>
+                    <div class="bag-letter-tier"><span class="bag-letter-mark">·</span> 1 对相生 — 激活 <b>第一条</b></div>
+                    <div class="bag-letter-tier"><span class="bag-letter-mark">·</span> 3 对相生 — 激活 <b>第二条</b></div>
+                    <div class="bag-letter-tier"><span class="bag-letter-mark">·</span> 6 对相生 — 激活 <b>第三条</b></div>
+                  </div>
+                  <div class="bag-letter-divider"></div>
+                  <div class="bag-letter-section">
+                    <div class="bag-letter-rule">灵根共鸣：装备五行前缀与角色灵根同属性，凑齐</div>
+                    <div class="bag-letter-tier"><span class="bag-letter-mark">·</span> 3 件 — 攻/防/血/神识 <b>+5%</b></div>
+                    <div class="bag-letter-tier"><span class="bag-letter-mark">·</span> 5 件 — 攻/防/血/神识 <b>+10%</b></div>
+                    <div class="bag-letter-tier"><span class="bag-letter-mark">·</span> 7 件 — 攻/防/血/神识 <b>+20%</b></div>
+                  </div>
+                </div>
               </div>
             </aside>
           </div>
@@ -1821,7 +1857,7 @@
     <!-- ==================== 装备点击面板 ==================== -->
     <Teleport to="body">
       <div v-if="clickedEquip" class="equip-action-panel" :style="{ top: clickedEquipY + 'px', left: clickedEquipX + 'px' }">
-        <EquipDetail :equip="clickedEquip" :char-level="gameStore.charLevel" :show-req-level="true" :wuxing-activation="getV5Activation(clickedEquip)" :yuanshi-count="yuanshiCount" />
+        <EquipDetail :equip="clickedEquip" :char-level="gameStore.charLevel" :show-req-level="true" :wuxing-activation="getV5Activation(clickedEquip)" :wuxing-diagnosis="getV5Diagnosis(clickedEquip)" :yuanshi-count="yuanshiCount" />
         <div class="equip-action-btns">
           <button v-if="!clickedEquip.slot" class="equip-action-btn-green" @click="quickEquip(clickedEquip)">装备</button>
           <button v-if="(clickedEquip.enhance_level || 0) < 10" class="equip-action-btn-gold" @click="openEnhance(clickedEquip); clickedEquip = null">强化</button>
@@ -8304,7 +8340,14 @@ const equippedSetCounts = computed<Record<string, number>>(() => {
 });
 
 // V5 五行触发状态：算一次全身相生，按 slot_index 索引
-import { computeV5WuxingActivation as _v5ComputeActivation, type V5EquippedItem as _V5EquippedItem } from '~/shared/balance-v5'
+import {
+  computeV5WuxingActivation as _v5ComputeActivation,
+  v5AnySheng as _v5AnySheng,
+  v5PrevSlotIndex as _v5PrevSlot,
+  V5_WUXING_PREFIX_ZH as _V5_PREFIX_ZH,
+  type V5EquippedItem as _V5EquippedItem,
+  type WuxingPrefix as _WuxingPrefix,
+} from '~/shared/balance-v5'
 const V5_BASE_SLOT_INDEX: Record<string, number> = { weapon: 1, ring: 2, treasure: 3, armor: 4, helmet: 5, pendant: 6, boots: 7 }
 const wuxingActivationMap = computed(() => {
   const equipped: _V5EquippedItem[] = []
@@ -8325,6 +8368,125 @@ function getV5Activation(equip: any) {
   if (!equip || equip.equipment_version !== 5) return undefined
   if (!equip.slot) return undefined  // 背包未穿戴装备：五行词条默认灰字未触发
   return wuxingActivationMap.value.get(V5_BASE_SLOT_INDEX[equip.base_slot] || 1)
+}
+
+// =================== V5 五行链实时诊断（装备详情用） ===================
+// 给玩家直观说明：这件装备的五行词条为什么亮 / 为什么不亮
+const _V5_SLOT_ZH = ['武器','灵戒','法宝','法袍','法冠','灵佩','步云靴']
+const _V5_SHENG_PAIR_ZH: Record<string, string> = {
+  'wood-fire':  '木生火',  'fire-earth': '火生土', 'earth-metal':'土生金',
+  'metal-water':'金生水',  'water-wood': '水生木',
+}
+
+interface V5Diagnosis {
+  /** 当前装备槽位中文名 */
+  slotName: string
+  /** 当前装备前缀（金/木/水/火/土；多个用 "/" 连，元始天尊【五行】显示 "☯️【五行】"） */
+  prefixZh: string
+  isDual: boolean
+  isYuanshi: boolean
+  /** 前置槽位中文名（环形链 1→2→…→7→1） */
+  prevSlotName: string
+  /** 前置装备前缀；前置槽位为空时 null */
+  prevPrefixZh: string | null
+  /** 前置 → 当前 是否相生 */
+  isSheng: boolean
+  /** 相生说明（如 "金生水 ✓" / "金 不生 木 ✗" / "前置槽位无装备 ✗"） */
+  shengReason: string
+  /** 三档当前激活状态 */
+  affix_1_active: boolean
+  affix_2_active: boolean
+  affix_3_active: boolean
+  /** 全身已激活 affix_1 的件数（用于解释 affix_2/3 进度） */
+  chainActiveCount: number
+  /** 第二/三条阈值 */
+  affix_2_threshold: number
+  affix_3_threshold: number
+}
+
+function getV5Diagnosis(equip: any): V5Diagnosis | undefined {
+  if (!equip || equip.equipment_version !== 5) return undefined
+  if (!equip.slot) return undefined  // 背包未穿戴：无链路诊断
+
+  const slotIndex = V5_BASE_SLOT_INDEX[equip.base_slot] || 1
+  const prefixArr: string[] = Array.isArray(equip.wuxing_prefix)
+    ? equip.wuxing_prefix
+    : (typeof equip.wuxing_prefix === 'string' ? [equip.wuxing_prefix] : [])
+  const isYuanshi = prefixArr.length === 5
+  const isDual = prefixArr.length === 2
+
+  // 当前装备前缀显示
+  let prefixZh = ''
+  if (isYuanshi) prefixZh = '☯️【五行】'
+  else prefixZh = prefixArr.map(p => _V5_PREFIX_ZH[p as _WuxingPrefix] || p).join('/')
+
+  // 前置槽位（环形 1→7→6→...→1，即取 slotIndex 的上一个）
+  const prevSlotIndex = _v5PrevSlot(slotIndex)
+  const prevSlotName = _V5_SLOT_ZH[prevSlotIndex - 1] || ''
+  // 查 wuxingActivationMap 算出的 chain 数据：实际穿戴的 prev
+  let prevPrefixArr: string[] = []
+  for (const eq of equipList.value) {
+    if (!eq.slot || eq.equipment_version !== 5) continue
+    if ((V5_BASE_SLOT_INDEX[eq.base_slot] || 0) !== prevSlotIndex) continue
+    prevPrefixArr = Array.isArray(eq.wuxing_prefix)
+      ? eq.wuxing_prefix
+      : (typeof eq.wuxing_prefix === 'string' ? [eq.wuxing_prefix] : [])
+    break
+  }
+  const prevPrefixZh = prevPrefixArr.length === 0 ? null
+    : (prevPrefixArr.length === 5 ? '☯️【五行】' : prevPrefixArr.map(p => _V5_PREFIX_ZH[p as _WuxingPrefix] || p).join('/'))
+
+  // 相生判定
+  const isSheng = prevPrefixArr.length > 0 && prefixArr.length > 0
+    && _v5AnySheng(prevPrefixArr as readonly _WuxingPrefix[], prefixArr as readonly _WuxingPrefix[])
+  let shengReason = ''
+  if (prevPrefixArr.length === 0) {
+    shengReason = `${prevSlotName}槽位无装备`
+  } else if (isSheng) {
+    // 取一个具体的相生对显示（双前缀任一相生即可）
+    let pair = ''
+    for (const f of prevPrefixArr) {
+      for (const t of prefixArr) {
+        const key = `${f}-${t}`
+        if (_V5_SHENG_PAIR_ZH[key]) { pair = _V5_SHENG_PAIR_ZH[key]; break }
+      }
+      if (pair) break
+    }
+    shengReason = pair || '相生'
+  } else {
+    const pf = prevPrefixArr.map(p => _V5_PREFIX_ZH[p as _WuxingPrefix] || p).join('/')
+    const cf = prefixArr.map(p => _V5_PREFIX_ZH[p as _WuxingPrefix] || p).join('/')
+    shengReason = `${pf} 不生 ${cf}`
+  }
+
+  // 当前装备激活情况
+  const act = wuxingActivationMap.value.get(slotIndex)
+  const affix_1_active = !!act?.affix_1_active
+  const affix_2_active = !!act?.affix_2_active
+  const affix_3_active = !!act?.affix_3_active
+
+  // 全身 affix_1 激活数
+  let chainActiveCount = 0
+  for (const a of wuxingActivationMap.value.values()) {
+    if (a.affix_1_active) chainActiveCount++
+  }
+
+  return {
+    slotName: _V5_SLOT_ZH[slotIndex - 1] || '',
+    prefixZh,
+    isDual,
+    isYuanshi,
+    prevSlotName,
+    prevPrefixZh,
+    isSheng,
+    shengReason,
+    affix_1_active,
+    affix_2_active,
+    affix_3_active,
+    chainActiveCount,
+    affix_2_threshold: 3,
+    affix_3_threshold: 6,
+  }
 }
 // 元始天尊：穿戴件数 + 全身五行链
 const yuanshiCount = computed(() =>
@@ -10014,30 +10176,89 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-/* ============= 环形装备布局（V5 五行链：金→水→木→火→土） ============= */
+/* ============= 环形装备布局（V5 五行链：金→水→木→火→土） =============
+   视觉重塑参考：深蓝夜空 + 金边圆槽位 + 五行彩色徽章 + 金色弧形箭头 */
 .equip-ring {
   position: relative;
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   aspect-ratio: 1 / 1;
-  margin: 12px auto 4px;
-  /* 背景星光 + 极暗的同心圆轮廓暗示环形 */
+  margin: 12px auto 8px;
+  padding: 6px;
+  border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 50%, rgba(184, 154, 90, 0.04) 0%, transparent 62%),
-    radial-gradient(circle at 50% 50%, transparent 38%, rgba(184, 154, 90, 0.10) 39%, transparent 40%);
+    radial-gradient(ellipse at 50% 78%, rgba(40, 60, 100, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 30%, rgba(60, 90, 150, 0.18) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, #1a2440 0%, #0d1428 60%, #07101e 100%);
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.6),
+    0 0 25px rgba(60, 90, 150, 0.15);
 }
+/* 外圈金色装饰边框：双层 — 内细金边 + 外淡金光晕 */
+.ring-decor-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    rgba(232, 204, 138, 0.65), rgba(184, 154, 90, 0.25),
+    rgba(232, 204, 138, 0.65), rgba(184, 154, 90, 0.25),
+    rgba(232, 204, 138, 0.65), rgba(184, 154, 90, 0.25),
+    rgba(232, 204, 138, 0.65), rgba(184, 154, 90, 0.25),
+    rgba(232, 204, 138, 0.65)
+  );
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 4px), #000 calc(50% - 3px) calc(50% - 1px), transparent calc(50%));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 4px), #000 calc(50% - 3px) calc(50% - 1px), transparent calc(50%));
+  z-index: 0;
+}
+.ring-decor-frame::before,
+.ring-decor-frame::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+/* 大圆轨道：装备槽位排列的隐含轨道（淡金色虚线） */
+.ring-decor-frame::before {
+  inset: 14%;
+  border: 1px dashed rgba(184, 154, 90, 0.22);
+}
+/* 中圈轨道：五行徽章排列的轨道 */
+.ring-decor-frame::after {
+  inset: 36%;
+  border: 1px dashed rgba(232, 204, 138, 0.18);
+}
+/* 星光点缀 */
+.ring-decor-stars {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(1px 1px at 18% 22%, rgba(255, 255, 255, 0.65), transparent 60%),
+    radial-gradient(1px 1px at 78% 18%, rgba(255, 255, 255, 0.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 84% 65%, rgba(255, 240, 200, 0.55), transparent 60%),
+    radial-gradient(1px 1px at 24% 78%, rgba(200, 220, 255, 0.55), transparent 60%),
+    radial-gradient(1px 1px at 55% 12%, rgba(255, 255, 255, 0.4), transparent 60%),
+    radial-gradient(1px 1px at 12% 50%, rgba(255, 255, 255, 0.4), transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 42%, rgba(255, 230, 180, 0.45), transparent 60%);
+  z-index: 0;
+}
+
 /* 中央五行小环 */
 .wuxing-center {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 36%;
+  width: 38%;
   aspect-ratio: 1 / 1;
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  z-index: 2;
 }
 .wx-circle {
   position: relative;
@@ -10045,70 +10266,140 @@ onUnmounted(() => {
   height: 100%;
   border-radius: 50%;
   background:
-    radial-gradient(circle, rgba(8, 12, 24, 0.55) 0%, rgba(8, 12, 24, 0.25) 70%, transparent 100%);
+    radial-gradient(circle, rgba(10, 18, 36, 0.7) 0%, rgba(10, 18, 36, 0.4) 60%, transparent 100%);
   box-shadow:
-    inset 0 0 18px rgba(91, 155, 230, 0.12),
-    0 0 22px rgba(91, 155, 230, 0.08);
+    inset 0 0 22px rgba(91, 155, 230, 0.12),
+    0 0 18px rgba(60, 90, 150, 0.18);
 }
 .wx-circle::before {
   content: '';
   position: absolute;
-  top: 6%; left: 6%; right: 6%; bottom: 6%;
+  top: 4%; left: 4%; right: 4%; bottom: 4%;
   border-radius: 50%;
-  border: 1px dashed rgba(184, 154, 90, 0.28);
+  border: 1px dashed rgba(232, 204, 138, 0.35);
+}
+.wx-circle::after {
+  content: '';
+  position: absolute;
+  top: 12%; left: 12%; right: 12%; bottom: 12%;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 204, 138, 0.18);
 }
 .wx {
   position: absolute;
-  width: 32%;
+  width: 34%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Noto Serif SC', serif;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   letter-spacing: 0;
   pointer-events: auto;
   cursor: help;
-  text-shadow: 0 0 8px currentColor;
+  z-index: 3;
 }
 /* 五行按相生顺序排环：金顶(0°) → 水(72°) → 木(144°) → 火(216°) → 土(288°)
-   半径 R = 46% of wuxing-center，全部使用 translate(-50%,-50%) 保证 5 字精确落在同一圆周 */
-.wx-metal { top: 4%;     left: 50%;    transform: translate(-50%, -50%); color: #e8cc8a; background: radial-gradient(circle, rgba(232, 204, 138, 0.22), rgba(232, 204, 138, 0.04)); border: 1px solid rgba(232, 204, 138, 0.5); }
-.wx-water { top: 35.8%;  left: 93.75%; transform: translate(-50%, -50%); color: #5b9be6; background: radial-gradient(circle, rgba(91, 155, 230, 0.22), rgba(91, 155, 230, 0.04)); border: 1px solid rgba(91, 155, 230, 0.5); }
-.wx-wood  { top: 87.2%;  left: 77%;    transform: translate(-50%, -50%); color: #6ec77b; background: radial-gradient(circle, rgba(110, 199, 123, 0.22), rgba(110, 199, 123, 0.04)); border: 1px solid rgba(110, 199, 123, 0.5); }
-.wx-fire  { top: 87.2%;  left: 23%;    transform: translate(-50%, -50%); color: #e85d5d; background: radial-gradient(circle, rgba(232, 93, 93, 0.22), rgba(232, 93, 93, 0.04)); border: 1px solid rgba(232, 93, 93, 0.5); }
-.wx-earth { top: 35.8%;  left: 6.25%;  transform: translate(-50%, -50%); color: #c19a5b; background: radial-gradient(circle, rgba(193, 154, 91, 0.22), rgba(193, 154, 91, 0.04)); border: 1px solid rgba(193, 154, 91, 0.5); }
+   彩色饱满圆形徽章 + 金色双层描边 + 内发光 */
+.wx-metal {
+  top: 4%;     left: 50%;    transform: translate(-50%, -50%);
+  color: #fff4d0;
+  background: radial-gradient(circle at 35% 30%, #f5d77a 0%, #d4a73a 55%, #8a6a18 100%);
+  border: 2px solid #e8cc8a;
+  box-shadow:
+    inset 0 0 8px rgba(255, 240, 180, 0.45),
+    inset 0 0 0 1px rgba(255, 240, 180, 0.5),
+    0 0 12px rgba(232, 204, 138, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(80, 50, 0, 0.7);
+}
+.wx-water {
+  top: 35.8%;  left: 93.75%; transform: translate(-50%, -50%);
+  color: #e8f4ff;
+  background: radial-gradient(circle at 35% 30%, #7ec0f2 0%, #2e7bc8 55%, #134577 100%);
+  border: 2px solid #8ab8e0;
+  box-shadow:
+    inset 0 0 8px rgba(180, 220, 255, 0.45),
+    inset 0 0 0 1px rgba(200, 230, 255, 0.5),
+    0 0 12px rgba(91, 155, 230, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 30, 60, 0.7);
+}
+.wx-wood {
+  top: 87.2%;  left: 77%;    transform: translate(-50%, -50%);
+  color: #e8ffd8;
+  background: radial-gradient(circle at 35% 30%, #8cd97b 0%, #3d9532 55%, #1a5a14 100%);
+  border: 2px solid #7fcf6f;
+  box-shadow:
+    inset 0 0 8px rgba(180, 240, 160, 0.45),
+    inset 0 0 0 1px rgba(200, 240, 180, 0.5),
+    0 0 12px rgba(110, 199, 123, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 40, 0, 0.7);
+}
+.wx-fire {
+  top: 87.2%;  left: 23%;    transform: translate(-50%, -50%);
+  color: #ffe0d0;
+  background: radial-gradient(circle at 35% 30%, #f48a78 0%, #c64030 55%, #7a1d10 100%);
+  border: 2px solid #e07060;
+  box-shadow:
+    inset 0 0 8px rgba(255, 200, 180, 0.45),
+    inset 0 0 0 1px rgba(255, 210, 190, 0.5),
+    0 0 12px rgba(232, 93, 93, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(60, 10, 0, 0.7);
+}
+.wx-earth {
+  top: 35.8%;  left: 6.25%;  transform: translate(-50%, -50%);
+  color: #fff0d0;
+  background: radial-gradient(circle at 35% 30%, #d4a878 0%, #9c6f3e 55%, #5a3b1d 100%);
+  border: 2px solid #c19a5b;
+  box-shadow:
+    inset 0 0 8px rgba(230, 200, 170, 0.45),
+    inset 0 0 0 1px rgba(240, 210, 170, 0.5),
+    0 0 12px rgba(193, 154, 91, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(60, 30, 10, 0.7);
+}
 
-/* 7 个装备槽：按 V5 顺序 360/7 ≈ 51.43° 分布，weapon 在 12 点钟
-   克制风格：柔和渐变 + 极淡边框 + 强化按钮右上角小徽章 */
+/* 7 个装备槽：圆形金边 + 内发光 + 下方铭牌 */
 .equip-ring .equip-slot {
   position: absolute;
-  width: 24%;
-  min-height: 54px;
-  padding: 6px 6px 5px;
-  background: linear-gradient(180deg, rgba(20, 24, 38, 0.72) 0%, rgba(8, 12, 24, 0.82) 100%);
-  border: 1px solid rgba(184, 154, 90, 0.18);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  width: 22%;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  padding: 0;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(40, 56, 90, 0.55) 0%, rgba(12, 18, 36, 0.85) 75%);
+  border: 2px solid rgba(232, 204, 138, 0.65);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 12px rgba(91, 155, 230, 0.18),
+    inset 0 0 0 1px rgba(255, 240, 200, 0.15),
+    0 0 14px rgba(232, 204, 138, 0.20),
+    0 2px 6px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   transform: translate(-50%, -50%);
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s, background 0.2s;
-  z-index: 1;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  z-index: 4;
 }
 .equip-ring .equip-slot:hover {
-  border-color: rgba(232, 204, 138, 0.45);
-  background: linear-gradient(180deg, rgba(28, 32, 48, 0.78) 0%, rgba(12, 16, 28, 0.85) 100%);
-  transform: translate(-50%, -50%) scale(1.05);
-  z-index: 3;
-  box-shadow: 0 0 12px rgba(232, 204, 138, 0.16), 0 2px 4px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 230, 165, 0.95);
+  transform: translate(-50%, -50%) scale(1.06);
+  z-index: 5;
+  box-shadow:
+    inset 0 0 14px rgba(91, 155, 230, 0.28),
+    inset 0 0 0 1px rgba(255, 240, 200, 0.3),
+    0 0 22px rgba(255, 230, 165, 0.45),
+    0 3px 8px rgba(0, 0, 0, 0.55);
 }
-/* 各位置坐标（half-circle 半径 = 38%，槽位中心 = 50% ± R*sin/cos） */
+/* 各位置坐标 */
 .equip-ring .ring-pos-1 { top: 12.0%;  left: 50.0%; }  /* 兵器   0° */
 .equip-ring .ring-pos-2 { top: 26.3%;  left: 79.7%; }  /* 灵戒  51.4° */
 .equip-ring .ring-pos-3 { top: 58.5%;  left: 87.0%; }  /* 法宝 102.9° */
@@ -10117,54 +10408,75 @@ onUnmounted(() => {
 .equip-ring .ring-pos-6 { top: 58.5%;  left: 13.0%; }  /* 灵佩 257.1° */
 .equip-ring .ring-pos-7 { top: 26.3%;  left: 20.3%; }  /* 步云靴 308.6° */
 
-.equip-ring .equip-slot-label {
-  font-size: 10px;
-  color: rgba(184, 154, 90, 0.55);
-  margin-bottom: 3px;
-  letter-spacing: 2px;
+/* 槽位下方铭牌：金色 + 序号 + 槽位名（参考图风格） */
+.equip-ring .equip-slot-badge {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #fff4d0;
+  background: linear-gradient(180deg, rgba(80, 60, 30, 0.92) 0%, rgba(40, 28, 12, 0.95) 100%);
+  border: 1px solid rgba(232, 204, 138, 0.7);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 165, 0.25),
+    0 1px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
+.equip-ring .equip-slot-badge-num {
+  color: #ffe082;
+  margin-right: 1px;
+}
+/* 槽位内：装备名 / 空位提示 */
 .equip-ring .equip-slot-name {
-  font-size: 12px;
-  line-height: 1.2;
+  font-size: 11px;
+  line-height: 1.15;
   font-weight: 600;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
   word-break: break-all;
-  padding: 0 2px;
+  padding: 0 4px;
 }
 .equip-ring .equip-slot-empty {
   font-size: 11px;
-  color: rgba(184, 154, 90, 0.38);
+  color: rgba(184, 154, 90, 0.48);
   letter-spacing: 2px;
+  font-style: italic;
 }
-/* 强化按钮：从底部独立行 → 右上角浮动小徽章 */
+/* 强化按钮：右上角小徽章 */
 .equip-ring .enhance-slot-btn {
   position: absolute;
-  top: 3px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
   margin: 0;
   padding: 0 5px;
   height: 14px;
   font-size: 9px;
   line-height: 12px;
   letter-spacing: 1px;
-  border: 1px solid rgba(232, 204, 138, 0.35);
-  background: rgba(232, 204, 138, 0.06);
-  color: rgba(232, 204, 138, 0.85);
+  border: 1px solid rgba(232, 204, 138, 0.55);
+  background: rgba(232, 204, 138, 0.10);
+  color: rgba(255, 240, 200, 0.9);
   border-radius: 3px;
   cursor: pointer;
-  opacity: 0.75;
+  opacity: 0.85;
   transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+  z-index: 6;
 }
 .equip-ring .equip-slot:hover .enhance-slot-btn {
   opacity: 1;
 }
 .equip-ring .enhance-slot-btn:hover {
-  background: rgba(232, 204, 138, 0.18);
-  border-color: rgba(232, 204, 138, 0.65);
+  background: rgba(232, 204, 138, 0.25);
+  border-color: rgba(255, 230, 165, 0.9);
 }
 .equip-ring .enhance-tag {
   font-size: 10px;
@@ -10178,40 +10490,104 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 3;
 }
 .equip-ring .ring-arrow {
   position: absolute;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 900;
   display: inline-block;
   user-select: none;
 }
 .equip-ring .ring-arrow--slot {
-  font-size: 16px;
-  color: #ffe6a5;
+  font-size: 18px;
+  color: #ffe082;
   text-shadow:
-    0 0 3px rgba(0, 0, 0, 0.95),
-    0 0 5px rgba(0, 0, 0, 0.7),
-    0 0 8px rgba(232, 204, 138, 0.55);
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 6px rgba(255, 220, 130, 0.85),
+    0 0 12px rgba(232, 180, 90, 0.55);
 }
 .equip-ring .ring-arrow--wx {
-  font-size: 15px;
+  font-size: 14px;
   color: #fff6d0;
   text-shadow:
-    0 0 3px rgba(0, 0, 0, 0.95),
-    0 0 6px rgba(0, 0, 0, 0.75),
-    0 0 9px rgba(255, 230, 165, 0.55);
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 5px rgba(255, 230, 165, 0.85),
+    0 0 9px rgba(255, 230, 165, 0.45);
 }
 @media (max-width: 600px) {
-  .equip-ring { max-width: 360px; }
-  .wx { font-size: 14px; }
-  .equip-ring .equip-slot { width: 26%; min-height: 48px; padding: 5px 3px 4px; border-radius: 8px; }
-  .equip-ring .equip-slot-label { font-size: 9px; letter-spacing: 1.5px; }
-  .equip-ring .equip-slot-name { font-size: 11px; }
-  .equip-ring .enhance-slot-btn { font-size: 8px; height: 12px; padding: 0 4px; line-height: 10px; }
-  .equip-ring .ring-arrow--slot { font-size: 13px; }
+  .equip-ring { max-width: 380px; padding: 4px; }
+  .wx { font-size: 16px; }
+  .equip-ring .equip-slot { width: 23%; border-width: 1.5px; }
+  .equip-ring .equip-slot-badge { font-size: 10px; padding: 1px 7px; bottom: -16px; }
+  .equip-ring .equip-slot-name { font-size: 10px; }
+  .equip-ring .enhance-slot-btn { font-size: 8px; height: 12px; padding: 0 4px; line-height: 10px; top: 4px; right: 4px; }
+  .equip-ring .ring-arrow--slot { font-size: 14px; }
   .equip-ring .ring-arrow--wx { font-size: 12px; }
+}
+/* 装备环内：传奇 / Boss 秘宝槽位 — 强制圆形、柔化光晕，避免黄色方框破坏环形美感 */
+.equip-ring .equip-slot.legendary-slot {
+  border: 2px solid rgba(255, 230, 150, 0.85);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(120, 90, 30, 0.55) 0%, rgba(30, 20, 8, 0.85) 75%);
+  background-size: auto;
+  box-shadow:
+    inset 0 0 14px rgba(255, 215, 0, 0.18),
+    inset 0 0 0 1px rgba(255, 245, 200, 0.25),
+    0 0 16px rgba(255, 215, 0, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+  animation: legendary-pulse-ring 2.6s ease-in-out infinite;
+}
+.equip-ring .equip-slot.legendary-slot::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    rgba(255, 215, 0, 0.55), rgba(255, 215, 0, 0.1),
+    rgba(255, 215, 0, 0.55), rgba(255, 215, 0, 0.1),
+    rgba(255, 215, 0, 0.55));
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 2px), #000 calc(50% - 1.5px) calc(50%));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 2px), #000 calc(50% - 1.5px) calc(50%));
+  animation: legendary-edge-spin 6s linear infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+.equip-ring .equip-slot.legendary-slot:hover {
+  border-color: rgba(255, 240, 180, 1);
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow:
+    inset 0 0 16px rgba(255, 215, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 245, 200, 0.4),
+    0 0 24px rgba(255, 215, 0, 0.55),
+    0 3px 8px rgba(0, 0, 0, 0.55);
+}
+@keyframes legendary-pulse-ring {
+  0%, 100% { box-shadow: inset 0 0 14px rgba(255, 215, 0, 0.18), inset 0 0 0 1px rgba(255, 245, 200, 0.25), 0 0 16px rgba(255, 215, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.5); }
+  50%      { box-shadow: inset 0 0 18px rgba(255, 215, 0, 0.30), inset 0 0 0 1px rgba(255, 245, 200, 0.4), 0 0 24px rgba(255, 215, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.5); }
+}
+@keyframes legendary-edge-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.equip-ring .equip-slot.boss-treasure-slot {
+  border: 2px solid rgba(255, 150, 200, 0.85);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 12px rgba(255, 111, 170, 0.18),
+    inset 0 0 0 1px rgba(255, 200, 220, 0.25),
+    0 0 14px rgba(255, 111, 170, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+  animation: boss-pulse-ring 2.8s ease-in-out infinite;
+}
+.equip-ring .equip-slot.boss-treasure-slot:hover {
+  border-color: rgba(255, 200, 220, 1);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+@keyframes boss-pulse-ring {
+  0%, 100% { box-shadow: inset 0 0 12px rgba(255, 111, 170, 0.18), inset 0 0 0 1px rgba(255, 200, 220, 0.25), 0 0 14px rgba(255, 111, 170, 0.35), 0 2px 6px rgba(0, 0, 0, 0.5); }
+  50%      { box-shadow: inset 0 0 16px rgba(255, 111, 170, 0.30), inset 0 0 0 1px rgba(255, 200, 220, 0.4), 0 0 22px rgba(255, 111, 170, 0.55), 0 2px 6px rgba(0, 0, 0, 0.5); }
 }
 /* ===================== 环形布局结束 ===================== */
 
@@ -10290,6 +10666,38 @@ onUnmounted(() => {
 .lingen-resonance-panel.active .lingen-progress { color: rgba(120, 200, 255, 0.7); }
 .lingen-bonus { color: #78c8ff; font-weight: 600; margin-left: auto; }
 .lingen-bonus-pending { color: var(--ink-faint); margin-left: auto; font-size: 11px; }
+/* 灵根共鸣 3/5/7 分档说明行 */
+.lingen-tier-row {
+  margin: -6px 0 10px;
+  padding: 4px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  border-left: 2px solid rgba(120, 200, 255, 0.25);
+}
+.lingen-tier-title {
+  color: var(--ink-light);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.lingen-tier {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(60, 60, 80, 0.25);
+  border: 1px dashed rgba(160, 160, 180, 0.25);
+  color: var(--ink-faint);
+}
+.lingen-tier.active {
+  color: #b8d8f0;
+  background: rgba(120, 200, 255, 0.12);
+  border-color: rgba(120, 200, 255, 0.55);
+  box-shadow: 0 0 4px rgba(120, 200, 255, 0.2) inset;
+  font-weight: 600;
+}
+.lingen-tier-sep { color: rgba(184, 154, 90, 0.45); }
 .equip-set-active {
   padding: 8px 10px;
   background: linear-gradient(90deg, rgba(255, 211, 94, 0.10), rgba(120, 200, 255, 0.06));
@@ -10874,6 +11282,86 @@ onUnmounted(() => {
   font-size: 11px;
   color: var(--ink-faint);
 }
+
+/* 装备环·相生秘要 — 信纸样式 tips */
+.bag-letter {
+  margin: 20px 6px 0;
+  padding: 14px 14px 12px;
+  text-align: left;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: #6b5a3a;
+  background:
+    linear-gradient(180deg, rgba(252, 244, 218, 0.92), rgba(244, 230, 196, 0.88));
+  border: 1px solid rgba(184, 154, 90, 0.45);
+  border-radius: 3px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 2px 8px rgba(120, 90, 40, 0.10),
+    0 0 0 1px rgba(255, 252, 240, 0.4) inset;
+  position: relative;
+}
+.bag-letter::before,
+.bag-letter::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, rgba(184, 154, 90, 0.35) 0 4px, transparent 4px 8px);
+}
+.bag-letter::before { top: 4px; }
+.bag-letter::after { bottom: 4px; }
+.bag-letter-title {
+  text-align: center;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #8a6a30;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.bag-letter-section { padding: 2px 0; }
+.bag-letter-line { margin: 2px 0; }
+.bag-letter-tag {
+  display: inline-block;
+  min-width: 30px;
+  padding: 0 4px;
+  margin-right: 4px;
+  font-size: 10.5px;
+  color: #8a6a30;
+  background: rgba(232, 204, 138, 0.35);
+  border-radius: 2px;
+}
+.bag-letter-rule {
+  margin: 2px 0 4px;
+  color: #6b5a3a;
+}
+.bag-letter-tier {
+  padding-left: 10px;
+  color: #5a4a2e;
+}
+.bag-letter-tier b {
+  color: #a86518;
+  font-weight: 600;
+}
+.bag-letter-mark { color: rgba(184, 154, 90, 0.7); margin-right: 4px; }
+.bag-letter-divider {
+  margin: 6px 0;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, rgba(184, 154, 90, 0.4) 0 5px, transparent 5px 10px);
+}
+/* 五行字小标签 */
+.wx-letter {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+.wx-letter-metal { color: #b8a060; background: rgba(232, 204, 138, 0.35); }
+.wx-letter-wood  { color: #4a8a3a; background: rgba(150, 220, 140, 0.30); }
+.wx-letter-water { color: #3a7ab8; background: rgba(140, 200, 240, 0.30); }
+.wx-letter-fire  { color: #c84a3a; background: rgba(240, 160, 140, 0.30); }
+.wx-letter-earth { color: #8a6a30; background: rgba(220, 190, 140, 0.40); }
 
 /* 当前在预览中的格子高亮 */
 .bag-cell-preview {
@@ -16272,6 +16760,8 @@ onUnmounted(() => {
     padding: 10px;
   }
   .bag-preview-empty { padding: 16px 8px; }
+  .bag-letter { margin: 14px 2px 0; padding: 12px 10px 10px; font-size: 11px; line-height: 1.6; }
+  .bag-letter-title { font-size: 12px; letter-spacing: 0.5px; }
   .bag-grid {
     grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
     gap: 4px;

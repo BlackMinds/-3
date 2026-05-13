@@ -23,10 +23,15 @@ import {
   V5_LEGENDARY_SET_YUANSHI,
   V5_BOSS_TREASURES,
   V5_DROP_FLAG,
+  V5_SUB_STAT_RANGE_PCT,
+  V5_SUB_STAT_FLAT_RATIO,
+  V5_SUB_STAT_FLAT_SET,
+  V5_RARITY_TO_QUALITY_MUL,
   getV5EnhanceMul,
   getV5TierWeight,
   getV5EnhanceAffixCount,
   getV5EnhanceAffixPool,
+  getV5SubStatPool,
   type V5Rarity,
   type V5BaseSlot,
   type WuxingPrefix,
@@ -155,13 +160,35 @@ function calcWuxingAffixValue(stat: string, tier: number, rarity: V5Rarity = 're
   return Math.max(1, Math.ceil(base * qualityMul * tierMul))
 }
 
-// --------------------------- 强化词条数值（不受 T 级） ---------------------------
+// --------------------------- 强化词条数值（V5.0.3 副词条公式） ---------------------------
 
-function calcEnhanceAffixValue(stat: string, rarity: V5Rarity): number {
-  const [min, max] = v5StatRange(stat)
-  const rarityIdx = RARITY_IDX_MAP[rarity] ?? 0
-  const qualityMul = 1 + rarityIdx * 0.15
-  const base = Math.floor(Math.random() * (max - min + 1)) + min
+/**
+ * 单条强化词条数值
+ *
+ * V5.0.3 规则（区分 flat 和 pct）：
+ * - flat 类（atk/def/hp/spd/spirit/luck/spirit_density/accuracy）：
+ *     value = floor(EQUIP_PRIMARY_BASE[stat] × tier_weight × RARITY_STAT_MUL × V5_SUB_STAT_FLAT_RATIO)
+ *     T 级影响 flat 副词条数值（与 V5.0.2「T 级只影响 base_stat_1 + wuxing_affix」不同；V5.0.3 修正）
+ * - 百分比类：random [min, max] × V5_RARITY_TO_QUALITY_MUL[rarity]，不受 T 级
+ *
+ * 反推基准：T15+9 红装 3 次同条强化（每次 ×1.30）后达到 V5.0.3 目标值（攻击力% 45 / 会心伤害% 84 等）
+ */
+function calcEnhanceAffixValue(stat: string, rarity: V5Rarity, tier: number): number {
+  // flat 类：T 级 + 品质 → 主属性面板的 10%
+  if (V5_SUB_STAT_FLAT_SET.has(stat)) {
+    const baseKey = stat.toUpperCase()
+    const base = (EQUIP_PRIMARY_BASE as Record<string, number>)[baseKey]
+    if (base) {
+      const tierWeight = getV5TierWeight(tier)
+      const rarityMul = RARITY_STAT_MUL[RARITY_IDX_MAP[rarity]] ?? 1
+      return Math.max(1, Math.floor(base * tierWeight * rarityMul * V5_SUB_STAT_FLAT_RATIO))
+    }
+    // luck/spirit_density/accuracy 没 EQUIP_PRIMARY_BASE 条目 → fallback 到 V5 pct 范围
+  }
+  // 百分比类：random [min, max] × qualityMul
+  const range = V5_SUB_STAT_RANGE_PCT[stat] ?? [1, 3]
+  const qualityMul = V5_RARITY_TO_QUALITY_MUL[rarity] ?? 1
+  const base = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]
   return Math.max(1, Math.ceil(base * qualityMul))
 }
 
@@ -173,44 +200,67 @@ function resolveResPctReplacement(stat: string): string {
   return Math.random() < 0.5 ? 'luck' : 'spirit_density'
 }
 
-function rollEnhanceAffixes(slotIndex: number, rarity: V5Rarity, level: number): V5StatValue[] {
+/** 按权重抽 V5 副词条池（位置内） */
+function weightedPickV5(candidates: ReadonlyArray<readonly [string, number]>): string {
+  let total = 0
+  for (const [, w] of candidates) total += w
+  let r = Math.random() * total
+  for (const [stat, w] of candidates) {
+    r -= w
+    if (r <= 0) return stat
+  }
+  return candidates[candidates.length - 1][0]
+}
+
+function rollEnhanceAffixes(slotIndex: number, rarity: V5Rarity, level: number, tier: number): V5StatValue[] {
   const count = getV5EnhanceAffixCount(rarity, level)
   if (count <= 0) return []
-  const pool = getV5EnhanceAffixPool(slotIndex)
+  const pool = getV5SubStatPool(slotIndex)
   const out: V5StatValue[] = []
+  const used = new Set<string>()
   for (let pos = 0; pos < count; pos++) {
     const candidates = pool[pos]
     if (!candidates || candidates.length === 0) continue
-    const rawStat = candidates[Math.floor(Math.random() * candidates.length)]
+    // 同件装备不重复（除非候选都被占用，兜底）
+    let avail: ReadonlyArray<readonly [string, number]> = candidates.filter(c => !used.has(c[0]))
+    if (avail.length === 0) avail = candidates
+    const rawStat = weightedPickV5(avail)
     const stat = resolveResPctReplacement(rawStat)
-    out.push({ stat, value: calcEnhanceAffixValue(stat, rarity) })
+    used.add(rawStat)
+    out.push({ stat, value: calcEnhanceAffixValue(stat, rarity, tier) })
   }
   return out
 }
 
 /**
  * V5 强化 +3/+6/+9 milestone 触发的副词条变化
- *   - 当前词条数 < 4：占位生成新词条（取下一个空位的 pool candidates）
+ *   - 当前词条数 < 4：占位生成新词条（取下一个空位的 pool candidates，按权重抽）
  *   - 当前词条数 = 4：从现有副词条随机选一条 ×1.30（最少 +1），允许重复
+ *
+ * tier 参数用于 flat 类副词条的 T 级缩放（V5.0.3 新规）
  */
 export function applyV5EnhanceMilestone(
   currentSubStats: V5StatValue[],
   slotIndex: number,
   rarity: V5Rarity,
   _newLevel: number,
+  tier: number = 1,
 ): {
   newSubStats: V5StatValue[]
   added?: V5StatValue
   boosted?: { stat: string; oldValue: number; newValue: number }
 } {
-  // 分支 1：还有空位 → 加新词条
+  // 分支 1：还有空位 → 加新词条（按 V5.0.3 权重池）
   if (currentSubStats.length < 4) {
-    const pool = getV5EnhanceAffixPool(slotIndex)
+    const pool = getV5SubStatPool(slotIndex)
     const candidates = pool[currentSubStats.length]
     if (candidates && candidates.length > 0) {
-      const rawStat = candidates[Math.floor(Math.random() * candidates.length)]
+      const used = new Set(currentSubStats.map(s => s.stat))
+      let avail: ReadonlyArray<readonly [string, number]> = candidates.filter(c => !used.has(c[0]))
+      if (avail.length === 0) avail = candidates
+      const rawStat = weightedPickV5(avail)
       const stat = resolveResPctReplacement(rawStat)
-      const added: V5StatValue = { stat, value: calcEnhanceAffixValue(stat, rarity) }
+      const added: V5StatValue = { stat, value: calcEnhanceAffixValue(stat, rarity, tier) }
       return { newSubStats: [...currentSubStats, added], added }
     }
   }
@@ -285,7 +335,7 @@ export function rollEquipmentV5(opts: RollEquipmentV5Options): V5EquipmentInstan
   }
 
   // 4) enhance_affixes
-  const enhanceAffixes = rollEnhanceAffixes(slotIndex, rarity, enhanceLevel)
+  const enhanceAffixes = rollEnhanceAffixes(slotIndex, rarity, enhanceLevel, tier)
 
   // 5) name / 套装标识
   let name: string | undefined

@@ -121,6 +121,11 @@ function applyStat(d: V5EquipmentDelta, stat: string, value: number, prefixes: r
     case 'dmg_reduction': d.dmgReductionPct += value / 100; break  // awaken.damageReduction 单位是 0~1 小数
     case 'res_pct':       d.resistAllPct    += value / 100; break  // 5 个抗性都加
     case 'lifesteal_all': d.lifestealAllPct += value / 100; break  // lifesteal 单位是 0~1 小数
+    // V5.0.3 新增副词条：单位是 %，但 luck/spirit_density base = 0 → 简化为直接 flat 累加
+    // 显示语义按副词条数值视作直接加分，等 V5.0.3 角色面板细则确定再回头处理
+    case 'luck_pct':           d.luck         += value; break
+    case 'spirit_density_pct': d.spiritDensity += value; break
+    case 'accuracy_pct':       d.accuracy     += value; break
   }
 }
 

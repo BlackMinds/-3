@@ -183,14 +183,15 @@ export const V5_WUXING_AFFIX_TABLE: Record<V5BaseSlot, Record<WuxingPrefix, V5Wu
   },
   ring: {
     metal: ['armor_pen',  'crit_rate',  'crit_dmg'],
-    wood:  ['lifesteal',  'atk_pct',    'lifesteal_all'],
+    // V5.0.3：木 灵戒/法宝/灵佩 词条3 换 dot_dmg 再与词条1 互换
+    wood:  ['dot_dmg',    'atk_pct',    'lifesteal'],
     water: ['accuracy',   'spirit_pct', 'crit_rate'],
     fire:  ['wuxing_dmg', 'spirit_pct', 'crit_dmg'],
     earth: ['res_pct',    'reflect',    'atk_pct'],
   },
   treasure: {
     metal: ['atk_pct',    'wuxing_dmg', 'armor_pen'],
-    wood:  ['spirit_pct', 'wuxing_dmg', 'crit_dmg'],
+    wood:  ['dot_dmg',    'wuxing_dmg', 'spirit_pct'],
     water: ['spirit_pct', 'wuxing_dmg', 'crit_rate'],
     fire:  ['atk_pct',    'wuxing_dmg', 'armor_pen'],
     earth: ['lifesteal',  'wuxing_dmg', 'crit_rate'],
@@ -211,7 +212,7 @@ export const V5_WUXING_AFFIX_TABLE: Record<V5BaseSlot, Record<WuxingPrefix, V5Wu
   },
   pendant: {
     metal: ['spirit_pct', 'accuracy',   'armor_pen'],
-    wood:  ['atk_pct',    'dodge',      'lifesteal'],
+    wood:  ['dot_dmg',    'dodge',      'atk_pct'],
     water: ['atk_pct',    'dodge',      'lifesteal'],
     fire:  ['spirit_pct', 'accuracy',   'armor_pen'],
     earth: ['atk_pct',    'dodge',      'lifesteal'],
@@ -227,26 +228,120 @@ export const V5_WUXING_AFFIX_TABLE: Record<V5BaseSlot, Record<WuxingPrefix, V5Wu
 
 // --------------------------- 强化词条：共享两组池 ---------------------------
 
-/** 1/2/3（武器/灵戒/法宝）共用 */
+/** 1/2/3（武器/灵戒/法宝）共用（仅 stat 名，用于 UI/类型兼容） */
 export const V5_ENHANCE_AFFIX_POOL_ATTACK: V5EnhanceAffixPositions = [
   ['atk', 'atk_pct', 'spirit', 'spirit_pct'],
   ['atk_pct', 'spirit_pct', 'crit_rate', 'crit_dmg', 'armor_pen', 'lifesteal', 'wuxing_dmg'],
-  ['atk_pct', 'spirit_pct', 'crit_rate', 'crit_dmg', 'armor_pen', 'lifesteal', 'wuxing_dmg'],
+  ['atk_pct', 'spirit_pct', 'crit_rate', 'crit_dmg', 'armor_pen', 'lifesteal', 'wuxing_dmg', 'luck_pct', 'spirit_density_pct'],
   ['crit_rate', 'crit_dmg', 'armor_pen', 'lifesteal', 'wuxing_dmg', 'dot_dmg'],
 ] as const
 
 /** 4/5/6/7（法袍/法冠/灵佩/步云靴）共用 */
 export const V5_ENHANCE_AFFIX_POOL_DEFENSE: V5EnhanceAffixPositions = [
   ['def', 'def_pct', 'hp', 'hp_pct'],
-  ['def_pct', 'hp_pct', 'dmg_reduction', 'res_pct', 'crit_rate', 'crit_dmg'],
-  ['dmg_reduction', 'res_pct', 'crit_rate', 'crit_dmg', 'dodge', 'accuracy', 'lifesteal'],
-  ['crit_rate', 'crit_dmg', 'dodge', 'accuracy', 'lifesteal', 'wuxing_dmg'],
+  ['def_pct', 'hp_pct', 'dmg_reduction', 'res_pct', 'crit_rate', 'crit_dmg', 'luck_pct'],
+  ['dmg_reduction', 'crit_rate', 'crit_dmg', 'dodge', 'accuracy_pct', 'lifesteal', 'spirit_density_pct'],
+  ['crit_rate', 'crit_dmg', 'dodge', 'accuracy_pct', 'lifesteal', 'wuxing_dmg'],
 ] as const
 
 /** 槽位序号 → 该装备走哪个强化词条池 */
 export function getV5EnhanceAffixPool(slotIndex: number): V5EnhanceAffixPositions {
   return slotIndex <= 3 ? V5_ENHANCE_AFFIX_POOL_ATTACK : V5_ENHANCE_AFFIX_POOL_DEFENSE
 }
+
+// --------------------------- V5.0.3 副词条权重池 ---------------------------
+
+/**
+ * V5.0.3 「副词条池」按权重抽取
+ *
+ * 权重来自 V5.0.3 表：3 攻击力 / 9 攻击力% / 21 会心率% / 21 会心伤害% / 16 吸血% …
+ * 每个槽位 4 位独立抽（位置约束保留 V5.0.2 设计），位置内按权重 weighted random。
+ *
+ * 注意：res_pct（五行抗性）保留为 group_defense 占位选项（落地时 50% 转 luck/spirit_density），
+ * 权重 8 与 dmg_reduction 一致。
+ */
+export type V5SubStatWeightedPool = ReadonlyArray<ReadonlyArray<readonly [string, number]>>
+
+export const V5_SUB_STAT_POOL_ATTACK: V5SubStatWeightedPool = [
+  // 位置1：flat 主词条池（4 选 1）
+  [['atk', 3], ['atk_pct', 9], ['spirit', 3], ['spirit_pct', 9]],
+  // 位置2：中等
+  [['atk_pct', 9], ['spirit_pct', 9], ['crit_rate', 21], ['crit_dmg', 21], ['armor_pen', 9], ['lifesteal', 16], ['wuxing_dmg', 13]],
+  // 位置3：扩展（含 V5.0.3 新增 luck_pct/spirit_density_pct）
+  [['atk_pct', 9], ['spirit_pct', 9], ['crit_rate', 21], ['crit_dmg', 21], ['armor_pen', 9], ['lifesteal', 16], ['wuxing_dmg', 13], ['luck_pct', 8], ['spirit_density_pct', 8]],
+  // 位置4：好词条
+  [['crit_rate', 21], ['crit_dmg', 21], ['armor_pen', 9], ['lifesteal', 16], ['wuxing_dmg', 13], ['dot_dmg', 3]],
+] as const
+
+export const V5_SUB_STAT_POOL_DEFENSE: V5SubStatWeightedPool = [
+  // 位置1：flat 主词条池
+  [['def', 4], ['def_pct', 8], ['hp', 4], ['hp_pct', 8]],
+  // 位置2：减伤/抗性/双爆 + luck
+  [['def_pct', 8], ['hp_pct', 8], ['dmg_reduction', 8], ['res_pct', 8], ['crit_rate', 21], ['crit_dmg', 21], ['luck_pct', 8]],
+  // 位置3：闪避/命中/吸血/会心 + spirit_density
+  [['dmg_reduction', 8], ['crit_rate', 21], ['crit_dmg', 21], ['dodge', 8], ['accuracy_pct', 8], ['lifesteal', 16], ['spirit_density_pct', 8]],
+  // 位置4：会心向 + 五行强化
+  [['crit_rate', 21], ['crit_dmg', 21], ['dodge', 8], ['accuracy_pct', 8], ['lifesteal', 16], ['wuxing_dmg', 13]],
+] as const
+
+export function getV5SubStatPool(slotIndex: number): V5SubStatWeightedPool {
+  return slotIndex <= 3 ? V5_SUB_STAT_POOL_ATTACK : V5_SUB_STAT_POOL_DEFENSE
+}
+
+// --------------------------- V5.0.3 副词条数值范围 ---------------------------
+
+/**
+ * V5.0.3 百分比类副词条数值范围 [min, max]
+ *
+ * 反推自 V5.0.3 目标值（T15+9 红装、3 次同条强化）：
+ *   target ≈ ceil(max × qualityMul_red=1.75) × (1.30^3 ≈ 2.197) ≈ max × 3.845
+ *
+ * 举例：会心伤害% 目标 84% → max=22 → 22×1.75=39 → 39×2.197=85.7 ≈ 84 ✓
+ *      攻击力%  目标 45% → max=12 → 12×1.75=21 → 21×2.197=46.1 ≈ 45 ✓
+ *      福缘%    目标 80% → max=21 → 21×1.75=37 → 37×2.197=81.3 ≈ 80 ✓
+ *
+ * min 设为 max 的 35-50%（保留方差），qualityMul 按 V5_RARITY_TO_QUALITY_MUL。
+ */
+export const V5_SUB_STAT_RANGE_PCT: Record<string, [number, number]> = {
+  atk_pct:            [4, 12],   // → 45%
+  def_pct:            [4, 11],   // → 40%
+  hp_pct:             [4, 11],   // → 40%
+  spirit_pct:         [4, 12],   // → 45%
+  spd_pct:            [3, 8],
+  dmg_reduction:      [4, 11],   // → 40%
+  res_pct:            [4, 11],   // → 40%（同 dmg_reduction 量级）
+  luck_pct:           [8, 21],   // → 80%
+  spirit_density_pct: [8, 21],   // → 80%
+  dodge:              [3, 9],    // → 32%
+  accuracy_pct:       [3, 9],    // → 32%
+  armor_pen:          [4, 12],   // → 45%
+  lifesteal:          [4, 11],   // → 40%
+  wuxing_dmg:         [4, 11],   // → 39%
+  crit_rate:          [4, 11],   // → 42%
+  crit_dmg:           [8, 22],   // → 84%
+  dot_dmg:            [6, 16],   // → 60%（V5.0.3 未明示，估算同 wuxing_dmg 量级）
+  reflect:            [4, 11],
+}
+
+/** 颜色对副词条数值的乘子（与 RARITY_STAT_MUL 同口径，但只用 V5 四色） */
+export const V5_RARITY_TO_QUALITY_MUL: Record<V5Rarity, number> = {
+  red: 1.75, gold: 1.45, purple: 1.30, blue: 1.15,
+}
+
+/**
+ * V5.0.3 flat 类副词条系数
+ *
+ * 规则：「固定数值词条（攻击力，防御力，神识，气血）按当前装备 T 级 +0 对应主属性装备面板的 0.1」
+ *
+ * flat_sub_stat_value(stat, tier, rarity)
+ *   = floor(EQUIP_PRIMARY_BASE[stat] × tier_weight(tier) × RARITY_STAT_MUL[rarity] × 0.1)
+ *
+ * T15 red atk 单条 = floor(30 × 20 × 2.5 × 0.1) = 150；3 次 ×1.30 后约 329
+ */
+export const V5_SUB_STAT_FLAT_RATIO = 0.10
+
+/** flat 类副词条 stat 集合 */
+export const V5_SUB_STAT_FLAT_SET = new Set(['atk', 'def', 'hp', 'spd', 'spirit', 'luck', 'spirit_density', 'accuracy'])
 
 // --------------------- 强化词条数：颜色 + 强化等级 ---------------------
 
@@ -311,7 +406,9 @@ export function getV5TierWeight(tier: number): number {
  * 例如「atk = 5556」意思是「假设 18 条五行词条都堆 atk_pct，单条平均贡献 5556 点面板 atk」。
  *
  * 历史：曾名 V5_PER_WUXING_AFFIX_T15，2026-05-12 重命名（命名误导导致生成器查表返回 0）
- * 削弱记录（2026-05-12）：吸血率/破甲率 原 100% → 50%
+ * 削弱记录：
+ *   2026-05-12：吸血率/破甲率 原 100% → 50%
+ *   2026-05-13：会心率 80%→60% / 会心伤害 360%→300% / dot 增伤 90%→60%（对齐 V5.0.3 数值修正）
  *
  * 生成器实际数值见 server/utils/equipment-v5.ts:calcWuxingAffixValue（沿用 V4 SUB_STAT_RANGE_V4 + tier 缩放）
  */
@@ -325,10 +422,10 @@ export const V5_T15_STAT_CONTRIBUTION_PER_PIECE: Record<string, number> = {
   dodge_pct:     0.0278,
   lifesteal_pct: 0.0278,
   armor_pen_pct: 0.0278,
-  crit_rate_pct: 0.0444,
-  crit_dmg_pct:  0.20,
+  crit_rate_pct: 0.0333,
+  crit_dmg_pct:  0.1667,
   wuxing_dmg:    0.0333,
-  dot_dmg:       0.05,
+  dot_dmg:       0.0333,
 }
 
 /** @deprecated 用 V5_T15_STAT_CONTRIBUTION_PER_PIECE，命名更清晰 */
@@ -429,7 +526,7 @@ export interface V5BossTreasure {
 }
 
 export const V5_BOSS_TREASURES: readonly V5BossTreasure[] = [
-  { tier: 8,  boss_zh: '天帝',     prefix: ['fire'],          slot_v5: '武器',   base_slot_v4: 'weapon',   name: '降魔伏鬼枪', base_stat_1: 'atk',        wuxing_affixes: ['armor_pen', 'armor_pen', 'armor_pen'] },
+  { tier: 8,  boss_zh: '天帝',     prefix: ['metal'],         slot_v5: '武器',   base_slot_v4: 'weapon',   name: '降魔伏鬼枪', base_stat_1: 'atk',        wuxing_affixes: ['armor_pen', 'armor_pen', 'armor_pen'] },
   { tier: 9,  boss_zh: '鸿蒙道尊', prefix: ['wood'],          slot_v5: '武器',   base_slot_v4: 'weapon',   name: '道尊拂尘',   base_stat_1: 'atk',        wuxing_affixes: ['atk_pct', 'atk_pct', 'atk_pct'] },
   { tier: 10, boss_zh: '万界战神', prefix: ['fire'],          slot_v5: '法袍',   base_slot_v4: 'armor',    name: '不朽战铠',   base_stat_1: 'def',        wuxing_affixes: ['lifesteal', 'lifesteal', 'lifesteal'] },
   { tier: 11, boss_zh: '九霄玉帝', prefix: ['earth'],         slot_v5: '法宝',   base_slot_v4: 'treasure', name: '封天印',     base_stat_1: 'spirit',     wuxing_affixes: ['spirit_pct', 'spirit_pct', 'spirit_pct'] },
@@ -460,10 +557,10 @@ export const V5_T15_BASELINE_CAPS: Record<string, number> = {
   dodge_pct:     0.50,
   lifesteal_pct: 0.50,
   armor_pen_pct: 0.50,
-  crit_rate_pct: 0.80,
-  crit_dmg_pct:  3.60,
+  crit_rate_pct: 0.60,
+  crit_dmg_pct:  3.00,
   wuxing_dmg:    0.60,
-  dot_dmg:       0.90,
+  dot_dmg:       0.60,
 }
 
 // --------------------------- 套装效果激活 ---------------------------

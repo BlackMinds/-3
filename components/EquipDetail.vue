@@ -29,11 +29,44 @@
       {{ statName(equip.primary_stat_2) }} +{{ formatValue(equip.primary_stat_2, equip.primary_value_2) }}
       <span style="color: var(--ink-faint); font-size: 11px;">（固定）</span>
     </div>
+    <!-- V5 五行链实时诊断（解释为什么亮/不亮） -->
+    <div v-if="isV5 && wuxingDiagnosis" class="tooltip-wuxing-diagnosis">
+      <!-- 第 1 行：前置 → 当前 + 相生判定 -->
+      <div class="wx-diag-line">
+        <span class="wx-diag-label">前置</span>
+        <span v-if="wuxingDiagnosis.prevPrefixZh" class="wx-diag-chip">
+          {{ wuxingDiagnosis.prevSlotName }}·{{ wuxingDiagnosis.prevPrefixZh }}
+        </span>
+        <span v-else class="wx-diag-chip wx-diag-empty">{{ wuxingDiagnosis.prevSlotName }} 空</span>
+        <span class="wx-diag-arrow">→</span>
+        <span class="wx-diag-chip wx-diag-self">
+          {{ wuxingDiagnosis.slotName }}·{{ wuxingDiagnosis.prefixZh }}
+        </span>
+        <span class="wx-diag-reason" :class="{ 'wx-diag-ok': wuxingDiagnosis.isSheng, 'wx-diag-no': !wuxingDiagnosis.isSheng }">
+          {{ wuxingDiagnosis.isSheng ? '✓' : '✗' }} {{ wuxingDiagnosis.shengReason }}
+        </span>
+      </div>
+      <!-- 第 2 行：三档进度（链上已激活 X 件） -->
+      <div class="wx-diag-line wx-diag-progress">
+        <span class="wx-diag-label">链上</span>
+        <span class="wx-diag-count">{{ wuxingDiagnosis.chainActiveCount }}/7 件已激活</span>
+        <span class="wx-diag-tier" :class="{ 'wx-diag-tier-on': wuxingDiagnosis.affix_1_active }">
+          ①{{ wuxingDiagnosis.affix_1_active ? '✓' : '✗' }}
+        </span>
+        <span class="wx-diag-tier" :class="{ 'wx-diag-tier-on': wuxingDiagnosis.affix_2_active }">
+          ②{{ wuxingDiagnosis.affix_2_active ? '✓' : `✗ 需 ${wuxingDiagnosis.affix_2_threshold}` }}
+        </span>
+        <span class="wx-diag-tier" :class="{ 'wx-diag-tier-on': wuxingDiagnosis.affix_3_active }">
+          ③{{ wuxingDiagnosis.affix_3_active ? '✓' : `✗ 需 ${wuxingDiagnosis.affix_3_threshold}` }}
+        </span>
+      </div>
+    </div>
     <!-- V5 五行词条（暗词条，灰字未触发 / 蓝字触发） -->
     <div v-if="isV5 && wuxingAffixes.length > 0" class="tooltip-wuxing-affixes">
       <div v-for="(aff, i) in wuxingAffixes" :key="i"
            class="tooltip-wuxing-affix"
            :class="{ active: wuxingActivation && [wuxingActivation.affix_1_active, wuxingActivation.affix_2_active, wuxingActivation.affix_3_active][i] }">
+        <span class="wx-affix-tier">{{ ['①','②','③'][i] }}</span>
         {{ statName(aff.stat) }} +{{ formatValue(aff.stat, aff.value) }}
       </div>
     </div>
@@ -95,6 +128,23 @@ const props = defineProps<{
   equippedSetCount?: number
   /** V5 五行词条触发状态（父组件传入；未传则 3 条都视为未触发） */
   wuxingActivation?: { affix_1_active: boolean; affix_2_active: boolean; affix_3_active: boolean }
+  /** V5 五行链实时诊断（父组件传入；用于解释每条词条为什么亮 / 为什么不亮） */
+  wuxingDiagnosis?: {
+    slotName: string
+    prefixZh: string
+    isDual: boolean
+    isYuanshi: boolean
+    prevSlotName: string
+    prevPrefixZh: string | null
+    isSheng: boolean
+    shengReason: string
+    affix_1_active: boolean
+    affix_2_active: boolean
+    affix_3_active: boolean
+    chainActiveCount: number
+    affix_2_threshold: number
+    affix_3_threshold: number
+  }
   /** 已穿戴元始天尊件数（V5 套装进度） */
   yuanshiCount?: number
 }>()
@@ -316,6 +366,83 @@ const wuxingAffixes = computed(() => {
 .tooltip-set-tier.set-tier-active b {
   color: #ffd35e;
   text-shadow: 0 0 4px rgba(255, 211, 94, 0.5);
+}
+
+/* V5 五行链实时诊断（在五行词条之前，解释 ① ② ③ 为什么亮 / 不亮） */
+.tooltip-wuxing-diagnosis {
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(60, 90, 140, 0.10);
+  border-left: 2px solid rgba(120, 200, 255, 0.35);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.wx-diag-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.wx-diag-progress { margin-top: 3px; }
+.wx-diag-label {
+  color: rgba(180, 180, 200, 0.65);
+  font-size: 11px;
+  margin-right: 2px;
+}
+.wx-diag-chip {
+  padding: 1px 6px;
+  background: rgba(120, 200, 255, 0.15);
+  border-radius: 8px;
+  color: var(--ink-light);
+  white-space: nowrap;
+}
+.wx-diag-chip.wx-diag-empty {
+  background: rgba(180, 180, 180, 0.10);
+  color: rgba(180, 180, 180, 0.55);
+}
+.wx-diag-chip.wx-diag-self {
+  background: rgba(255, 215, 94, 0.18);
+  color: #ffd35e;
+  font-weight: 600;
+}
+.wx-diag-arrow {
+  color: rgba(180, 180, 200, 0.55);
+  font-weight: 600;
+  margin: 0 2px;
+}
+.wx-diag-reason {
+  margin-left: 4px;
+  font-size: 11.5px;
+}
+.wx-diag-reason.wx-diag-ok  { color: #6acf6a; }
+.wx-diag-reason.wx-diag-no  { color: #d05d5d; }
+.wx-diag-count {
+  color: rgba(180, 200, 220, 0.85);
+  margin-right: 6px;
+}
+.wx-diag-tier {
+  padding: 1px 5px;
+  background: rgba(160, 160, 160, 0.10);
+  border-radius: 8px;
+  color: rgba(180, 180, 180, 0.55);
+  font-size: 11px;
+}
+.wx-diag-tier.wx-diag-tier-on {
+  background: rgba(120, 200, 255, 0.20);
+  color: #78c8ff;
+  font-weight: 600;
+}
+/* 五行词条前的 ① ② ③ 序号（与诊断条对应） */
+.wx-affix-tier {
+  display: inline-block;
+  width: 16px;
+  color: rgba(180, 180, 200, 0.55);
+  font-size: 12px;
+  margin-right: 2px;
+}
+.tooltip-wuxing-affix.active .wx-affix-tier {
+  color: #78c8ff;
 }
 
 /* V5 五行词条（暗词条）：默认灰字未触发，蓝字触发 */
