@@ -291,7 +291,7 @@ export const STAT_NAMES: Record<string, string> = {
   luck: '福缘', spirit_density: '灵气浓度',
   // V5.0.3 新增副词条：福缘%/灵气%/命中%
   luck_pct: '福缘加成', spirit_density_pct: '灵气加成', accuracy_pct: '命中加成',
-  // V5 灵佩特殊主属性（实际拆 50/50 给 HP_PCT/DEF_PCT 各一半）
+  // V5 灵佩特殊主属性：气血% 和 防御% 各拿满值（addV5 / 服务端 applyStat 同步处理）
   hp_pct_or_def_pct: '气血/防御 各',
 };
 

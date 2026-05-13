@@ -5389,10 +5389,10 @@ const V5_STAT_TO_V4_KEY: Record<string, string> = {
 const equipBonus = computed(() => {
   const bonus: Record<string, number> = { ATK: 0, DEF: 0, HP: 0, SPD: 0, CRIT_RATE: 0, CRIT_DMG: 0, SPIRIT: 0 };
   const addV5 = (stat: string, value: number, prefixes: string[]) => {
-    // 灵佩 hp_pct_or_def_pct：拆 50/50 给气血% 和防御%
+    // 灵佩 hp_pct_or_def_pct：气血% 和防御% 各拿满值（不是拆 50/50）
     if (stat === 'hp_pct_or_def_pct') {
-      bonus.HP_PCT = (bonus.HP_PCT || 0) + value / 2
-      bonus.DEF_PCT = (bonus.DEF_PCT || 0) + value / 2
+      bonus.HP_PCT = (bonus.HP_PCT || 0) + value
+      bonus.DEF_PCT = (bonus.DEF_PCT || 0) + value
       return
     }
     // wuxing_dmg：按已装备神通主属（最多者）生效；无神通则按装备前缀兜底
@@ -7943,8 +7943,8 @@ async function toggleEquipLock(eq: any) {
 // 格式化副属性数值,百分比类加 %
 function formatStatValue(stat: string, value: number): string {
   if (stat === 'hp_pct_or_def_pct') {
-    // db 存的是总值，addV5 实际拆 50/50 给 HP_PCT/DEF_PCT 各一半；显示侧也除以 2，配合 stat 名「气血/防御 各」自洽
-    return Math.floor(value / 2) + '%';
+    // 灵佩主属性：气血% 和 防御% 各拿满值，stat 名「气血/防御 各 +N%」直接显示
+    return value + '%';
   }
   if (PERCENT_STATS.has(stat)) return value + '%';
   return String(value);

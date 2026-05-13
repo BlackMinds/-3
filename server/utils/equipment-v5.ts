@@ -135,8 +135,8 @@ function calcBaseStat1Value(stat: string, tier: number, rarity: V5Rarity, level:
   const v4Stat = V5_TO_V4_STAT[stat] || stat.toUpperCase()
   const base = (EQUIP_PRIMARY_BASE as Record<string, number>)[v4Stat]
   if (!base) {
-    // 灵佩 hp_pct_or_def_pct：单条主词条产出后在 pages/index.vue addV5 里拆 50/50 进 HP_PCT / DEF_PCT
-    // base = 0.16 → T11 红 +0 = 4.8 → 4（拆后单属性 +2%），T15 红 +9 ≈ 15（拆后单属性 +7%），与副词条 HP_PCT [2,8] 一档对齐
+    // 灵佩 hp_pct_or_def_pct：单条主词条产出后在 addV5 / applyStat 里同时加到 HP_PCT 和 DEF_PCT（双方各拿满值，不是拆 50/50）
+    // base = 0.16 → T11 红 +0 ≈ 4 (气血% 防御% 各 +4)，T15 红 +9 ≈ 15 (各 +15)，T15 元始 ≈ 22 (各 +22)
     if (stat === 'hp_pct_or_def_pct') return Math.max(1, Math.floor(0.16 * getV5TierWeight(tier) * RARITY_STAT_MUL[RARITY_IDX_MAP[rarity]] * getV5EnhanceMul(level)))
     return 1
   }

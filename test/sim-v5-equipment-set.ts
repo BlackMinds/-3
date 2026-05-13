@@ -26,7 +26,7 @@ const STAT_ZH: Record<string, string> = {
   dmg_reduction: '减伤', lifesteal_all: '全能吸血',
   luck: '福缘', spirit_density: '灵气', luck_pct: '福缘%', spirit_density_pct: '灵气%',
   accuracy_pct: '命中%',
-  hp_pct_or_def_pct: '气血/防御',
+  hp_pct_or_def_pct: '气血/防御 各',
 }
 function stat(s: string) { return STAT_ZH[s] ?? s }
 

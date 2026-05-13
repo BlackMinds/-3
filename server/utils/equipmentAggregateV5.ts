@@ -105,6 +105,11 @@ function applyStat(d: V5EquipmentDelta, stat: string, value: number, prefixes: r
     case 'atk_pct':       d.equipAtkPct += value; break
     case 'def_pct':       d.equipDefPct += value; break
     case 'hp_pct':        d.equipHpPct += value; break
+    case 'hp_pct_or_def_pct':
+      // 灵佩主属性：气血% 和 防御% 各拿满值（不是拆 50/50）
+      d.equipHpPct  += value
+      d.equipDefPct += value
+      break
     case 'spd_pct':       d.equipSpdPct += value; break
     case 'spirit_pct':    d.weaponSpiritPct += value; break
     case 'reflect':       d.equipReflectPct += value / 100; break
