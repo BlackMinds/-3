@@ -714,7 +714,7 @@ export function tickMonsterCds(state: MonsterSkillState) {
 // ========== 怪物属性生成 ==========
 
 export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
-  const power = template.power * randFloat(0.85, 1.15);
+  const power = template.power * randFloat(0.95, 1.05);
   // v2.0 方案 A: Boss role 保持原版平衡, 通过整体 power 压缩和装备品质提升让战斗更舒服
   // healer：低攻、略脆、中速；技能伤害是配角，主要靠群体回血/buff 影响战局
   // v3.6: hp 0.30→0.18 / def 0.25→0.15, 让 healer 比 dps 略脆（hp 90% / def 同），
@@ -789,6 +789,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
     5: 350, 6: 500, 7: 700, 8: 1000,
     9: 1300, 10: 1700,
     11: 2000, 12: 2300, 13: 2600, 14: 2900, 15: 3200,
+    16: 3500, 17: 3800, 18: 4100,
   };
   const SPD_ROLE_MUL: Record<string, number> = {
     balanced: 1.0,
@@ -800,7 +801,7 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   };
   const spdBase = SPD_BASE_BY_TIER[tier] ?? SPD_BASE_BY_TIER[10];
   const spdRoleMul = SPD_ROLE_MUL[role] ?? 1.0;
-  const spdValue = Math.floor(spdBase * spdRoleMul * randFloat(0.85, 1.15));
+  const spdValue = Math.floor(spdBase * spdRoleMul * randFloat(0.95, 1.05));
 
   // v3.7: 玩家"加法池"重平衡补偿（test/sim-additive-pool.ts 数值模拟，截图角色基准）
   //   玩家攻击 ×0.44 → 怪物 HP ×0.44 / DEF ×0.44（守恒玩家秒怪 TTK 与"实际伤害"）
@@ -831,6 +832,10 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   if (tier === 13) { MONSTER_HP_MUL *= 0.063; MONSTER_ATK_MUL *= 0.063; MONSTER_DEF_MUL *= 0.063; }
   if (tier === 14) { MONSTER_HP_MUL *= 0.037; MONSTER_ATK_MUL *= 0.037; MONSTER_DEF_MUL *= 0.037; }
   if (tier === 15) { MONSTER_HP_MUL *= 0.022; MONSTER_ATK_MUL *= 0.022; MONSTER_DEF_MUL *= 0.022; }
+  // T16-T18 道祖三层（power 跨幅 ×2、tier mul ×0.925 → 综合跨幅 ~×1.85，延续 T11-T15 曲线）
+  if (tier === 16) { MONSTER_HP_MUL *= 0.0204; MONSTER_ATK_MUL *= 0.0204; MONSTER_DEF_MUL *= 0.0204; }
+  if (tier === 17) { MONSTER_HP_MUL *= 0.0188; MONSTER_ATK_MUL *= 0.0188; MONSTER_DEF_MUL *= 0.0188; }
+  if (tier === 18) { MONSTER_HP_MUL *= 0.0174; MONSTER_ATK_MUL *= 0.0174; MONSTER_DEF_MUL *= 0.0174; }
 
   return {
     name: template.name,

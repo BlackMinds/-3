@@ -438,6 +438,75 @@ export const MAPS: MapData[] = [
     ],
     boss: { id: 'omega_dao_lord', name: '终焉道祖', power: 700000000, element: null, exp: 4500000000, spirit_stone_range: [30000000000, 70000000000], role: 'boss', drop_table: 'boss_t15' },
   },
+  // ===== T16 地图（道祖·初道）— power ×2 跨 T15 =====
+  {
+    id: 'primal_dao_origin', name: '洪荒初道', tier: 16,
+    realm_required: 'T16 试炼', recommended_power: 400,
+    element: null, description: '万道之始，洪荒未辟，初道之灵在此演绎天地最初的法则',
+    monsters: [
+      { id: 'primal_warden', name: '洪荒守阙', power: 280000000, element: 'fire', exp: 800000000, spirit_stone_range: [2500000000, 6000000000], role: 'tank', drop_table: 'common_t16' },
+      { id: 'primal_envoy', name: '初道使', power: 380000000, element: 'metal', exp: 1100000000, spirit_stone_range: [3000000000, 7000000000], role: 'speed', drop_table: 'uncommon_t16' },
+      { id: 'primal_dao_soul', name: '洪荒道魂', power: 460000000, element: null, exp: 1300000000, spirit_stone_range: [7000000000, 15000000000], role: 'dps', drop_table: 'uncommon_t16' },
+    ],
+    boss: { id: 'primal_first_dao_lord', name: '洪荒初道祖', power: 1400000000, element: null, exp: 9000000000, spirit_stone_range: [50000000000, 110000000000], role: 'boss', drop_table: 'boss_t16' },
+  },
+  {
+    id: 'celestial_dao_dawn', name: '天道初辰', tier: 16,
+    realm_required: 'T16 试炼', recommended_power: 420,
+    element: null, description: '天道初开，万灵伏首，唯证初道者得窥天道之始',
+    monsters: [
+      { id: 'celestial_dao_keeper', name: '天道守者', power: 320000000, element: 'earth', exp: 920000000, spirit_stone_range: [2500000000, 6000000000], role: 'tank', drop_table: 'common_t16' },
+      { id: 'first_dao_general', name: '初道神将', power: 430000000, element: 'water', exp: 1250000000, spirit_stone_range: [3000000000, 7000000000], role: 'dps', drop_table: 'uncommon_t16' },
+      { id: 'dao_dawn_general', name: '道辰天将', power: 560000000, element: 'fire', exp: 1700000000, spirit_stone_range: [7000000000, 15000000000], role: 'dps', drop_table: 'uncommon_t16' },
+    ],
+    boss: { id: 'celestial_first_dao', name: '天道初辰', power: 1800000000, element: null, exp: 12000000000, spirit_stone_range: [70000000000, 150000000000], role: 'boss', drop_table: 'boss_t16' },
+  },
+  // ===== T17 地图（道祖·中道）— power ×1.7 跨 T16 =====
+  {
+    id: 'hongjun_dao_field', name: '鸿钧道场', tier: 17,
+    realm_required: 'T17 试炼', recommended_power: 450,
+    element: null, description: '鸿钧讲道之地，三千客证道于斯，道音不绝，万古犹在',
+    monsters: [
+      { id: 'jundao_warden', name: '钧道守律', power: 600000000, element: 'wood', exp: 1700000000, spirit_stone_range: [5000000000, 12000000000], role: 'tank', drop_table: 'common_t17' },
+      { id: 'jundao_envoy', name: '钧道使', power: 800000000, element: 'metal', exp: 2400000000, spirit_stone_range: [6000000000, 15000000000], role: 'speed', drop_table: 'uncommon_t17' },
+      { id: 'jundao_supreme', name: '钧道天尊', power: 950000000, element: null, exp: 2900000000, spirit_stone_range: [15000000000, 35000000000], role: 'dps', drop_table: 'uncommon_t17' },
+    ],
+    boss: { id: 'hongjun_daojun', name: '鸿钧道君', power: 2400000000, element: null, exp: 16000000000, spirit_stone_range: [110000000000, 250000000000], role: 'boss', drop_table: 'boss_t17' },
+  },
+  {
+    id: 'heavenly_extreme', name: '天极秘境', tier: 17,
+    realm_required: 'T17 试炼', recommended_power: 470,
+    element: null, description: '天之极、道之尽，唯踏穿天极者得证中道',
+    monsters: [
+      { id: 'extreme_keeper', name: '天极守者', power: 700000000, element: 'earth', exp: 2000000000, spirit_stone_range: [5000000000, 12000000000], role: 'tank', drop_table: 'common_t17' },
+      { id: 'extreme_envoy', name: '极道使', power: 900000000, element: 'fire', exp: 2700000000, spirit_stone_range: [6000000000, 15000000000], role: 'dps', drop_table: 'uncommon_t17' },
+      { id: 'extreme_supreme', name: '天极天尊', power: 1150000000, element: 'water', exp: 3500000000, spirit_stone_range: [15000000000, 35000000000], role: 'dps', drop_table: 'uncommon_t17' },
+    ],
+    boss: { id: 'extreme_daozu', name: '天极道祖', power: 3000000000, element: null, exp: 20000000000, spirit_stone_range: [150000000000, 330000000000], role: 'boss', drop_table: 'boss_t17' },
+  },
+  // ===== T18 地图（道祖·末道）— power ×1.7 跨 T17，万道之巅 =====
+  {
+    id: 'wuji_dao_realm', name: '无极道境', tier: 18,
+    realm_required: 'T18 试炼', recommended_power: 500,
+    element: null, description: '无极而太极，太极归无极，万道终归一，一归无',
+    monsters: [
+      { id: 'wuji_warden', name: '无极守阙', power: 1200000000, element: 'earth', exp: 3500000000, spirit_stone_range: [10000000000, 22000000000], role: 'tank', drop_table: 'common_t18' },
+      { id: 'wuji_envoy', name: '无极道使', power: 1500000000, element: 'metal', exp: 4500000000, spirit_stone_range: [12000000000, 28000000000], role: 'speed', drop_table: 'uncommon_t18' },
+      { id: 'wuji_supreme', name: '无极天尊', power: 1800000000, element: null, exp: 5500000000, spirit_stone_range: [28000000000, 65000000000], role: 'dps', drop_table: 'uncommon_t18' },
+    ],
+    boss: { id: 'wuji_daozu', name: '无极道祖', power: 4500000000, element: null, exp: 30000000000, spirit_stone_range: [220000000000, 500000000000], role: 'boss', drop_table: 'boss_t18' },
+  },
+  {
+    id: 'beyond_chaos', name: '混沌之外', tier: 18,
+    realm_required: 'T18 试炼', recommended_power: 530,
+    element: null, description: '混沌之外，万道之尽，唯越末道者方知何为真正的开始',
+    monsters: [
+      { id: 'beyond_keeper', name: '混外守者', power: 1500000000, element: 'fire', exp: 4300000000, spirit_stone_range: [10000000000, 22000000000], role: 'tank', drop_table: 'common_t18' },
+      { id: 'ultimate_godhead', name: '终极道神', power: 2000000000, element: 'water', exp: 6000000000, spirit_stone_range: [12000000000, 28000000000], role: 'dps', drop_table: 'uncommon_t18' },
+      { id: 'apocalypse_lord', name: '末劫之主', power: 2500000000, element: null, exp: 7500000000, spirit_stone_range: [28000000000, 65000000000], role: 'dps', drop_table: 'uncommon_t18' },
+    ],
+    boss: { id: 'beyond_chaos_lord', name: '混沌之外', power: 6000000000, element: null, exp: 38000000000, spirit_stone_range: [300000000000, 700000000000], role: 'boss', drop_table: 'boss_t18' },
+  },
   // ===== 木桩演武场（测试用）：自定义属性 / 仅普通攻击 / 无奖励 / 无掉落 =====
   {
     id: 'dummy_arena', name: '木桩演武场', tier: 0,

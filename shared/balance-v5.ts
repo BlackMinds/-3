@@ -287,10 +287,10 @@ export function getV5EnhanceMul(level: number): number {
 
 // --------------------- T 级：权重曲线 ---------------------
 
-export const V5_T_CAP = 15
+export const V5_T_CAP = 18
 export const V5_T15_WEIGHT = 20
 
-/** T 级权重：T1~T10 线性；T11~T15 每级 +2（加陡），与 V4 现役 getEquipTierWeight 一致 */
+/** T 级权重：T1~T10 线性；T11~T18 每级 +2（加陡），与 V4 现役 getEquipTierWeight 一致 */
 export function getV5TierWeight(tier: number): number {
   const t = Math.max(1, Math.min(tier, V5_T_CAP))
   return t <= 10 ? t : 10 + (t - 10) * 2
@@ -437,6 +437,9 @@ export const V5_BOSS_TREASURES: readonly V5BossTreasure[] = [
   { tier: 13, boss_zh: '天宇道君', prefix: ['wood'],          slot_v5: '步云靴', base_slot_v4: 'boots',    name: '道君云履',   base_stat_1: 'spd',        wuxing_affixes: ['spd_pct', 'spd_pct', 'spd_pct'] },
   { tier: 14, boss_zh: '时空之主', prefix: ['metal', 'fire'], slot_v5: '灵戒',   base_slot_v4: 'ring',     name: '寰宇',       base_stat_1: 'wuxing_dmg', wuxing_affixes: ['wuxing_dmg', 'wuxing_dmg', 'wuxing_dmg'], dual_prefix: true },
   { tier: 15, boss_zh: '终焉道祖', prefix: ['wood', 'earth'], slot_v5: '法宝',   base_slot_v4: 'treasure', name: '万道终焉',   base_stat_1: 'crit_dmg',   wuxing_affixes: ['crit_dmg', 'crit_dmg', 'crit_dmg'], dual_prefix: true },
+  { tier: 16, boss_zh: '天道初辰', prefix: ['fire', 'earth'], slot_v5: '灵戒',   base_slot_v4: 'ring',     name: '初辰戒',     base_stat_1: 'hp_pct',     wuxing_affixes: ['hp_pct', 'hp_pct', 'hp_pct'], dual_prefix: true },
+  { tier: 17, boss_zh: '天极道祖', prefix: ['water', 'metal'],slot_v5: '法冠',   base_slot_v4: 'helmet',   name: '天极冠',     base_stat_1: 'def_pct',    wuxing_affixes: ['def_pct', 'def_pct', 'def_pct'], dual_prefix: true },
+  { tier: 18, boss_zh: '混沌之外', prefix: ['fire', 'wood'],  slot_v5: '法袍',   base_slot_v4: 'armor',    name: '混沌之衣',   base_stat_1: 'atk_pct',    wuxing_affixes: ['atk_pct', 'atk_pct', 'atk_pct'], dual_prefix: true },
 ] as const
 
 export const V5_BOSS_TREASURE_DROP_RATE = {

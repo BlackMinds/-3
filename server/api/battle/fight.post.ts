@@ -244,6 +244,39 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
     { name: '终焉剑魄', power: 200000000, element: 'metal', exp: 545216, stone_min: 180000000, stone_max: 450000000, role: 'speed', drop_table: 'uncommon_t15' },
     { name: '末劫呼唤者', power: 260000000, element: 'fire', exp: 778880, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t15' },
   ], boss: { name: '终焉道祖', power: 700000000, element: null, exp: 7367400, stone_min: 3000000000, stone_max: 7000000000, role: 'boss', drop_table: 'boss_t15' } },
+  // ===== T16 地图（初道）=====
+  primal_dao_origin: { tier: 16, monsters: [
+    { name: '洪荒守阙', power: 280000000, element: 'fire', exp: 555000, stone_min: 350000000, stone_max: 800000000, role: 'tank', drop_table: 'common_t16' },
+    { name: '初道使', power: 380000000, element: 'metal', exp: 730000, stone_min: 400000000, stone_max: 900000000, role: 'speed', drop_table: 'uncommon_t16' },
+    { name: '洪荒道魂', power: 460000000, element: null, exp: 1020000, stone_min: 900000000, stone_max: 2000000000, role: 'dps', drop_table: 'uncommon_t16' },
+  ], boss: { name: '洪荒初道祖', power: 1400000000, element: null, exp: 8600000, stone_min: 4500000000, stone_max: 10000000000, role: 'boss', drop_table: 'boss_t16' } },
+  celestial_dao_dawn: { tier: 16, monsters: [
+    { name: '天道守者', power: 320000000, element: 'earth', exp: 615000, stone_min: 350000000, stone_max: 800000000, role: 'tank', drop_table: 'common_t16' },
+    { name: '初道神将', power: 430000000, element: 'water', exp: 820000, stone_min: 400000000, stone_max: 900000000, role: 'dps', drop_table: 'uncommon_t16' },
+    { name: '道辰天将', power: 560000000, element: 'fire', exp: 1170000, stone_min: 900000000, stone_max: 2000000000, role: 'dps', drop_table: 'uncommon_t16' },
+  ], boss: { name: '天道初辰', power: 1800000000, element: null, exp: 11000000, stone_min: 6000000000, stone_max: 13000000000, role: 'boss', drop_table: 'boss_t16' } },
+  // ===== T17 地图（中道）=====
+  hongjun_dao_field: { tier: 17, monsters: [
+    { name: '钧道守律', power: 600000000, element: 'wood', exp: 830000, stone_min: 800000000, stone_max: 2000000000, role: 'tank', drop_table: 'common_t17' },
+    { name: '钧道使', power: 800000000, element: 'metal', exp: 1100000, stone_min: 1000000000, stone_max: 2500000000, role: 'speed', drop_table: 'uncommon_t17' },
+    { name: '钧道天尊', power: 950000000, element: null, exp: 1540000, stone_min: 2000000000, stone_max: 4500000000, role: 'dps', drop_table: 'uncommon_t17' },
+  ], boss: { name: '鸿钧道君', power: 2400000000, element: null, exp: 12900000, stone_min: 10000000000, stone_max: 22000000000, role: 'boss', drop_table: 'boss_t17' } },
+  heavenly_extreme: { tier: 17, monsters: [
+    { name: '天极守者', power: 700000000, element: 'earth', exp: 920000, stone_min: 800000000, stone_max: 2000000000, role: 'tank', drop_table: 'common_t17' },
+    { name: '极道使', power: 900000000, element: 'fire', exp: 1240000, stone_min: 1000000000, stone_max: 2500000000, role: 'dps', drop_table: 'uncommon_t17' },
+    { name: '天极天尊', power: 1150000000, element: 'water', exp: 1750000, stone_min: 2000000000, stone_max: 4500000000, role: 'dps', drop_table: 'uncommon_t17' },
+  ], boss: { name: '天极道祖', power: 3000000000, element: null, exp: 16500000, stone_min: 15000000000, stone_max: 32000000000, role: 'boss', drop_table: 'boss_t17' } },
+  // ===== T18 地图（末道）=====
+  wuji_dao_realm: { tier: 18, monsters: [
+    { name: '无极守阙', power: 1200000000, element: 'earth', exp: 1240000, stone_min: 2000000000, stone_max: 4500000000, role: 'tank', drop_table: 'common_t18' },
+    { name: '无极道使', power: 1500000000, element: 'metal', exp: 1650000, stone_min: 2500000000, stone_max: 6000000000, role: 'speed', drop_table: 'uncommon_t18' },
+    { name: '无极天尊', power: 1800000000, element: null, exp: 2300000, stone_min: 4500000000, stone_max: 10000000000, role: 'dps', drop_table: 'uncommon_t18' },
+  ], boss: { name: '无极道祖', power: 4500000000, element: null, exp: 19300000, stone_min: 22000000000, stone_max: 50000000000, role: 'boss', drop_table: 'boss_t18' } },
+  beyond_chaos: { tier: 18, monsters: [
+    { name: '混外守者', power: 1500000000, element: 'fire', exp: 1380000, stone_min: 2000000000, stone_max: 4500000000, role: 'tank', drop_table: 'common_t18' },
+    { name: '终极道神', power: 2000000000, element: 'water', exp: 1850000, stone_min: 2500000000, stone_max: 6000000000, role: 'dps', drop_table: 'uncommon_t18' },
+    { name: '末劫之主', power: 2500000000, element: null, exp: 2640000, stone_min: 4500000000, stone_max: 10000000000, role: 'dps', drop_table: 'uncommon_t18' },
+  ], boss: { name: '混沌之外', power: 6000000000, element: null, exp: 24800000, stone_min: 30000000000, stone_max: 70000000000, role: 'boss', drop_table: 'boss_t18' } },
 }
 
 // ===== v4.0 槽位映射（神兵锻造总纲）=====
@@ -291,6 +324,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
     7: [0,0,10,35,45,10], 8: [0,0,5,25,55,15], 9: [0,0,0,20,60,20], 10: [0,0,0,10,60,30],
     11: [0,0,0,5,55,40], 12: [0,0,0,0,50,50],
     13: [0,0,0,0,35,65], 14: [0,0,0,0,25,75], 15: [0,0,0,0,15,85],
+    16: [0,0,0,0,15,85], 17: [0,0,0,0,15,85], 18: [0,0,0,0,15,85],
   }
   const w = weights[tier] || weights[1]
   const total = w.reduce((a, b) => a + b, 0)
@@ -301,7 +335,7 @@ function generateEquipDrop(tier: number, isBoss: boolean, luckMul: number = 1, m
   const slotIdx = rand(0, slots.length - 1)
   const slot = slots[slotIdx]
   const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null
-  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 }
+  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310, 16:335, 17:360, 18:385 }
 
   // V5 灰度（V5_DROP_FLAG=true 且品质 ≥ blue 时走 V5）
   const v5Spec = tryRollEquipmentV5DropSpec({

@@ -1,3 +1,81 @@
+## ✅ v3.9.0 (2026-05-13) — 道祖三层扩展（T16-T18 新增 6 张主图）
+
+### 背景
+
+T15「混元·大圆满」毕业线之上，玩家进入「道祖」境界。沿 v3.8.3 的设计语言（每 tier 综合跨幅 ~×1.85）继续延展三层主图，给后期玩家持续追求目标。
+
+### 新增内容
+
+#### A. 主图（每 tier 2 张图）
+
+`server/api/battle/fight.post.ts:ALL_MAPS`：
+
+| tier | 地图1 | 地图2 | Boss1 | Boss2 |
+|---|---|---|---|---|
+| T16 初道 | 洪荒初道 | 天道初辰 | 洪荒初道祖 | 天道初辰 |
+| T17 中道 | 鸿钧道场 | 天极秘境 | 鸿钧道君 | 天极道祖 |
+| T18 末道 | 无极道境 | 混沌之外 | 无极道祖 | 混沌之外 |
+
+#### B. 怪物 MUL（沿 ×1.85 跨幅，power 翻倍 + tier_mul ×0.925）
+
+`server/engine/battleEngine.ts:829-836`：
+
+| tier | tier_mul | Boss power | Boss ATK 目标 |
+|---|---|---|---|
+| T15 (基) | 0.022 | 7 亿 | 96 万 |
+| T16 | **0.0204** | 14~18 亿 | ~178 万 |
+| T17 | **0.0188** | 24~30 亿 | ~329 万 |
+| T18 | **0.0174** | 45~60 亿 | ~609 万 |
+
+#### C. 装备等级 & 权重
+
+- `tierReqLevels`：T16=335 / T17=360 / T18=385
+- `getEquipTierWeight`：T16=22 / T17=24 / T18=26（公式自动支持，无需改动）
+- 品质权重：T16-T18 保持 T15 平台期 [仙器 15% / 太古 85%]
+
+#### D. SPD 阶梯
+
+`server/engine/battleEngine.ts:SPD_BASE_BY_TIER`：T16=3500 / T17=3800 / T18=4100
+
+#### E. V5 Boss 秘宝
+
+`shared/balance-v5.ts:V5_BOSS_TREASURES` 扩展 + `V5_T_CAP` 15→18：
+
+| tier | Boss | 秘宝 | 槽位 | 词条 |
+|---|---|---|---|---|
+| T16 | 天道初辰 | 初辰戒 | 灵戒 | 火/土双前缀 · 血量%×3 |
+| T17 | 天极道祖 | 天极冠 | 法冠 | 水/金双前缀 · 防御%×3 |
+| T18 | 混沌之外 | 混沌之衣 | 法袍 | 火/木双前缀 · 攻击%×3 |
+
+#### F. 秘境强化石
+
+`server/engine/secretShopData.ts`：
+
+| tier | cost | weeklyLimit | reqLevel |
+|---|---|---|---|
+| T15 | 200,000 | 66 | 310 |
+| T16 | 370,000 | 66 | 335 |
+| T17 | 685,000 | 66 | 360 |
+| T18 | 1,268,000 | 66 | 385 |
+
+### 未变动
+
+- **境界系统**：仍是 9 大境界（混元·无极为顶），T16-T18 视为「混元·无极」的横向扩展，不开新突破
+- **通天塔**：仍封顶 100 层 / T15
+- **秘境**：仍封顶 SR-11 / T15
+- **离线挂机**：T11+ 仍无数据，T16-T18 同样留空
+
+### 改动文件清单
+
+1. `server/api/battle/fight.post.ts` — ALL_MAPS 加 6 张图、tierReqLevels、weights
+2. `server/engine/battleEngine.ts` — MONSTER_*_MUL T16-T18 / SPD_BASE_BY_TIER
+3. `shared/balance-v5.ts` — V5_T_CAP / V5_BOSS_TREASURES
+4. `server/engine/secretShopData.ts` — rs_enhance_t16/t17/t18
+5. `components/MarketDrawer.vue` — 坊市筛选下拉
+6. `pages/index.vue` — 自动出售下拉 + 帮助页表格
+
+---
+
 ## ✅ v3.8.3 (2026-05-06) — T11-T15 跨幅修复（怪物 MUL 上调 + 装备 tier 权重加陡）
 
 ### 背景

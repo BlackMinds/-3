@@ -34,6 +34,9 @@ export const REALM_SHOP_ITEMS: RealmShopItem[] = [
   { key: 'rs_enhance_t13', name: '强化石·T13', description: '强化 T13 装备每次消耗 1 个', cost: 64000, weeklyLimit: 66, category: 'enhance_stone', reqRealmTier: 9, reqLevel: 260, pillId: 'enhance_stone_t13' },
   { key: 'rs_enhance_t14', name: '强化石·T14', description: '强化 T14 装备每次消耗 1 个', cost: 115000,weeklyLimit: 66, category: 'enhance_stone', reqRealmTier: 9, reqLevel: 285, pillId: 'enhance_stone_t14' },
   { key: 'rs_enhance_t15', name: '强化石·T15', description: '强化 T15 装备每次消耗 1 个', cost: 200000,weeklyLimit: 66, category: 'enhance_stone', reqRealmTier: 9, reqLevel: 310, pillId: 'enhance_stone_t15' },
+  { key: 'rs_enhance_t16', name: '强化石·T16', description: '强化 T16 装备每次消耗 1 个', cost: 370000,weeklyLimit: 66, category: 'enhance_stone', reqRealmTier: 9, reqLevel: 335, pillId: 'enhance_stone_t16' },
+  { key: 'rs_enhance_t17', name: '强化石·T17', description: '强化 T17 装备每次消耗 1 个', cost: 685000,weeklyLimit: 66, category: 'enhance_stone', reqRealmTier: 9, reqLevel: 360, pillId: 'enhance_stone_t17' },
+  { key: 'rs_enhance_t18', name: '强化石·T18', description: '强化 T18 装备每次消耗 1 个', cost: 1268000,weeklyLimit: 66,category: 'enhance_stone', reqRealmTier: 9, reqLevel: 385, pillId: 'enhance_stone_t18' },
 
   // —— 附灵石（全阶段稀缺）——
   { key: 'rs_awaken_stone',           name: '附灵石',      description: '为蓝+品装备附加一条随机附灵',          cost: 2500, weeklyLimit: 3,  category: 'awaken', reqRealmTier: 2, reqLevel: 15, pillId: 'awaken_stone' },
