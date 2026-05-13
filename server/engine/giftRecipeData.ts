@@ -190,17 +190,15 @@ for (const r of GIFT_RECIPES) GIFT_RECIPE_MAP[r.id] = r
 // 仙品万能礼物加成（替代标准 1.5×）
 export const IMMORTAL_GIFT_LOVE_MULTIPLIER = 2.0
 
-// 计算炼制礼物的最终亲密度收益
-// quality_coefficient: 灵草品质系数（参考 system-herb-pill-rework.md 2.5 节）
+// 计算赠礼的亲密度收益（礼物无品质，固定按 baseIntimacy × 反应系数）
 export function calcGiftIntimacy(
   recipe: GiftRecipe,
-  qualityCoefficient: number,
   reaction: 'love' | 'dislike' | 'normal'
 ): number {
   if (reaction === 'dislike') return -3
-  let multiplier = qualityCoefficient
+  let multiplier = 1
   if (reaction === 'love') {
-    multiplier *= recipe.rarity === 'immortal' ? IMMORTAL_GIFT_LOVE_MULTIPLIER : 1.5
+    multiplier = recipe.rarity === 'immortal' ? IMMORTAL_GIFT_LOVE_MULTIPLIER : 1.5
   }
   return Math.round(recipe.baseIntimacy * multiplier)
 }

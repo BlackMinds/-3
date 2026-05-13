@@ -938,7 +938,8 @@
               {{ formatPillEffect(currentRecipe) }}
             </div>
 
-            <div v-if="currentRecipe" class="alchemy-field-group">
+            <!-- 丹药需要选灵草品质（影响成品 factor）；礼物无品质机制，仅展示原料合计库存 -->
+            <div v-if="currentRecipe && !currentRecipe.isGift" class="alchemy-field-group">
               <label class="alchemy-label">灵草</label>
               <div v-for="(hc, i) in currentRecipe.herbCost" :key="i" class="alchemy-herb-row">
                 <span class="alchemy-herb-name">{{ getHerbName(hc.herb_id) }} × {{ hc.count }}</span>
@@ -960,16 +961,24 @@
               </div>
             </div>
 
+            <div v-if="currentRecipe && currentRecipe.isGift" class="alchemy-field-group">
+              <label class="alchemy-label">原料（低品优先消耗）</label>
+              <div v-for="(hc, i) in currentRecipe.herbCost" :key="i" class="alchemy-herb-row">
+                <span class="alchemy-herb-name">{{ getHerbName(hc.herb_id) }} × {{ hc.count }}</span>
+                <span class="alchemy-herb-stock">合计 {{ getHerbCount(hc.herb_id) }}</span>
+              </div>
+            </div>
+
             <div v-if="currentRecipe" class="alchemy-preview">
-              <div class="preview-row">
+              <div class="preview-row" v-if="!currentRecipe.isGift">
                 <span class="preview-key">成功率</span>
                 <span class="preview-val">{{ (currentRecipe.successRate * (1 + (gameStore.caveBonus.craftRate || 0) / 100) * 100).toFixed(0) }}%</span>
               </div>
               <div class="preview-row">
                 <span class="preview-key">灵石</span>
-                <span class="preview-val">{{ formatNum(Math.floor(currentRecipe.cost * (getCraftPreview(currentRecipe).factor || 1))) }}</span>
+                <span class="preview-val">{{ formatNum(Math.floor(currentRecipe.cost * (currentRecipe.isGift ? 1 : (getCraftPreview(currentRecipe).factor || 1)))) }}</span>
               </div>
-              <div class="preview-row" v-if="getCraftPreview(currentRecipe).factor > 0">
+              <div class="preview-row" v-if="!currentRecipe.isGift && getCraftPreview(currentRecipe).factor > 0">
                 <span class="preview-key">品质系数</span>
                 <span class="preview-val" style="color: var(--gold-ink)">{{ getCraftPreview(currentRecipe).factor.toFixed(2) }}x</span>
               </div>
@@ -3066,7 +3075,7 @@
             <p class="help-text" style="margin-top: 4px; color: #c45c4a;">炼制失败灵石和灵草全部损失!</p>
             <table class="help-table"><tbody>
               <tr><td>战斗丹药</td><td>使用后持续 1-8 小时(按品质系数,实时倒计时)</td></tr>
-              <tr><td>礼制（道侣）</td><td>合成赠送道侣的礼物,品质系数按原料品质均值算</td></tr>
+              <tr><td>礼制（道侣）</td><td>合成赠送道侣的礼物,无品质,低品原料优先消耗(高品灵草请留给丹药)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">战斗丹药解锁条件: 练气=聚灵丹/铁皮丹/培元丹, 筑基=天元丹（金丹解锁）等,按境界递进。</p>
           </div>
@@ -3226,14 +3235,15 @@
               <tr><td>0 - 250</td><td>陌路/相识</td></tr>
               <tr><td>250+</td><td>心动 · 解锁<b style="color:#ff7eb3">约会</b>（每天 3 次）</td></tr>
               <tr><td>600+</td><td>解锁<b style="color:#ffd700">正式结侣</b>（仙缘印记自动 LV1，+2% 全属性）</td></tr>
-              <tr><td>800+</td><td>解锁<b style="color:#ffaa00">求子</b>（怀胎 48h，消耗 100 万灵石 + 金莲花露 ×1）</td></tr>
+              <tr><td>800+</td><td>解锁<b style="color:#ffaa00">求子</b>（怀胎 24h，消耗 100 万灵石 + 金莲花露 ×1）</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">已结侣每天自动 +20 亲密度（怀胎中跳过）+5 红尘玉到玩家。离线最多累计 7 天。</p>
           </div>
           <div class="help-section">
             <div class="help-title">赠礼系统</div>
-            <p class="help-text">每日亲密度上限 50（仅正向收益），礼物品质：下品 +2 / 中品 +3 / 上品 +5 / 极品 +8 / 仙品 +10。<b style="color:#5fcf6f">喜爱礼物 ×1.5</b>（按性格匹配），<b style="color:#ff6b6b">厌恶礼物固定 -3</b> 不计上限。</p>
-            <p class="help-text" style="margin-top: 4px;">礼物来源：游历"道侣材料"产出 + 灵田种相思藤/蝶恋花等情花 + 炼丹房"礼制"Tab 合成（Phase 2 接入）。</p>
+            <p class="help-text">每日亲密度上限 50（仅正向收益），礼物分级：下品 +2 / 中品 +3 / 上品 +5 / 极品 +10 / 仙品 +20。<b style="color:#5fcf6f">喜爱礼物 ×1.5（仙品喜爱 ×2.0）</b>（按性格匹配），<b style="color:#ff6b6b">厌恶礼物固定 -3</b> 不计上限。</p>
+            <p class="help-text" style="margin-top: 4px;"><b>礼物无品质机制</b>：炼丹房"礼制"Tab 合成时不分品质，原料按低品优先扣，亲密度只看基础值×反应系数（高品灵草请留给丹药）。</p>
+            <p class="help-text" style="margin-top: 4px;">礼物来源：游历"道侣材料"产出 + 灵田种相思藤/蝶恋花等情花 + 炼丹房"礼制"Tab 合成。</p>
           </div>
           <div class="help-section">
             <div class="help-title">仙缘印记（结侣后永久 buff）</div>
@@ -3265,12 +3275,12 @@
           <div class="help-section">
             <div class="help-title">资质重铸（夺天造化丹）</div>
             <p class="help-text">消耗夺天造化丹 ×1 重新随机子女资质（仍受父母品质上限约束）。<b style="color:#5fcf6f">保底机制</b>：新资质 ≤ 旧资质时按保底保留原资质，避免越洗越差；但血脉觉醒功法每次都会重新生成（同品质池里换功法）。</p>
-            <p class="help-text" style="margin-top: 4px;">夺天造化丹来源：游历奇遇极低概率（约 0.05%/次）；后续接入红尘玉商店（50000 红尘玉/月限购 1）。</p>
+            <p class="help-text" style="margin-top: 4px;">夺天造化丹来源：游历奇遇极低概率（约 0.05%/次）+ 红尘玉商店 <b>3000 红尘玉 / 周限购 10 个</b>。</p>
           </div>
           <div class="help-section">
             <div class="help-title">和离机制</div>
             <p class="help-text">代价：<b style="color:#ff6b6b">红尘解 ×1 + 当前境界灵石（金丹期 50 万）+ 24 小时结侣冷却 + 风云阁公开广播</b>。和离后道侣从花名册永久删除，仙缘印记重置 LV0，子女由玩家保留（parent_companion_id 置 NULL，仍可继续助战/外出）。</p>
-            <p class="help-text" style="margin-top: 4px;">怀胎中不可和离。红尘解来源：游历奇遇极低概率（约 0.2%/次）；后续接入红尘玉商店。</p>
+            <p class="help-text" style="margin-top: 4px;">怀胎中不可和离。红尘解来源：游历奇遇极低概率（约 0.2%/次）+ 红尘玉商店 <b>5000 红尘玉 / 周限购 10 个</b>。</p>
           </div>
           <div class="help-section">
             <div class="help-title">红尘玉</div>
@@ -3281,7 +3291,7 @@
               <tr><td>约会奖励</td><td>部分选项给红尘玉</td></tr>
               <tr><td>奇遇产出</td><td>fortune 类 5% 概率 +50</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px;">用途：升级仙缘印记 LV2-5、红尘玉商店购买夺天造化丹/红尘解/喂养灵草/装备洗练材料等（Phase 2 接入）。</p>
+            <p class="help-text" style="margin-top: 4px;">用途：升级仙缘印记 LV2-5；红尘玉商店已开 17 种商品，含 <b>情花原料 / 金莲花露 / 夺天造化丹 / 红尘解 / 血脉重铸丹 / 天道洗髓丹 / 子女装备宝箱 / 装备附灵石&灵枢玉</b> 等，多数周限 1-10 件。</p>
           </div>
           </div>
 
@@ -7125,9 +7135,16 @@ function isQualityEnough(herbId: string, qualityId: string, needCount: number): 
 }
 
 function canCraft(recipe: any): boolean {
-  // 礼物：灵石按固定 cost，不乘品质系数
-  const factor = (recipe as any).isGift ? 1 : (getCraftPreview(recipe).factor || 1);
+  // 礼物：灵石按固定 cost，原料合并所有品质求和（低品优先，无需玩家选品质）
+  const isGift = (recipe as any).isGift;
+  const factor = isGift ? 1 : (getCraftPreview(recipe).factor || 1);
   if (!gameStore.character || gameStore.character.spirit_stone < Math.floor(recipe.cost * factor)) return false;
+  if (isGift) {
+    for (const hc of recipe.herbCost) {
+      if (getHerbCount(hc.herb_id) < hc.count) return false;
+    }
+    return true;
+  }
   const selection = herbSelections.value[recipe.id] || [];
   for (let i = 0; i < recipe.herbCost.length; i++) {
     const q = selection[i];
@@ -7140,11 +7157,10 @@ function canCraft(recipe: any): boolean {
 // 格式化丹方效果,基于当前选中灵草品质
 function formatPillEffect(recipe: any): string {
   if ((recipe as any).isGift) {
-    const factor = getCraftPreview(recipe).factor || 1.0
     const r = recipe as any
-    const intimacy = Math.round(r.baseIntimacy * factor)
     const fitTag = r.fitPersonality === 'all' ? '通用' : `适配「${r.fitPersonality}」`
-    return `亲密度 +${intimacy}（${fitTag}，喜爱时 ×1.5）`
+    const loveMul = r.rarity === 'immortal' ? 2 : 1.5
+    return `亲密度 +${r.baseIntimacy}（${fitTag}，喜爱时 ×${loveMul}）`
   }
   const factor = getCraftPreview(recipe).factor || 1.0;
   const parts: string[] = [];
@@ -7433,19 +7449,14 @@ function craftPill(recipe: any) {
   openFireMeter(recipe);
 }
 
-// 礼制（道侣礼物）— 跳过点火候，直接一次调用
+// 礼制（道侣礼物）— 跳过点火候，直接一次调用；礼物无品质，原料按低品优先扣
 async function craftGift(recipe: any) {
   if (crafting.value || !canCraft(recipe)) return
-  const selection = herbSelections.value[recipe.id] || []
-  const ingredientQualities: Record<string, string> = {}
-  for (let i = 0; i < recipe.herbCost.length; i++) {
-    ingredientQualities[recipe.herbCost[i].herb_id] = selection[i]
-  }
   crafting.value = true
   try {
     const res: any = await $fetch('/api/companion/craft-gift', {
       method: 'POST',
-      body: { recipe_id: recipe.id, ingredient_qualities: ingredientQualities },
+      body: { recipe_id: recipe.id },
       headers: getAuthHeaders(),
     })
     if (res.code === 200) {

@@ -256,15 +256,14 @@ export function checkReaction(
   return 'normal'
 }
 
-// 计算礼物的实际亲密度收益（含品质系数 + 性格匹配）
+// 计算礼物的实际亲密度收益（礼物无品质，仅按性格反应）
 export function calcGiftReward(
   giftId: string,
-  reaction: GiftReaction,
-  ingredientQualityCoef: number = 1.0
+  reaction: GiftReaction
 ): number {
   const recipe = GIFT_RECIPE_MAP[giftId]
   if (!recipe) return 0
-  return calcGiftIntimacy(recipe, ingredientQualityCoef, reaction)
+  return calcGiftIntimacy(recipe, reaction)
 }
 
 // ============================================================

@@ -1,5 +1,5 @@
 // 赠送礼物 - POST /api/companion/gift
-// 含每日上限 50、性格匹配反馈、品质系数（MVP 阶段统一为 1.0，Phase 2 接入炼丹品质系数）
+// 含每日上限 50、性格匹配反馈。礼物无品质机制：收益 = baseIntimacy × 反应系数
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
@@ -38,12 +38,13 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '今日亲密度上限已达' }
     }
 
-    // 检查物品库存（汇总所有品质：游历产出/凡品炼制是 white，炼丹房高品质炼制可能是 green/blue/.../red）
-    // 优先消耗高品质（赠送时按所选品质计算亲密度系数 — Phase 2 简化：实际亲密度仍按基础值，品质优先消耗保证不浪费）
+    // 检查物品库存（合并所有品质：新炼制是 'white'，历史可能残留高品；扣减时低品优先）
     const { rows: invRows } = await pool.query(
       `SELECT quality, count FROM character_materials
         WHERE character_id = $1 AND material_id = $2 AND count > 0
-        ORDER BY CASE quality WHEN 'red' THEN 5 WHEN 'gold' THEN 4 WHEN 'purple' THEN 3 WHEN 'blue' THEN 2 WHEN 'green' THEN 1 ELSE 0 END DESC`,
+        ORDER BY CASE quality
+          WHEN 'white' THEN 0 WHEN 'green' THEN 1 WHEN 'blue' THEN 2
+          WHEN 'purple' THEN 3 WHEN 'gold' THEN 4 WHEN 'red' THEN 5 ELSE 99 END`,
       [char.id, giftId]
     )
     const stock = invRows.reduce((a: number, r: any) => a + (r.count || 0), 0)
@@ -56,8 +57,8 @@ export default defineEventHandler(async (event) => {
       c.preferred_gifts || [],
       c.disliked_gifts || []
     )
-    // 单件礼物的亲密度
-    const perGiftIntimacy = calcGiftReward(giftId, reaction, 1.0)
+    // 单件礼物的亲密度（无品质系数）
+    const perGiftIntimacy = calcGiftReward(giftId, reaction)
 
     // 总亲密度（按 quantity 累加，但厌恶礼物每件 -3）
     let totalDelta = perGiftIntimacy * quantity
