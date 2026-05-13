@@ -41,9 +41,14 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: `该槽位需 Lv.${unlockLevels[slot - 1]} 才能解锁` }
     }
 
-    const skills = Array.isArray(c.learned_skills) ? c.learned_skills : []
+    // V2 老数据兼容：按 index+1 补 slot 字段（V1 时代 learned_skills 没 slot）
+    const rawSkills = Array.isArray(c.learned_skills) ? c.learned_skills : []
+    const skills = rawSkills.map((s: any, i: number) => ({
+      ...s,
+      slot: Number(s.slot) || (i + 1),
+    }))
     const oldEntry = skills.find((s: any) => Number(s.slot) === slot)
-    if (!oldEntry) return { code: 400, message: '该槽位无功法（请先升级解锁）' }
+    if (!oldEntry) return { code: 400, message: '该槽位无功法（请先打开子女详情触发槽位解锁）' }
 
     // 检查丹库存
     const { rows: pillRows } = await pool.query(
@@ -55,9 +60,11 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '血脉重铸丹不足（需 1 颗，可在红尘玉商店购买）' }
     }
 
-    // 重抽
+    // 重抽（V2.1：排除其他槽已有 + 旧那一格的功法，避免重复 & 强制换新）
     const root = (c.spiritual_root || 'mixed') as SpiritualRoot | 'mixed'
-    const newSkill = pickInnateSkill(root, c.aptitude as ChildAptitude)
+    const otherSlotIds = skills.filter((s: any) => Number(s.slot) !== slot).map((s: any) => s.skill_id)
+    const excludeIds = [...otherSlotIds, oldEntry.skill_id]
+    const newSkill = pickInnateSkill(root, c.aptitude as ChildAptitude, excludeIds)
     const oldSkillDef = CHILD_SKILL_MAP[oldEntry.skill_id]
 
     const client = await pool.connect()

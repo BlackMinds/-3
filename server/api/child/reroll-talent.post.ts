@@ -45,8 +45,10 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '天道洗髓丹不足（需 1 颗，可在红尘玉商店购买或仙玉商城）' }
     }
 
-    // 滚新天赋
-    const newTalent = rollTalentByAptitude(c.aptitude as ChildAptitude)
+    // 滚新天赋（V2.1：排除其他槽 + 旧那一格的天赋，避免重复 & 强制换新）
+    const otherTalentIds = talents.filter((t: any) => t.level !== slotLevel).map((t: any) => t.talent_id)
+    const excludeIds = [...otherTalentIds, oldSlot.talent_id]
+    const newTalent = rollTalentByAptitude(c.aptitude as ChildAptitude, excludeIds)
     const oldTalentDef = CHILD_TALENT_MAP[oldSlot.talent_id]
 
     const client = await pool.connect()

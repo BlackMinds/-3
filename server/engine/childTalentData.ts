@@ -113,20 +113,33 @@ export const TALENT_WEIGHT_BY_APTITUDE: Record<ChildAptitude, Record<TalentRarit
 }
 
 // 按资质权重滚一个天赋
-export function rollTalentByAptitude(aptitude: ChildAptitude): ChildTalent {
+/**
+ * 按资质权重抽天赋
+ * @param excludeIds 已有天赋 id 列表（避免重复，最多 10 次重试后放弃避重）
+ */
+export function rollTalentByAptitude(aptitude: ChildAptitude, excludeIds: string[] = []): ChildTalent {
   const weights = TALENT_WEIGHT_BY_APTITUDE[aptitude]
   const totalWeight = (Object.values(weights) as number[]).reduce((a, b) => a + b, 0)
-  let r = Math.random() * totalWeight
 
-  let chosenRarity: TalentRarity = 'common'
-  for (const [rarity, w] of Object.entries(weights)) {
-    r -= w as number
-    if (r <= 0) {
-      chosenRarity = rarity as TalentRarity
-      break
+  const rollRarity = (): TalentRarity => {
+    let r = Math.random() * totalWeight
+    for (const [rarity, w] of Object.entries(weights)) {
+      r -= w as number
+      if (r <= 0) return rarity as TalentRarity
     }
+    return 'common'
   }
 
+  // 最多 10 次重试：roll rarity → 在该 rarity 池中找未排除的
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const chosenRarity = rollRarity()
+    const pool = CHILD_TALENTS.filter(t => t.rarity === chosenRarity && !excludeIds.includes(t.id))
+    if (pool.length > 0) {
+      return pool[Math.floor(Math.random() * pool.length)]
+    }
+  }
+  // 10 次都没找到非重复：放弃避重，按原逻辑抽（极罕见，比如某 rarity 池被全部排除）
+  const chosenRarity = rollRarity()
   const pool = CHILD_TALENTS.filter(t => t.rarity === chosenRarity)
-  return pool[Math.floor(Math.random() * pool.length)]
+  return pool[Math.floor(Math.random() * pool.length)] || CHILD_TALENTS[0]
 }

@@ -150,21 +150,21 @@ export const CHILD_SKILLS: ChildSkill[] = [
   {
     id: 'ch_buff_green', name: '鼓舞', type: 'divine', rarity: 'green', element: null,
     multiplier: 0, cdTurns: 6,
-    description: '给父母 atk +10%，持续 3 回合',
+    description: '给父母 攻击 +10%，持续 3 回合',
     buff: { type: 'atk_up', duration: 3, value: 0.10 },
     childType: 'buff',
   },
   {
     id: 'ch_buff_blue', name: '灵犀', type: 'divine', rarity: 'blue', element: null,
     multiplier: 0, cdTurns: 7,
-    description: '给父母 spd +20%，持续 3 回合',
+    description: '给父母 身法 +20%，持续 3 回合',
     buff: { type: 'spd_up', duration: 3, value: 0.20 },
     childType: 'buff',
   },
   {
     id: 'ch_buff_purple', name: '战意激发', type: 'divine', rarity: 'purple', element: null,
     multiplier: 0, cdTurns: 8,
-    description: '给父母 atk +25%，crit_rate +8%，持续 4 回合',
+    description: '给父母 攻击 +25%，会心率 +8%，持续 4 回合',
     buff: { type: 'atk_up', duration: 4, value: 0.25 },
     childType: 'buff',
   },
@@ -178,7 +178,7 @@ export const CHILD_SKILLS: ChildSkill[] = [
   {
     id: 'ch_buff_red', name: '同心同力', type: 'divine', rarity: 'red', element: null,
     multiplier: 0, cdTurns: 10,
-    description: '给父母 atk +35%，def +20%，crit_rate +10%，crit_dmg +30%，持续 5 回合（MVP 仅生效 atk +35%，多 buff 待引擎扩展）',
+    description: '给父母 攻击 +35%，防御 +20%，会心率 +10%，会心伤害 +30%，持续 5 回合（MVP 仅生效 攻击 +35%，多 buff 待引擎扩展）',
     buff: { type: 'atk_up', duration: 5, value: 0.35 },
     childType: 'buff',
   },
@@ -298,7 +298,13 @@ export const SKILL_TYPE_BY_ROOT: Record<SpiritualRoot | 'mixed', Record<ChildSki
 // 资质 → 功法品质映射
 import type { ChildAptitude } from './childTalentData'
 
-export const APTITUDE_TO_SKILL_RARITY: Record<ChildAptitude, 'green' | 'blue' | 'purple' | 'gold' | 'red'> = {
+export type ChildSkillRarity = 'green' | 'blue' | 'purple' | 'gold' | 'red'
+
+/**
+ * 主品质映射（用于 UI 展示「该资质主功法品质」）
+ * 实际抽取走 SKILL_RARITY_WEIGHT_BY_APTITUDE 权重表
+ */
+export const APTITUDE_TO_SKILL_RARITY: Record<ChildAptitude, ChildSkillRarity> = {
   0: 'green',   // 凡品
   1: 'green',   // 下品
   2: 'blue',    // 中品
@@ -308,32 +314,78 @@ export const APTITUDE_TO_SKILL_RARITY: Record<ChildAptitude, 'green' | 'blue' | 
   6: 'red',     // 圣品
 }
 
-// 出生时按主灵根 + 资质自动选择一个功法
+/**
+ * V2.2：资质 → 功法品质权重表（替代硬绑定）
+ *
+ * 每资质主品质 65-85%，相邻品质 10-25%，偶有惊喜/小失望。
+ *   - 凡/下品：可能抽到紫品（小概率惊喜）
+ *   - 中/上/极品：上下相邻品质都有可能
+ *   - 仙品：5% 紫 + 20% 金 + 75% 红
+ *   - 圣品：15% 金 + 85% 红（最稳的高品玩家）
+ */
+export const SKILL_RARITY_WEIGHT_BY_APTITUDE: Record<ChildAptitude, Record<ChildSkillRarity, number>> = {
+  0: { green: 80, blue: 15, purple:  5, gold:  0, red:  0 },  // 凡品
+  1: { green: 65, blue: 25, purple: 10, gold:  0, red:  0 },  // 下品
+  2: { green: 15, blue: 65, purple: 18, gold:  2, red:  0 },  // 中品
+  3: { green:  5, blue: 20, purple: 65, gold:  8, red:  2 },  // 上品
+  4: { green:  0, blue:  5, purple: 20, gold: 65, red: 10 },  // 极品
+  5: { green:  0, blue:  0, purple:  5, gold: 20, red: 75 },  // 仙品
+  6: { green:  0, blue:  0, purple:  0, gold: 15, red: 85 },  // 圣品
+}
+
+/**
+ * 出生时按主灵根 + 资质自动选择一个功法
+ * @param excludeIds 已有功法 id 列表（避免重复，最多 10 次重试后放弃避重）
+ */
 export function pickInnateSkill(
   root: SpiritualRoot | 'mixed',
-  aptitude: ChildAptitude
+  aptitude: ChildAptitude,
+  excludeIds: string[] = [],
 ): ChildSkill {
   const typeWeights = SKILL_TYPE_BY_ROOT[root]
-  const total = (Object.values(typeWeights) as number[]).reduce((a, b) => a + b, 0)
-  let r = Math.random() * total
-  let chosenType: ChildSkillType = 'attack'
-  for (const [type, w] of Object.entries(typeWeights)) {
-    r -= w as number
-    if (r <= 0) {
-      chosenType = type as ChildSkillType
-      break
+  const typeTotal = (Object.values(typeWeights) as number[]).reduce((a, b) => a + b, 0)
+  const rarityWeights = SKILL_RARITY_WEIGHT_BY_APTITUDE[aptitude]
+  const rarityTotal = (Object.values(rarityWeights) as number[]).reduce((a, b) => a + b, 0)
+
+  const rollType = (): ChildSkillType => {
+    let r = Math.random() * typeTotal
+    for (const [type, w] of Object.entries(typeWeights)) {
+      r -= w as number
+      if (r <= 0) return type as ChildSkillType
+    }
+    return 'attack'
+  }
+  const rollRarity = (): ChildSkillRarity => {
+    let r = Math.random() * rarityTotal
+    for (const [rarity, w] of Object.entries(rarityWeights)) {
+      r -= w as number
+      if (r <= 0) return rarity as ChildSkillRarity
+    }
+    return APTITUDE_TO_SKILL_RARITY[aptitude]
+  }
+
+  // 最多 15 次重试：roll type + rarity → 找未被排除的功法
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const chosenType = rollType()
+    const chosenRarity = rollRarity()
+    const candidates = CHILD_SKILLS.filter(
+      s => s.childType === chosenType && s.rarity === chosenRarity && !excludeIds.includes(s.id)
+    )
+    if (candidates.length > 0) {
+      return candidates[Math.floor(Math.random() * candidates.length)]
     }
   }
 
-  const targetRarity = APTITUDE_TO_SKILL_RARITY[aptitude]
-  // V2.1：同类型同品质允许多个功法（如红品攻击 = 神童剑意 + 乱舞剑诀），随机选一个
-  const matchedList = CHILD_SKILLS.filter(s => s.childType === chosenType && s.rarity === targetRarity)
+  // 15 次都没找到 → 放弃避重，主品质池里随便抽（极罕见）
+  const fallbackRarity = APTITUDE_TO_SKILL_RARITY[aptitude]
+  const fallbackType = rollType()
+  const matchedList = CHILD_SKILLS.filter(s => s.childType === fallbackType && s.rarity === fallbackRarity)
   if (matchedList.length > 0) {
     return matchedList[Math.floor(Math.random() * matchedList.length)]
   }
 
-  // 兜底（理论不会触发）：返回该类型的最低品质功法
-  return CHILD_SKILLS.find(s => s.childType === chosenType) || CHILD_SKILLS[0]
+  // 终极兜底（理论不会触发）：返回该类型任意品的功法
+  return CHILD_SKILLS.find(s => s.childType === fallbackType) || CHILD_SKILLS[0]
 }
 
 // V2 改版：多槽位解锁等级

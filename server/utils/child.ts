@@ -393,7 +393,9 @@ export function unlockSkillSlotsIfNeeded(
     const slot = i + 1
     if (filled.has(slot)) continue
     if (newLevel < unlockLevels[i]) continue
-    const skill = pickInnateSkill(root, aptitude)
+    // V2.1：避免槽位间重复（已有功法 + 本次循环已抽过的）
+    const usedIds = out.map(e => e.skill_id)
+    const skill = pickInnateSkill(root, aptitude, usedIds)
     out.push({ skill_id: skill.id, level: 1, slot, type: 'innate' })
     added.push(skill)
   }
@@ -468,7 +470,9 @@ export async function feedChild(
     for (const lv of TALENT_LEVELS) {
       // 已跨过该等级且尚未觉醒该槽位
       if (newLevel >= lv && !existingTalents.some((t: any) => t.level === lv)) {
-        const t = rollTalentByAptitude(child.aptitude as ChildAptitude)
+        // V2.1：避免天赋槽位间重复（已有 + 本轮新增的）
+        const usedIds = newAwakened.map(x => x.talent_id)
+        const t = rollTalentByAptitude(child.aptitude as ChildAptitude, usedIds)
         newAwakened.push({ level: lv, talent_id: t.id, rarity: t.rarity })
       }
     }

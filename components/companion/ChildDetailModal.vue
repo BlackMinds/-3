@@ -24,12 +24,12 @@
           <div class="row"><span class="lbl">攻击</span><span class="val">{{ finalStats.atk }}<span v-if="finalStats.atk - detail.atk" class="eq-bonus">(装备 +{{ equipBonus.atk }}{{ talentPct.atkPct ? ` / 天赋 +${talentPct.atkPct}%` : '' }})</span></span></div>
           <div class="row"><span class="lbl">防御</span><span class="val">{{ finalStats.def }}<span v-if="finalStats.def - detail.def" class="eq-bonus">(装备 +{{ equipBonus.def }}{{ talentPct.defPct ? ` / 天赋 +${talentPct.defPct}%` : '' }})</span></span></div>
           <div class="row"><span class="lbl">身法</span><span class="val">{{ finalStats.spd }}<span v-if="finalStats.spd - detail.spd" class="eq-bonus">(装备 +{{ equipBonus.spd }}{{ talentPct.spdPct ? ` / 天赋 +${talentPct.spdPct}%` : '' }})</span></span></div>
-          <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate + equipBonus.crit_rate) }}<span v-if="equipBonus.crit_rate" class="eq-bonus">(+{{ pct(equipBonus.crit_rate) }})</span></span></div>
-          <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg + equipBonus.crit_dmg) }}<span v-if="equipBonus.crit_dmg" class="eq-bonus">(+{{ pct(equipBonus.crit_dmg) }})</span></span></div>
-          <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge + equipBonus.dodge) }}<span v-if="equipBonus.dodge" class="eq-bonus">(+{{ pct(equipBonus.dodge) }})</span></span></div>
-          <div class="row"><span class="lbl">吸血</span><span class="val">{{ pct(detail.lifesteal + equipBonus.lifesteal) }}<span v-if="equipBonus.lifesteal" class="eq-bonus">(+{{ pct(equipBonus.lifesteal) }})</span></span></div>
+          <div class="row"><span class="lbl">会心率</span><span class="val">{{ pct(detail.critRate + equipBonus.crit_rate) }}<span v-if="equipBonus.crit_rate || detail.talentBonusFlat?.critRate" class="eq-bonus">({{ bonusTag(equipBonus.crit_rate, detail.talentBonusFlat?.critRate, true) }})</span></span></div>
+          <div class="row"><span class="lbl">会心伤害</span><span class="val">{{ pct(detail.critDmg + equipBonus.crit_dmg) }}<span v-if="equipBonus.crit_dmg || detail.talentBonusFlat?.critDmg" class="eq-bonus">({{ bonusTag(equipBonus.crit_dmg, detail.talentBonusFlat?.critDmg, true) }})</span></span></div>
+          <div class="row"><span class="lbl">闪避</span><span class="val">{{ pct(detail.dodge + equipBonus.dodge) }}<span v-if="equipBonus.dodge || detail.talentBonusFlat?.dodge" class="eq-bonus">({{ bonusTag(equipBonus.dodge, detail.talentBonusFlat?.dodge, true) }})</span></span></div>
+          <div class="row"><span class="lbl">吸血</span><span class="val">{{ pct(detail.lifesteal + equipBonus.lifesteal) }}<span v-if="equipBonus.lifesteal || detail.talentBonusFlat?.lifesteal" class="eq-bonus">({{ bonusTag(equipBonus.lifesteal, detail.talentBonusFlat?.lifesteal, true) }})</span></span></div>
           <div class="row"><span class="lbl">神识</span><span class="val">{{ detail.spirit + equipBonus.spirit }}<span v-if="equipBonus.spirit" class="eq-bonus">(+{{ equipBonus.spirit }})</span></span></div>
-          <div class="row"><span class="lbl">控制抗性</span><span class="val">{{ pct(detail.resistCtrl + equipBonus.resist_ctrl) }}<span v-if="equipBonus.resist_ctrl" class="eq-bonus">(+{{ pct(equipBonus.resist_ctrl) }})</span></span></div>
+          <div class="row"><span class="lbl">控制抗性</span><span class="val">{{ pct(detail.resistCtrl + equipBonus.resist_ctrl) }}<span v-if="equipBonus.resist_ctrl || detail.talentBonusFlat?.resistCtrl" class="eq-bonus">({{ bonusTag(equipBonus.resist_ctrl, detail.talentBonusFlat?.resistCtrl, true) }})</span></span></div>
           <div class="row row-full elem-resist-row">
             <span class="lbl">五行抗</span>
             <span class="val">
@@ -578,6 +578,15 @@ const finalStats = computed(() => {
 function pct(v: any): string {
   const n = Number(v || 0)
   return (n * 100).toFixed(1) + '%'
+}
+
+// 二级属性 bonus 标签：装备 +X / 天赋 +Y（isPct 时用百分比格式，否则数字）
+function bonusTag(equipV: any, talentV: any, isPct = true): string {
+  const fmt = (v: any) => isPct ? pct(v) : String(v)
+  const parts: string[] = []
+  if (Number(equipV) > 0) parts.push(`装备 +${fmt(equipV)}`)
+  if (Number(talentV) > 0) parts.push(`天赋 +${fmt(talentV)}`)
+  return parts.join(' / ')
 }
 
 function statLabel(s: string): string {

@@ -1024,6 +1024,65 @@ export function runDuoWaveBattle(
       return;
     }
 
+    // V2.2：纯增益型 buff（鼓舞/灵犀/战意激发/同心同力）— 给玩家施加 buff，不打伤害
+    if (useSkill && useSkill.childType === 'buff' && mul === 0 && useSkill.buff) {
+      const b = useSkill.buff;
+      player.buffs = player.buffs || [];
+      const buffEntry: any = { type: b.type, remaining: b.duration, value: b.value, valuePercent: b.valuePercent };
+      // shield 类型需要初始化 shieldHp（assist 攻击力 × value）
+      if (b.type === 'shield') buffEntry.shieldHp = Math.floor(assist.atk * (b.value || 1));
+      player.buffs.push(buffEntry);
+      const buffLabel = b.type === 'atk_up' ? `攻击+${((b.value || 0) * 100).toFixed(0)}%`
+        : b.type === 'def_up' ? `防御+${((b.value || 0) * 100).toFixed(0)}%`
+        : b.type === 'spd_up' ? `身法+${((b.value || 0) * 100).toFixed(0)}%`
+        : b.type === 'crit_up' ? `会心+${((b.value || 0) * 100).toFixed(0)}%`
+        : b.type === 'shield' ? `${buffEntry.shieldHp} 点护盾`
+        : b.type
+      logs.push({
+        turn,
+        text: `[第${turn}回合] ${assist.name}·助战施展【${skillName}】 → 你获得【${buffLabel}】 ${b.duration} 回合`,
+        type: 'buff', actor: 'assist', ...snap(),
+      });
+      assist.atk = origAtk;
+      if (useSkillIdx >= 0) assistDivineCds[useSkillIdx] = useSkill.cdTurns || 0;
+      return;
+    }
+
+    // V2.2：治疗型（healAtkRatio > 0）— 给玩家或全队回血，附带 regen buff
+    const healRatio = (useSkill as any)?.healAtkRatio || 0;
+    if (useSkill && healRatio > 0) {
+      const baseHeal = Math.floor(assist.atk * healRatio);
+      // isAoe → 玩家 + assist 都回；否则只回玩家
+      const healTargets: Array<{ ref: any; name: string }> = []
+      if (player.hp > 0 && player.hp < player.maxHp) healTargets.push({ ref: player, name: '你' })
+      if (useSkill.isAoe && assist.hp > 0 && assist.hp < assist.maxHp) {
+        healTargets.push({ ref: assist, name: `${assist.name}·助战` })
+      }
+      let totalHealed = 0
+      for (const ht of healTargets) {
+        const actual = Math.min(baseHeal, ht.ref.maxHp - ht.ref.hp);
+        ht.ref.hp += actual;
+        totalHealed += actual;
+      }
+      // 附带 regen buff（万木同生/生生不息）
+      if (useSkill.buff && useSkill.buff.type === 'regen') {
+        const recipients = useSkill.isAoe ? [player, assist] : [player]
+        for (const r of recipients) {
+          if (r.hp <= 0) continue
+          r.buffs = r.buffs || []
+          r.buffs.push({ type: 'regen', remaining: useSkill.buff.duration, valuePercent: useSkill.buff.valuePercent })
+        }
+      }
+      logs.push({
+        turn,
+        text: `[第${turn}回合] ${assist.name}·助战施展【${skillName}】 → ${useSkill.isAoe ? '全队' : '你'} 回复 ${totalHealed} 点气血`,
+        type: 'buff', actor: 'assist', ...snap(),
+      });
+      assist.atk = origAtk;
+      if (useSkillIdx >= 0) assistDivineCds[useSkillIdx] = useSkill.cdTurns || 0;
+      return;
+    }
+
     if (hits > 1) {
       logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战施展【${skillName}】(${hits}段)!`, type: 'crit', actor: 'assist', ...snap() });
     }

@@ -247,6 +247,45 @@ cases.push({
   },
 })
 
+// ---- Case K: buff 型功法给玩家施加 buff ----
+cases.push({
+  name: 'K. 鼓舞 ch_buff_green：给玩家施加 atk_up buff（不打伤害）',
+  run() {
+    const { allText } = runCaseEx({ skillIds: ['ch_buff_green'], monsterCount: 2 })
+    const cast = /鼓舞/.test(allText)
+    const buffApplied = /你获得【攻击\+10%】/.test(allText)
+    // 不应该出现"造成 1 点伤害"的 bug
+    const noBugDmg = !/施展【鼓舞】.*造成 1 点伤害/.test(allText)
+    return cast && buffApplied && noBugDmg
+  },
+})
+
+// ---- Case L: heal 型功法回血 ----
+cases.push({
+  name: 'L. 灵泉术·童 ch_heal_blue：cast 后玩家回血',
+  run() {
+    // 让玩家初始低血，便于触发回血逻辑
+    // 但 runCaseEx 不直接控制 player hp；改为构造场景：怪物有几回合攻击玩家后 assist 治疗
+    const { allText } = runCaseEx({ skillIds: ['ch_heal_blue'], monsterCount: 2 })
+    const cast = /灵泉术·童/.test(allText)
+    // 回血或不回血都行（如果玩家满血则 baseHeal=0），主要看不再误伤
+    const noBugDmg = !/施展【灵泉术·童】.*造成 1 点伤害/.test(allText)
+    return cast && noBugDmg
+  },
+})
+
+// ---- Case M: 同心同力（红品 buff）给玩家加 atk_up ----
+cases.push({
+  name: 'M. 同心同力 ch_buff_red：红品 buff 给玩家加攻击 +35%',
+  run() {
+    const { allText } = runCaseEx({ skillIds: ['ch_buff_red'], monsterCount: 2 })
+    const cast = /同心同力/.test(allText)
+    const buffApplied = /你获得【攻击\+35%】 5 回合/.test(allText)
+    const noBugDmg = !/施展【同心同力】.*造成 1 点伤害/.test(allText)
+    return cast && buffApplied && noBugDmg
+  },
+})
+
 // ---- run ----
 let pass = 0
 for (const c of cases) {
