@@ -40,6 +40,7 @@ export const ITEM_INFO: Record<string, ItemInfo> = {
   // —— 道侣专属道具 ——
   parting_charm:      { name: '红尘解',     description: '正式道侣和离时消耗的专属信物（游历奇遇极低概率获取 / 红尘玉商店）', category: 'character' },
   fate_pill:          { name: '夺天造化丹', description: '子女资质重铸，新资质低于原资质时按保底保留（游历奇遇极稀有 / 红尘玉商店）', category: 'character' },
+  sever_ties_charm:   { name: '断缘符',     description: '放弃一名子女时消耗（含离家子女永久 buff 一并清零，可恢复名册槽位再育新子女）', category: 'character' },
   // —— 修为类 ——
   permanent_stat:     { name: '道果结晶',   description: '永久属性 +1%（攻/防/血 三选一）',       category: 'character', needsTarget: 'stat' },
   breakthrough_boost: { name: '宗门突破丹', description: '下次突破成功率 +20%（上限 100%，不论成败消耗一次）', category: 'character' },

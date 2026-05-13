@@ -92,6 +92,47 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     limit: { type: 'month', count: 1 },
     give: { itemId: 'parting_charm', qty: 1, kind: 'pill' },
   },
+  {
+    id: 'sever_ties_charm',
+    name: '断缘符 ×1',
+    desc: '放弃一名子女（含离家子女永久 buff 一并清零，释放名册槽位）',
+    price: 5000,
+    limit: { type: 'month', count: 1 },
+    give: { itemId: 'sever_ties_charm', qty: 1, kind: 'pill' },
+  },
+  // 早期礼物原料补足（灵田 lv3/5 才能种 silk/butterfly 之前的应急购买）
+  {
+    id: 'silk_flower',
+    name: '相思藤种子 ×10',
+    desc: '下品礼物原料（凡品本体可直接 +1 亲密度）',
+    price: 100,
+    limit: { type: 'week', count: 3 },
+    give: { itemId: 'silk_flower', qty: 10, kind: 'material', quality: 'white' },
+  },
+  {
+    id: 'butterfly_flower',
+    name: '蝶恋花种子 ×5',
+    desc: '中品礼物原料（凡品本体可直接 +1 亲密度）',
+    price: 200,
+    limit: { type: 'week', count: 3 },
+    give: { itemId: 'butterfly_flower', qty: 5, kind: 'material', quality: 'white' },
+  },
+  {
+    id: 'spirit_grass',
+    name: '仙灵草 ×3',
+    desc: '上品+礼物关键稀有原料（也是突破丹关键材料）',
+    price: 600,
+    limit: { type: 'week', count: 3 },
+    give: { itemId: 'spirit_grass', qty: 3, kind: 'material', quality: 'white' },
+  },
+  {
+    id: 'moonlight_orchid_bulk',
+    name: '月光兰种子大包 ×15',
+    desc: '月光兰大批量优惠（vs 5 包单买省 100）',
+    price: 500,
+    limit: { type: 'week', count: 1 },
+    give: { itemId: 'moonlight_orchid', qty: 15, kind: 'material', quality: 'white' },
+  },
   // 子女装备宝箱（design 5.6.2 来源）
   {
     id: 'child_box_green',
@@ -124,6 +165,14 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     price: 8000,
     limit: { type: 'week', count: 1 },
     give: { itemId: 'child_box_gold', qty: 1, kind: 'child_box' },
+  },
+  {
+    id: 'child_box_red',
+    name: '子女宝箱·仙品',
+    desc: '开出 1 件仙品子女装备（最高档，月限购）',
+    price: 25000,
+    limit: { type: 'month', count: 1 },
+    give: { itemId: 'child_box_red', qty: 1, kind: 'child_box' },
   },
 ]
 

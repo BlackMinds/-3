@@ -1,5 +1,5 @@
 // 红尘玉商店列表 - GET /api/companion/red-jade-shop/list
-// 返回 8 个商品 + 当前周/月已购数 + 玩家红尘玉余额
+// 返回 RED_JADE_SHOP_ITEMS 全量 + 当前周/月已购数 + 玩家红尘玉余额
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
