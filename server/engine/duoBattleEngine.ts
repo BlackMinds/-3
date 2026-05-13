@@ -31,8 +31,10 @@ import { BATTLE_FORMULA, PLAYER_CAPS } from '../../shared/balance';
 
 // ---- 类型 ----
 export interface DuoAssistInput {
-  stats: BattlerStats;                  // 子女实际战斗属性（含装备+天赋）
-  innateSkill?: ChildSkill | null;      // 觉醒的血脉功法（divine 类型才进入 CD 池）
+  stats: BattlerStats;                  // 子女实际战斗属性（含装备+天赋+passive 功法）
+  innateSkills?: ChildSkill[];          // V2 改版：多槽位血脉功法（divine 进 CD 池，active 替代普攻，passive 已聚合到 stats）
+  /** @deprecated 兼容旧版调用，等价于 innateSkills 的第一个 */
+  innateSkill?: ChildSkill | null;
 }
 
 export interface DuoWaveBattleResult {
@@ -99,7 +101,7 @@ export function runDuoWaveBattle(
   }
 
   // 1. 初始化玩家（应用功法被动 → 与 runWaveBattle 一致）
-  const player: any = { ...playerStats, hp: playerStats.maxHp, buffs: [], debuffs: [], frozenTurns: 0 };
+  const player: any = { ...playerStats, hp: playerStats.maxHp, buffs: [], debuffs: [], frozenTurns: 0, tauntTurns: 0 };
   if (equippedSkills?.passiveEffects) {
     const p: any = equippedSkills.passiveEffects;
     const ps: any = playerStats as any;
@@ -223,11 +225,23 @@ export function runDuoWaveBattle(
     buffs: [],
     debuffs: [],
     frozenTurns: 0,
+    tauntTurns: 0,   // V2 改版：嘲讽剩余回合（嘲讽功法 cast 时设置）
     _isNoop: assistStats.name === '__noop__',
   };
-  // 血脉功法 CD 跟踪（出场时可立即施放第一次）
-  const assistSkillCd = { current: 0, skill: assistInput.innateSkill || null };
-  const isAssistDivine = !!(assistSkillCd.skill && assistSkillCd.skill.type === 'divine' && (assistSkillCd.skill.cdTurns || 0) > 0);
+  // V2 改版：兼容多槽位血脉功法
+  //   - innateSkills 数组 → **所有 divine** 各自独立 CD 池轮转（V2.1）
+  //   - active 类型替代普攻（Task #6 扩展，目前仅普攻）
+  //   - passive 类型已在 fight.post.ts 聚合到 _assistPrep 静态加成
+  //   - 兼容旧版 innateSkill 字段
+  const allInnate = (assistInput.innateSkills && assistInput.innateSkills.length > 0)
+    ? assistInput.innateSkills
+    : (assistInput.innateSkill ? [assistInput.innateSkill] : []);
+  // 所有 divine 入 CD 池（V2.1：多 divine 轮转）
+  const assistDivineSkills: ChildSkill[] = allInnate.filter(s => s && s.type === 'divine') as ChildSkill[];
+  const assistDivineCds: number[] = assistDivineSkills.map(() => 0);
+  // 兼容旧逻辑：assistSkillCd 仍指向"当前选中的"divine（assistAction 内动态决定）
+  const assistSkillCd = { current: 0, skill: assistDivineSkills[0] || null };
+  const isAssistDivine = assistDivineSkills.length > 0;
 
   // 3. 初始化怪物
   const monsters: MonsterRuntime[] = monsterList.map(m => {
@@ -587,7 +601,7 @@ export function runDuoWaveBattle(
     }
   };
 
-  // 玩家受伤主链：brittle → awakenReduction → immune × 0.5 → shield 吸收 → 反伤池触发
+  // 玩家受伤主链：brittle → awakenReduction → immune × 0.5 → shield 吸收 → 共生血契转嫁 → 反伤池触发
   // 返回最终扣血值（已应用所有减免）；shield 吸收完独立扣，返回剩余 dmg
   const applyPlayerIncoming = (dmg: number, isCrit: boolean, turn: number): number => {
     let d = dmg;
@@ -610,6 +624,21 @@ export function runDuoWaveBattle(
           buffs.splice(buffs.indexOf(shield), 1);
           logs.push({ turn, text: `  【护盾】破碎`, type: 'buff', actor: 'player', ...snap() });
         }
+      }
+    }
+    // 4. V2.1：共生血契（红品嘲讽 passive）— 玩家受伤 X% 转嫁给 assist
+    //    assist 必须未死 + 非 noop；assist 自己承担的部分独立扣 hp，玩家剩余 d 继续走主链
+    const sharePct = Number((assist?.dmgShareFromPlayerPct) || 0);
+    if (sharePct > 0 && d > 0 && !assist._isNoop && assist.hp > 0) {
+      const shareDmg = Math.floor(d * sharePct);
+      if (shareDmg > 0) {
+        assist.hp = Math.max(0, assist.hp - shareDmg);
+        d -= shareDmg;
+        logs.push({
+          turn,
+          text: `  【共生血契】${assist.name}·助战代承 ${shareDmg} 点伤害`,
+          type: 'buff', actor: 'assist', ...snap(),
+        });
       }
     }
     return d;
@@ -919,44 +948,116 @@ export function runDuoWaveBattle(
     const silenced = hasSilence(assist);
     if (silenced) logs.push({ turn, text: `  ${assist.name}·助战被封印,无法使用血脉功法`, type: 'normal', actor: 'assist', ...snap() });
 
+    // V2.1 多 divine 轮转：选第一个 CD ≤ 0 的 divine 释放
     let useSkill: ChildSkill | null = null;
-    if (!silenced && isAssistDivine && assistSkillCd.current <= 0) {
-      useSkill = assistSkillCd.skill!;
+    let useSkillIdx = -1;
+    if (!silenced && isAssistDivine) {
+      for (let i = 0; i < assistDivineSkills.length; i++) {
+        if (assistDivineCds[i] <= 0) {
+          useSkill = assistDivineSkills[i];
+          useSkillIdx = i;
+          break;
+        }
+      }
     }
+
+    // V2 改版：嘲讽型 divine 不走普攻路径，单独处理（设置 tauntTurns + buff）
+    if (useSkill && useSkill.childType === 'taunt') {
+      const dur = useSkill.tauntDuration || 1;
+      assist.tauntTurns = Math.max(assist.tauntTurns || 0, dur);
+      logs.push({
+        turn,
+        text: `[第${turn}回合] ${assist.name}·助战施展【${useSkill.name}】 → 吸引敌人火力 ${dur} 回合`,
+        type: 'buff', actor: 'assist', ...snap(),
+      });
+      // 嘲讽附带的 shield/reflect buff（万怨归身 / 引仇术）
+      if (useSkill.buff) {
+        assist.buffs = assist.buffs || [];
+        assist.buffs.push({ type: useSkill.buff.type, duration: useSkill.buff.duration, value: useSkill.buff.value, valuePercent: useSkill.buff.valuePercent });
+      }
+      // 保存嘲讽减伤/护盾分享系数（受击时读取）
+      if (useSkill.tauntDmgReductionPct) assist._tauntDmgReductionPct = useSkill.tauntDmgReductionPct;
+      if (useSkill.tauntShieldShareToPlayerPct) assist._tauntShieldShareToPlayerPct = useSkill.tauntShieldShareToPlayerPct;
+      if (useSkillIdx >= 0) assistDivineCds[useSkillIdx] = useSkill.cdTurns || 0;
+      return;
+    }
+
+    // V2 改版：减益型/AoE 处理目标列表（isAoe → 所有 alive monsters；否则 firstAlive）
+    const targets = (useSkill?.isAoe)
+      ? monsters.filter(m => m.alive && m.stats.hp > 0)
+      : [tgt];
+    if (targets.length === 0) return;
+
     const skillName = useSkill?.name || '普通攻击';
     const mul = useSkill?.multiplier ?? 1.0;
     const elem = useSkill?.element ?? null;
     const ignoreDef = useSkill?.ignoreDef || 0;
-    const hits = useSkill?.hitCount || 1;
+    // V2.1：hitCountRange 优先（每次 cast 随机段数，mul 视为单段倍率）；否则用 hitCount + 总倍率拆分
+    const hitRange = (useSkill as any)?.hitCountRange as [number, number] | undefined;
+    const hits = hitRange
+      ? hitRange[0] + Math.floor(Math.random() * (hitRange[1] - hitRange[0] + 1))
+      : (useSkill?.hitCount || 1);
+    const perHitMulFixed = hitRange ? mul : null;  // 非空时单段固定倍率（不再 mul/hits）
 
     // atk_down 折扣
     const atkDownMul = getAtkDownMul(assist);
     const origAtk = assist.atk;
     if (atkDownMul < 1) assist.atk = Math.max(1, Math.floor(assist.atk * atkDownMul));
 
+    // 纯减益型（multiplier=0 但 debuff/extraDebuffs 不空）：只施加 debuff 不打伤害
+    const isPureDebuff = useSkill && mul === 0 && (useSkill.debuff || (useSkill.extraDebuffs && useSkill.extraDebuffs.length > 0));
+    if (isPureDebuff && useSkill) {
+      logs.push({
+        turn,
+        text: `[第${turn}回合] ${assist.name}·助战施展【${skillName}】${useSkill.isAoe ? ' [群体]' : ''}`,
+        type: 'buff', actor: 'assist', ...snap(),
+      });
+      for (const t of targets) {
+        if (!t.alive) continue;
+        if (useSkill.debuff) tryApplyDebuff(t, t.stats.name, useSkill.debuff, assist.atk, turn, 'assist');
+        for (const d of (useSkill.extraDebuffs || [])) {
+          tryApplyDebuff(t, t.stats.name, d, assist.atk, turn, 'assist');
+        }
+      }
+      assist.atk = origAtk;
+      if (useSkillIdx >= 0) assistDivineCds[useSkillIdx] = useSkill.cdTurns || 0;
+      return;
+    }
+
     if (hits > 1) {
       logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战施展【${skillName}】(${hits}段)!`, type: 'crit', actor: 'assist', ...snap() });
     }
     let totalDealt = 0;
-    for (let h = 0; h < hits; h++) {
-      if (!tgt.alive) break;
-      const perMul = hits > 1 ? mul / hits : mul;
-      const r = calculateDamage(assist, tgt.stats, perMul, elem, ignoreDef);
-      if (r.damage === 0) {
-        logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战的攻击被${tgt.stats.name}闪避了`, type: 'normal', actor: 'assist', ...snap() });
-        continue;
+    for (const t of targets) {
+      for (let h = 0; h < hits; h++) {
+        if (!t.alive) break;
+        const perMul = perHitMulFixed ?? (hits > 1 ? mul / hits : mul);
+        const r = calculateDamage(assist, t.stats, perMul, elem, ignoreDef);
+        if (r.damage === 0) {
+          logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战的攻击被${t.stats.name}闪避了`, type: 'normal', actor: 'assist', ...snap() });
+          continue;
+        }
+        let dealt = r.damage;
+        const brittle = getBrittleBonus(t);
+        if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
+        t.stats.hp -= dealt;
+        totalDealt += dealt;
+        const critText = r.isCrit ? '会心!' : '';
+        if (hits > 1) {
+          logs.push({ turn, text: `  第${h + 1}段 对${t.stats.name} ${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
+        } else {
+          logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战${useSkill ? `施展【${skillName}】` : ''}攻击了${t.stats.name}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
+        }
       }
-      let dealt = r.damage;
-      const brittle = getBrittleBonus(tgt);
-      if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
-      tgt.stats.hp -= dealt;
-      totalDealt += dealt;
-      const critText = r.isCrit ? '会心!' : '';
-      if (hits > 1) {
-        logs.push({ turn, text: `  第${h + 1}段 ${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
-      } else {
-        logs.push({ turn, text: `[第${turn}回合] ${assist.name}·助战${useSkill ? `施展【${skillName}】` : ''}攻击了${tgt.stats.name}，${critText}造成 ${dealt} 点伤害`, type: r.isCrit ? 'crit' : 'normal', actor: 'assist', ...snap() });
+      // 单目标施加 debuff（伤害型功法附带的 debuff，如攻击型紫品破云箭）
+      if (useSkill && useSkill.debuff && t.alive) {
+        tryApplyDebuff(t, t.stats.name, useSkill.debuff, assist.atk, turn, 'assist');
       }
+      // V2 改版：extraDebuffs 也施加（攻击+多 debuff 复合型）
+      for (const d of (useSkill?.extraDebuffs || [])) {
+        if (t.alive) tryApplyDebuff(t, t.stats.name, d, assist.atk, turn, 'assist');
+      }
+      killCheck(t, turn, `${assist.name}·助战`);
     }
     assist.atk = origAtk;
 
@@ -970,17 +1071,8 @@ export function runDuoWaveBattle(
       }
     }
 
-    // 助战血脉功法 debuff 施加（按 'player' 待遇 — 队友享受 dotAmpPct 等同身受？暂定按 'assist' 不享受玩家专属加成）
-    // 注：assist 当前继承 player 的 dotAmpPct 也不合适，Phase 2a 走最保守：用 'assist' 路径（无加成）
-    if (useSkill && (useSkill as any).debuff && tgt.alive) {
-      const d = (useSkill as any).debuff;
-      tryApplyDebuff(tgt, tgt.stats.name, d, assist.atk, turn, 'assist');
-    }
-
-    killCheck(tgt, turn, `${assist.name}·助战`);
-
-    if (useSkill && isAssistDivine) {
-      assistSkillCd.current = useSkill.cdTurns || 0;
+    if (useSkill && useSkillIdx >= 0) {
+      assistDivineCds[useSkillIdx] = useSkill.cdTurns || 0;
     }
   };
 
@@ -994,7 +1086,10 @@ export function runDuoWaveBattle(
     if (player.hp > 0) candidates.push({ ref: player, isPlayer: true });
     if (!assist._isNoop && assist.hp > 0) candidates.push({ ref: assist, isPlayer: false });
     if (candidates.length === 0) return;
-    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    // V2 改版：若 player/assist 处于嘲讽状态，怪物优先攻击嘲讽方
+    const taunted = candidates.filter(c => (c.ref.tauntTurns || 0) > 0);
+    const pool = taunted.length > 0 ? taunted : candidates;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
 
     const mSkill = monsterChooseSkill(
       m.skillState, m.stats.hp, m.stats.maxHp, m.template.role === 'boss',
@@ -1040,6 +1135,20 @@ export function runDuoWaveBattle(
       if (brittle > 0) dealt = Math.floor(dealt * (1 + brittle));
       // 玩家受伤主链：awakenReduction → immune × 0.5 → shield 吸收
       if (pick.isPlayer) dealt = applyPlayerIncoming(dealt, r.isCrit, turn);
+      // V2 改版：assist 嘲讽期间减伤（替父挡灾）+ 护盾分享给玩家（替罪金身）
+      else if ((assist.tauntTurns || 0) > 0) {
+        const redPct = assist._tauntDmgReductionPct || 0;
+        if (redPct > 0) dealt = Math.max(1, Math.floor(dealt * (1 - redPct)));
+        const shareTo = assist._tauntShieldShareToPlayerPct || 0;
+        if (shareTo > 0 && player.hp > 0) {
+          const shieldGain = Math.floor(dealt * shareTo);
+          if (shieldGain > 0) {
+            player.buffs = player.buffs || [];
+            player.buffs.push({ type: 'shield' as BuffType, duration: 3, value: shieldGain });
+            logs.push({ turn, text: `  ✦【替罪金身】${shieldGain} 点伤害转化为你的护盾`, type: 'buff', actor: 'assist', ...snap() });
+          }
+        }
+      }
       pick.ref.hp -= dealt;
       anyHit = true;
       const critText = r.isCrit ? '会心!' : '';
@@ -1153,13 +1262,26 @@ export function runDuoWaveBattle(
 
     // 行动顺序：按身法降序排（玩家、助战、所有存活怪物）
     // 玩家 buff: spd_up 临时放大身法用于排序
+    // V2.1: spd_down debuff 同步缩减（与 atk_down 同位机制）
+    const getSpdDownMul = (target: any): number => {
+      const sd = target?.debuffs?.find?.((d: any) => d.type === 'spd_down');
+      return sd ? Math.max(0, 1 - (sd.value || 0.15)) : 1;
+    };
     const spdUp = sumPlayerBuff('spd_up' as BuffType);
-    const effPlayerSpd = spdUp > 0 ? Math.floor((player.spd || 0) * (1 + spdUp)) : (player.spd || 0);
+    const effPlayerSpd = Math.floor(
+      (player.spd || 0)
+        * (spdUp > 0 ? (1 + spdUp) : 1)
+        * getSpdDownMul(player)
+    );
     interface Actor { kind: 'player' | 'assist' | 'monster'; spd: number; idx: number; }
     const actors: Actor[] = [];
     actors.push({ kind: 'player', spd: effPlayerSpd, idx: -1 });
-    if (!assist._isNoop && assist.hp > 0) actors.push({ kind: 'assist', spd: assist.spd || 0, idx: -1 });
-    monsters.forEach((m, i) => { if (m.alive) actors.push({ kind: 'monster', spd: m.stats.spd || 0, idx: i }); });
+    if (!assist._isNoop && assist.hp > 0) {
+      actors.push({ kind: 'assist', spd: Math.floor((assist.spd || 0) * getSpdDownMul(assist)), idx: -1 });
+    }
+    monsters.forEach((m, i) => {
+      if (m.alive) actors.push({ kind: 'monster', spd: Math.floor((m.stats.spd || 0) * getSpdDownMul(m)), idx: i });
+    });
     // 同身法随机
     actors.sort((a, b) => {
       if (b.spd !== a.spd) return b.spd - a.spd;
@@ -1202,8 +1324,11 @@ export function runDuoWaveBattle(
       }
     }
 
-    // 回合末：递减 CD + 玩家 buff 衰减
-    if (isAssistDivine && assistSkillCd.current > 0) assistSkillCd.current--;
+    // 回合末：递减 CD + 玩家 buff 衰减 + 嘲讽计时
+    // V2.1：所有 assist divine CD 各自独立递减
+    for (let i = 0; i < assistDivineCds.length; i++) {
+      if (assistDivineCds[i] > 0) assistDivineCds[i]--;
+    }
     for (let i = 0; i < playerDivineCds.length; i++) {
       if (playerDivineCds[i] > 0) playerDivineCds[i]--;
     }
@@ -1211,6 +1336,9 @@ export function runDuoWaveBattle(
       if (m.alive) tickMonsterCds(m.skillState);
     }
     tickPlayerBuffs();
+    // V2 改版：嘲讽递减（assist 和 player 双方都可能有 tauntTurns）
+    if (assist.tauntTurns > 0) assist.tauntTurns--;
+    if (player.tauntTurns > 0) player.tauntTurns--;
   }
 
   const aliveAtEnd = monsters.filter(m => m.alive);

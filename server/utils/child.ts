@@ -9,7 +9,9 @@ import {
   type ChildAptitude,
   type ChildTalent,
 } from '~/server/engine/childTalentData'
-import { pickInnateSkill, type ChildSkill } from '~/server/engine/childSkillData'
+// 历史调用方（如 cron/child-grow.post.ts）从此处取 ChildAptitude
+export type { ChildAptitude } from '~/server/engine/childTalentData'
+import { pickInnateSkill, getSkillSlotUnlockLevels, type ChildSkill } from '~/server/engine/childSkillData'
 import { QUALITY_TRAITS, type CompanionQuality, type SpiritualRoot, ALL_ROOTS } from '~/server/engine/companionData'
 
 // ============================================================
@@ -335,11 +337,68 @@ export async function birthChild(
       baseStats.lifesteal,
       baseStats.spirit,
       baseStats.resistCtrl,
-      JSON.stringify([{ skill_id: innateSkill.id, level: 1, type: 'innate' }]),
+      JSON.stringify([{ skill_id: innateSkill.id, level: 1, slot: 1, type: 'innate' }]),
     ]
   )
 
   return { child: rows[0] as ChildRow, talent: firstTalent, skill: innateSkill }
+}
+
+// ============================================================
+// 血脉功法多槽位解锁（V2 改版）
+// ============================================================
+
+export interface LearnedSkillEntry {
+  skill_id: string
+  level: number
+  slot: number               // 1/2/3/4
+  type?: string              // 兼容历史，固定写 'innate'，实际 type 通过 CHILD_SKILL_MAP[id].type 取
+}
+
+/**
+ * 升级时检查是否解锁新槽位
+ *
+ * 规则（getSkillSlotUnlockLevels）：
+ *   - 槽 1 = Lv.1（出生时已有，本函数不动）
+ *   - 槽 2 = Lv.100
+ *   - 槽 3 = Lv.200
+ *   - 槽 4 = Lv.300（仅圣品 aptitude=6）
+ *
+ * 入参 existingSkills 接受历史数据（无 slot 字段时按数组顺序补 slot=index+1）
+ * 返回完整的 learnedSkills 数组（含原有 + 新增）以及本次新增的 ChildSkill 列表
+ */
+export function unlockSkillSlotsIfNeeded(
+  newLevel: number,
+  aptitude: ChildAptitude,
+  root: SpiritualRoot | 'mixed',
+  existingSkills: any[]
+): { learnedSkills: LearnedSkillEntry[]; addedSkills: ChildSkill[] } {
+  const unlockLevels = getSkillSlotUnlockLevels(aptitude)
+  const filled = new Set<number>()
+  const out: LearnedSkillEntry[] = []
+  const exList = Array.isArray(existingSkills) ? existingSkills : []
+  for (let i = 0; i < exList.length; i++) {
+    const es = exList[i] || {}
+    const slot = Number(es.slot) || (i + 1)
+    filled.add(slot)
+    out.push({
+      skill_id: String(es.skill_id),
+      level: Number(es.level) || 1,
+      slot,
+      type: es.type || 'innate',
+    })
+  }
+  const added: ChildSkill[] = []
+  for (let i = 0; i < unlockLevels.length; i++) {
+    const slot = i + 1
+    if (filled.has(slot)) continue
+    if (newLevel < unlockLevels[i]) continue
+    const skill = pickInnateSkill(root, aptitude)
+    out.push({ skill_id: skill.id, level: 1, slot, type: 'innate' })
+    added.push(skill)
+  }
+  out.sort((a, b) => a.slot - b.slot)
+  return { learnedSkills: out, addedSkills: added }
 }
 
 // ============================================================
@@ -415,6 +474,13 @@ export async function feedChild(
     }
     const newTalentsCount = newAwakened.length - existingTalents.length
 
+    // V2 改版：血脉功法多槽位解锁（Lv.100/200/300）
+    const { learnedSkills: newLearned, addedSkills: newSkillUnlocks } = unlockSkillSlotsIfNeeded(
+      newLevel, child.aptitude as ChildAptitude,
+      (child.spiritual_root || 'mixed') as SpiritualRoot | 'mixed',
+      Array.isArray(child.learned_skills) ? child.learned_skills : []
+    )
+
     // 升级时不重滚 crit_rate/crit_dmg/dodge（出生时锁定），只刷新 level 相关的基础 4 + spirit + resist_ctrl
     await client.query(
       `UPDATE children SET
@@ -422,21 +488,24 @@ export async function feedChild(
         max_hp = $4, atk = $5, def = $6, spd = $7,
         spirit = $8, resist_ctrl = $9,
         feed_count_today = $10, feed_date = $11::date,
-        awakened_talents = $12::jsonb
-       WHERE id = $13`,
+        awakened_talents = $12::jsonb,
+        learned_skills = $13::jsonb
+       WHERE id = $14`,
       [newLevel, remainExp, newStage,
        newStats.maxHp, newStats.atk, newStats.def, newStats.spd,
        newStats.spirit, newStats.resistCtrl,
-       feedCnt + 1, today, JSON.stringify(newAwakened), childId]
+       feedCnt + 1, today, JSON.stringify(newAwakened), JSON.stringify(newLearned), childId]
     )
     await client.query('COMMIT')
     const newTalentNames = newAwakened.slice(existingTalents.length).map((t: any) => {
       const def = CHILD_TALENTS.find(x => x.id === t.talent_id)
       return def ? `${def.name}(${def.rarity})` : t.talent_id
     })
-    const msg = newTalentsCount > 0
-      ? `经验 +${expGain}，觉醒天赋：${newTalentNames.join(' / ')}`
-      : `经验 +${expGain}`
+    const newSkillNames = newSkillUnlocks.map(s => `${s.name}(${s.rarity})`)
+    const parts: string[] = [`经验 +${expGain}`]
+    if (newTalentsCount > 0) parts.push(`觉醒天赋：${newTalentNames.join(' / ')}`)
+    if (newSkillUnlocks.length > 0) parts.push(`解锁血脉功法：${newSkillNames.join(' / ')}`)
+    const msg = parts.join('，')
 
     // 成就触发：子女成年（升级到 100 级）
     if (child.level < 100 && newLevel >= 100) {

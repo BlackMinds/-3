@@ -873,7 +873,10 @@ export function calculateDamage(
   const awakenArmorPenPct = awakenState?.armorPenPct || 0;
   const mainSkillArmorPen = (isMainSkill && awakenState?.mainSkillArmorPen) ? awakenState.mainSkillArmorPen : 0;
   const totalArmorPen = ignoreDef + (attacker.armorPen || 0) / 100 + awakenArmorPenPct + mainSkillArmorPen;
-  const effectiveDef = defender.def * Math.max(0, 1 - totalArmorPen);
+  // V2 改版：受击方 def_down debuff → 防御临时缩减（用于子女血脉功法 蚀魂术/万灵衰退/大道无常）
+  const defDownDebuff = (defender as any).debuffs?.find((d: any) => d.type === 'def_down');
+  const defDownMul = defDownDebuff ? (1 - (defDownDebuff.value || 0.15)) : 1;
+  const effectiveDef = defender.def * defDownMul * Math.max(0, 1 - totalArmorPen);
   // v3.4: DEF 权重从 balance.ts 读 (0.8), 让防御更值钱
   const atkDefRatio = attacker.atk / (attacker.atk + effectiveDef * BATTLE_FORMULA.atkDefRatioDefWeight);
 

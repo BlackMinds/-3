@@ -72,8 +72,8 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     id: 'reset_root',
     name: '天道洗髓丹 ×1',
     desc: '子女天赋单槽重铸 / 玩家灵根定向转换',
-    price: 1500,
-    limit: { type: 'week', count: 10 },
+    price: 2000,
+    limit: { type: 'week', count: 5 },
     give: { itemId: 'reset_root', qty: 1, kind: 'pill' },
   },
   {
@@ -83,6 +83,14 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     price: 3000,
     limit: { type: 'week', count: 10 },
     give: { itemId: 'fate_pill', qty: 1, kind: 'pill' },
+  },
+  {
+    id: 'bloodline_reroll_pill',
+    name: '血脉重铸丹 ×1',
+    desc: '重抽子女指定槽位血脉功法',
+    price: 800,
+    limit: { type: 'week', count: 20 },
+    give: { itemId: 'bloodline_reroll_pill', qty: 1, kind: 'pill' },
   },
   {
     id: 'parting_charm',

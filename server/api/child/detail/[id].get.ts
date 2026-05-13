@@ -2,7 +2,7 @@
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
-import { getChildById, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct } from '~/server/utils/child'
+import { getChildById, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct, getChildVisitCap } from '~/server/utils/child'
 import { CHILD_TALENT_MAP, type ChildAptitude } from '~/server/engine/childTalentData'
 import { CHILD_SKILL_MAP } from '~/server/engine/childSkillData'
 
@@ -28,10 +28,14 @@ export default defineEventHandler(async (event) => {
       level: t.level,
       ...CHILD_TALENT_MAP[t.talent_id],
     }))
-    const skills = (c.learned_skills || []).map((s: any) => ({
+    const skills = (c.learned_skills || []).map((s: any, i: number) => ({
       level: s.level,
+      slot: Number(s.slot) || (i + 1),  // 兼容老数据
       ...CHILD_SKILL_MAP[s.skill_id],
     }))
+    // 槽位解锁等级（前端展示未解锁占位用）
+    const { getSkillSlotUnlockLevels } = await import('~/server/engine/childSkillData')
+    const skillSlotUnlockLevels = getSkillSlotUnlockLevels(c.aptitude as ChildAptitude)
 
     // 五行抗聚合（来源：天赋）
     const elementResist = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
@@ -78,11 +82,13 @@ export default defineEventHandler(async (event) => {
         isBattling: c.is_battling,
         hasLeftHome: c.has_left_home,
         permanentBuffPct: Number(c.permanent_buff_pct || 0),
+        visitCap: getChildVisitCap(c.aptitude),
         lastVisitAt: c.last_visit_at,
         feedCountToday: c.feed_count_today,
         feedDailyMax: 5,
         talents,
         skills,
+        skillSlotUnlockLevels,
         bornAt: c.born_at,
       },
     }

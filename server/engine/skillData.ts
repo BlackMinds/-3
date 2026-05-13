@@ -1,6 +1,6 @@
 // 后端功法数据 - 与前端 skillData.ts 完全一致
 
-export type DebuffType = 'burn' | 'poison' | 'bleed' | 'freeze' | 'stun' | 'slow' | 'brittle' | 'atk_down' | 'root' | 'silence';
+export type DebuffType = 'burn' | 'poison' | 'bleed' | 'freeze' | 'stun' | 'slow' | 'brittle' | 'atk_down' | 'def_down' | 'spd_down' | 'root' | 'silence';
 export type BuffType = 'atk_up' | 'def_up' | 'spd_up' | 'crit_up' | 'shield' | 'regen' | 'reflect' | 'immune';
 
 export interface SkillDebuff {
@@ -46,6 +46,8 @@ export interface PassiveEffect {
   dot_amplifier_percent?: number;        // 你造成的 DOT(灼烧/中毒/流血)伤害放大%
   crit_after_dodge?: boolean;            // 闪避后下次攻击必会心
   heal_amplifier_percent?: number;       // 你受到的治疗(神通治疗/被动 regen)放大%
+  // 子女血脉功法 - 嘲讽/共生类被动机制（仅 duoBattleEngine 识别）
+  damage_share_to_assist_percent?: number;  // 玩家受到的伤害按比例转嫁到子女（红品『共生血契』）
 }
 
 export interface Skill {

@@ -403,6 +403,42 @@ export const useCompanionStore = defineStore('companion', () => {
     }
   }
 
+  async function rerollChildSkill(childId: number, slot: number, acceptNew = true): Promise<{ ok: boolean; message?: string; data?: any }> {
+    const api = useApi()
+    acting.value = true
+    try {
+      const res = await api<{ code: number; message?: string; data?: any }>('/child/reroll-skill', {
+        method: 'POST',
+        body: { child_id: childId, slot, accept_new: acceptNew },
+      })
+      if (res.code === 200) {
+        await loadChildren()
+        return { ok: true, message: res.message, data: res.data }
+      }
+      return { ok: false, message: res.message }
+    } finally {
+      acting.value = false
+    }
+  }
+
+  async function rerollChildTalent(childId: number, slotLevel: number, acceptNew = true): Promise<{ ok: boolean; message?: string; data?: any }> {
+    const api = useApi()
+    acting.value = true
+    try {
+      const res = await api<{ code: number; message?: string; data?: any }>('/child/reroll-talent', {
+        method: 'POST',
+        body: { child_id: childId, slot_level: slotLevel, accept_new: acceptNew },
+      })
+      if (res.code === 200) {
+        await loadChildren()
+        return { ok: true, message: res.message, data: res.data }
+      }
+      return { ok: false, message: res.message }
+    } finally {
+      acting.value = false
+    }
+  }
+
   async function comeOfAgeChild(childId: number, choice: 'stay' | 'leave'): Promise<{ ok: boolean; message?: string; data?: any }> {
     const api = useApi()
     acting.value = true
@@ -477,7 +513,7 @@ export const useCompanionStore = defineStore('companion', () => {
     feedChild, setBattlingChild,
     clearLastBirths,
     // Phase 4
-    divorceCompanion, rerollChildAptitude, comeOfAgeChild, recallChildHome,
+    divorceCompanion, rerollChildAptitude, rerollChildSkill, rerollChildTalent, comeOfAgeChild, recallChildHome,
     abandonChild,
   }
 })

@@ -9,8 +9,9 @@ import {
   getChildById,
   generateChildAptitude,
   calcChildBaseStats,
+  unlockSkillSlotsIfNeeded,
 } from '~/server/utils/child'
-import { pickInnateSkill } from '~/server/engine/childSkillData'
+import { CHILD_SKILL_MAP } from '~/server/engine/childSkillData'
 import { APTITUDE_NAMES } from '~/server/utils/child'
 import type { ChildAptitude } from '~/server/engine/childTalentData'
 import type { SpiritualRoot, CompanionQuality } from '~/server/engine/companionData'
@@ -65,20 +66,16 @@ export default defineEventHandler(async (event) => {
       kept = true
     }
 
-    // 重生 innate skill（按新资质品质重选；若资质不变，仍重滚一次，玩家有概率换功法）
-    const root = (c.spiritual_root === 'mixed' ? 'wood' : c.spiritual_root) as SpiritualRoot
-    const newSkill = pickInnateSkill(root, finalAptitude)
+    // 重生 innate skills（V2 改版：资质丹按新资质 + 当前等级重新生成所有应解锁槽位）
+    const root = (c.spiritual_root === 'mixed' ? 'mixed' : c.spiritual_root) as SpiritualRoot | 'mixed'
 
     // 按 当前 level 重算属性
     const newStats = calcChildBaseStats(finalAptitude, c.level)
 
-    // 保留原 learned_skills 中非 innate 的项（当前模型只有 innate 一项，但留口子）
-    const oldSkills = Array.isArray(c.learned_skills) ? c.learned_skills : []
-    const nonInnate = oldSkills.filter((s: any) => s.type !== 'innate')
-    const newSkills = [
-      { skill_id: newSkill.id, level: c.level, type: 'innate' },
-      ...nonInnate,
-    ]
+    // 资质变化后槽位也按新资质重生（圣品多 1 槽）
+    const { learnedSkills: newSkills } = unlockSkillSlotsIfNeeded(
+      c.level, finalAptitude, root, []
+    )
 
     const client = await pool.connect()
     try {
@@ -132,8 +129,9 @@ export default defineEventHandler(async (event) => {
         rolledAptitude: newApt.aptitude,
         finalAptitude,
         awakened: finalAwakened,
-        newSkillId: newSkill.id,
-        newSkillName: newSkill.name,
+        // V2 改版：资质丹现在重生所有应解锁槽位的功法，列表化展示
+        newSkillIds: newSkills.map(s => s.skill_id),
+        newSkillName: newSkills.map(s => CHILD_SKILL_MAP[s.skill_id]?.name || s.skill_id).join(' / '),
         newStats,
       },
     }

@@ -2,7 +2,7 @@
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
-import { getChildrenByCharacter, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct } from '~/server/utils/child'
+import { getChildrenByCharacter, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct, getChildVisitCap } from '~/server/utils/child'
 import type { ChildAptitude } from '~/server/engine/childTalentData'
 
 const STAGE_NAMES: Record<string, string> = {
@@ -71,6 +71,7 @@ export default defineEventHandler(async (event) => {
         isBattling: c.is_battling,
         hasLeftHome: c.has_left_home,
         permanentBuffPct: Number(c.permanent_buff_pct || 0),
+        visitCap: getChildVisitCap(c.aptitude),
         lastVisitAt: c.last_visit_at,
         bornAt: c.born_at,
       }

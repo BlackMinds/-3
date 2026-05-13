@@ -992,9 +992,13 @@ export default defineEventHandler(async (event) => {
       childCritR: number; childCritD: number; childDodge: number
       childLs: number; childRctrl: number; childSpirit: number
       childResMetal: number; childResWood: number; childResWater: number; childResFire: number; childResEarth: number
+      // V2 改版：passive 功法贡献的动态机制（duoBattleEngine 待识别）
+      childRegen: number; childDmgReduction: number; childReflect: number
+      childDmgShareToAssist: number  // 共生血契：玩家伤害转嫁子女比例
       spiritualRoot: string | null
       name: string; gender: string; aptitude: number; aptName: string; level: number
-      talentsCount: number; innateSkill: any
+      talentsCount: number
+      innateSkills: any[]  // 所有学会的功法（passive 已聚合静态加成，divine 进 CD 池，active 替代普攻）
     } | null = null
     if (char.battling_child_id) {
       const { rows: childRows } = await pool.query(
@@ -1015,12 +1019,25 @@ export default defineEventHandler(async (event) => {
         if (stageMul > 0) {
           const { CHILD_TALENT_MAP } = await import('~/server/engine/childTalentData')
           const talents = Array.isArray(c.awakened_talents) ? c.awakened_talents : []
-          let atkPct = 0, defPct = 0, hpPct = 0, spdPct = 0
-          let resMetal = 0, resWood = 0, resWater = 0, resFire = 0, resEarth = 0
+          const learnedSkills = Array.isArray(c.learned_skills) ? c.learned_skills : []
+          // V2 改版：天赋 + passive 类型血脉功法共用 PassiveEffect 管线
+          const allEffects: any[] = []
           for (const t of talents) {
             const def = (CHILD_TALENT_MAP as any)[t.talent_id]
+            if (def?.effect) allEffects.push(def.effect)
+          }
+          const skillObjs: any[] = []
+          for (const s of learnedSkills) {
+            const def = (CHILD_SKILL_MAP as any)[s.skill_id]
             if (!def) continue
-            const e = def.effect || {}
+            skillObjs.push(def)
+            if (def.type === 'passive' && def.effect) allEffects.push(def.effect)
+          }
+          let atkPct = 0, defPct = 0, hpPct = 0, spdPct = 0
+          let resMetal = 0, resWood = 0, resWater = 0, resFire = 0, resEarth = 0
+          let bonusCritR = 0, bonusCritD = 0, bonusDodge = 0, bonusLs = 0, bonusRctrl = 0
+          let childRegen = 0, childDmgReduction = 0, childReflect = 0, childDmgShareToAssist = 0
+          for (const e of allEffects) {
             atkPct += e.ATK_percent || 0
             defPct += e.DEF_percent || 0
             hpPct += e.HP_percent || 0
@@ -1030,6 +1047,15 @@ export default defineEventHandler(async (event) => {
             resWater += e.RESIST_WATER || 0
             resFire  += e.RESIST_FIRE  || 0
             resEarth += e.RESIST_EARTH || 0
+            bonusCritR += e.CRIT_RATE_flat  || 0
+            bonusCritD += e.CRIT_DMG_flat   || 0
+            bonusDodge += e.DODGE_flat      || 0
+            bonusLs    += e.LIFESTEAL_flat  || 0
+            bonusRctrl += e.RESIST_CTRL     || 0
+            childRegen            += e.regen_per_turn_percent          || 0
+            childDmgReduction     += e.damage_reduction_flat           || 0
+            childReflect          += e.reflect_damage_percent          || 0
+            childDmgShareToAssist += e.damage_share_to_assist_percent  || 0
           }
           const { rows: equipRows } = await pool.query(
             'SELECT primary_stat, sub_stats FROM child_equipment WHERE child_id = $1 AND is_equipped = TRUE',
@@ -1063,25 +1089,24 @@ export default defineEventHandler(async (event) => {
           )
           const APT_NAMES = ['凡品','下品','中品','上品','极品','仙品','圣品']
           const nm = nameRows[0] || { name: '助战', gender: 'male', aptitude: 0, level: 1 }
-          const learned = Array.isArray(c.learned_skills) ? c.learned_skills : []
-          const innateRow = learned.find((s: any) => s.type === 'innate' || s.type === 'divine')
           _assistPrep = {
             buffedAtk: Math.floor((c.atk + eqAtk) * (1 + atkPct / 100)),
             buffedDef: Math.floor((c.def + eqDef) * (1 + defPct / 100)),
             buffedHp:  Math.floor((c.max_hp + eqHp) * (1 + hpPct / 100)),
             buffedSpd: Math.floor((c.spd + eqSpd) * (1 + spdPct / 100)),
             stageMul,
-            childCritR:  Number(c.crit_rate || 0) + eqCritR,
-            childCritD:  Number(c.crit_dmg || 1) + eqCritD,
-            childDodge:  Number(c.dodge || 0) + eqDodge,
-            childLs:     Number(c.lifesteal || 0) + eqLs,
-            childRctrl:  Number(c.resist_ctrl || 0) + eqRctrl,
+            childCritR:  Number(c.crit_rate || 0) + eqCritR + bonusCritR,
+            childCritD:  Number(c.crit_dmg || 1) + eqCritD + bonusCritD,
+            childDodge:  Number(c.dodge || 0) + eqDodge + bonusDodge,
+            childLs:     Number(c.lifesteal || 0) + eqLs + bonusLs,
+            childRctrl:  Number(c.resist_ctrl || 0) + eqRctrl + bonusRctrl,
             childSpirit: (c.spirit || 0) + eqSpirit,
             childResMetal: resMetal,
             childResWood:  resWood,
             childResWater: resWater,
             childResFire:  resFire,
             childResEarth: resEarth,
+            childRegen, childDmgReduction, childReflect, childDmgShareToAssist,
             spiritualRoot: c.spiritual_root || null,
             name: nm.name,
             gender: nm.gender,
@@ -1089,14 +1114,14 @@ export default defineEventHandler(async (event) => {
             aptName: APT_NAMES[nm.aptitude] || '凡品',
             level: nm.level,
             talentsCount: talents.length,
-            innateSkill: innateRow ? (CHILD_SKILL_MAP as any)[innateRow.skill_id] || null : null,
+            innateSkills: skillObjs,
           }
         }
       }
     }
 
     // 离家子女永久 buff：所有 has_left_home 子女的 permanent_buff_pct 求和后给本体全属性放大
-    // (design 5.8: 每 3 天回家 +0.5%, 上限单子女 20%)
+    // (design 5.8: 每 3 天回家 +0.5%, 上限按资质 凡14% ~ 圣22%)
     {
       const { rows: leftRows } = await pool.query(
         `SELECT COALESCE(SUM(permanent_buff_pct), 0)::numeric AS total
@@ -1236,8 +1261,13 @@ export default defineEventHandler(async (event) => {
             fire: assistResFire, earth: assistResEarth, ctrl: assistRctrl,
           },
           spirit: assistSpirit, armorPen: 0, accuracy: 0,
+          // V2 改版：passive 血脉功法贡献的动态机制（duoBattleEngine 识别）
+          regenPerTurn: a.childRegen,
+          dmgReductionFlat: a.childDmgReduction,
+          reflectPercent: a.childReflect,
+          dmgShareFromPlayerPct: a.childDmgShareToAssist,
         }
-        ;(char as any)._duo_assist_skill = a.innateSkill
+        ;(char as any)._duo_assist_skills = a.innateSkills
         ;(char as any)._child_battle_atk = assistAtk
         ;(char as any)._child_battle_def = assistDef
         ;(char as any)._child_battle_hp = assistHp
@@ -1295,9 +1325,9 @@ export default defineEventHandler(async (event) => {
 
       // 助战子女在场 → 走真双人引擎；否则走原有单人引擎
       const duoAssistStats = (char as any)._duo_assist_stats
-      const duoAssistSkill = (char as any)._duo_assist_skill
+      const duoAssistSkills: any[] = (char as any)._duo_assist_skills || []
       const result = duoAssistStats
-        ? runDuoWaveBattle(playerStats, { stats: duoAssistStats, innateSkill: duoAssistSkill }, monsterList, equippedSkills)
+        ? runDuoWaveBattle(playerStats, { stats: duoAssistStats, innateSkills: duoAssistSkills }, monsterList, equippedSkills)
         : runWaveBattle(playerStats, monsterList, equippedSkills)
 
       // 助战子女提示：在战斗 logs 顶部插入 1 条

@@ -1,6 +1,6 @@
 // 前端只需要类型定义和状态设置器（战斗计算已迁移到后端）
 
-export type DebuffType = 'burn' | 'poison' | 'bleed' | 'freeze' | 'stun' | 'slow' | 'brittle' | 'atk_down' | 'root' | 'silence';
+export type DebuffType = 'burn' | 'poison' | 'bleed' | 'freeze' | 'stun' | 'slow' | 'brittle' | 'atk_down' | 'def_down' | 'spd_down' | 'root' | 'silence';
 export type BuffType = 'atk_up' | 'def_up' | 'spd_up' | 'crit_up' | 'shield' | 'regen' | 'reflect' | 'immune';
 
 export interface SkillDebuffInfo {

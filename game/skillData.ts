@@ -1,6 +1,6 @@
 // 功法静态数据 - 完整版 (47 个功法)
 
-export type DebuffType = 'burn' | 'poison' | 'bleed' | 'freeze' | 'stun' | 'slow' | 'brittle' | 'atk_down' | 'root' | 'silence';
+export type DebuffType = 'burn' | 'poison' | 'bleed' | 'freeze' | 'stun' | 'slow' | 'brittle' | 'atk_down' | 'def_down' | 'spd_down' | 'root' | 'silence';
 export type BuffType = 'atk_up' | 'def_up' | 'spd_up' | 'crit_up' | 'shield' | 'regen' | 'reflect' | 'immune';
 
 export interface SkillDebuff {

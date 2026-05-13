@@ -46,19 +46,43 @@
           </div>
         </div>
 
-        <div class="section list-two-col" v-if="detail.skills && detail.skills.length">
+        <div class="section list-two-col" v-if="(detail.skills && detail.skills.length) || (detail.skillSlotUnlockLevels && detail.skillSlotUnlockLevels.length)">
           <div class="section-head">血脉功法</div>
-          <div v-for="s in detail.skills" :key="s.id" class="skill-line">
-            <span :class="['skill-name', `rarity-${s.rarity}`]">{{ s.name }}</span>
-            <span class="skill-desc">{{ s.description }}</span>
-          </div>
+          <template v-for="(unlockLv, i) in (detail.skillSlotUnlockLevels || [])" :key="`slot-${i}`">
+            <div class="skill-line skill-slot-line">
+              <span class="slot-badge">{{ ['①','②','③','④'][i] }}</span>
+              <template v-if="skillBySlot(i + 1)">
+                <span :class="['skill-name', `rarity-${skillBySlot(i + 1).rarity}`]">
+                  <span class="skill-type-tag">{{ skillTypeLabel(skillBySlot(i + 1).childType) }}</span>
+                  {{ skillBySlot(i + 1).name }}
+                </span>
+                <span class="skill-desc">{{ skillBySlot(i + 1).description }}</span>
+                <button
+                  v-if="!detail.hasLeftHome"
+                  class="btn-mini btn-reroll"
+                  :disabled="store.acting"
+                  @click="onRerollSkill(i + 1)"
+                >重铸</button>
+              </template>
+              <template v-else>
+                <span class="skill-locked">Lv.{{ unlockLv }} 解锁</span>
+              </template>
+            </div>
+          </template>
         </div>
 
         <div class="section list-two-col" v-if="detail.talents && detail.talents.length">
           <div class="section-head">已觉醒天赋</div>
-          <div v-for="t in detail.talents" :key="t.id" class="talent-line">
+          <div v-for="t in detail.talents" :key="`tl-${t.level}-${t.id}`" class="talent-line talent-slot-line">
+            <span class="slot-badge talent-slot-badge">Lv.{{ t.level }}</span>
             <span :class="['talent-name', `rarity-${t.rarity}`]">{{ t.name }}</span>
             <span class="talent-desc">{{ t.description }}</span>
+            <button
+              v-if="!detail.hasLeftHome"
+              class="btn-mini btn-reroll"
+              :disabled="store.acting"
+              @click="onRerollTalent(t)"
+            >重铸</button>
           </div>
         </div>
 
@@ -117,7 +141,7 @@
           <div class="leave-title">🌿 外出历练中</div>
           <div class="leave-body">
             上次回家：{{ formatVisitDate(detail.lastVisitAt) }}<br />
-            累计永久属性加成：<b>+{{ permanentBuffPct }}%</b>（每 3 天回家 +0.5%，上限 +20%）
+            累计永久属性加成：<b>+{{ permanentBuffPct }}%</b>（每 3 天回家 +0.5%，{{ detail.aptitudeName }}上限 +{{ visitCapPct }}%）
           </div>
           <button class="btn-recall" :disabled="store.acting" @click="recallConfirm = true">
             📯 召回回家（保留已累计加成）
@@ -177,6 +201,21 @@
           <button class="btn-secondary" @click="rerollResult = null">关闭</button>
         </div>
 
+        <!-- 天赋单槽重铸结果展示 -->
+        <div v-if="talentRerollResult" class="section reroll-result">
+          <div class="rr-title">天赋槽 Lv.{{ talentRerollResult.slotLevel }} 重铸完成</div>
+          <div class="rr-row">
+            原天赋：
+            <span :class="['talent-name', `rarity-${talentRerollResult.oldTalent.rarity}`]">{{ talentRerollResult.oldTalent.name }}</span>
+          </div>
+          <div class="rr-row">
+            新天赋：
+            <span :class="['talent-name', `rarity-${talentRerollResult.newTalent.rarity}`]"><b>{{ talentRerollResult.newTalent.name }}</b></span>
+          </div>
+          <div class="rr-row" style="color:#aaa;font-size:12px">{{ talentRerollResult.newTalent.description }}</div>
+          <button class="btn-secondary" @click="talentRerollResult = null">关闭</button>
+        </div>
+
         <!-- 成年选择弹窗 -->
         <div v-if="showComeOfAge" class="confirm-overlay" @click.self="() => {}">
           <div class="coa-modal">
@@ -189,7 +228,7 @@
               </button>
               <button class="coa-choice" :disabled="store.acting" @click="onComeOfAge('leave')">
                 <b>B. 外出历练</b>
-                <span class="coa-desc">每 3 天回家 +0.5% 永久属性（上限 +20%），不再助战</span>
+                <span class="coa-desc">每 3 天回家 +0.5% 永久属性（{{ detail.aptitudeName }}上限 +{{ visitCapPct }}%），不再助战</span>
               </button>
             </div>
           </div>
@@ -224,6 +263,24 @@
             <div class="confirm-actions">
               <button class="btn-secondary" @click="rerollConfirm = false">取消</button>
               <button class="btn-danger" :disabled="store.acting" @click="confirmReroll">确认重铸</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 天赋单槽重铸消耗确认 -->
+        <div v-if="talentRerollConfirm" class="confirm-overlay" @click.self="talentRerollConfirm = null">
+          <div class="confirm-modal">
+            <div class="confirm-title">🔮 天赋重铸（Lv.{{ talentRerollConfirm.level }}）</div>
+            <div class="confirm-body">
+              消耗 <b>天道洗髓丹 ×1</b>，按当前资质权重重滚该槽位天赋。<br /><br />
+              当前天赋：
+              <span :class="['talent-name', `rarity-${talentRerollConfirm.rarity}`]">{{ talentRerollConfirm.name }}</span>
+              <br /><br />
+              <span style="color: #aaa; font-size: 12px">无论新天赋好坏均消耗 1 颗洗髓丹，且立即生效（不可保留旧天赋）。</span>
+            </div>
+            <div class="confirm-actions">
+              <button class="btn-secondary" @click="talentRerollConfirm = null">取消</button>
+              <button class="btn-danger" :disabled="store.acting" @click="confirmRerollTalent">确认重铸</button>
             </div>
           </div>
         </div>
@@ -299,6 +356,14 @@ const permanentBuffPct = computed(() => {
   const p = Number(detail.value?.permanentBuffPct || 0)
   return (p * 100).toFixed(1)
 })
+const visitCapPct = computed(() => {
+  // 后端返回 visitCap（0.14~0.22）；老接口可能没字段，按资质本地兜底
+  const APTITUDE_VISIT_CAP = [0.14, 0.16, 0.18, 0.20, 0.21, 0.215, 0.22]
+  const apt = detail.value?.aptitude ?? 0
+  const cap = Number(detail.value?.visitCap ?? APTITUDE_VISIT_CAP[apt] ?? 0.20)
+  const v = cap * 100
+  return v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)
+})
 function formatVisitDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -364,6 +429,49 @@ async function confirmReroll() {
   rerollConfirm.value = false
   if (res.ok && res.data) {
     rerollResult.value = res.data
+    detail.value = await store.loadChildDetail(props.childId)
+  } else {
+    showToast(res.message || '重铸失败')
+  }
+}
+
+// V2 改版：血脉功法槽位辅助函数
+function skillBySlot(slot: number): any {
+  if (!detail.value?.skills) return null
+  return detail.value.skills.find((s: any) => Number(s.slot) === slot) || null
+}
+const SKILL_TYPE_LABEL: Record<string, string> = {
+  attack: '攻', tank: '盾', heal: '回', buff: '增', taunt: '嘲', debuff: '减',
+}
+function skillTypeLabel(t: string): string { return SKILL_TYPE_LABEL[t] || '?' }
+
+async function onRerollSkill(slot: number) {
+  if (!detail.value) return
+  const old = skillBySlot(slot)
+  if (!old) return showToast('该槽位无功法')
+  if (!confirm(`消耗血脉重铸丹 ×1 重抽槽位 ${slot}（当前：${old.name}）？\n\n新功法按当前灵根+资质重新随机`)) return
+  const res = await store.rerollChildSkill(detail.value.id, slot, true)
+  if (res.ok) {
+    showToast(res.message || '重铸成功')
+    detail.value = await store.loadChildDetail(props.childId)
+  } else {
+    showToast(res.message || '重铸失败')
+  }
+}
+
+// 天赋单槽重铸（消耗 天道洗髓丹 ×1）
+const talentRerollConfirm = ref<{ level: number; name: string; rarity: string } | null>(null)
+const talentRerollResult = ref<any | null>(null)
+function onRerollTalent(t: any) {
+  talentRerollConfirm.value = { level: t.level, name: t.name, rarity: t.rarity }
+}
+async function confirmRerollTalent() {
+  if (!detail.value || !talentRerollConfirm.value) return
+  const lv = talentRerollConfirm.value.level
+  const res = await store.rerollChildTalent(detail.value.id, lv, true)
+  talentRerollConfirm.value = null
+  if (res.ok && res.data) {
+    talentRerollResult.value = res.data
     detail.value = await store.loadChildDetail(props.childId)
   } else {
     showToast(res.message || '重铸失败')
@@ -592,6 +700,32 @@ onMounted(async () => {
   display: flex; flex-direction: column; gap: 2px;
   padding: 4px 0; font-size: 13px;
 }
+/* V2 改版：多槽位血脉功法 */
+.skill-slot-line { position: relative; padding-left: 22px; }
+.talent-slot-line { position: relative; padding-left: 44px; }
+.slot-badge {
+  position: absolute; left: 0; top: 4px;
+  width: 16px; height: 16px; line-height: 16px; text-align: center;
+  color: #c8a8ff; font-size: 12px;
+}
+.talent-slot-badge {
+  width: 38px; line-height: 16px;
+  color: #ffd366; font-size: 11px; font-weight: bold;
+}
+.skill-type-tag {
+  display: inline-block; padding: 0 4px; margin-right: 4px;
+  background: rgba(176, 112, 255, 0.2); border: 1px solid #6a4a8a;
+  border-radius: 3px; font-size: 10px; color: #d8b8ff; font-weight: normal;
+}
+.skill-locked { color: #666; font-style: italic; font-size: 12px; }
+.btn-mini.btn-reroll {
+  align-self: flex-start; margin-top: 2px;
+  background: rgba(100, 60, 140, 0.6); color: #fff;
+  border: 1px solid #6a4a8a; padding: 1px 8px;
+  font-size: 11px; cursor: pointer; border-radius: 3px;
+}
+.btn-mini.btn-reroll:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-mini.btn-reroll:hover:not(:disabled) { background: rgba(140, 80, 180, 0.8); }
 .skill-name, .talent-name { font-weight: bold; }
 .rarity-common { color: #cfcfcf; }
 .rarity-uncommon, .rarity-green { color: #5fcf6f; }
