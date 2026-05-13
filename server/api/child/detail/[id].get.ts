@@ -33,6 +33,17 @@ export default defineEventHandler(async (event) => {
       ...CHILD_SKILL_MAP[s.skill_id],
     }))
 
+    // 五行抗聚合（来源：天赋）
+    const elementResist = { metal: 0, wood: 0, water: 0, fire: 0, earth: 0 }
+    for (const t of talents) {
+      const e = (t as any).effect || {}
+      elementResist.metal += e.RESIST_METAL || 0
+      elementResist.wood  += e.RESIST_WOOD  || 0
+      elementResist.water += e.RESIST_WATER || 0
+      elementResist.fire  += e.RESIST_FIRE  || 0
+      elementResist.earth += e.RESIST_EARTH || 0
+    }
+
     return {
       code: 200,
       data: {
@@ -63,6 +74,7 @@ export default defineEventHandler(async (event) => {
         lifesteal: Number(c.lifesteal || 0),
         spirit: c.spirit || 0,
         resistCtrl: Number(c.resist_ctrl || 0),
+        elementResist,
         isBattling: c.is_battling,
         hasLeftHome: c.has_left_home,
         permanentBuffPct: Number(c.permanent_buff_pct || 0),

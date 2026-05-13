@@ -991,6 +991,7 @@ export default defineEventHandler(async (event) => {
       stageMul: number
       childCritR: number; childCritD: number; childDodge: number
       childLs: number; childRctrl: number; childSpirit: number
+      childResMetal: number; childResWood: number; childResWater: number; childResFire: number; childResEarth: number
       spiritualRoot: string | null
       name: string; gender: string; aptitude: number; aptName: string; level: number
       talentsCount: number; innateSkill: any
@@ -1015,6 +1016,7 @@ export default defineEventHandler(async (event) => {
           const { CHILD_TALENT_MAP } = await import('~/server/engine/childTalentData')
           const talents = Array.isArray(c.awakened_talents) ? c.awakened_talents : []
           let atkPct = 0, defPct = 0, hpPct = 0, spdPct = 0
+          let resMetal = 0, resWood = 0, resWater = 0, resFire = 0, resEarth = 0
           for (const t of talents) {
             const def = (CHILD_TALENT_MAP as any)[t.talent_id]
             if (!def) continue
@@ -1023,6 +1025,11 @@ export default defineEventHandler(async (event) => {
             defPct += e.DEF_percent || 0
             hpPct += e.HP_percent || 0
             spdPct += e.SPD_percent || 0
+            resMetal += e.RESIST_METAL || 0
+            resWood  += e.RESIST_WOOD  || 0
+            resWater += e.RESIST_WATER || 0
+            resFire  += e.RESIST_FIRE  || 0
+            resEarth += e.RESIST_EARTH || 0
           }
           const { rows: equipRows } = await pool.query(
             'SELECT primary_stat, sub_stats FROM child_equipment WHERE child_id = $1 AND is_equipped = TRUE',
@@ -1070,6 +1077,11 @@ export default defineEventHandler(async (event) => {
             childLs:     Number(c.lifesteal || 0) + eqLs,
             childRctrl:  Number(c.resist_ctrl || 0) + eqRctrl,
             childSpirit: (c.spirit || 0) + eqSpirit,
+            childResMetal: resMetal,
+            childResWood:  resWood,
+            childResWater: resWater,
+            childResFire:  resFire,
+            childResEarth: resEarth,
             spiritualRoot: c.spiritual_root || null,
             name: nm.name,
             gender: nm.gender,
@@ -1207,6 +1219,11 @@ export default defineEventHandler(async (event) => {
         const assistLs       = a.childLs    * a.stageMul
         const assistRctrl    = a.childRctrl * a.stageMul
         const assistSpirit   = Math.floor(a.childSpirit * a.stageMul)
+        const assistResMetal = a.childResMetal * a.stageMul
+        const assistResWood  = a.childResWood  * a.stageMul
+        const assistResWater = a.childResWater * a.stageMul
+        const assistResFire  = a.childResFire  * a.stageMul
+        const assistResEarth = a.childResEarth * a.stageMul
         ;(char as any)._duo_assist_stats = {
           name: a.name,
           maxHp: assistHp, hp: assistHp,
@@ -1214,7 +1231,10 @@ export default defineEventHandler(async (event) => {
           crit_rate: assistCritRate, crit_dmg: assistCritDmg,
           dodge: assistDodgeV, lifesteal: assistLs,
           element: a.spiritualRoot,
-          resists: { metal: 0, wood: 0, water: 0, fire: 0, earth: 0, ctrl: assistRctrl },
+          resists: {
+            metal: assistResMetal, wood: assistResWood, water: assistResWater,
+            fire: assistResFire, earth: assistResEarth, ctrl: assistRctrl,
+          },
           spirit: assistSpirit, armorPen: 0, accuracy: 0,
         }
         ;(char as any)._duo_assist_skill = a.innateSkill

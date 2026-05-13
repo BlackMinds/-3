@@ -17,7 +17,7 @@
           </div>
         </div>
 
-        <div class="section">
+        <div class="section stats-section">
           <div class="row"><span class="lbl">阶段</span><span class="val">{{ detail.stageName }} · Lv.{{ detail.level }}</span></div>
           <div class="row"><span class="lbl">灵根</span><span class="val">{{ rootName(detail.spiritualRoot) }}灵根</span></div>
           <div class="row"><span class="lbl">气血</span><span class="val">{{ finalStats.maxHp }}<span v-if="finalStats.maxHp - detail.maxHp" class="eq-bonus">(装备 +{{ equipBonus.max_hp }}{{ talentPct.hpPct ? ` / 天赋 +${talentPct.hpPct}%` : '' }})</span></span></div>
@@ -30,13 +30,23 @@
           <div class="row"><span class="lbl">吸血</span><span class="val">{{ pct(detail.lifesteal + equipBonus.lifesteal) }}<span v-if="equipBonus.lifesteal" class="eq-bonus">(+{{ pct(equipBonus.lifesteal) }})</span></span></div>
           <div class="row"><span class="lbl">神识</span><span class="val">{{ detail.spirit + equipBonus.spirit }}<span v-if="equipBonus.spirit" class="eq-bonus">(+{{ equipBonus.spirit }})</span></span></div>
           <div class="row"><span class="lbl">控制抗性</span><span class="val">{{ pct(detail.resistCtrl + equipBonus.resist_ctrl) }}<span v-if="equipBonus.resist_ctrl" class="eq-bonus">(+{{ pct(equipBonus.resist_ctrl) }})</span></span></div>
-          <div class="row">
+          <div class="row row-full elem-resist-row">
+            <span class="lbl">五行抗</span>
+            <span class="val">
+              <span class="er er-metal">金 {{ pct(detail.elementResist?.metal || 0) }}</span>
+              <span class="er er-wood">木 {{ pct(detail.elementResist?.wood || 0) }}</span>
+              <span class="er er-water">水 {{ pct(detail.elementResist?.water || 0) }}</span>
+              <span class="er er-fire">火 {{ pct(detail.elementResist?.fire || 0) }}</span>
+              <span class="er er-earth">土 {{ pct(detail.elementResist?.earth || 0) }}</span>
+            </span>
+          </div>
+          <div class="row row-full">
             <span class="lbl">经验</span>
             <span class="val">{{ detail.levelExp }} / {{ detail.nextLevelExp }}</span>
           </div>
         </div>
 
-        <div class="section" v-if="detail.skills && detail.skills.length">
+        <div class="section list-two-col" v-if="detail.skills && detail.skills.length">
           <div class="section-head">血脉功法</div>
           <div v-for="s in detail.skills" :key="s.id" class="skill-line">
             <span :class="['skill-name', `rarity-${s.rarity}`]">{{ s.name }}</span>
@@ -44,7 +54,7 @@
           </div>
         </div>
 
-        <div class="section" v-if="detail.talents && detail.talents.length">
+        <div class="section list-two-col" v-if="detail.talents && detail.talents.length">
           <div class="section-head">已觉醒天赋</div>
           <div v-for="t in detail.talents" :key="t.id" class="talent-line">
             <span :class="['talent-name', `rarity-${t.rarity}`]">{{ t.name }}</span>
@@ -564,6 +574,19 @@ onMounted(async () => {
 .lbl { color: #aaa; min-width: 60px; }
 .val { color: #fff; }
 .eq-bonus { color: #5fcf6f; font-size: 11px; margin-left: 4px; }
+
+.stats-section { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 0; }
+.stats-section .row-full { grid-column: 1 / -1; }
+.elem-resist-row .val { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.elem-resist-row .er { font-size: 12px; }
+.er-metal { color: #c9a85c; }
+.er-wood  { color: #6baa7d; }
+.er-water { color: #5b8eaa; }
+.er-fire  { color: #c45c4a; }
+.er-earth { color: #a08a60; }
+
+.list-two-col { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 4px; }
+.list-two-col .section-head { grid-column: 1 / -1; margin-bottom: 4px; }
 
 .skill-line, .talent-line {
   display: flex; flex-direction: column; gap: 2px;
