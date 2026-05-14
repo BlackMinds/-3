@@ -2111,7 +2111,7 @@ export function runWaveBattle(
     // 玩家 buff：crit_up 临时加到会心率（回合末还原）
     const critUpSum = sumPlayerBuff('crit_up');
     const origPlayerCritRate = player.crit_rate;
-    if (critUpSum > 0) player.crit_rate = Math.min(0.95, origPlayerCritRate + critUpSum);
+    if (critUpSum > 0) player.crit_rate = Math.min(1.0, origPlayerCritRate + critUpSum);
 
     // buff/治疗技能(multiplier=0)
     if (mul === 0) {

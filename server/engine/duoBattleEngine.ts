@@ -735,7 +735,7 @@ export function runDuoWaveBattle(
     if (atkUpSum > 0) mul *= (1 + atkUpSum);
     const critUpSum = sumPlayerBuff('crit_up' as BuffType);
     const origCritRate = player.crit_rate;
-    if (critUpSum > 0) player.crit_rate = Math.min(0.95, origCritRate + critUpSum);
+    if (critUpSum > 0) player.crit_rate = Math.min(1.0, origCritRate + critUpSum);
 
     // buff/治疗类神通（mul=0）：施放 buff，不攻击
     const usedSkill = chosenSkill || (isMainSkill ? activeSkillRef : null);

@@ -18,7 +18,7 @@
 // dodge≤30% / lifesteal≤15% / armorPen≤30 / accuracy≤25
 // 玩家 cap 设为怪物 cap × 1.5~2.0,保留极限 build 空间
 export const PLAYER_CAPS = {
-  critRate: 0.75,   // 75%  (怪物 50%, 1.5x)
+  critRate: 1.0,    // 100% (不设封顶)
   critDmg: 3.5,     // 350% (2026-05-14: 3.2→3.5, 极限 build 留更多空间)
   dodge: 0.45,      // 45%  (怪物 30%, 1.5x) — v3.0 从 40% 上调
   lifesteal: 0.25,  // 25%  (怪物 15%, 1.67x)
