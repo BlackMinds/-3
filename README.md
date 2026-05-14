@@ -193,7 +193,7 @@ game/
 | POST | /toggle-lock | 切换锁定 |
 | POST | /enhance | 强化（+10 上限） |
 | POST | /reroll-sub-stats | 鉴定符重随副属性 |
-| POST | /upgrade-rarity | 升品（太古精魂） |
+
 | POST | /awaken | 装备觉醒 |
 | POST | /loadout/switch | 切换配装方案 |
 

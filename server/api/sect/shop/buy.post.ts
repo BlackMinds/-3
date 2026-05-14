@@ -162,14 +162,6 @@ export default defineEventHandler(async (event) => {
         resultMsg = '获得万能功法残页x1'
         break
 
-      case 'equip_upgrade':
-        await client.query(
-          `INSERT INTO character_pills (character_id, pill_id, count, quality_factor) VALUES ($1, $2, 1, 1.0)
-           ON CONFLICT (character_id, pill_id, quality_factor) DO UPDATE SET count = character_pills.count + 1`,
-          [char.id, 'equip_upgrade']
-        )
-        resultMsg = '获得太古精魂x1'
-        break
 
       case 'permanent_stat':
         await client.query(

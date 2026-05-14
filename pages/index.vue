@@ -2950,7 +2950,7 @@
             <div class="help-title">装备进阶</div>
             <table class="help-table"><tbody>
               <tr><td>鉴定符</td><td>重随装备副属性(保留主属性和强化等级)</td></tr>
-              <tr><td>太古精魂</td><td>装备升品(如 法器→灵宝,最高升至太古神器)</td></tr>
+
               <tr><td>套装碎片</td><td>合成 6 套套装(烈阳/渊海/万木/雷罚/磐岩/虚空)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">上述道具可通过宗门商店购买,或打怪/成就掉落。</p>
@@ -7693,23 +7693,6 @@ async function useSectItem(item: any) {
     return;
   }
 
-  if (id === 'equip_upgrade') {
-    sectItemDialog.value = {
-      show: true, type: 'equip',
-      title: '太古精魂',
-      message: '选择要升品的装备 (仅紫品/金品可升)',
-      equipFilter: (eq: any) => eq.rarity === 'purple' || eq.rarity === 'gold',
-      onSelect: async (equipId: number) => {
-        try {
-          const res: any = await $fetch('/api/equipment/upgrade-rarity', { method: 'POST', body: { equip_id: equipId }, headers: getAuthHeaders() });
-          if (res.code === 200) { showToast(res.message, 'success'); await loadPills(); await loadEquipList(); }
-          else showToast(res.message, 'error');
-        } catch {}
-        sectItemDialog.value.show = false;
-      },
-    };
-    return;
-  }
 
   if (id === 'set_reforge_voucher') {
     showToast('请在装备点击面板的「重铸套装 ❖」按钮使用', 'info');

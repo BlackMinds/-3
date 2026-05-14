@@ -78,7 +78,7 @@ export type ShopItemEffect =
   | { type: 'enhance_guarantee'; maxLevel: number }
   | { type: 'reset_root'; value: number }
   | { type: 'universal_skill_page'; value: number }
-  | { type: 'equip_upgrade'; value: number }
+
   | { type: 'permanent_stat'; value: number }
   | { type: 'unlock_pill_recipe'; pill_id: string }
 
@@ -111,7 +111,6 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: 'universal_page',     name: '万能功法残页', description: '可代替任意功法残页x1',      cost: 20000, weeklyLimit: 1,  requiredSectLevel: 8, category: 'legend', effect: { type: 'universal_skill_page', value: 1 } },
 
   // 至尊 (宗门10级)
-  { key: 'equip_upgrade',      name: '太古精魂',     description: '装备升品(紫→金,金→红)',    cost: 50000, weeklyLimit: 1,  requiredSectLevel: 10, category: 'supreme', effect: { type: 'equip_upgrade', value: 1 } },
   { key: 'permanent_stat',     name: '道果结晶',     description: '永久属性+1%(攻/防/血三选一)', cost: 80000, weeklyLimit: 1,  requiredSectLevel: 10, category: 'supreme', effect: { type: 'permanent_stat', value: 1 } },
 ];
 
