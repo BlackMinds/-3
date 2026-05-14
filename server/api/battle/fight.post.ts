@@ -562,7 +562,7 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
     if (typeof e.skill_dmg_pct === 'number' && e.skill_dmg_pct > 0) {
       awaken.mainSkillMultBonus = (awaken.mainSkillMultBonus || 0) + e.skill_dmg_pct
     }
-    // 5 件套：神通 CD-1 + 30% 概率刷新最短 CD
+    // 5 件套：神通 CD-1 + 10% 概率刷新最短 CD
     if (typeof e.skill_cd_minus === 'number') v5SkillCdMinus = Math.max(v5SkillCdMinus, e.skill_cd_minus)
     if (typeof e.refresh_shortest_cd_chance === 'number') v5RefreshShortestCdChance = Math.max(v5RefreshShortestCdChance, e.refresh_shortest_cd_chance)
     // 7 件套：10% 全体眩晕 1 回合（无视免控必中）

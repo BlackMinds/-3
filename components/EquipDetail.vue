@@ -257,7 +257,7 @@ const wuxingPrefixZh = computed(() => {
 const yuanshiTiers = [
   { pieces: 1, description_zh: '攻/防/血/神识/身法 +10%' },
   { pieces: 3, description_zh: '神通伤害 +10%' },
-  { pieces: 5, description_zh: '全神通 cd -1；释放神通时 30% 概率刷新 cd 最短的神通' },
+  { pieces: 5, description_zh: '全神通 cd -1；释放神通时 10% 概率刷新 cd 最短的神通' },
   { pieces: 7, description_zh: '行动时 10% 概率天尊气场，全体震慑 1 回合（眩晕，无视免控必中）' },
 ]
 

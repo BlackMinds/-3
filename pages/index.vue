@@ -3038,7 +3038,7 @@
             <table class="help-table"><tbody>
               <tr><td>1 件</td><td>攻/防/血/神识/身法 +10%</td></tr>
               <tr><td>3 件</td><td>神通伤害 +10%</td></tr>
-              <tr><td>5 件</td><td>全神通 CD -1，30% 概率刷新最短 CD 神通</td></tr>
+              <tr><td>5 件</td><td>全神通 CD -1，10% 概率刷新最短 CD 神通</td></tr>
               <tr><td>7 件</td><td>10% 概率「天尊气场」：全体震慑 1 回合（无视免控必中）</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 6px;"><b>Boss 秘宝（粉色）</b> · 固定 boss 掉落，基础属性同 T 级红装，但带 3 条同名五行词条（如虚空虫卵: 会心伤害×3）。</p>

@@ -2060,7 +2060,7 @@ export function runWaveBattle(
     }
     for (let i = 0; i < divineCds.length; i++) { if (divineCds[i] > 0) divineCds[i]--; }
 
-    // V5 元始天尊 5 件套：释放神通时所有其他神通 CD-1 + 30% 概率刷新最短 CD
+    // V5 元始天尊 5 件套：释放神通时所有其他神通 CD-1 + 10% 概率刷新最短 CD
     if (isDivine && usedDivineIdx >= 0) {
       const cdMinus = (player as any).v5SkillCdMinus || 0;
       if (cdMinus > 0) {
