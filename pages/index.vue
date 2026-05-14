@@ -3152,7 +3152,7 @@
               <tr><td>A 评级</td><td>经验/灵石/积分 ×<b>1.25</b></td></tr>
               <tr><td>B 评级</td><td>经验/灵石/积分 ×1.0</td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 6px; color: var(--cinnabar);"><b>★ S 评级额外奖励：</b>通关评级 S 时额外掉落 <b>1 件固定红色装备</b>(不受难度影响,普通难度打出 S 也能拿红装)。红装按贡献分配给队内贡献最高的成员。</p>
+            <p class="help-text" style="margin-top: 6px; color: var(--cinnabar);"><b>★ S 评级额外奖励：</b>通关评级 S 时额外掉落 <b>1 件固定红色装备</b>(不受难度影响,普通难度打出 S 也能拿红装)。所有装备均为<b>纯随机</b>派发,贡献度仅用于战报展示,不影响奖励分配。</p>
           </div>
           </div>
           <div v-show="helpTab === 'tower'">

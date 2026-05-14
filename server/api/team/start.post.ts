@@ -430,7 +430,8 @@ export default defineEventHandler(async (event) => {
     const rewardFactor = cfg.rewardMul * 1.5 // 1.5x 组队加成
     const totalBaseStone = Math.floor(avgMonsterPower * baseStoneUnit * rewardFactor)
     // v3.4.3: 秘境经验整体 ×0.7（1.2 → 0.84），修为/等级双经验同步缩
-    const totalBaseExp = Math.floor(avgMonsterPower * baseExpUnit * 0.84) // 0.84 = 1.2 × 0.7 组队加成；按贡献度分摊（与 stone 一致）
+    // v2026-05-14: 经验/积分不再按贡献分摊，每人全额（贡献仅作战报展示）
+    const totalBaseExp = Math.floor(avgMonsterPower * baseExpUnit * 0.84)
 
     // 失败只给 30%
     const rewardMul = result.won ? 1 : 0.3
@@ -477,7 +478,7 @@ export default defineEventHandler(async (event) => {
           quotaCount,
           allOwnedSkills,
         )
-        // v3.4: S 评级团队奖励 — 额外送 1 件红装 (由 distributeEquipments 自动分给贡献第一)
+        // v3.4: S 评级团队奖励 — 额外送 1 件红装（由 distributeEquipments 随机派发）
         if (result.rating === 'S' && result.killedMonsters.length > 0) {
           const randomKill = result.killedMonsters[Math.floor(Math.random() * result.killedMonsters.length)]
           drops.bossEquipments.push(
@@ -519,12 +520,12 @@ export default defineEventHandler(async (event) => {
         playerSkillPages.get(contribList[idx].characterId)!.push(sp)
       }
 
-      // 附灵道具分配：附灵石按人头均分，灵枢玉按贡献加权
+      // 附灵道具分配：附灵石按人头均分，灵枢玉每件均匀随机
       const playerAwakenItems = distributeAwakenItems(drops.awakenStones, drops.rerollStones, contribList)
       // 强化石分配：按人头均分（对应 realm.dropTier，仅 T4+ 秘境会有产出）
       const playerEnhanceStones = distributeEnhanceStones(drops.enhanceStones, contribList)
 
-      // 按贡献计算每个人的实际奖励 + 保存装备/灵草/功法
+      // 写入个人奖励 + 保存装备/灵草/功法（v2026-05-14: 经验/积分每人全额，不再按贡献分摊）
       const rewards: any[] = []
       for (const c of result.contributions) {
         const hasQuota = hasQuotaMap.get(c.characterId) ?? false
@@ -564,13 +565,11 @@ export default defineEventHandler(async (event) => {
         const countInc = isFailProtected ? 0 : 1
         const failInc = isWin ? 0 : 1
 
-        const stoneRatio = 0.4 + 0.6 * c.contribution
-        // 怪物掉落灵石已停发；保留 stoneRatio/totalBaseStone 计算供后续若恢复时复用
-        void totalBaseStone; void rewardMul; void ratingMul
-        const myStone = 0
-        // 经验与灵石对齐按贡献度分摊（原本不分摊 = 4 人各拿全额，整队总流出 4×，与 stone 语义不一致）
-        const myExp = Math.floor(totalBaseExp * stoneRatio * rewardMul * ratingMul * (1 + expTeamBonus))
-        const myPoints = Math.floor(basePoints * stoneRatio)
+        // v2026-05-14: 不再按贡献分摊，每人全额（贡献仅作战报展示）
+        void totalBaseStone
+        const myStone = 0 // 怪物掉落灵石已停发
+        const myExp = Math.floor(totalBaseExp * rewardMul * ratingMul * (1 + expTeamBonus))
+        const myPoints = basePoints
 
         // --- 保存装备到 character_equipment（背包满 → 按基础售价转灵石） ---
         const equipIds: number[] = []

@@ -311,7 +311,8 @@ export function distributeEnhanceStones(
 }
 
 /**
- * 附灵道具分配：附灵石按人头均分（余数随机），灵枢玉按贡献加权
+ * 附灵道具分配：附灵石按人头均分（余数随机），灵枢玉每件均匀随机分配
+ * v2026-05-14: 移除贡献加权，贡献仅作战报展示用途
  */
 export function distributeAwakenItems(
   awakenStones: number,
@@ -335,36 +336,18 @@ export function distributeAwakenItems(
     result.get(shuffled[i].characterId)!.awaken_stone += 1
   }
 
-  // 灵枢玉：按贡献加权（贡献第一 ×1.5）
-  if (rerollStones > 0) {
-    const sortedByContrib = [...contributions].sort((a, b) => b.contribution - a.contribution)
-    const topId = sortedByContrib[0].characterId
-    for (let i = 0; i < rerollStones; i++) {
-      const weights = contributions.map(c => {
-        const w = c.contribution + 0.1
-        return c.characterId === topId ? w * 1.5 : w
-      })
-      const total = weights.reduce((a, b) => a + b, 0)
-      let r = Math.random() * total
-      let target = contributions[0].characterId
-      for (let j = 0; j < contributions.length; j++) {
-        r -= weights[j]
-        if (r <= 0) { target = contributions[j].characterId; break }
-      }
-      result.get(target)!.awaken_reroll += 1
-    }
+  // 灵枢玉：每件均匀随机派发
+  for (let i = 0; i < rerollStones; i++) {
+    const target = contributions[rand(0, contributions.length - 1)].characterId
+    result.get(target)!.awaken_reroll += 1
   }
 
   return result
 }
 
 /**
- * 按贡献度加权分配装备给队员
- * 规则：
- * - 红色：贡献最高者
- * - 金色：贡献第一权重 ×2
- * - 其他：按贡献加权（权重 ×1.5 给最高）
- * - 保底：每人至少 1 件
+ * 装备分配：每人保底 1 件，剩余每件均匀随机派发
+ * v2026-05-14: 移除贡献加权（红/金→贡献第一、紫装 70/30 偏倚等），贡献仅作战报展示用途
  */
 export function distributeEquipments(
   allEquipments: any[],
@@ -376,51 +359,17 @@ export function distributeEquipments(
   if (allEquipments.length === 0) return result
   if (contributions.length === 0) return result
 
-  // 找贡献最高者
-  const topContributor = contributions.reduce((a, b) => a.contribution > b.contribution ? a : b).characterId
-
-  // 按贡献加权（贡献第一 ×1.5）
-  const sorted = [...contributions].sort((a, b) => b.contribution - a.contribution)
-  const topId = sorted[0].characterId
-
-  // 先处理红色/金色装备（高价值装备）
-  const highValue = allEquipments.filter(e => e.rarity === 'red' || e.rarity === 'gold')
-  const lowValue = allEquipments.filter(e => e.rarity !== 'red' && e.rarity !== 'gold')
-
-  // 红色给贡献第一；金色 70% 概率给第一
-  for (const eq of highValue) {
-    if (eq.rarity === 'red') {
-      result.get(topContributor)!.push(eq)
-    } else {
-      const goTop = Math.random() < 0.7
-      const target = goTop ? topContributor : contributions[rand(0, contributions.length - 1)].characterId
-      result.get(target)!.push(eq)
-    }
-  }
-
-  // 低品质装备：每人至少 1 件保底
-  const unassigned = [...lowValue]
-  // 先保底
+  // 每人保底 1 件：从全池中随机抽
+  const unassigned = [...allEquipments]
   for (const c of contributions) {
-    if (result.get(c.characterId)!.length === 0 && unassigned.length > 0) {
-      const idx = rand(0, unassigned.length - 1)
-      result.get(c.characterId)!.push(unassigned[idx])
-      unassigned.splice(idx, 1)
-    }
+    if (unassigned.length === 0) break
+    const idx = rand(0, unassigned.length - 1)
+    result.get(c.characterId)!.push(unassigned[idx])
+    unassigned.splice(idx, 1)
   }
-  // 剩余按贡献加权
+  // 剩余每件均匀随机派发
   for (const eq of unassigned) {
-    const weights = contributions.map(c => {
-      const w = c.contribution + 0.1
-      return c.characterId === topId ? w * 1.5 : w
-    })
-    const total = weights.reduce((a, b) => a + b, 0)
-    let r = Math.random() * total
-    let target = contributions[0].characterId
-    for (let i = 0; i < contributions.length; i++) {
-      r -= weights[i]
-      if (r <= 0) { target = contributions[i].characterId; break }
-    }
+    const target = contributions[rand(0, contributions.length - 1)].characterId
     result.get(target)!.push(eq)
   }
 
