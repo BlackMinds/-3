@@ -13,6 +13,7 @@ import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_SELL_PRICES } from '~/server/utils/equipment'
 import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
+import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -35,6 +36,9 @@ async function buildPlayerBattleStats(char: any): Promise<{
     char._sectSkills = ssRows
   }
 
+  // 提前构建 equippedSkills：V5 五行触发的 dominantSkillWuxing 需要在装备聚合前算
+  const equippedSkills = buildEquippedSkillInfo(skillRows)
+
   let atk = Number(char.atk)
   let def = Number(char.def)
   let maxHp = Number(char.max_hp)
@@ -44,6 +48,10 @@ async function buildPlayerBattleStats(char: any): Promise<{
   let dodge = Number(char.dodge || 0)
   let lifesteal = Number(char.lifesteal || 0)
 
+  // [DEBUG-HP] 追踪每一段 maxHp / nonPassiveHpPct 的来源
+  const hpDebug: Record<string, number> = {}
+  const baseHp0 = maxHp
+
   // 等级加成
   const lv = char.level || 1
   for (let i = 1; i < lv; i++) {
@@ -52,11 +60,13 @@ async function buildPlayerBattleStats(char: any): Promise<{
     else if (i <= 150) { maxHp += 40; atk += 8; def += 4; spd += 3 }
     else { maxHp += 80; atk += 15; def += 8; spd += 5 }
   }
+  hpDebug.lv_hp_flat = maxHp - baseHp0
 
   // 境界加成
   const realmBonus = getRealmBonusAtLevel(char.realm_tier || 1, char.realm_stage || 1)
   maxHp += realmBonus.hp; atk += realmBonus.atk; def += realmBonus.def; spd += realmBonus.spd
   critRate += realmBonus.crit_rate; critDmg += realmBonus.crit_dmg; dodge += realmBonus.dodge
+  hpDebug.realm_hp_flat = realmBonus.hp
 
   // 武器类型加成已从 shared/balance.ts 导入
 
@@ -138,6 +148,8 @@ async function buildPlayerBattleStats(char: any): Promise<{
       }
     }
 
+    if (eq.equipment_version === 5) continue  // V5 装备由 computeV5EquipmentDelta 统一聚合，跳过 V4 主属/副属
+
     const enhLv = eq.enhance_level || 0
     // 属性1：受强化
     applyEquipPrimary(eq.primary_stat, Math.floor(eq.primary_value * (1 + enhLv * 0.10)))
@@ -194,23 +206,79 @@ async function buildPlayerBattleStats(char: any): Promise<{
     }
   }
 
+  // [DEBUG-HP] 装备循环结束（V4 主+副属性）后快照
+  hpDebug.equip_v4_hp_flat = maxHp - baseHp0 - (hpDebug.lv_hp_flat || 0) - (hpDebug.realm_hp_flat || 0)
+  const _hpBeforeV5 = maxHp
+  const _equipHpPctBeforeV5 = equipHpPct
+  const _awakenHpPctBeforeV5 = awakenHpPct
+  const _nonPassiveHpPctBeforeV5 = nonPassiveHpPct
+
+  // === V5 装备聚合（与 fight.post.ts / battleSnapshot.ts 同口径）===
+  // 包含：base_stat_1、强化词条、五行词条（按相生触发）、元始天尊套装、灵根共鸣
+  const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null, getDominantSkillWuxing(equippedSkills))
+  atk += v5Delta.atk; def += v5Delta.def; maxHp += v5Delta.maxHp; spd += v5Delta.spd; spirit += v5Delta.spirit
+  luck += v5Delta.luck; spiritDensity += v5Delta.spiritDensity
+  critRate += v5Delta.critRate; critDmg += v5Delta.critDmg; lifesteal += v5Delta.lifesteal; dodge += v5Delta.dodge
+  armorPen += v5Delta.armorPen; accuracy += v5Delta.accuracy
+  equipAtkPct += v5Delta.equipAtkPct; equipDefPct += v5Delta.equipDefPct
+  equipHpPct  += v5Delta.equipHpPct;  equipSpdPct += v5Delta.equipSpdPct
+  weaponSpiritPct += v5Delta.weaponSpiritPct
+  elementDmg.metal += v5Delta.elementDmg.metal
+  elementDmg.wood  += v5Delta.elementDmg.wood
+  elementDmg.water += v5Delta.elementDmg.water
+  elementDmg.fire  += v5Delta.elementDmg.fire
+  elementDmg.earth += v5Delta.elementDmg.earth
+  // V5 专属 stat
+  lifesteal += v5Delta.lifestealAllPct
+  equipResist.metal += v5Delta.resistAllPct
+  equipResist.wood  += v5Delta.resistAllPct
+  equipResist.water += v5Delta.resistAllPct
+  equipResist.fire  += v5Delta.resistAllPct
+  equipResist.earth += v5Delta.resistAllPct
+  // 元始天尊套装效果：1 件 +10% 攻防血神识身法（teamBattleEngine 简化版不消费 awakenState，3/5/7 件套触发性效果暂留 TODO）
+  for (const eff of v5Delta.legendarySetEffects) {
+    const e = eff.effect as any
+    if (typeof e.atk_pct === 'number') nonPassiveAtkPct += e.atk_pct
+    if (typeof e.def_pct === 'number') nonPassiveDefPct += e.def_pct
+    if (typeof e.hp_pct === 'number')  nonPassiveHpPct  += e.hp_pct
+    if (typeof e.spd_pct === 'number') nonPassiveSpdPct += e.spd_pct
+    if (typeof e.spirit_pct === 'number' && e.spirit_pct > 0) spirit = Math.floor(spirit * (1 + e.spirit_pct))
+  }
+  // 灵根共鸣 → 加法池
+  if (v5Delta.lingenBonusPct > 0) {
+    nonPassiveAtkPct += v5Delta.lingenBonusPct
+    nonPassiveDefPct += v5Delta.lingenBonusPct
+    nonPassiveHpPct  += v5Delta.lingenBonusPct
+    if (spirit > 0) spirit = Math.floor(spirit * (1 + v5Delta.lingenBonusPct))
+  }
+  // [DEBUG-HP] V5 聚合的贡献：包括 maxHp flat + equipHpPct + nonPassiveHpPct(传奇套装+灵根共鸣)
+  hpDebug.v5_hp_flat = maxHp - _hpBeforeV5
+  hpDebug.v5_equip_hp_pct_add = equipHpPct - _equipHpPctBeforeV5
+  hpDebug.v5_lingen_legendary_hp_pct_add = nonPassiveHpPct - _nonPassiveHpPctBeforeV5
+  // === V5 装备聚合结束 ===
+
   // 武器+装备 % → 加法池
+  const _nonPassiveBeforeEquipPct = nonPassiveHpPct
   nonPassiveAtkPct += (weaponAtkPct + equipAtkPct) / 100
   nonPassiveDefPct += equipDefPct / 100
   nonPassiveHpPct  += equipHpPct / 100
   nonPassiveSpdPct += (weaponSpdPct + equipSpdPct) / 100
+  hpDebug.equip_hp_pct = nonPassiveHpPct - _nonPassiveBeforeEquipPct
   if (weaponSpiritPct > 0) spirit = Math.floor(spirit * (1 + weaponSpiritPct / 100))
   critRate += weaponCritRateFlat / 100
   critDmg += weaponCritDmgFlat / 100
   lifesteal += weaponLifestealFlat / 100
 
   // 附灵静态加成 → 加法池
+  const _nonPassiveBeforeAwaken = nonPassiveHpPct
   nonPassiveAtkPct += awakenAtkPct
   nonPassiveDefPct += awakenDefPct
   nonPassiveHpPct  += awakenHpPct
   nonPassiveSpdPct += awakenSpdPct
+  hpDebug.awaken_hp_pct = nonPassiveHpPct - _nonPassiveBeforeAwaken
 
   // 丹药 → 加法池（保留 team 原有的简化数值 0.15/0.20/0.10）
+  const _nonPassiveBeforePill = nonPassiveHpPct
   for (const buff of buffRows) {
     if (buff.expire_time && new Date(buff.expire_time).getTime() <= Date.now()) continue
     const qf = Number(buff.quality_factor) || 1.0
@@ -230,20 +298,27 @@ async function buildPlayerBattleStats(char: any): Promise<{
     if (cave.building_id === 'martial_hall' && cave.level > 0) expBonusPercent += 5 + (cave.level - 1) * 2
   }
 
+  hpDebug.pill_hp_pct = nonPassiveHpPct - _nonPassiveBeforePill
+
   // 境界百分比 → 加法池
+  const _nonPassiveBeforeRealmPct = nonPassiveHpPct
   if (realmBonus.hp_pct > 0) nonPassiveHpPct  += realmBonus.hp_pct / 100
   if (realmBonus.atk_pct > 0) nonPassiveAtkPct += realmBonus.atk_pct / 100
   if (realmBonus.def_pct > 0) nonPassiveDefPct += realmBonus.def_pct / 100
+  hpDebug.realm_hp_pct = nonPassiveHpPct - _nonPassiveBeforeRealmPct
 
   // 永久加成 → 加法池
+  const _nonPassiveBeforePerm = nonPassiveHpPct
   const permAtkPct = Number(char.permanent_atk_pct || 0)
   const permDefPct = Number(char.permanent_def_pct || 0)
   const permHpPct = Number(char.permanent_hp_pct || 0)
   if (permAtkPct > 0) nonPassiveAtkPct += permAtkPct / 100
   if (permDefPct > 0) nonPassiveDefPct += permDefPct / 100
   if (permHpPct > 0) nonPassiveHpPct  += permHpPct / 100
+  hpDebug.perm_hp_pct = nonPassiveHpPct - _nonPassiveBeforePerm
 
   // 宗门加成 → 加法池
+  const _nonPassiveBeforeSect = nonPassiveHpPct
   if (char._sectLevel) {
     const sectCfg = getSectLevelConfig(char._sectLevel)
     nonPassiveAtkPct += sectCfg.atkBonus
@@ -267,7 +342,10 @@ async function buildPlayerBattleStats(char: any): Promise<{
     }
   }
 
+  hpDebug.sect_hp_pct = nonPassiveHpPct - _nonPassiveBeforeSect
+
   // 道侣仙缘印记 — 四维 +2%~+12%（与 fight.post.ts / 面板 mainStats 同口径）
+  const _nonPassiveBeforeSeal = nonPassiveHpPct
   {
     const { rows: compRows } = await pool.query(
       `SELECT seal_level FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1`,
@@ -283,6 +361,7 @@ async function buildPlayerBattleStats(char: any): Promise<{
       }
     }
   }
+  hpDebug.seal_hp_pct = nonPassiveHpPct - _nonPassiveBeforeSeal
 
   // 加法池一次乘（不含功法被动 — teamBattleEngine 把功法 % 加进同池后再一次乘）
   const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd
@@ -291,8 +370,36 @@ async function buildPlayerBattleStats(char: any): Promise<{
   maxHp = Math.floor(_flatHp  * (1 + nonPassiveHpPct))
   spd   = Math.floor(_flatSpd * (1 + nonPassiveSpdPct))
 
-  // 先构建 equippedSkills，便于合并主修 innateMain.mainSkillLifesteal
-  const equippedSkills = buildEquippedSkillInfo(skillRows)
+  // [DEBUG-HP] 汇总日志（搜 [DEBUG-HP] 看完整输出）
+  // 这里输出的 maxHp 还没加功法被动 hpPercent，teamBattleEngine 会再乘一次
+  console.log('[DEBUG-HP]', JSON.stringify({
+    name: char.name,
+    lv: char.level,
+    realm_tier: char.realm_tier,
+    base_hp: baseHp0,
+    flat: {
+      lv: hpDebug.lv_hp_flat || 0,
+      realm: hpDebug.realm_hp_flat || 0,
+      equip_v4: hpDebug.equip_v4_hp_flat || 0,
+      v5: hpDebug.v5_hp_flat || 0,
+    },
+    flat_sum_check: _flatHp,
+    pct: {
+      v5_equip: +(hpDebug.v5_equip_hp_pct_add || 0).toFixed(4),
+      v5_lingen_legendary: +(hpDebug.v5_lingen_legendary_hp_pct_add || 0).toFixed(4),
+      equip: +(hpDebug.equip_hp_pct || 0).toFixed(4),
+      awaken: +(hpDebug.awaken_hp_pct || 0).toFixed(4),
+      pill: +(hpDebug.pill_hp_pct || 0).toFixed(4),
+      realm: +(hpDebug.realm_hp_pct || 0).toFixed(4),
+      perm: +(hpDebug.perm_hp_pct || 0).toFixed(4),
+      sect: +(hpDebug.sect_hp_pct || 0).toFixed(4),
+      seal: +(hpDebug.seal_hp_pct || 0).toFixed(4),
+    },
+    pct_sum_check: +nonPassiveHpPct.toFixed(4),
+    maxHp_no_passive: maxHp,
+  }))
+
+  // 合并主修 innateMain.mainSkillLifesteal（equippedSkills 已在前面构建，供 V5 五行触发使用）
   const innateMainLs = (equippedSkills?.activeSkill as any)?.innateMain?.mainSkillLifesteal || 0
   if (innateMainLs > 0) mainSkillLifesteal += innateMainLs
 
