@@ -4,6 +4,7 @@
 import { getPool } from '~/server/database/db';
 import { generateEquipName } from './equipNameData';
 import { decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment';
+import { tryRollEquipmentV5DropSpec } from '~/server/utils/equipment-v5';
 
 // ========== 类型定义 ==========
 export interface AchievementReward {
@@ -279,6 +280,11 @@ export function generateEquipBox(boxType: 'normal' | 'fine' | 'legend', charLeve
   const slot = slots[slotIdx];
   const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 };
   const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null;
+
+  // V5 灰度（蓝/紫/金/红走 V5；成就宝箱不掉传奇套装/Boss 秘宝，那些仅 boss 战产出）
+  const v5Spec = tryRollEquipmentV5DropSpec({ baseSlot: slot as any, rarity: rarities[idx], tier, weaponType });
+  if (v5Spec) return v5Spec;
+
   // v4.0：双主属性 + 副词条按部位分桶
   const v4 = pickV4SlotInfo(slot, weaponType);
   const primaries = decideEquipPrimariesV4(v4.slotKey, v4.subType, rarities[idx], tier);
@@ -294,6 +300,12 @@ export function generateEquipBox(boxType: 'normal' | 'fine' | 'legend', charLeve
     sub_stats: JSON.stringify(subStats),
     set_id: null, tier, weapon_type: weaponType,
     base_slot: slot, req_level: tierReqLevels[tier] || 1, enhance_level: 0,
+    // V5 字段（V4 路径全 null/4/false，与 secretRealmDrops 同口径）
+    equipment_version: 4,
+    wuxing_prefix: null,
+    wuxing_affixes: null,
+    legendary_set_id: null,
+    is_boss_treasure: false,
   };
 }
 
