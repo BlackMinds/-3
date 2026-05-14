@@ -138,35 +138,6 @@ export function generateSecretRealmHerb(tier: number, element: string | null, is
   return { herb_id: herbId, quality: qualityOrder[qIdx], count: isBoss ? 3 : 1 }
 }
 
-// ========== 功法残页 ==========
-export function generateSecretRealmSkillPage(tier: number, isBoss: boolean, ownedCounts: Record<string, number> = {}): string | null {
-  const rate = isBoss ? 0.40 : 0.06
-  if (Math.random() >= rate) return null
-  const pools: Record<number, string[]> = {
-    1: ['wind_blade', 'vine_whip', 'ice_palm', 'flame_sword', 'quake_fist', 'body_refine', 'flame_body', 'water_flow', 'root_grip', 'metal_skin'],
-    3: ['fire_rain', 'frost_nova', 'earth_shield', 'quake_wave', 'vine_prison', 'golden_bell', 'swift_step', 'iron_skin', 'thorn_aura', 'flame_aura', 'earth_wall'],
-    5: ['sword_storm', 'twin_flame', 'flurry_palm', 'spring_heal', 'blood_fury', 'wood_heal', 'mirror_water', 'venom_burst', 'bleed_storm', 'burn_inferno', 'poison_mist', 'crit_master', 'earth_fortitude', 'poison_body', 'fire_mastery', 'dot_amplifier', 'phantom_step', 'healing_spring'],
-    7: ['metal_burst', 'quake_stomp', 'life_drain', 'inferno_burst', 'storm_blade', 'heaven_heal', 'water_mastery', 'battle_frenzy', 'heavenly_body', 'time_stop', 'heavenly_wrath', 'dao_heart', 'five_elements_harmony'],
-  }
-  let pool = pools[1]
-  if (tier >= 7) pool = pools[7]
-  else if (tier >= 5) pool = pools[5]
-  else if (tier >= 3) pool = pools[3]
-
-  const weightsList = pool.map(skillId => {
-    const owned = ownedCounts[skillId] || 0
-    if (owned === 0) return 100
-    return Math.max(1, Math.floor(100 / Math.pow(2, owned)))
-  })
-  const totalWeight = weightsList.reduce((a, b) => a + b, 0)
-  let r = Math.random() * totalWeight
-  for (let i = 0; i < pool.length; i++) {
-    r -= weightsList[i]
-    if (r <= 0) return pool[i]
-  }
-  return pool[pool.length - 1]
-}
-
 // ========== 附灵道具掉落 ==========
 // 附灵石 awaken_stone: 整场 roll 一次（普通 20% / 困难 40% / 噩梦 60%），每只 Boss 怪保底 +1
 // 灵枢玉 awaken_reroll: 整场 roll 一次（普通 3% / 困难 10% / 噩梦 22%），噩梦 Boss 18% 额外追加
@@ -205,7 +176,6 @@ export interface SecretRealmDropResult {
   equipments: any[]          // 全部装备列表（未分配）
   bossEquipments: any[]      // Boss 保底装备
   herbs: any[]               // 灵草
-  skillPages: string[]       // 功法残页 ID 列表
   awakenStones: number       // 附灵石总数
   rerollStones: number       // 灵枢玉总数
   enhanceStones: number      // 强化石总数（全部对应 dropTier）
@@ -213,23 +183,21 @@ export interface SecretRealmDropResult {
 
 /**
  * 生成一场秘境战斗的总掉落（不含分配逻辑）
+ * v2026-05-14: 移除功法残页掉落 — 秘境产出聚焦装备/灵草/附灵
  * @param dropTier 秘境 dropTier（对应装备 T 级）
  * @param difficulty 难度
  * @param killedMonsters 击杀的怪物列表（来自战斗结果）
  * @param teamSize 队伍人数（影响装备数量）
- * @param ownedSkillCounts 全队功法拥有情况（聚合所有人的）
  */
 export function generateSecretRealmDrops(
   dropTier: number,
   difficulty: 1 | 2 | 3,
   killedMonsters: { element: string | null; isBoss: boolean }[],
   teamSize: number,
-  ownedSkillCounts: Record<string, number> = {},
 ): SecretRealmDropResult {
   const equipments: any[] = []
   const bossEquipments: any[] = []
   const herbs: any[] = []
-  const skillPages: string[] = []
   let awakenStones = 0
   let rerollStones = 0
   let enhanceStones = 0
@@ -243,10 +211,6 @@ export function generateSecretRealmDrops(
   // 粗略：普通 40% / 困难 55% / 噩梦 70%
   const regularDropRate = difficulty === 1 ? 0.35 : difficulty === 2 ? 0.5 : 0.65
   const bossExtraCount = difficulty === 1 ? 1 : difficulty === 2 ? 1 : 2
-
-  // 功法残页每场硬上限：普通 1 / 困难 2 / 噩梦 3
-  // 原来按怪逐个 roll，噩梦 7 波堆下来能爆 5-8 个，过量
-  const skillPageCap = difficulty === 1 ? 1 : difficulty === 2 ? 2 : 3
 
   for (const m of killedMonsters) {
     // 常规装备（任何怪物）
@@ -266,14 +230,6 @@ export function generateSecretRealmDrops(
     // 灵草
     const herb = generateSecretRealmHerb(dropTier, m.element, m.isBoss)
     if (herb) herbs.push(herb)
-    // 功法残页（受每场上限约束）
-    if (skillPages.length < skillPageCap) {
-      const sp = generateSecretRealmSkillPage(dropTier, m.isBoss, ownedSkillCounts)
-      if (sp) {
-        skillPages.push(sp)
-        ownedSkillCounts[sp] = (ownedSkillCounts[sp] || 0) + 1
-      }
-    }
   }
 
   // 每人保底：如果总装备数 < 队伍人数，补齐到 teamSize
@@ -285,7 +241,7 @@ export function generateSecretRealmDrops(
     }
   }
 
-  return { equipments, bossEquipments, herbs, skillPages, awakenStones, rerollStones, enhanceStones }
+  return { equipments, bossEquipments, herbs, awakenStones, rerollStones, enhanceStones }
 }
 
 /**

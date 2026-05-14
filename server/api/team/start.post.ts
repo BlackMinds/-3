@@ -456,27 +456,17 @@ export default defineEventHandler(async (event) => {
       )
       const battleId = bRows[0].id
 
-      // ========== 生成装备/灵草/功法掉落（战斗胜利才给） ==========
-      let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], skillPages: [] as string[], awakenStones: 0, rerollStones: 0, enhanceStones: 0 }
+      // ========== 生成装备/灵草/附灵掉落（战斗胜利才给）==========
+      // v2026-05-14: 秘境不再掉落功法残页
+      let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], awakenStones: 0, rerollStones: 0, enhanceStones: 0 }
       // 实际能拿奖励的人数（带人模式下，无次数队员不在分配名单，保底也按这个算）
       // 之前用 allMembers.length 会让"3 人带 1 人"的场景按 4 件保底全砸给那 1 个有次数的人 → 装备暴增
       const quotaCount = [...hasQuotaMap.values()].filter(v => v).length
       if (result.won) {
-        // 聚合全队的功法背包（用于权重递减掉落）
-        const allOwnedSkills: Record<string, number> = {}
-        for (const m of allMembers) {
-          const { rows: invRows } = await pool.query(
-            'SELECT skill_id, count FROM character_skill_inventory WHERE character_id = $1', [m.id]
-          )
-          for (const row of invRows) {
-            allOwnedSkills[row.skill_id] = (allOwnedSkills[row.skill_id] || 0) + row.count
-          }
-        }
         drops = generateSecretRealmDrops(
           realm.dropTier, difficulty,
           result.killedMonsters.map(k => ({ element: k.element, isBoss: k.isBoss })),
           quotaCount,
-          allOwnedSkills,
         )
         // v3.4: S 评级团队奖励 — 额外送 1 件红装（由 distributeEquipments 随机派发）
         if (result.rating === 'S' && result.killedMonsters.length > 0) {
@@ -512,20 +502,12 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      // 功法残页随机分配（每人按概率）
-      const playerSkillPages = new Map<number, string[]>()
-      for (const c of contribList) playerSkillPages.set(c.characterId, [])
-      for (const sp of drops.skillPages) {
-        const idx = Math.floor(Math.random() * contribList.length)
-        playerSkillPages.get(contribList[idx].characterId)!.push(sp)
-      }
-
       // 附灵道具分配：附灵石按人头均分，灵枢玉每件均匀随机
       const playerAwakenItems = distributeAwakenItems(drops.awakenStones, drops.rerollStones, contribList)
       // 强化石分配：按人头均分（对应 realm.dropTier，仅 T4+ 秘境会有产出）
       const playerEnhanceStones = distributeEnhanceStones(drops.enhanceStones, contribList)
 
-      // 写入个人奖励 + 保存装备/灵草/功法（v2026-05-14: 经验/积分每人全额，不再按贡献分摊）
+      // 写入个人奖励 + 保存装备/灵草（v2026-05-14: 经验/积分每人全额，不再按贡献分摊；秘境不再掉落功法残页）
       const rewards: any[] = []
       for (const c of result.contributions) {
         const hasQuota = hasQuotaMap.get(c.characterId) ?? false
@@ -550,7 +532,6 @@ export default defineEventHandler(async (event) => {
             damage_taken: c.damageTaken,
             equipments: [],
             herbs: [],
-            skill_pages: [],
             awaken_items: { awaken_stone: 0, awaken_reroll: 0 },
             level_up: null,
             no_quota: true,
@@ -622,17 +603,6 @@ export default defineEventHandler(async (event) => {
           )
         }
 
-        // --- 保存功法残页到 character_skill_inventory ---
-        const pageList = playerSkillPages.get(c.characterId) || []
-        for (const sp of pageList) {
-          await client.query(
-            `INSERT INTO character_skill_inventory (character_id, skill_id, count)
-             VALUES ($1, $2, 1)
-             ON CONFLICT (character_id, skill_id) DO UPDATE SET count = character_skill_inventory.count + 1`,
-            [c.characterId, sp]
-          )
-        }
-
         // --- 保存附灵道具到 character_pills（与 SECT_ITEM_INFO 其他道具一致）---
         const awakenItemShare = playerAwakenItems.get(c.characterId) || { awaken_stone: 0, awaken_reroll: 0 }
         for (const [itemId, cnt] of Object.entries(awakenItemShare)) {
@@ -673,7 +643,7 @@ export default defineEventHandler(async (event) => {
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [battleId, c.characterId, myStone, myExp, newLevelExp, myPoints,
             JSON.stringify(equipIds),
-            JSON.stringify({ herbs: herbList, skill_pages: pageList, enhance_stones: stoneShare > 0 ? { tier: realm.dropTier, count: stoneShare } : null })]
+            JSON.stringify({ herbs: herbList, enhance_stones: stoneShare > 0 ? { tier: realm.dropTier, count: stoneShare } : null })]
         )
 
         // 累加 cultivation_exp 并自动扣除突破
@@ -710,7 +680,6 @@ export default defineEventHandler(async (event) => {
           damage_taken: c.damageTaken,
           equipments: equipList.map(e => ({ id: null, name: e.name, rarity: e.rarity, tier: e.tier, base_slot: e.base_slot })),
           herbs: herbList,
-          skill_pages: pageList,
           awaken_items: awakenItemShare,
           enhance_stones: stoneShare > 0 ? { tier: realm.dropTier, count: stoneShare } : null,
           level_up: newLevel > (member?.level || 1) ? newLevel : null,
@@ -727,7 +696,6 @@ export default defineEventHandler(async (event) => {
             const key = `equip_${eq.rarity}`
             checkAchievements(c.characterId, key, 1).catch(() => {})
           }
-          if (pageList.length > 0) checkAchievements(c.characterId, 'skill_pages', pageList.length).catch(() => {})
           if (newLevel > (member?.level || 1)) checkAchievements(c.characterId, 'char_level', newLevel).catch(() => {})
         }
       }
