@@ -458,6 +458,18 @@ const STAT_LABEL: Record<string, string> = {
   METAL_RES: '金抗', WOOD_RES: '木抗', WATER_RES: '水抗', FIRE_RES: '火抗', EARTH_RES: '土抗',
   CTRL_CHANCE: '控制概率', CTRL_RES: '控制抗性',
   DOT_DMG_PCT: 'DOT伤害', REFLECT_PCT: '反伤倍率',
+  // V5.0.2/V5.0.3 装备小写 stat key（与 game/equipData.ts STAT_NAMES 同口径）
+  atk: '攻击', def: '防御', hp: '气血', spd: '身法', spirit: '神识',
+  atk_pct: '攻击%', def_pct: '防御%', hp_pct: '气血%', spd_pct: '身法%', spirit_pct: '神识%',
+  crit_rate: '会心率', crit_dmg: '会心伤害',
+  armor_pen: '破甲', accuracy: '命中',
+  dodge: '闪避', lifesteal: '吸血',
+  wuxing_dmg: '五行强化', dot_dmg: 'DOT伤害',
+  reflect: '反伤倍率', res_pct: '五行抗性',
+  dmg_reduction: '减伤', lifesteal_all: '全能吸血',
+  luck: '福缘', spirit_density: '灵气浓度',
+  luck_pct: '福缘加成', spirit_density_pct: '灵气加成', accuracy_pct: '命中加成',
+  hp_pct_or_def_pct: '气血/防御 各',
 }
 const SLOT_ICON: Record<string, string> = {
   weapon: '⚔️', helmet: '🪖', armor: '👘', boots: '🥾',

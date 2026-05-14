@@ -682,7 +682,7 @@
                   <span class="bag-cell-tier">T{{ eq.tier || 1 }}</span>
                   <span class="bag-cell-name" :style="{ color: getEquipColor(eq) }">{{ eq.name }}</span>
                   <span class="bag-cell-rarity" :style="{ color: getEquipColor(eq) }">
-                    {{ getRarityName(eq.rarity) }}
+                    {{ getEquipQualityLabel(eq) }}
                     <span v-if="(eq.enhance_level || 0) > 0" class="enhance-tag">+{{ eq.enhance_level }}</span>
                   </span>
                   <span class="bag-cell-level" :class="{ 'level-insufficient': gameStore.charLevel < (eq.req_level || 1) }">
@@ -824,7 +824,7 @@
                 class="sect-dialog-equip-item" :style="{ borderColor: getEquipColor(eq) }"
                 @click="sectItemDialog.onSelect(eq.id)">
                 <span :style="{ color: getEquipColor(eq) }">{{ eq.name }}</span>
-                <span class="sect-dialog-equip-tier">T{{ eq.tier }} · {{ getRarityName(eq.rarity) }}{{ eq.slot ? ' · 已穿戴' : '' }}</span>
+                <span class="sect-dialog-equip-tier">T{{ eq.tier }} · {{ getEquipQualityLabel(eq) }}{{ eq.slot ? ' · 已穿戴' : '' }}</span>
               </div>
               <div v-if="(sectItemDialog.equipSource === 'equipped' ? equippedEquipList : sectItemDialog.equipSource === 'all' ? equipList : bagEquipList).filter(sectItemDialog.equipFilter || (() => true)).length === 0" class="inventory-hint">
                 没有符合条件的装备
@@ -2071,7 +2071,7 @@
                 <span v-if="getEquippedItem(currentPickSlot).enhance_level > 0" class="enhance-tag">+{{ getEquippedItem(currentPickSlot).enhance_level }}</span>
               </span>
               <span v-if="getEquippedItem(currentPickSlot).weapon_type" class="picker-sub">类型: {{ getWeaponTypeDef(getEquippedItem(currentPickSlot).weapon_type)?.name }}</span>
-              <span class="picker-sub">阶位: T{{ getEquippedItem(currentPickSlot).tier || 1 }} · {{ getRarityName(getEquippedItem(currentPickSlot).rarity) }}</span>
+              <span class="picker-sub">阶位: T{{ getEquippedItem(currentPickSlot).tier || 1 }} · {{ getEquipQualityLabel(getEquippedItem(currentPickSlot)) }}</span>
               <span class="picker-desc">
                 {{ getStatName(getEquippedItem(currentPickSlot).primary_stat) }} +{{ formatStatValue(getEquippedItem(currentPickSlot).primary_stat, getEnhancedPrimaryValue(getEquippedItem(currentPickSlot).primary_value, getEquippedItem(currentPickSlot).enhance_level || 0)) }}
                 <span v-if="getEquippedItem(currentPickSlot).enhance_level > 0" style="color: var(--jade); font-size: 12px;">
@@ -2106,7 +2106,7 @@
                 <span v-if="eq.enhance_level > 0" class="enhance-tag">+{{ eq.enhance_level }}</span>
               </span>
               <span v-if="eq.weapon_type" class="picker-sub">类型: {{ getWeaponTypeDef(eq.weapon_type)?.name }}</span>
-              <span class="picker-sub">阶位: T{{ eq.tier || 1 }} · {{ getRarityName(eq.rarity) }}</span>
+              <span class="picker-sub">阶位: T{{ eq.tier || 1 }} · {{ getEquipQualityLabel(eq) }}</span>
               <span class="picker-sub" :style="{ color: (gameStore.charLevel >= (eq.req_level || 1)) ? 'var(--jade)' : 'var(--cinnabar)' }">
                 需要等级: Lv.{{ eq.req_level || 1 }}
               </span>
@@ -2273,7 +2273,7 @@
               {{ awakenTarget.name }}
               <span class="enhance-tag" v-if="awakenTarget.enhance_level > 0">+{{ awakenTarget.enhance_level }}</span>
             </div>
-            <div class="awaken-slot-tag">{{ getSlotName(awakenTarget.base_slot || awakenTarget.slot) }} · {{ getRarityName(awakenTarget.rarity) }}</div>
+            <div class="awaken-slot-tag">{{ getSlotName(awakenTarget.base_slot || awakenTarget.slot) }} · {{ getEquipQualityLabel(awakenTarget) }}</div>
           </div>
 
           <div v-if="awakenTarget.awaken_effect" class="awaken-current-block">
@@ -5394,6 +5394,10 @@ const V5_STAT_TO_V4_KEY: Record<string, string> = {
   armor_pen: 'ARMOR_PEN', accuracy: 'ACCURACY',
   reflect: 'REFLECT_PCT', dot_dmg: 'DOT_DMG_PCT',
   luck: 'LUCK', spirit_density: 'SPIRIT_DENSITY',
+  // V5.0.3 新增百分比副词条 — 与 equipmentAggregateV5.ts 同口径
+  accuracy_pct: 'ACCURACY', luck_pct: 'LUCK', spirit_density_pct: 'SPIRIT_DENSITY',
+  // V5 全能吸血 → 并入吸血（与服务端 v5Delta.lifestealAllPct 同口径）
+  lifesteal_all: 'LIFESTEAL',
 }
 
 const equipBonus = computed(() => {
@@ -8594,6 +8598,11 @@ const RARITY_NAMES: Record<string, string> = {
 };
 function getRarityName(rarity: string) {
   return RARITY_NAMES[rarity] || rarity;
+}
+function getEquipQualityLabel(eq: any): string {
+  if (eq?.legendary_set_id === 'yuanshi_tianzun') return '传奇';
+  if (eq?.is_boss_treasure === true) return '秘宝';
+  return RARITY_NAMES[eq?.rarity] || eq?.rarity || '';
 }
 
 function isV5Equip(eq: any): boolean {
