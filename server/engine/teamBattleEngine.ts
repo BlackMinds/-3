@@ -407,11 +407,7 @@ export function runTeamBattle(
 
   // 构建队员运行时状态
   const players: TeamPlayer[] = playerInputs.map(p => {
-    // [DEBUG-HP2] 入口：buildPlayerBattleStats 输出的 stats.maxHp
-    const _hp_at_entry = p.stats.maxHp
     const baseStats = { ...p.stats, hp: p.stats.maxHp }
-    let _hp_after_passive = baseStats.maxHp
-    let _hp_branch = 'no_passive_block'
     if (p.equippedSkills?.passiveEffects) {
       const pe = p.equippedSkills.passiveEffects
       // v3.7 加法池：team/start.post.ts buildPlayerBattleStats 已挂 _flat/_pctSum，把功法 % 加进同池后一次乘
@@ -421,38 +417,19 @@ export function runTeamBattle(
         baseStats.def   = Math.floor(sx._flatDef * (1 + (sx._pctSumDef || 0) + pe.defPercent / 100))
         baseStats.maxHp = Math.floor(sx._flatHp  * (1 + (sx._pctSumHp  || 0) + pe.hpPercent / 100))
         baseStats.spd   = Math.floor(sx._flatSpd * (1 + (sx._pctSumSpd || 0) + (pe.spdPercent || 0) / 100))
-        _hp_branch = 'flat_pool'
-        // [DEBUG-HP2] 记录 if 分支用到的所有参数
-        console.log('[DEBUG-HP2-passive]', JSON.stringify({
-          name: p.name,
-          _flatHp: sx._flatHp,
-          _pctSumHp: sx._pctSumHp,
-          pe_hpPercent: pe.hpPercent,
-          formula: `${sx._flatHp} * (1 + ${sx._pctSumHp} + ${pe.hpPercent}/100) = ${baseStats.maxHp}`,
-        }))
       } else {
         // 旧路径回退
         baseStats.atk = Math.floor(baseStats.atk * (1 + pe.atkPercent / 100))
         baseStats.def = Math.floor(baseStats.def * (1 + pe.defPercent / 100))
         baseStats.maxHp = Math.floor(baseStats.maxHp * (1 + pe.hpPercent / 100))
         baseStats.spd = Math.floor(baseStats.spd * (1 + (pe.spdPercent || 0) / 100))
-        _hp_branch = 'legacy'
       }
       baseStats.hp = baseStats.maxHp
       baseStats.crit_rate += pe.critRate
       baseStats.crit_dmg += pe.critDmg
       baseStats.dodge = (baseStats.dodge || 0) + (pe.dodge || 0)
       baseStats.lifesteal = (baseStats.lifesteal || 0) + (pe.lifesteal || 0)
-      _hp_after_passive = baseStats.maxHp
     }
-    // [DEBUG-HP2] 在 map 末尾 return 之前，输出每个观测点的 maxHp
-    console.log('[DEBUG-HP2-build]', JSON.stringify({
-      name: p.name,
-      hp_at_entry: _hp_at_entry,
-      hp_after_passive: _hp_after_passive,
-      hp_branch: _hp_branch,
-      hp_final_basestats: baseStats.maxHp,
-    }))
     // v1 套装：根据 stats 上的 equipSetCounts/weaponType 解析运行时效果
     const sx: any = p.stats as any
     const setEffects = buildSetEffects(sx.equipSetCounts, sx.weaponType || null)
@@ -502,28 +479,9 @@ export function runTeamBattle(
 
   // 应用队伍 Buff
   const teamBuffCtx = calcTeamBuffs(playerInputs)
-  for (const p of players) {
-    const _before = p.stats.maxHp
-    teamBuffCtx.apply(p)
-    // [DEBUG-HP2] 队伍 Buff 前后对比
-    console.log('[DEBUG-HP2-teamBuff]', JSON.stringify({
-      name: p.name,
-      hp_before_teamBuff: _before,
-      hp_after_teamBuff: p.stats.maxHp,
-      teamBuffs: teamBuffCtx.buffs,
-    }))
-  }
+  for (const p of players) teamBuffCtx.apply(p)
   for (const bd of teamBuffCtx.buffs) {
     logs.push({ turn: 0, text: `[队伍增益] ${bd}`, type: 'buff', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-  }
-  // [DEBUG-HP2] 战斗循环开始前的最终 maxHp
-  for (const p of players) {
-    console.log('[DEBUG-HP2-final]', JSON.stringify({
-      name: p.name,
-      maxHp_final: p.stats.maxHp,
-      hp_final: p.stats.hp,
-      baseMaxHp: p.baseMaxHp,
-    }))
   }
 
   // v1 套装：开局展示每位队员激活的套装
