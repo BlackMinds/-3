@@ -34,8 +34,8 @@ export const BUILDINGS: BuildingDef[] = [
     description: '凝聚天地灵气,产出修为。',
     maxLevel: 20,
     // 2026-04-25: base 50→120, perLevelMul 1.15→1.17 — 满级 712→2611 修为/h, 接近 1h 战斗修为量
-    // 2026-04-26: base 120→144 (+20%) — 满级 ~3133 修为/h, 进一步贴近高境界 1h 战斗修为量
-    output: { type: 'exp', base: 144, perLevelMul: 1.17 },
+    // base 144→160 (+11%) — 满级 ~3481 修为/h
+    output: { type: 'exp', base: 160, perLevelMul: 1.17 },
     baseCost: 1000,
     costMul: 1.6,
     baseTime: 0,
@@ -58,8 +58,8 @@ export const BUILDINGS: BuildingDef[] = [
     icon: '宝',
     description: '汇聚四方灵脉,产出灵石。',
     maxLevel: 20,
-    // 2026-04-25: base 800→900 — 满级 31417→35341 灵石/h, 24h 约 84.8 万 (+12% 温和提升)
-    output: { type: 'spirit_stone', base: 900, perLevelMul: 1.22 },
+    // base 900→1000 (+11%) — 满级 ~44500 灵石/h
+    output: { type: 'spirit_stone', base: 1000, perLevelMul: 1.22 },
     baseCost: 2000,
     costMul: 1.8,
     baseTime: 0,
@@ -120,7 +120,7 @@ export const BUILDINGS: BuildingDef[] = [
 
 // 计算指定等级的升级灵石消耗
 export function getUpgradeCost(building: BuildingDef, currentLevel: number): number {
-  return Math.floor(building.baseCost * Math.pow(building.costMul, currentLevel - 1));
+  return Math.floor(building.baseCost * Math.pow(building.costMul, currentLevel - 1) * 0.9);
 }
 
 // 计算指定等级的升级时间(秒)
