@@ -42,6 +42,7 @@ import {
   RARITY_STAT_MUL,
 } from '../../shared/balance'
 import { SUB_STAT_RANGE_V4, RARITY_IDX_MAP } from './equipment'
+import { generateEquipName } from '../engine/equipNameData'
 
 // --------------------------- 类型 ---------------------------
 
@@ -422,14 +423,48 @@ const TIER_REQ_LEVELS: Record<number, number> = {
   9: 185, 10: 195, 11: 215, 12: 240, 13: 260, 14: 285, 15: 310,
 }
 
-/** V5 装备默认命名（普通装备没有 inst.name 时用） */
-function defaultV5Name(inst: V5EquipmentInstance): string {
-  const slotMeta = V5_EQUIPMENT_SLOTS[inst.slot_index - 1]
+/**
+ * V5 base_stat_1 stat → V4 generateEquipName 的 primaryStat（SCREAMING_CASE）
+ * 主要用于 V4 命名器的本体名/后缀/五行戒指反查。
+ * 灵戒的 wuxing_dmg 按 prefix 第一项映射到 V4 的 X_DMG，让 RING_NAMES_BY_ELEMENT 命中正确五行名字池。
+ */
+function v5StatToV4Naming(stat: string, prefix: WuxingPrefix | readonly WuxingPrefix[]): string {
+  if (stat === 'wuxing_dmg') {
+    const p = Array.isArray(prefix) ? prefix[0] : (prefix as WuxingPrefix)
+    return ({ metal: 'METAL_DMG', wood: 'WOOD_DMG', water: 'WATER_DMG', fire: 'FIRE_DMG', earth: 'EARTH_DMG' } as Record<string, string>)[p as string] || 'ATK'
+  }
+  // V5 灵佩双向主属（hp%/def%）→ 倾向 HP 后缀
+  if (stat === 'hp_pct_or_def_pct' || stat === 'hp_pct') return 'HP'
+  if (stat === 'def_pct') return 'DEF'
+  if (stat === 'atk_pct') return 'ATK'
+  if (stat === 'spd_pct') return 'SPD'
+  if (stat === 'spirit_pct') return 'SPIRIT'
+  // 通用映射（atk/def/hp/spd/spirit/crit_rate/...）
+  return stat.toUpperCase()
+}
+
+/**
+ * V5 装备默认命名（普通装备没有 inst.name 时用）
+ * 复用 V4 generateEquipName 拿丰富名字，并在最前面强制拼一个「金/木/水/火/土·」五行前缀（V5 装备核心标识）
+ * 不传 element 入参给 V4，避免 30% 概率出现重复的元素字
+ */
+function defaultV5Name(inst: V5EquipmentInstance, weaponType: string | null = null): string {
   const prefixes = Array.isArray(inst.wuxing_prefix) ? inst.wuxing_prefix : [inst.wuxing_prefix]
-  const prefixZh = prefixes.map(p => {
-    return { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' }[p as string] ?? p
+  const wuxingZh = (prefixes as readonly WuxingPrefix[]).map(p => {
+    return ({ metal: '金', wood: '木', water: '水', fire: '火', earth: '土' } as Record<string, string>)[p as string] ?? p
   }).join('')
-  return `${prefixZh}·${slotMeta.slot_v5}`
+  const v4Stat = v5StatToV4Naming(inst.base_stat_1.stat, inst.wuxing_prefix)
+  const body = generateEquipName(
+    inst.rarity,
+    inst.base_slot_v4,
+    weaponType,
+    inst.tier,
+    v4Stat,
+    null, // element 不传给 V4，避免与必带的五行前缀重复
+    '',
+    null, // V5 没有 V4 set_id；legendary_set_id 走 inst.name 不进这里
+  )
+  return `${wuxingZh}·${body}`
 }
 
 /** 反查：V4 base_slot → V5 slot_index（1~7） */
@@ -579,7 +614,7 @@ export function v5InstanceToDbInsert(
     ? [...inst.wuxing_prefix]
     : [inst.wuxing_prefix as string]
   return {
-    name: inst.name ?? defaultV5Name(inst),
+    name: inst.name ?? defaultV5Name(inst, inst.slot_index === 1 ? weaponType : null),
     rarity: inst.rarity,
     primary_stat: inst.base_stat_1.stat,
     primary_value: inst.base_stat_1.value,
