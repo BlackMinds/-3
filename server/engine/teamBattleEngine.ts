@@ -703,7 +703,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     mul *= 1.2
     rootMatched = true
   }
-  if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.001
+  if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.0005
 
   // 治疗 / buff 技能
   if (mul === 0) {

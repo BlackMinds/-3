@@ -11,7 +11,7 @@
  *  - Buff（atk_up / def_up）
  *  - 吸血 / 反伤 / 被动触发型 DOT
  *  - 灵根共鸣（主修元素匹配灵根 ×1.2）
- *  - 神识加成（神通伤害每点 +0.1%）
+ *  - 神识加成（神通伤害每点 +0.05%）
  *  - 集火选敌（目标血量最低）
  *  - 击杀奖励（战意沸腾叠攻）
  *
@@ -822,7 +822,7 @@ export function runPvpBattle(
       rootMatched = true
     }
     if (isDivine && attacker.spirit > 0) {
-      mul *= 1 + attacker.spirit * 0.001
+      mul *= 1 + attacker.spirit * 0.0005
     }
     // v1.3 心法贯通：主修伤害倍率 +X%
     if (isMainSkill && attacker.awakenState?.mainSkillMultBonus) {

@@ -257,7 +257,7 @@ export interface BattlerStats {
   armorPen?: number;
   accuracy?: number;
   elementDmg?: { metal: number; wood: number; water: number; fire: number; earth: number };
-  spirit?: number; // 神识: 每点+0.1%神通伤害
+  spirit?: number; // 神识: 每点+0.05%神通伤害
   // v4.0 控制概率（玩家装备 CTRL_CHANCE 副词条贡献，小数 0.05=5%）
   // 在 status apply 处加成 effChance（仅施加方为玩家时生效）
   ctrlChance?: number;
@@ -2094,9 +2094,9 @@ export function runWaveBattle(
       mul *= 1.2;
       rootMatched = true;
     }
-    // 神识加成神通伤害: 每点神识+0.1% (2026-04-25: 0.5%→0.1% — 神识 216 时旧 +108% 神通伤害过强)
+    // 神识加成神通伤害: 每点神识+0.05% (2026-05-14: 0.1%→0.05% — 神通流派强于剑气流派，-50%)
     if (isDivine && player.spirit && player.spirit > 0) {
-      mul *= 1 + player.spirit * 0.001;
+      mul *= 1 + player.spirit * 0.0005;
     }
     // v1.3 心法贯通：主修伤害倍率 +X%
     if (isMainSkill && player.awakenState?.mainSkillMultBonus) {
