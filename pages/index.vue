@@ -5305,6 +5305,23 @@ const mainStats = computed(() => {
     hpPctEntries.push({  source: 'V5 灵根共鸣', pct: lrb });
   }
 
+  // 4e'') V5 元始天尊套装：累加各档常驻 atk/def/hp/spd_pct（3/5/7 件套是触发类效果，无 atk_pct 等字段，自动跳过）
+  if (yuanshiCount.value >= 1) {
+    const note = `${yuanshiCount.value}/7 件`;
+    let yAtk = 0, yDef = 0, yHp = 0, ySpd = 0;
+    for (const eff of getV5LegendarySetActiveEffects(yuanshiCount.value)) {
+      const e = eff.effect as any;
+      if (typeof e.atk_pct === 'number') yAtk += e.atk_pct;
+      if (typeof e.def_pct === 'number') yDef += e.def_pct;
+      if (typeof e.hp_pct  === 'number') yHp  += e.hp_pct;
+      if (typeof e.spd_pct === 'number') ySpd += e.spd_pct;
+    }
+    if (yAtk > 0) atkPctEntries.push({ source: 'V5 元始天尊套装', pct: yAtk, note });
+    if (yDef > 0) defPctEntries.push({ source: 'V5 元始天尊套装', pct: yDef, note });
+    if (yHp  > 0) hpPctEntries.push({  source: 'V5 元始天尊套装', pct: yHp,  note });
+    if (ySpd > 0) spdPctEntries.push({ source: 'V5 元始天尊套装', pct: ySpd, note });
+  }
+
   // 4f) 宗门等级
   const sect = sectInfo.value;
   if (sect && sect.sect) {
@@ -8411,6 +8428,7 @@ import {
   v5AnySheng as _v5AnySheng,
   v5PrevSlotIndex as _v5PrevSlot,
   V5_WUXING_PREFIX_ZH as _V5_PREFIX_ZH,
+  getV5LegendarySetActiveEffects,
   type V5EquippedItem as _V5EquippedItem,
   type WuxingPrefix as _WuxingPrefix,
 } from '~/shared/balance-v5'
