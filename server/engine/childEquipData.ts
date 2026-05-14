@@ -51,8 +51,8 @@ export function generateChildEquipment(slot: ChildSlot, rarity: ChildRarity, chi
   if (slot === 'weapon') {
     primary = { stat: 'atk', value: Math.floor(5 * lvBase * mul) }
   } else if (slot === 'robe') {
-    // 2026-05-13 上调：20 → 35（配合 calcChildBaseStats hp 系数上调，让装备贡献也跟着翻）
-    primary = { stat: 'max_hp', value: Math.floor(35 * lvBase * mul) }
+    // 2026-05-14 再上调 ×2：35 → 70（配合 calcChildBaseStats hp 系数微调 +10%，装备 hp 占比进一步拉高）
+    primary = { stat: 'max_hp', value: Math.floor(70 * lvBase * mul) }
   } else {
     // 饰品 50/50 防御 or 速度
     if (Math.random() < 0.5) {
@@ -93,7 +93,7 @@ export function generateChildEquipment(slot: ChildSlot, rarity: ChildRarity, chi
     else if (stat === 'spirit')      value = Math.floor(0.5 * lvBase * mul * 0.3)    // 神识：30% 同档基础
     else if (stat === 'atk')         value = Math.floor(2 * lvBase * mul * 0.3)
     else if (stat === 'def')         value = Math.floor(1.5 * lvBase * mul * 0.3)
-    else if (stat === 'max_hp')      value = Math.floor(14 * lvBase * mul * 0.3)  // 2026-05-13: 8 → 14
+    else if (stat === 'max_hp')      value = Math.floor(28 * lvBase * mul * 0.3)  // 2026-05-14: 14 → 28 (×2)
     else if (stat === 'spd')         value = Math.floor(1 * lvBase * mul * 0.3)
     sub_stats.push({ stat, value })
   }
