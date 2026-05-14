@@ -811,9 +811,12 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   //   更大发挥窗口；攻击守恒玩家承伤（实测 sim ATK×0.60 让 T1-T7 承伤 0.93~1.07× baseline）。
   //   见 test/sim-hp2x-atk065.ts 验证脚本与 design/numerical-balance.md v3.8。
   // 2026-05-06: 怪物整体加强 — HP/ATK ×1.05，DEF ×0.95
-  let MONSTER_HP_MUL  = 0.924;  // v3.8: 0.44 × 2 → ×1.05
+  // 2026-05-14: 全图（含通天塔）DEF ×0.6 / HP ×1.2 — 降低"高 DEF 怪打不动"的体感，
+  //   等效血量按 atkDefRatio=ATK/(ATK+0.8·DEF) 推导 R0≈30%~40% 减伤段 eHP 守恒，
+  //   实际 +18% HP 中位，取整 +20% 偏怪略肉 1%~3%。Trait 全为乘数，通天塔等比跟随。
+  let MONSTER_HP_MUL  = 1.1088; // v3.8: 0.44 × 2 → ×1.05 → ×1.20 (2026-05-14)
   let MONSTER_ATK_MUL = 0.3906; // v3.8: 0.62 × 0.6 → ×1.05
-  let MONSTER_DEF_MUL = 0.418;  // 0.44 × 0.95
+  let MONSTER_DEF_MUL = 0.2508; // 0.44 × 0.95 → ×0.60 (2026-05-14)
   const MONSTER_SPD_MUL = 0.96;
   // v3.7.1 二次微调：
   //   - T5+ 攻击 ×0.80（中后期玩家被怪压太狠，整体降攻）
