@@ -6306,6 +6306,7 @@ function getSkillLevel(type: string, slotIndex: number, skillId: string): number
 const DEBUFF_NAMES: Record<string, string> = {
   burn: '灼烧', poison: '中毒', bleed: '流血', freeze: '冻结',
   stun: '眩晕', slow: '减速', brittle: '脆弱', atk_down: '降攻',
+  def_down: '降防', spd_down: '降身法',
   root: '束缚', silence: '封印',
 };
 const ELEM_NAMES: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' };

@@ -173,6 +173,7 @@ export interface MultiBattleResult {
 const DEBUFF_NAMES: Record<string, string> = {
   burn: '灼烧', poison: '中毒', bleed: '流血', freeze: '冻结',
   stun: '眩晕', slow: '减速', brittle: '脆弱', atk_down: '降攻',
+  def_down: '降防', spd_down: '降身法',
   root: '束缚', silence: '封印',
 }
 
@@ -571,6 +572,8 @@ export function runPvpBattle(
     else if (debuff.type === 'bleed') text += ` (每回合 ${dmg} 流血)`
     else if (debuff.type === 'brittle') text += ` (受伤+${((effValue || 0.15) * 100).toFixed(0)}%)`
     else if (debuff.type === 'atk_down') text += ` (攻击-${((effValue || 0.15) * 100).toFixed(0)}%)`
+    else if (debuff.type === 'def_down') text += ` (防御-${((effValue || 0.15) * 100).toFixed(0)}%)`
+    else if (debuff.type === 'spd_down') text += ` (身法-${((effValue || 0.15) * 100).toFixed(0)}%)`
     else if (debuff.type === 'slow') text += ` (必定后攻)`
     else if (debuff.type === 'silence') text += ` (无法使用神通)`
     log({ turn, type: 'normal', text: `  ${text}${tianshiTag}${resonanceTag}` })

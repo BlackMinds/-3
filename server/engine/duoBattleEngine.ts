@@ -422,6 +422,8 @@ export function runDuoWaveBattle(
     else if (debuff.type === 'bleed') text += ` (每回合 ${dmg} 流血)`;
     else if (debuff.type === 'brittle') text += ` (受伤+${(((effValue || 0.15)) * 100).toFixed(0)}%)`;
     else if (debuff.type === 'atk_down') text += ` (攻击-${(((effValue || 0.15)) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'def_down') text += ` (防御-${(((effValue || 0.15)) * 100).toFixed(0)}%)`;
+    else if (debuff.type === 'spd_down') text += ` (身法-${(((effValue || 0.15)) * 100).toFixed(0)}%)`;
     else if (debuff.type === 'silence') text += ` (无法使用神通)`;
     logs.push({ turn, text: `  ${text}${tag}`, type: 'normal', ...snap() });
 
