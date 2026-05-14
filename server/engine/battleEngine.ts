@@ -1981,7 +1981,7 @@ export function runWaveBattle(
         totalStone += stone;
         monstersKilled.push({ template: m.template });
         if (m.template.role === 'boss' && turn <= 3) battleStats.bossKilledByTurn3 = true;
-        logs.push({ turn, text: `${m.stats.name}因持续伤害死亡，获得 ${exp} 修为、${stone} 灵石`, type: 'kill', ...snap() });
+        logs.push({ turn, text: `${m.stats.name}因持续伤害死亡，获得 ${exp} 修为`, type: 'kill', ...snap() });
       }
     }
 

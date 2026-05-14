@@ -685,7 +685,7 @@ export function runDuoWaveBattle(
       monstersKilled.push({ template: target.template });
       logs.push({
         turn,
-        text: `${target.stats.name}被${killerName}击杀，获得 ${exp} 修为、${stone} 灵石`,
+        text: `${target.stats.name}被${killerName}击杀，获得 ${exp} 修为`,
         type: 'kill',
         ...snap(),
       });
@@ -1319,7 +1319,7 @@ export function runDuoWaveBattle(
         totalExp += exp;
         totalStone += stone;
         monstersKilled.push({ template: m.template });
-        logs.push({ turn, text: `${m.stats.name}因持续伤害死亡，获得 ${exp} 修为、${stone} 灵石`, type: 'kill', ...snap() });
+        logs.push({ turn, text: `${m.stats.name}因持续伤害死亡，获得 ${exp} 修为`, type: 'kill', ...snap() });
       }
     }
     // DOT 已全部清场？
