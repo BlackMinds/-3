@@ -19,6 +19,7 @@ import {
 import { checkAchievements } from '~/server/engine/achievementData'
 import { ACTIVE_SKILLS } from '~/server/engine/skillData'
 import { COMPANION_SEAL_PCT } from '~/shared/balance'
+import { prepareChildAssist, attachChildAssistToChar } from '~/server/utils/childAssist'
 // "今日"判定全部走 SQL 层 (NOW() AT TIME ZONE 'UTC')::DATE，北京时间 8:00 重置（与秘境一致）
 
 // v3.9 紫品主修池（仅通天塔每 10 层节点掉落）
@@ -133,6 +134,10 @@ export default defineEventHandler(async (event) => {
       if (pct > 0) (char as any)._companion_seal_pct = pct
     }
 
+    // 助战子女（design 5.6.2/5.6.3 + V2 血脉功法）：与普通战斗同源
+    const assistPrep = await prepareChildAssist(pool, char)
+    if (assistPrep) attachChildAssistToChar(char, assistPrep)
+
     const equippedSkills = buildEquippedSkillInfo(skillRows)
     const { stats: playerStats } = buildPlayerStats(char, equipRows, buffRows, caveRows, equippedSkills)
 
@@ -140,8 +145,35 @@ export default defineEventHandler(async (event) => {
     const setup = buildFloorMonsters(floor)
     if (!setup) return { code: 500, message: '层配置生成失败' }
 
-    // 跑战斗
-    const outcome = runTowerBattle(playerStats, setup, equippedSkills)
+    // 跑战斗：有助战子女 → 走真双人引擎
+    const duoAssistStats = (char as any)._duo_assist_stats
+    const duoAssistSkills: any[] = (char as any)._duo_assist_skills || []
+    const assistInput = duoAssistStats
+      ? { stats: duoAssistStats, innateSkills: duoAssistSkills }
+      : null
+    const outcome = runTowerBattle(playerStats, setup, equippedSkills, assistInput)
+
+    // 助战子女提示：在战斗 logs 顶部插入 1 条（与普通战斗同口径）
+    if ((char as any)._child_battle_label) {
+      const addA = (char as any)._child_battle_atk || 0
+      const addD = (char as any)._child_battle_def || 0
+      const addH = (char as any)._child_battle_hp || 0
+      const talentN = (char as any)._child_talents_count || 0
+      outcome.logs.unshift({
+        turn: 0,
+        text: `⚔ 助战中：${(char as any)._child_battle_label}（攻 +${addA} / 防 +${addD} / 血 +${addH}${talentN ? ` / 天赋 ×${talentN}` : ''}）`,
+        type: 'system',
+        playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0,
+      } as any)
+    }
+
+    // 战后子女面板（含真双人引擎跑出的 finalAssistHp）
+    const childBattleData = (char as any)._child_battle_data
+      ? {
+          ...(char as any)._child_battle_data,
+          hp: outcome.finalAssistHp ?? (char as any)._child_battle_data.maxHp,
+        }
+      : null
 
     // ===== 入库与奖励 =====
     let newMaxFloor = maxFloor
@@ -322,6 +354,7 @@ export default defineEventHandler(async (event) => {
           unlocked_title: unlockedTitle,
           permanent_bonus_pct: permanentBonusPct,
           purple_skill_drops: purpleSkillDrops,
+          child_battle_data: childBattleData,
         },
         state_after: {
           max_floor: newMaxFloor,

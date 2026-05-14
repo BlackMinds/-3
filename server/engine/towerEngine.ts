@@ -14,6 +14,7 @@ import {
   type WaveBattleResult,
   type BattleLogEntry,
 } from './battleEngine'
+import { runDuoWaveBattle, type DuoAssistInput, type DuoWaveBattleResult } from './duoBattleEngine'
 import { applyTraits } from './towerTraits'
 import { getFloorDef, TURN_LIMIT_PER_FLOOR, type FloorDef, type FloorMonster } from './towerData'
 
@@ -49,6 +50,8 @@ export interface TowerBattleOutcome {
   totalTurns: number
   damageDealt: number
   damageTaken: number
+  /** 助战子女最终 hp（无助战时为 null）— 供 challenge.post.ts 回填 child_battle_data */
+  finalAssistHp: number | null
   /** 怪物起手数据（前端展示用） */
   monstersInfo: Array<{
     name: string
@@ -69,11 +72,12 @@ export interface TowerBattleOutcome {
   }>
 }
 
-/** 跑一场塔战斗 */
+/** 跑一场塔战斗（assistInput 非 null 时走真双人引擎） */
 export function runTowerBattle(
   playerStats: BattlerStats,
   setup: TowerBattleSetup,
   equippedSkills?: EquippedSkillInfo,
+  assistInput?: DuoAssistInput | null,
 ): TowerBattleOutcome {
   // 准备 runWaveBattle 入参
   const monsterList = setup.monsters.map(m => ({
@@ -81,12 +85,13 @@ export function runTowerBattle(
     template: m.template,
   }))
 
-  // ⚠️ runWaveBattle 内部会用 monsterList[].stats 的副本，
-  // 它会把每场玩家 HP 重置为 playerStats.maxHp，buffs/debuffs 清空，
-  // 这正好对应通天塔"每层重置"的需求。
+  // ⚠️ runWaveBattle / runDuoWaveBattle 内部都会把玩家 HP 重置为 maxHp，buffs/debuffs 清空，
+  // 对应通天塔"每层重置"的需求。
   // 通天塔单层固定 TURN_LIMIT_PER_FLOOR 回合上限（不随怪数缩放），
   // 防"龟缩流"无限拖延；超时判失败由 challenge.post.ts 根据 won=false 处理。
-  const result: WaveBattleResult = runWaveBattle(playerStats, monsterList, equippedSkills, TURN_LIMIT_PER_FLOOR)
+  const result: WaveBattleResult | DuoWaveBattleResult = assistInput
+    ? runDuoWaveBattle(playerStats, assistInput, monsterList, equippedSkills, TURN_LIMIT_PER_FLOOR)
+    : runWaveBattle(playerStats, monsterList, equippedSkills, TURN_LIMIT_PER_FLOOR)
 
   // 统计伤害（从日志近似计算）
   let damageDealt = 0
@@ -147,12 +152,14 @@ export function runTowerBattle(
     ? Math.max(0, result.logs[result.logs.length - 1].turn || 0)
     : 0
 
+  const finalAssistHp = (result as DuoWaveBattleResult).finalAssistHp
   return {
     won: result.won,
     logs: result.logs,
     totalTurns,
     damageDealt,
     damageTaken,
+    finalAssistHp: typeof finalAssistHp === 'number' ? finalAssistHp : null,
     monstersInfo,
   }
 }
