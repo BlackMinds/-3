@@ -85,6 +85,16 @@ export default defineEventHandler(async (event) => {
 
     checkAchievements(char.id, 'cave_build', 1).catch(() => {})
 
+    // 洞府建筑数 & 最高等级（阈值类成就）
+    const { rows: caveStat } = await pool.query(
+      'SELECT COUNT(*)::int AS cnt, COALESCE(MAX(level), 0) AS max_lv FROM character_cave WHERE character_id = $1 AND level > 0',
+      [char.id]
+    )
+    if (caveStat[0]) {
+      if (caveStat[0].cnt > 0) checkAchievements(char.id, 'cave_building_count', caveStat[0].cnt).catch(() => {})
+      if (caveStat[0].max_lv > 0) checkAchievements(char.id, 'cave_max_level', caveStat[0].max_lv).catch(() => {})
+    }
+
     return {
       code: 200,
       message: finishTime ? `升级中,${upgradeTime}秒后完成` : '升级成功',

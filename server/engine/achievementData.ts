@@ -26,9 +26,9 @@ export interface AchievementDef {
   title?: string;    // 解锁称号
 }
 
-// ========== 成就定义 (87个) ==========
+// ========== 成就定义 (107个) ==========
 export const ACHIEVEMENTS: AchievementDef[] = [
-  // ===== 道途·修炼 (16) =====
+  // ===== 道途·修炼 (15) =====
   { id: 'dao_01', name: '踏入仙途', desc: '创建角色', category: 'dao', type: 'threshold', target: 1, event: 'char_created', reward: { spirit_stone: 500 } },
   { id: 'dao_02', name: '初窥门径', desc: '达到练气九层', category: 'dao', type: 'threshold', target: 9, event: 'qi_stage', reward: { spirit_stone: 2000 } },
   { id: 'dao_03', name: '筑基成功', desc: '突破至筑基境界', category: 'dao', type: 'threshold', target: 2, event: 'realm_tier', reward: { spirit_stone: 5000, equip_box: 'normal', equip_box_count: 1 }, title: '筑基修士' },
@@ -42,11 +42,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'dao_11', name: '修为精进', desc: '等级达到100', category: 'dao', type: 'threshold', target: 100, event: 'char_level', reward: { spirit_stone: 30000, equip_box: 'fine', equip_box_count: 1 } },
   { id: 'dao_12', name: '登峰造极', desc: '等级达到150', category: 'dao', type: 'threshold', target: 150, event: 'char_level', reward: { spirit_stone: 80000, equip_box: 'fine', equip_box_count: 2 } },
   { id: 'dao_13', name: '万法归一', desc: '等级达到200', category: 'dao', type: 'threshold', target: 200, event: 'char_level', reward: { spirit_stone: 500000, equip_box: 'legend', equip_box_count: 3 }, title: '万法宗师' },
-  { id: 'dao_15', name: '日夜不辍', desc: '累计离线挂机100小时', category: 'dao', type: 'counter', target: 100, event: 'offline_hours', reward: { spirit_stone: 30000, skill_box: 'fine', skill_box_count: 1 }, title: '苦修者' },
-  { id: 'dao_16', name: '混元归一', desc: '等级达到300', category: 'dao', type: 'threshold', target: 300, event: 'char_level', reward: { spirit_stone: 2000000, equip_box: 'legend', equip_box_count: 5 }, title: '混元道祖' },
+    { id: 'dao_16', name: '混元归一', desc: '等级达到300', category: 'dao', type: 'threshold', target: 300, event: 'char_level', reward: { spirit_stone: 2000000, equip_box: 'legend', equip_box_count: 5 }, title: '混元道祖' },
   { id: 'dao_17', name: '道果圆满', desc: '等级达到400', category: 'dao', type: 'threshold', target: 400, event: 'char_level', reward: { spirit_stone: 5000000, equip_box: 'legend', equip_box_count: 8 }, title: '道果至尊' },
 
-  // ===== 历练·战斗 (18) =====
+  // ===== 历练·战斗 (21) =====
   { id: 'bat_01', name: '初出茅庐', desc: '完成第1场战斗', category: 'battle', type: 'counter', target: 1, event: 'battle_count', reward: { spirit_stone: 100 } },
   { id: 'bat_02', name: '百战不殆', desc: '累计战斗100场', category: 'battle', type: 'counter', target: 100, event: 'battle_count', reward: { spirit_stone: 2000 } },
   { id: 'bat_03', name: '千锤百炼', desc: '累计战斗1,000场', category: 'battle', type: 'counter', target: 1000, event: 'battle_count', reward: { spirit_stone: 10000, equip_box: 'normal', equip_box_count: 1 }, title: '百战勇士' },
@@ -57,8 +56,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'bat_08', name: '诛魔猎手', desc: '累计击杀100只Boss', category: 'battle', type: 'counter', target: 100, event: 'boss_kill', reward: { spirit_stone: 30000, skill_box: 'fine', skill_box_count: 1 }, title: '诛魔者' },
   { id: 'bat_09', name: '踏遍青山', desc: '解锁10张地图', category: 'battle', type: 'threshold', target: 10, event: 'map_unlocked', reward: { spirit_stone: 5000 } },
   { id: 'bat_10', name: '万界行者', desc: '解锁全部25张地图', category: 'battle', type: 'threshold', target: 25, event: 'map_unlocked', reward: { spirit_stone: 50000, equip_box: 'legend', equip_box_count: 1 }, title: '万界行者' },
-  { id: 'bat_11', name: '灵石猎人', desc: '累计获得100万灵石', category: 'battle', type: 'counter', target: 1000000, event: 'total_stone', reward: { spirit_stone: 20000 } },
-  { id: 'bat_12', name: '灵石巨富', desc: '累计获得1000万灵石', category: 'battle', type: 'counter', target: 10000000, event: 'total_stone', reward: { spirit_stone: 100000, equip_box: 'fine', equip_box_count: 1 }, title: '散财仙人' },
   { id: 'bat_13', name: '修为如山', desc: '累计获得100万修为', category: 'battle', type: 'counter', target: 1000000, event: 'total_exp', reward: { spirit_stone: 10000, skill_box: 'normal', skill_box_count: 1 } },
   { id: 'bat_14', name: '五行克敌', desc: '利用五行相克获胜100次', category: 'battle', type: 'counter', target: 100, event: 'element_win', reward: { spirit_stone: 8000 }, title: '五行道人' },
   { id: 'bat_15', name: '起死回生', desc: '战斗中吸血回满血', category: 'battle', type: 'counter', target: 1, event: 'lifesteal_full', reward: { spirit_stone: 3000 } },
@@ -124,12 +121,11 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'sec_07', name: '任务狂人', desc: '完成50个宗门日常任务', category: 'sect', type: 'counter', target: 50, event: 'sect_daily_task', reward: { spirit_stone: 20000, equip_box: 'fine', equip_box_count: 1 } },
   { id: 'sec_08', name: '位极人臣', desc: '成为宗门长老及以上', category: 'sect', type: 'counter', target: 1, event: 'sect_elder', reward: { spirit_stone: 10000 } },
 
-  // ===== 传说·隐藏 (5) =====
+  // ===== 传说·隐藏 (4) =====
   { id: 'hid_01', name: '天选之人', desc: '首次登录游戏', category: 'hidden', type: 'counter', target: 1, event: 'first_login', reward: { spirit_stone: 1000 }, title: '天选之人' },
-  { id: 'hid_02', name: '一夜暴富', desc: '单次离线获得超过50万灵石', category: 'hidden', type: 'counter', target: 1, event: 'offline_rich', reward: { spirit_stone: 30000, equip_box: 'fine', equip_box_count: 1 } },
   { id: 'hid_03', name: '欧皇降临', desc: '+0直接强化到+8无失败', category: 'hidden', type: 'counter', target: 1, event: 'enhance_lucky', reward: { spirit_stone: 50000, equip_box: 'legend', equip_box_count: 1 }, title: '欧皇' },
   { id: 'hid_04', name: '非酋附体', desc: '连续强化失败10次', category: 'hidden', type: 'counter', target: 1, event: 'enhance_unlucky', reward: { spirit_stone: 10000, skill_box: 'fine', skill_box_count: 1 }, title: '非酋' },
-  { id: 'hid_05', name: '万界至尊', desc: '完成所有非隐藏成就', category: 'hidden', type: 'threshold', target: 81, event: 'total_completed', reward: { spirit_stone: 1000000, equip_box: 'legend', equip_box_count: 5, skill_box: 'legend', skill_box_count: 3 }, title: '万界至尊' },
+  { id: 'hid_05', name: '万界至尊', desc: '完成所有非隐藏成就', category: 'hidden', type: 'threshold', target: 103, event: 'total_completed', reward: { spirit_stone: 1000000, equip_box: 'legend', equip_box_count: 5, skill_box: 'legend', skill_box_count: 3 }, title: '万界至尊' },
 
   // ===== 宗门战 · 论道之星 =====
   { id: 'sect_war_mvp_1', name: '论道之星', desc: '宗门战单挑 MVP 1 次', category: 'sect', type: 'counter', target: 1, event: 'sect_war_mvp', reward: { spirit_stone: 20000 }, title: '论道之星' },
@@ -191,13 +187,11 @@ export const TITLES: Record<string, TitleDef> = {
   '大乘至尊': { id: '大乘至尊', name: '大乘至尊', quality: 'purple' },
   '飞升仙尊': { id: '飞升仙尊', name: '飞升仙尊', quality: 'purple' },
   '万法宗师': { id: '万法宗师', name: '万法宗师', quality: 'purple' },
-  '苦修者':   { id: '苦修者',   name: '苦修者',   quality: 'green' },
   '百战勇士': { id: '百战勇士', name: '百战勇士', quality: 'green' },
   '万战老兵': { id: '万战老兵', name: '万战老兵', quality: 'blue' },
   '杀伐之主': { id: '杀伐之主', name: '杀伐之主', quality: 'purple' },
   '诛魔者':   { id: '诛魔者',   name: '诛魔者',   quality: 'blue' },
   '万界行者': { id: '万界行者', name: '万界行者', quality: 'blue' },
-  '散财仙人': { id: '散财仙人', name: '散财仙人', quality: 'blue' },
   '五行道人': { id: '五行道人', name: '五行道人', quality: 'green' },
   '百炼宗师': { id: '百炼宗师', name: '百炼宗师', quality: 'purple' },
   '神器之主': { id: '神器之主', name: '神器之主', quality: 'purple' },
@@ -389,8 +383,8 @@ export async function checkAchievements(charId: number, event: string, value: nu
   // 检查 "万界至尊" 终极成就
   if (event !== 'total_completed' && completed.length > 0) {
     const countResult = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM character_achievements WHERE character_id = $1 AND completed = true`,
-      [charId]
+      `SELECT COUNT(*) AS cnt FROM character_achievements WHERE character_id = $1 AND completed = true AND achievement_id NOT LIKE $2`,
+      [charId, 'hid\\_%']
     );
     const totalCompleted = countResult.rows[0]?.cnt || 0;
     const extra = await checkAchievements(charId, 'total_completed', totalCompleted);

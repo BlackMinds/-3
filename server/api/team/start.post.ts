@@ -710,7 +710,6 @@ export default defineEventHandler(async (event) => {
         // --- 成就触发（异步不阻塞） ---
         if (result.won) {
           checkAchievements(c.characterId, 'battle_count', 1).catch(() => {})
-          checkAchievements(c.characterId, 'total_stone', myStone).catch(() => {})
           checkAchievements(c.characterId, 'total_exp', myExp).catch(() => {})
           const bossCount = result.killedMonsters.filter(k => k.isBoss).length
           if (bossCount > 0) checkAchievements(c.characterId, 'boss_kill', bossCount).catch(() => {})

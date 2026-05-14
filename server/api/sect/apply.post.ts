@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId } from '~/server/utils/sect'
 import { SECT_JOIN_MIN_LEVEL, SECT_QUIT_COOLDOWN_HOURS, getSectLevelConfig } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -53,6 +54,7 @@ export default defineEventHandler(async (event) => {
       await client.query('UPDATE characters SET sect_id = $1, sect_quit_time = NULL WHERE id = $2', [sect_id, char.id])
       await client.query('UPDATE sect_skills SET frozen = FALSE WHERE character_id = $1', [char.id])
       await client.query('COMMIT')
+      checkAchievements(char.id, 'sect_join', 1).catch(() => {})
       return { code: 200, message: `已加入【${sect.name}】` }
     }
 

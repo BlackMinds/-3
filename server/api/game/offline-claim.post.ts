@@ -338,10 +338,6 @@ export default defineEventHandler(async (event) => {
     }
 
     // 成就
-    const offlineHours = Math.floor(simulateMin / 60)
-    if (offlineHours > 0) checkAchievements(char.id, 'offline_hours', offlineHours).catch(() => {})
-    if (stoneGained >= 500000) checkAchievements(char.id, 'offline_rich', 1).catch(() => {})
-    checkAchievements(char.id, 'total_stone', stoneGained).catch(() => {})
     checkAchievements(char.id, 'total_exp', expGained).catch(() => {})
     checkAchievements(char.id, 'char_level', newLevel).catch(() => {})
     checkAchievements(char.id, 'skill_pages', actualSkillCount).catch(() => {})

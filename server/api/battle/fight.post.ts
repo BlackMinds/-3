@@ -1384,7 +1384,6 @@ export default defineEventHandler(async (event) => {
           const bossCount = result.monstersKilled.filter(m => m.template.role === 'boss').length
           checkAchievements(char.id, 'boss_kill', bossCount).catch(() => {})
         }
-        checkAchievements(char.id, 'total_stone', totalStone).catch(() => {})
         checkAchievements(char.id, 'total_exp', totalExp).catch(() => {})
         for (const drop of allDrops) {
           if (drop.type === 'equipment') {

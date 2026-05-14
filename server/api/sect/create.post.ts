@@ -3,6 +3,7 @@ import { getCharByUserId, getMembership } from '~/server/utils/sect'
 import {
   SECT_CREATE_COST, SECT_CREATE_MIN_REALM_TIER, SECT_CREATE_MIN_LEVEL,
 } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -65,6 +66,11 @@ export default defineEventHandler(async (event) => {
     await client.query('UPDATE sect_skills SET frozen = FALSE WHERE character_id = $1', [char.id])
 
     await client.query('COMMIT')
+
+    checkAchievements(char.id, 'sect_join', 1).catch(() => {})
+    checkAchievements(char.id, 'sect_create', 1).catch(() => {})
+    checkAchievements(char.id, 'sect_elder', 1).catch(() => {})
+
     return { code: 200, message: `宗门【${name}】创建成功`, data: { sectId } }
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})

@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId, getMembership } from '~/server/utils/sect'
 import { ROLE_HIERARCHY, ROLE_NAMES, ROLE_MAX_COUNT, ROLE_CONTRIBUTION_REQ } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -38,6 +39,10 @@ export default defineEventHandler(async (event) => {
     }
 
     await pool.query('UPDATE sect_members SET role = $1 WHERE sect_id = $2 AND character_id = $3', [role, membership.sect_id, target_character_id])
+
+    if (['elder', 'vice_leader', 'leader'].includes(role)) {
+      checkAchievements(target_character_id, 'sect_elder', 1).catch(() => {})
+    }
 
     return { code: 200, message: `已任命为${ROLE_NAMES[role]}` }
   } catch (error) {

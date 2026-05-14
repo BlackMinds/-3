@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 import { getCharByUserId, getMembership } from '~/server/utils/sect'
 import { ROLE_HIERARCHY, getSectLevelConfig } from '~/server/engine/sectData'
+import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   const pool = getPool()
@@ -70,6 +71,7 @@ export default defineEventHandler(async (event) => {
     await client.query('UPDATE sect_skills SET frozen = FALSE WHERE character_id = $1', [app.character_id])
 
     await client.query('COMMIT')
+    checkAchievements(app.character_id, 'sect_join', 1).catch(() => {})
     return { code: 200, message: '已批准' }
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})

@@ -122,6 +122,13 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // 功法齐备：已装备槽位数
+    const equippedCount = Array.isArray(equipped) ? equipped.length : 0
+    if (equippedCount > 0) checkAchievements(charId, 'skill_slots_filled', equippedCount).catch(() => {})
+    // 博学多才/万法皆通：拥有的不同功法种类数
+    const typesOwned = Object.keys(invLevelMap).length
+    if (typesOwned > 0) checkAchievements(charId, 'skill_types_owned', typesOwned).catch(() => {})
+
     return { code: 200, message: '装备保存成功' }
   } catch (error) {
     console.error('保存装备失败:', error)
