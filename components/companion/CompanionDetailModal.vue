@@ -168,11 +168,12 @@
             <button
               v-for="recipe in giftCatalog"
               :key="recipe.id"
-              :class="['gift-row', { 'is-loved': isLoved(recipe.id), 'is-disliked': isDisliked(recipe.id) }]"
+              :class="['gift-row', { 'is-loved': isLoved(recipe.id), 'is-disliked': isDisliked(recipe.id), 'is-empty': giftCount(recipe.id) <= 0 }]"
               @click="confirmGift(recipe.id)"
-              :disabled="store.acting"
+              :disabled="store.acting || giftCount(recipe.id) <= 0"
             >
               <span class="gift-name">{{ recipe.name }}</span>
+              <span class="gift-count">×{{ giftCount(recipe.id) }}</span>
               <span class="gift-rarity">{{ rarityLabel(recipe.rarity) }}</span>
               <span class="gift-base">基础 +{{ recipe.baseIntimacy }} 亲密度</span>
               <span v-if="isLoved(recipe.id)" class="reaction love">喜爱 ×1.5</span>
@@ -212,7 +213,17 @@ const emit = defineEmits<{ (e: 'close'): void }>()
 const store = useCompanionStore()
 const detail = ref<CompanionDetail | null>(null)
 const giftPanelOpen = ref(false)
+const giftInventory = ref<Record<string, number>>({})
 const toast = ref('')
+
+async function loadGiftInventory() {
+  const api = useApi()
+  const res = await api<{ code: number; data?: { inventory: Record<string, number> } }>('/companion/gift-inventory')
+  if (res.code === 200 && res.data) giftInventory.value = res.data.inventory
+}
+function giftCount(giftId: string): number {
+  return giftInventory.value[giftId] || 0
+}
 
 const SEAL_STATS = COMPANION_SEAL_PCT.map(p => Math.round(p * 100))
 const SEAL_COSTS = [0, 0, 500, 2000, 8000, 30000]  // LV1 是结侣赠送
@@ -310,7 +321,10 @@ const ITEM_NAMES: Record<string, string> = {
 function itemName(id: string): string { return ITEM_NAMES[id] || id }
 
 function close() { emit('close') }
-function openGift() { giftPanelOpen.value = true }
+function openGift() {
+  giftPanelOpen.value = true
+  loadGiftInventory()
+}
 
 async function onMarry() {
   if (!detail.value) return
@@ -447,10 +461,15 @@ async function confirmDivorce() {
 
 async function confirmGift(giftId: string) {
   if (!detail.value) return
+  if (giftCount(giftId) <= 0) {
+    showToast('库存不足')
+    return
+  }
   const res = await store.giftCompanion(detail.value.id, giftId, 1)
   showToast(res.message || (res.ok ? '赠送成功' : res.message || '赠送失败'))
   if (res.ok) {
     detail.value = await store.loadDetail(props.companionId, true)
+    await loadGiftInventory()
   }
 }
 
@@ -712,7 +731,7 @@ onMounted(async () => {
   display: flex; flex-direction: column; gap: 6px;
 }
 .gift-row {
-  display: grid; grid-template-columns: 1fr auto auto auto;
+  display: grid; grid-template-columns: 1fr auto auto auto auto;
   align-items: center; gap: 8px;
   padding: 8px 12px; border-radius: 6px;
   background: rgba(40,20,60,0.6); border: 1px solid #3a2050;
@@ -725,7 +744,10 @@ onMounted(async () => {
 .gift-row:disabled { opacity: 0.5; cursor: not-allowed; }
 .gift-row.is-loved { border-color: #ffd700; }
 .gift-row.is-disliked { border-color: #d4514c; opacity: 0.7; }
+.gift-row.is-empty { opacity: 0.45; }
 .gift-name { color: #fff; font-weight: bold; }
+.gift-count { color: #a8e0bc; font-size: 12px; font-weight: bold; min-width: 36px; text-align: right; }
+.gift-row.is-empty .gift-count { color: #d4514c; }
 .gift-rarity { color: #c8a8ff; font-size: 11px; }
 .gift-base { color: #aaa; font-size: 11px; }
 .reaction { font-size: 11px; padding: 1px 6px; border-radius: 6px; font-weight: bold; }
