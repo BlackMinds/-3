@@ -984,15 +984,26 @@
               </div>
             </div>
 
-            <button
-              class="alchemy-craft-btn"
-              v-if="currentRecipe"
-              @click="craftPill(currentRecipe)"
-              :disabled="crafting || !canCraft(currentRecipe)"
-            >
-              <span class="craft-btn-text">开炉炼制</span>
-              <span class="craft-btn-sub">点火候开始</span>
-            </button>
+            <div v-if="currentRecipe" class="alchemy-craft-row">
+              <button
+                class="alchemy-craft-btn"
+                @click="craftPill(currentRecipe)"
+                :disabled="crafting || !canCraft(currentRecipe)"
+              >
+                <span class="craft-btn-text">开炉炼制</span>
+                <span class="craft-btn-sub">{{ currentRecipe.isGift ? '炼制 ×1' : '点火候开始' }}</span>
+              </button>
+              <button
+                v-if="currentRecipe.isGift"
+                class="alchemy-craft-btn alchemy-craft-btn-bulk"
+                @click="craftGiftBulk(currentRecipe)"
+                :disabled="crafting || getMaxGiftCraftCount(currentRecipe) <= 0"
+                :title="`按当前原料/灵石可炼 ${getMaxGiftCraftCount(currentRecipe)} 次`"
+              >
+                <span class="craft-btn-text">一键炼制</span>
+                <span class="craft-btn-sub">×{{ getMaxGiftCraftCount(currentRecipe) }}</span>
+              </button>
+            </div>
 
             <!-- 已有丹药 -->
             <div v-if="currentRecipe && getPillVariants(currentRecipe.id).length > 0" class="alchemy-variants">
@@ -7481,6 +7492,49 @@ async function craftGift(recipe: any) {
   }
 }
 
+// 礼制 — 按当前原料/灵石算可炼次数（与后端 craft-gift-bulk 同口径）
+function getMaxGiftCraftCount(recipe: any): number {
+  if (!(recipe as any).isGift || !gameStore.character) return 0
+  let maxByHerb = Infinity
+  for (const hc of recipe.herbCost) {
+    maxByHerb = Math.min(maxByHerb, Math.floor(getHerbCount(hc.herb_id) / hc.count))
+  }
+  const stone = Number(gameStore.character.spirit_stone || 0)
+  const maxByStone = recipe.cost > 0 ? Math.floor(stone / recipe.cost) : Infinity
+  const n = Math.min(maxByHerb, maxByStone)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+// 礼制 — 一键炼制（抽空为止），后端事务一次扣 N 份原料 + 加 N 份礼物
+async function craftGiftBulk(recipe: any) {
+  if (crafting.value || !(recipe as any).isGift) return
+  const maxN = getMaxGiftCraftCount(recipe)
+  if (maxN <= 0) {
+    showToast('原料或灵石不足', 'error')
+    return
+  }
+  crafting.value = true
+  try {
+    const res: any = await $fetch('/api/companion/craft-gift-bulk', {
+      method: 'POST',
+      body: { recipe_id: recipe.id },
+      headers: getAuthHeaders(),
+    })
+    if (res.code === 200) {
+      showToast(res.message || '炼制成功', 'success')
+      const totalStone = Number(res.data?.totalStone || 0)
+      if (totalStone > 0) gameStore.character!.spirit_stone -= totalStone
+      await loadHerbs()
+    } else {
+      showToast(res.message || '炼制失败', 'error')
+    }
+  } catch (e: any) {
+    showToast(e?.data?.message || '网络错误', 'error')
+  } finally {
+    crafting.value = false
+  }
+}
+
 async function useVariant(recipe: PillRecipe, variant: any) {
   try {
     const res: any = await $fetch('/api/pill/use', { method: 'POST', body: {
@@ -13568,7 +13622,12 @@ onUnmounted(() => {
 .preview-key { color: var(--ink-faint); letter-spacing: 2px; }
 .preview-val { color: var(--ink-medium); font-weight: 600; }
 
+.alchemy-craft-row {
+  display: flex;
+  gap: 8px;
+}
 .alchemy-craft-btn {
+  flex: 1;
   width: 100%;
   padding: 14px;
   background:
@@ -13588,6 +13647,15 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+}
+.alchemy-craft-btn-bulk {
+  background:
+    linear-gradient(135deg, rgba(168, 224, 188, 0.22) 0%, rgba(80, 168, 130, 0.18) 100%),
+    radial-gradient(circle at 50% 50%, rgba(120, 200, 160, 0.12), transparent 70%);
+  border-color: var(--jade);
+  color: var(--jade);
+  text-shadow: 0 0 10px rgba(168, 224, 188, 0.5);
+  box-shadow: 0 0 20px rgba(168, 224, 188, 0.1);
 }
 .alchemy-craft-btn::before {
   content: '';
