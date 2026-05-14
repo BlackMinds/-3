@@ -341,7 +341,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * 通天塔专用：触发 HUD 显示 + 日志逐条播放，但不发奖励、不调度下一场。
    * 与 applyBattleEntry 区别：pendingResult 始终为 null，onBattleLogsFinished 会早退。
-   * b 形状：{ monsterNames, monstersMaxHp, monsterInfo, monstersInfo, logs }
+   * b 形状：{ monsterNames, monstersMaxHp, monsterInfo, monstersInfo, logs, assistChild? }
    */
   function applyTowerBattleEntry(b: any) {
     if (!character.value) return
@@ -354,6 +354,16 @@ export const useGameStore = defineStore('game', () => {
     displayPlayerMaxHp.value = character.value.max_hp
     displayMonsterHp.value = b.monsterInfo?.maxHp || 0
     displayMonsterMaxHp.value = b.monsterInfo?.maxHp || 0
+
+    // 助战子女血条：满血起，drainLogQueue 跟随 log.assistHp 实时同步；onBattleLogsFinished 在通天塔模式早退，
+    // 所以这里把 finalHp/fainted 也存起来由 tower store 在播放完毕后兜底切换
+    if (b.assistChild) {
+      assistChildBattle.value = { ...b.assistChild, hp: b.assistChild.maxHp, fainted: false }
+      assistChildFinalHp.value = b.assistChild.hp
+      assistChildFainted.value = !!b.assistChild.fainted
+    } else {
+      assistChildBattle.value = null
+    }
 
     // 关键：不设 pendingResult，避免 onBattleLogsFinished 触发奖励/调度
     pendingResult.value = null

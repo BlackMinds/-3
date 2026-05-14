@@ -182,12 +182,26 @@ export const useTowerStore = defineStore('tower', () => {
           const monsterNames = monstersInfo.map((m: any) => m.name)
           const monstersMaxHp = monstersInfo.map((m: any) => m.maxHp)
           const monsterInfo = monstersInfo[0] || null
+          // 助战子女面板（与普通战斗 applyBattleEntry 同字段）
+          const cbd = (battle as any).child_battle_data
+          const assistChild = cbd ? {
+            name: cbd.name,
+            gender: cbd.gender,
+            aptitude: cbd.aptitude,
+            aptitudeName: cbd.aptitudeName,
+            level: cbd.level,
+            hp: cbd.hp,
+            maxHp: cbd.maxHp,
+            atk: cbd.atk,
+            fainted: cbd.hp <= 0,
+          } : null
           gs.applyTowerBattleEntry({
             monsterNames,
             monstersMaxHp,
             monsterInfo,
             monstersInfo,
             logs: battle.logs,
+            assistChild,
           })
 
           // 等播放完毕（onBattleLogsFinished 会清 inFight）
