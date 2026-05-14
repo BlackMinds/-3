@@ -775,9 +775,11 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   if (hits > 1) labelParts.push(`${hits}段`)
   const label = labelParts.length > 0 ? `（${labelParts.join('·')}）` : ''
 
-  // 套装伤害结算 helper（接 dmgVsFrozen / spearStacks 加成 / 血魔吸血 / 十三枪加层）
+  // 套装伤害结算 helper（接 dmgVsFrozen / spearStacks 加成 / 血魔吸血 / 十三枪加层 / v3.9 主修噬灵）
   const se = p.setEffects
-  const applySetDamage = (t: TeamMonster, rawDmg: number, isCrit: boolean, opts?: { chained?: boolean }): { final: number; lifestealHeal: number } => {
+  // v3.9 主修噬灵：仅主修攻击命中触发，按 maxHp×系数回血（与单人 battleEngine.ts 一致）
+  const mainSkillLsRate = isMainSkill ? ((p.stats as any).mainSkillLifesteal || 0) : 0
+  const applySetDamage = (t: TeamMonster, rawDmg: number, isCrit: boolean, opts?: { chained?: boolean }): { final: number; lifestealHeal: number; mainSkillHeal: number } => {
     let dmg = rawDmg
     if (se.dmgVsFrozen > 0 && t.frozenTurns > 0) dmg = Math.floor(dmg * (1 + se.dmgVsFrozen))
     if (se.spearActive && p.spearStacks > 0) {
@@ -799,6 +801,16 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       }
     }
 
+    // v3.9 主修噬灵（独立累计，避免与普通吸血混淆 — 命中即触发，与会心无关）
+    let mainSkillHeal = 0
+    if (mainSkillLsRate > 0 && dmg > 0 && p.stats.hp > 0 && p.stats.hp < p.stats.maxHp) {
+      const heal = Math.floor(p.stats.maxHp * mainSkillLsRate)
+      if (heal > 0) {
+        mainSkillHeal = Math.min(heal, p.stats.maxHp - p.stats.hp)
+        p.stats.hp += mainSkillHeal
+      }
+    }
+
     if (se.spearActive && !opts?.chained && p.spearStacks < se.spearMaxStacks) {
       const before = p.spearStacks
       const next = Math.min(se.spearMaxStacks, before + se.spearStackPerHit)
@@ -808,7 +820,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
         logs.push({ turn, text: `  ❖【十三枪】${p.name} 满 ${se.spearMaxStacks} 层！下一击必会心`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
       }
     }
-    return { final: dmg, lifestealHeal }
+    return { final: dmg, lifestealHeal, mainSkillHeal }
   }
 
   // ❖ 刀狂套：每次主攻命中后判定（会心清零叠加；非会心叠加 +1 层，cap 截断）
@@ -862,6 +874,7 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     if (t.stats.hp <= 0) continue
     let totalDmg = 0
     let totalHeal = 0
+    let totalMainHeal = 0
     let critFlag = false
     let dodgedHits = 0
     for (let h = 0; h < hits; h++) {
@@ -874,10 +887,11 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
         p.guaranteedCritNext = false
       }
       if (r.damage > 0) {
-        const { final, lifestealHeal } = applySetDamage(t, r.damage, r.isCrit)
+        const { final, lifestealHeal, mainSkillHeal } = applySetDamage(t, r.damage, r.isCrit)
         totalDmg += final
         if (r.isCrit) critFlag = true
         totalHeal += lifestealHeal
+        totalMainHeal += mainSkillHeal
         triggerBladeStack(r.isCrit)
       } else {
         dodgedHits++
@@ -886,9 +900,10 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     if (totalDmg > 0) {
       p.damageDealt += totalDmg
       const healSuffix = totalHeal > 0 ? `（吸血 +${totalHeal}）` : ''
+      const mainHealSuffix = totalMainHeal > 0 ? `（噬灵 +${totalMainHeal}）` : ''
       logs.push({
         turn,
-        text: `${p.name} ${critFlag ? '会心！' : ''}【${used.name}】${label}对 ${t.stats.name} 造成 ${totalDmg} 伤害${healSuffix}`,
+        text: `${p.name} ${critFlag ? '会心！' : ''}【${used.name}】${label}对 ${t.stats.name} 造成 ${totalDmg} 伤害${healSuffix}${mainHealSuffix}`,
         type: critFlag ? 'crit' : 'normal',
         playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp,
         monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp,

@@ -93,6 +93,8 @@ async function buildPlayerBattleStats(char: any): Promise<{
 
   // 双修副本：附灵静态加成累加器（运行时触发类 hooks 因 teamBattleEngine 不支持暂留 TODO）
   let awakenAtkPct = 0, awakenDefPct = 0, awakenHpPct = 0, awakenSpdPct = 0
+  // v3.9：主修噬灵 — 来源 1) 戒指附灵 aw_main_lifesteal 2) 主修功法 innateMain.mainSkillLifesteal
+  let mainSkillLifesteal = 0
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
@@ -116,6 +118,9 @@ async function buildPlayerBattleStats(char: any): Promise<{
         case 'spdPct':        awakenSpdPct += v; break
         case 'harmonyPct':
           awakenAtkPct += v; awakenDefPct += v; awakenHpPct += v; break
+        // v3.9 主修噬灵（戒指 aw_main_lifesteal）
+        case 'mainSkillLifesteal':
+          mainSkillLifesteal += v; break
         // 五行元素伤害（小数 → ×100 进 elementDmg）
         case 'FIRE_DMG_PCT':  elementDmg.fire  += v * 100; break
         case 'METAL_DMG_PCT': elementDmg.metal += v * 100; break
@@ -286,6 +291,11 @@ async function buildPlayerBattleStats(char: any): Promise<{
   maxHp = Math.floor(_flatHp  * (1 + nonPassiveHpPct))
   spd   = Math.floor(_flatSpd * (1 + nonPassiveSpdPct))
 
+  // 先构建 equippedSkills，便于合并主修 innateMain.mainSkillLifesteal
+  const equippedSkills = buildEquippedSkillInfo(skillRows)
+  const innateMainLs = (equippedSkills?.activeSkill as any)?.innateMain?.mainSkillLifesteal || 0
+  if (innateMainLs > 0) mainSkillLifesteal += innateMainLs
+
   // 玩家属性硬上限 (v3.0 从 shared/balance.ts 读取, 与 battle/fight.post.ts 保持一致)
   const stats: BattlerStats = {
     name: char.name, maxHp, hp: maxHp, atk, def, spd,
@@ -315,8 +325,9 @@ async function buildPlayerBattleStats(char: any): Promise<{
     _flatAtk, _flatDef, _flatHp, _flatSpd,
     _pctSumAtk: nonPassiveAtkPct, _pctSumDef: nonPassiveDefPct,
     _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
+    // v3.9 主修噬灵（teamBattleEngine.applySetDamage 在主修攻击命中时按 maxHp×系数回血）
+    mainSkillLifesteal,
   } as any
-  const equippedSkills = buildEquippedSkillInfo(skillRows)
   return { stats, equippedSkills, expBonusPercent: expBonusPercent + spiritDensity, luckPercent: luck }
 }
 
