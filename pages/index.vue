@@ -8138,7 +8138,17 @@ const filteredBagList = computed(() => {
       const subStats = Array.isArray(subs)
         ? subs.map((s: any) => s?.stat).filter(Boolean)
         : [];
-      return wants.every(a => e.primary_stat === a || e.primary_stat_2 === a || subStats.includes(a));
+      // V5 五行词条也纳入属性筛选
+      let wuxingStats: string[] = [];
+      try {
+        const raw = typeof e.wuxing_affixes === 'string' ? JSON.parse(e.wuxing_affixes) : (e.wuxing_affixes || []);
+        wuxingStats = Array.isArray(raw) ? raw.map((s: any) => s?.stat).filter(Boolean) : [];
+      } catch { /* ignore */ }
+      // 归一化到 SCREAMING_CASE 比较（V5 snake_case → V4 SCREAMING_CASE 兼容）
+      const allStats = [e.primary_stat, e.primary_stat_2, ...subStats, ...wuxingStats]
+        .filter(Boolean)
+        .map(s => String(s).toUpperCase());
+      return wants.every(a => allStats.includes(a));
     });
   }
   return list;

@@ -3,7 +3,7 @@ import { getPool } from '~/server/database/db'
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const nodeId = Number(query.id)
-  if (!Number.isInteger(nodeId) || nodeId < 1 || nodeId > 6) return { code: 400, message: 'id 无效' }
+  if (!Number.isInteger(nodeId) || nodeId < 1 || nodeId > 9) return { code: 400, message: 'id 无效' }
   const pool = getPool()
   const { rows: nodeRows } = await pool.query(
     `SELECT n.*, o.sect_id, o.current_guard_count, o.occupied_at, o.next_surge_at, o.vacuum_until,

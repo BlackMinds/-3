@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
   const attackerIds: number[] = Array.isArray(body?.attackerCharacterIds)
     ? body.attackerCharacterIds.map((x: any) => Number(x)).filter(Number.isFinite)
     : [char.id]
-  if (!Number.isInteger(nodeId) || nodeId < 1 || nodeId > 6) return { code: 400, message: 'nodeId 无效' }
+  if (!Number.isInteger(nodeId) || nodeId < 1 || nodeId > 9) return { code: 400, message: 'nodeId 无效' }
   if (!attackerIds.includes(char.id)) attackerIds.push(char.id)
   if (attackerIds.length < 1 || attackerIds.length > 5) return { code: 400, message: '进攻方人数超限' }
 

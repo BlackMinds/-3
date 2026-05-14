@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event)
   const nodeId = Number(body?.nodeId)
-  if (!Number.isInteger(nodeId) || nodeId < 1 || nodeId > 6) return { code: 400, message: 'nodeId 无效' }
+  if (!Number.isInteger(nodeId) || nodeId < 1 || nodeId > 9) return { code: 400, message: 'nodeId 无效' }
 
   // CD 校验
   const cd = await getActiveCd(char.id, 'defend_injured')

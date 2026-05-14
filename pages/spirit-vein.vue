@@ -84,7 +84,7 @@
           <span class="jp-amount">{{ formatNum(jackpot.current.pool_amount) }}</span>
           <span class="jp-suffix">灵石</span>
         </div>
-        <div class="jp-sub">本周日 23:55 自动结算 · 按"涌灵次数 × (1 - 占领数/6)"公式排行</div>
+        <div class="jp-sub">本周日 23:55 自动结算 · 按"涌灵次数 × (1 - 占领数/9)"公式排行</div>
       </div>
       <div v-else class="empty">暂无奖池数据</div>
       <div v-if="jackpot?.topSects?.length" class="rank-box">
