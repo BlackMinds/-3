@@ -9,25 +9,68 @@ export default defineEventHandler(async (event) => {
     const char = await getCharByUserId(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
 
-    const membership = await getMembership(char.id)
-    if (!membership) return { code: 400, message: '未加入宗门' }
+    const client = await pool.connect()
+    let oldLevel = 0
+    let skillName = skill_key
+    try {
+      await client.query('BEGIN')
 
-    const { rows: existing } = await pool.query(
-      'SELECT * FROM sect_skills WHERE character_id = $1 AND skill_key = $2', [char.id, skill_key]
-    )
-    if (existing.length === 0) return { code: 400, message: '未学习该功法' }
-    if (existing[0].level >= 5) return { code: 400, message: '已达最高等级' }
+      // 事务内复查：贡献 + 技能等级，防并发重复升级
+      const { rows: memberRows } = await client.query(
+        'SELECT contribution FROM sect_members WHERE character_id = $1 FOR UPDATE',
+        [char.id]
+      )
+      if (memberRows.length === 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '未加入宗门' }
+      }
 
-    const skillCfg = getSectSkill(skill_key)
-    if (!skillCfg) return { code: 400, message: '功法不存在' }
+      const { rows: existing } = await client.query(
+        'SELECT level FROM sect_skills WHERE character_id = $1 AND skill_key = $2 FOR UPDATE',
+        [char.id, skill_key]
+      )
+      if (existing.length === 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '未学习该功法' }
+      }
+      oldLevel = existing[0].level
+      if (oldLevel >= 5) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '已达最高等级' }
+      }
 
-    const cost = skillCfg.learnCost * (existing[0].level + 1)
-    if (Number(membership.contribution) < cost) return { code: 400, message: `贡献度不足，需${cost}` }
+      const skillCfg = getSectSkill(skill_key)
+      if (!skillCfg) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '功法不存在' }
+      }
+      skillName = skillCfg.name
 
-    await pool.query('UPDATE sect_members SET contribution = contribution - $1 WHERE character_id = $2', [cost, char.id])
-    await pool.query('UPDATE sect_skills SET level = level + 1 WHERE character_id = $1 AND skill_key = $2', [char.id, skill_key])
+      const cost = skillCfg.learnCost * (oldLevel + 1)
+      if (Number(memberRows[0].contribution) < cost) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: `贡献度不足，需${cost}` }
+      }
 
-    return { code: 200, message: `【${skillCfg.name}】升至Lv.${existing[0].level + 1}` }
+      // 条件扣贡献
+      await client.query(
+        'UPDATE sect_members SET contribution = contribution - $1 WHERE character_id = $2 AND contribution >= $1',
+        [cost, char.id]
+      )
+      await client.query(
+        'UPDATE sect_skills SET level = level + 1 WHERE character_id = $1 AND skill_key = $2',
+        [char.id, skill_key]
+      )
+
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw e
+    } finally {
+      client.release()
+    }
+
+    return { code: 200, message: `【${skillName}】升至Lv.${oldLevel + 1}` }
   } catch (error) {
     console.error('升级宗门功法失败:', error)
     return { code: 500, message: '服务器错误' }

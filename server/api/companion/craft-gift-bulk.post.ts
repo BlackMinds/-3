@@ -1,6 +1,6 @@
 // 一键炼制礼物 - POST /api/companion/craft-gift-bulk
 // body: { recipe_id: string }
-// 流程: 算原料 + 灵石上限 → 取 min 作为 N → 事务一次扣 N 份原料/灵石 + 加 N 份礼物
+// 流程: 事务内读库存 + 算 N → 事务一次扣 N 份原料/灵石 + 加 N 份礼物
 // 与 craft-gift 同口径：礼物无品质机制，原料按低品优先扣
 
 import { getPool } from '~/server/database/db'
@@ -20,49 +20,61 @@ export default defineEventHandler(async (event) => {
     const char = await getCharacterByUserId(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
 
-    // 算各原料库存（按品质升序，低品优先）+ 总数
-    type Stock = { quality: string; count: number }
-    const stockMap: Record<string, Stock[]> = {}
-    const totalsMap: Record<string, number> = {}
-    for (const ing of recipe.ingredients) {
-      const { rows } = await pool.query(
-        `SELECT quality, count FROM character_materials
-          WHERE character_id = $1 AND material_id = $2 AND count > 0
-          ORDER BY CASE quality
-            WHEN 'white' THEN 0 WHEN 'green' THEN 1 WHEN 'blue' THEN 2
-            WHEN 'purple' THEN 3 WHEN 'gold' THEN 4 WHEN 'red' THEN 5 ELSE 99 END`,
-        [char.id, ing.itemId]
-      )
-      const total = rows.reduce((a: number, r: any) => a + Number(r.count || 0), 0)
-      totalsMap[ing.itemId] = total
-      stockMap[ing.itemId] = rows.map((r: any) => ({ quality: r.quality, count: Number(r.count) }))
-    }
-
-    // 取 min 作为可炼次数（原料 + 灵石）
-    let maxByHerb = Infinity
-    for (const ing of recipe.ingredients) {
-      maxByHerb = Math.min(maxByHerb, Math.floor((totalsMap[ing.itemId] ?? 0) / ing.qty))
-    }
-    const stoneCost = recipe.spiritStoneCost
-    const maxByStone = stoneCost > 0 ? Math.floor(Number(char.spirit_stone) / stoneCost) : Infinity
-    const N = Math.min(maxByHerb, maxByStone)
-
-    if (!Number.isFinite(N) || N <= 0) {
-      return { code: 400, message: '原料或灵石不足，无法炼制' }
-    }
-
-    // 事务
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
 
-      // 扣灵石（N×单价）
+      // 事务内读库存 + 灵石（防并发扣负）
+      type Stock = { quality: string; count: number }
+      const stockMap: Record<string, Stock[]> = {}
+      const totalsMap: Record<string, number> = {}
+
+      for (const ing of recipe.ingredients) {
+        const { rows } = await client.query(
+          `SELECT quality, count FROM character_materials
+            WHERE character_id = $1 AND material_id = $2 AND count > 0
+            ORDER BY CASE quality
+              WHEN 'white' THEN 0 WHEN 'green' THEN 1 WHEN 'blue' THEN 2
+              WHEN 'purple' THEN 3 WHEN 'gold' THEN 4 WHEN 'red' THEN 5 ELSE 99 END
+            FOR UPDATE`,
+          [char.id, ing.itemId]
+        )
+        const total = rows.reduce((a: number, r: any) => a + Number(r.count || 0), 0)
+        totalsMap[ing.itemId] = total
+        stockMap[ing.itemId] = rows.map((r: any) => ({ quality: r.quality, count: Number(r.count) }))
+      }
+
+      const { rows: charRows } = await client.query(
+        'SELECT spirit_stone FROM characters WHERE id = $1 FOR UPDATE',
+        [char.id]
+      )
+      const currentStone = Number(charRows[0]?.spirit_stone || 0)
+
+      // 取 min 作为可炼次数（原料 + 灵石）
+      let maxByHerb = Infinity
+      for (const ing of recipe.ingredients) {
+        maxByHerb = Math.min(maxByHerb, Math.floor((totalsMap[ing.itemId] ?? 0) / ing.qty))
+      }
+      const stoneCost = recipe.spiritStoneCost
+      const maxByStone = stoneCost > 0 ? Math.floor(currentStone / stoneCost) : Infinity
+      const N = Math.min(maxByHerb, maxByStone)
+
+      if (!Number.isFinite(N) || N <= 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '原料或灵石不足，无法炼制' }
+      }
+
+      // 扣灵石（条件防扣负）
       const totalStone = stoneCost * N
       if (totalStone > 0) {
-        await client.query(
-          'UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2',
+        const { rowCount: stoneOk } = await client.query(
+          'UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2 AND spirit_stone >= $1',
           [totalStone, char.id]
         )
+        if (!stoneOk) {
+          await client.query('ROLLBACK')
+          return { code: 400, message: '灵石不足' }
+        }
       }
 
       // 扣原料（低品优先，每种原料按 ing.qty × N）
@@ -90,17 +102,17 @@ export default defineEventHandler(async (event) => {
       )
 
       await client.query('COMMIT')
+
+      return {
+        code: 200,
+        message: `炼制成功！获得「${recipe.name}」×${N}`,
+        data: { recipeId, name: recipe.name, count: N, totalStone: stoneCost * N },
+      }
     } catch (e) {
-      await client.query('ROLLBACK')
+      await client.query('ROLLBACK').catch(() => {})
       throw e
     } finally {
       client.release()
-    }
-
-    return {
-      code: 200,
-      message: `炼制成功！获得「${recipe.name}」×${N}`,
-      data: { recipeId, name: recipe.name, count: N, totalStone: stoneCost * N },
     }
   } catch (error) {
     console.error('一键炼制礼物失败:', error)

@@ -23,81 +23,94 @@ export default defineEventHandler(async (event) => {
     const char = await getCharacterByUserId(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
 
-    const c = await getOfficialCompanion(pool, char.id)
-    if (!c) return { code: 400, message: '尚无正式道侣' }
-
-    // 怀胎中不可和离
-    if (c.pregnant_until && new Date(c.pregnant_until).getTime() > Date.now()) {
-      return { code: 400, message: '怀胎中不可和离' }
-    }
-
-    // 红尘解检查
-    const { rows: pillRows } = await pool.query(
-      `SELECT COALESCE(SUM(count), 0)::int AS total FROM character_pills
-        WHERE character_id = $1 AND pill_id = $2`,
-      [char.id, PARTING_CHARM_ID]
-    )
-    const pillCount = pillRows[0]?.total || 0
-    if (pillCount < 1) return { code: 400, message: '红尘解不足（需 1 个）' }
-
-    // 灵石检查
     const stoneCost = calcDivorceStoneCost(char.realm_tier)
-    if (Number(char.spirit_stone) < stoneCost) {
-      return { code: 400, message: `灵石不足，需 ${stoneCost.toLocaleString()}` }
-    }
-
-    // 统计子女数（用于 divorce_history）
-    const { rows: kidRows } = await pool.query(
-      'SELECT COUNT(*)::int AS cnt FROM children WHERE parent_companion_id = $1',
-      [c.id]
-    )
-    const childrenCount = kidRows[0]?.cnt || 0
-
-    const broadcastText = `${char.name} 与 ${c.name} 和离，山高水长，再见已是陌路。`
+    let companionName = ''
+    let broadcastText = ''
 
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
 
-      // 1. 扣红尘解（取首个有库存的行）
-      await client.query(
-        `UPDATE character_pills SET count = count - 1
+      // FOR UPDATE 锁道侣行 + 复查状态（含怀胎），防事务外读与事务内写之间的并发
+      const { rows: lockedCompanion } = await client.query(
+        'SELECT * FROM companions WHERE character_id = $1 AND is_official = TRUE FOR UPDATE',
+        [char.id]
+      )
+      if (lockedCompanion.length === 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '尚无正式道侣' }
+      }
+      const c = lockedCompanion[0]
+      companionName = c.name
+
+      if (c.pregnant_until && new Date(c.pregnant_until).getTime() > Date.now()) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '怀胎中不可和离' }
+      }
+
+      // 红尘解：FOR UPDATE 锁 + 条件扣
+      const { rows: pillRows } = await client.query(
+        `SELECT id FROM character_pills
           WHERE character_id = $1 AND pill_id = $2 AND count > 0
-            AND ctid = (SELECT ctid FROM character_pills
-                         WHERE character_id = $1 AND pill_id = $2 AND count > 0
-                         LIMIT 1)`,
+          LIMIT 1 FOR UPDATE`,
         [char.id, PARTING_CHARM_ID]
       )
+      if (pillRows.length === 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '红尘解不足（需 1 个）' }
+      }
+      const { rowCount: charmConsumed } = await client.query(
+        'UPDATE character_pills SET count = count - 1 WHERE id = $1 AND count >= 1',
+        [pillRows[0].id]
+      )
+      if (!charmConsumed) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '红尘解不足（需 1 个）' }
+      }
+      await client.query('DELETE FROM character_pills WHERE id = $1 AND count <= 0', [pillRows[0].id])
 
-      // 2. 扣灵石
-      await client.query(
-        'UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2',
+      // 灵石：条件扣
+      const { rowCount: stoneDeducted } = await client.query(
+        'UPDATE characters SET spirit_stone = spirit_stone - $1 WHERE id = $2 AND spirit_stone >= $1',
         [stoneCost, char.id]
       )
+      if (!stoneDeducted) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: `灵石不足，需 ${stoneCost.toLocaleString()}` }
+      }
 
-      // 3. 子女与该道侣的关系切断
+      // 统计子女数（用于 divorce_history）
+      const { rows: kidRows } = await client.query(
+        'SELECT COUNT(*)::int AS cnt FROM children WHERE parent_companion_id = $1',
+        [c.id]
+      )
+      const childrenCount = kidRows[0]?.cnt || 0
+
+      broadcastText = `${char.name} 与 ${companionName} 和离，山高水长，再见已是陌路。`
+
+      // 子女与该道侣的关系切断
       await client.query(
         'UPDATE children SET parent_companion_id = NULL WHERE parent_companion_id = $1',
         [c.id]
       )
 
-      // 4. 写历史
+      // 写历史
       await client.query(
         `INSERT INTO divorce_history (character_id, companion_name, quality, intimacy_at_divorce, children_count)
          VALUES ($1, $2, $3, $4, $5)`,
         [char.id, c.name, c.quality, c.intimacy, childrenCount]
       )
 
-      // 5. 删道侣
+      // 删道侣
       await client.query('DELETE FROM companions WHERE id = $1', [c.id])
 
-      // 6. 设和离冷却
+      // 设和离冷却
       await client.query(
         `UPDATE characters SET divorce_cooldown = NOW() + INTERVAL '${DIVORCE_COOLDOWN_HOURS} hours' WHERE id = $1`,
         [char.id]
       )
 
-      // 7. 风云阁广播
+      // 风云阁广播
       await client.query(
         `INSERT INTO world_broadcast
            (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
@@ -121,7 +134,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       code: 200,
-      message: `已与「${c.name}」和离，红尘梦碎`,
+      message: `已与「${companionName}」和离，红尘梦碎`,
       data: {
         stoneCost,
         cooldownHours: DIVORCE_COOLDOWN_HOURS,

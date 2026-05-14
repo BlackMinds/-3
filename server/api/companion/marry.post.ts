@@ -28,14 +28,26 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '和离冷却中，暂不可结侣' }
     }
 
-    // 已有正式道侣检查
-    const existing = await getOfficialCompanion(pool, char.id)
-    if (existing) return { code: 400, message: '已有正式道侣，需先和离' }
-
-    // 事务：标记为正式道侣 + 仙缘印记 LV1
+    // 事务内复查：防并发重复结侣导致多个正式道侣
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
+
+      // FOR UPDATE 锁该角色全部道侣行，确保事务串行化，防止并发双结侣
+      await client.query(
+        'SELECT id FROM companions WHERE character_id = $1 FOR UPDATE',
+        [char.id]
+      )
+      // 事务内复查：确保还没有正式道侣
+      const { rows: officialRows } = await client.query(
+        'SELECT id FROM companions WHERE character_id = $1 AND is_official = TRUE LIMIT 1',
+        [char.id]
+      )
+      if (officialRows.length > 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '已有正式道侣，需先和离' }
+      }
+
       await client.query(
         `UPDATE companions
             SET is_official = TRUE, married_at = CURRENT_TIMESTAMP, seal_level = 1

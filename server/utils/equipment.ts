@@ -9,14 +9,35 @@ import {
 
 export async function consumeSpecialItem(charId: number, pillId: string): Promise<boolean> {
   const pool = getPool()
-  const { rows } = await pool.query(
-    'SELECT id, count FROM character_pills WHERE character_id = $1 AND pill_id = $2 AND count > 0 LIMIT 1',
-    [charId, pillId]
-  )
-  if (rows.length === 0) return false
-  await pool.query('UPDATE character_pills SET count = count - 1 WHERE id = $1', [rows[0].id])
-  await pool.query('DELETE FROM character_pills WHERE id = $1 AND count <= 0', [rows[0].id])
-  return true
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const { rows } = await client.query(
+      'SELECT id, count FROM character_pills WHERE character_id = $1 AND pill_id = $2 AND count > 0 LIMIT 1 FOR UPDATE',
+      [charId, pillId]
+    )
+    if (rows.length === 0) {
+      await client.query('ROLLBACK')
+      return false
+    }
+    const { rowCount: consumed } = await client.query(
+      'UPDATE character_pills SET count = count - 1 WHERE id = $1 AND count >= 1',
+      [rows[0].id]
+    )
+    if (!consumed) {
+      await client.query('ROLLBACK')
+      return false
+    }
+    await client.query('DELETE FROM character_pills WHERE id = $1 AND count <= 0', [rows[0].id])
+    await client.query('COMMIT')
+    return true
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('consumeSpecialItem 失败:', e)
+    return false
+  } finally {
+    client.release()
+  }
 }
 
 // 副属性池（掉落/洗练/升品/合成全部走这里）

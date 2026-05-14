@@ -17,9 +17,36 @@ export default defineEventHandler(async (event) => {
     const nextCfg = SECT_LEVELS[currentLevel]
     const cost = nextCfg.upgradeCost
 
-    if (Number(membership.fund) < cost) return { code: 400, message: `宗门资金不足，需${cost}灵石` }
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
 
-    await pool.query('UPDATE sects SET fund = fund - $1, level = level + 1 WHERE id = $2', [cost, membership.sect_id])
+      // FOR UPDATE 锁宗门行 + 条件扣费，防并发重复升级导致基金为负
+      const { rows: sectRows } = await client.query(
+        'SELECT level, fund FROM sects WHERE id = $1 FOR UPDATE',
+        [membership.sect_id]
+      )
+      if (Number(sectRows[0]?.level) !== currentLevel) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '宗门等级已变化，请刷新后重试' }
+      }
+      if (Number(sectRows[0]?.fund) < cost) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: `宗门资金不足，需${cost}灵石` }
+      }
+
+      await client.query(
+        'UPDATE sects SET fund = fund - $1, level = level + 1 WHERE id = $2',
+        [cost, membership.sect_id]
+      )
+
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw e
+    } finally {
+      client.release()
+    }
 
     return { code: 200, message: `宗门升至${currentLevel + 1}级`, data: { newLevel: currentLevel + 1 } }
   } catch (error) {

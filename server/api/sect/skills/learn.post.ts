@@ -15,22 +15,51 @@ export default defineEventHandler(async (event) => {
     const skillCfg = getSectSkill(skill_key)
     if (!skillCfg) return { code: 400, message: '功法不存在' }
     if (membership.sect_level < skillCfg.requiredSectLevel) return { code: 400, message: '宗门等级不足' }
-    if (Number(membership.contribution) < skillCfg.learnCost) return { code: 400, message: '贡献度不足' }
 
-    // 检查是否已学
-    const { rows: existing } = await pool.query(
-      'SELECT id FROM sect_skills WHERE character_id = $1 AND skill_key = $2', [char.id, skill_key]
-    )
-    if (existing.length > 0) return { code: 400, message: '已学习该功法' }
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
 
-    await pool.query(
-      'UPDATE sect_members SET contribution = contribution - $1 WHERE character_id = $2',
-      [skillCfg.learnCost, char.id]
-    )
-    await pool.query(
-      'INSERT INTO sect_skills (character_id, skill_key, level) VALUES ($1, $2, 1)',
-      [char.id, skill_key]
-    )
+      // 事务内复查贡献 + 已学状态，防并发重复学习
+      const { rows: memberRows } = await client.query(
+        'SELECT contribution FROM sect_members WHERE character_id = $1 FOR UPDATE',
+        [char.id]
+      )
+      if (memberRows.length === 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '未加入宗门' }
+      }
+      if (Number(memberRows[0].contribution) < skillCfg.learnCost) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '贡献度不足' }
+      }
+
+      const { rows: existing } = await client.query(
+        'SELECT id FROM sect_skills WHERE character_id = $1 AND skill_key = $2 FOR UPDATE',
+        [char.id, skill_key]
+      )
+      if (existing.length > 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '已学习该功法' }
+      }
+
+      // 条件扣贡献
+      await client.query(
+        'UPDATE sect_members SET contribution = contribution - $1 WHERE character_id = $2 AND contribution >= $1',
+        [skillCfg.learnCost, char.id]
+      )
+      await client.query(
+        'INSERT INTO sect_skills (character_id, skill_key, level) VALUES ($1, $2, 1)',
+        [char.id, skill_key]
+      )
+
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw e
+    } finally {
+      client.release()
+    }
 
     return { code: 200, message: `学习【${skillCfg.name}】成功` }
   } catch (error) {

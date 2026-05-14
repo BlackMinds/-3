@@ -10,14 +10,9 @@ export default defineEventHandler(async (event) => {
     const values: any[] = []
     let paramIdx = 1
 
+    // 仅允许客户端更新地图位置；核心属性由服务端引擎统一计算，不允许客户端直写
     const allowedFields: Record<string, string> = {
-      realm_tier: 'realm_tier', realm_stage: 'realm_stage',
-      cultivation_exp: 'cultivation_exp',
-      max_hp: 'max_hp', atk: 'atk', def: 'def', spd: 'spd',
-      level: 'level', level_exp: 'level_exp',
       current_map: 'current_map',
-      crit_rate: 'crit_rate', crit_dmg: 'crit_dmg',
-      dodge: 'dodge', lifesteal: 'lifesteal', spirit: 'spirit',
     }
 
     for (const [key, col] of Object.entries(allowedFields)) {
@@ -39,18 +34,6 @@ export default defineEventHandler(async (event) => {
       `UPDATE characters SET ${fields.join(', ')} WHERE user_id = $${paramIdx}`,
       values
     )
-
-    // 成就：境界突破
-    if (body.realm_tier !== undefined) {
-      const { rows: charRows } = await pool.query('SELECT id FROM characters WHERE user_id = $1', [event.context.userId])
-      if (charRows.length > 0) {
-        checkAchievements(charRows[0].id, 'realm_tier', body.realm_tier).catch(() => {})
-        // 练气阶段成就（realm_tier=1时，用stage判断练气九层）
-        if (body.realm_tier === 1 && body.realm_stage !== undefined) {
-          checkAchievements(charRows[0].id, 'qi_stage', body.realm_stage).catch(() => {})
-        }
-      }
-    }
 
     // 成就：地图访问（踏遍青山 / 万界行者）
     if (body.current_map) {

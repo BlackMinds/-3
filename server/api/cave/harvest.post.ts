@@ -12,42 +12,57 @@ export default defineEventHandler(async (event) => {
     const charId = char.id
     const herbFieldLevel = await getHerbFieldLevel(charId)
 
-    const { rows } = await pool.query(
-      'SELECT * FROM character_cave_plots WHERE character_id = $1 AND plot_index = $2',
-      [charId, plot_index]
-    )
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
 
-    if (rows.length === 0 || !rows[0].herb_id) {
-      return { code: 400, message: '地块为空' }
-    }
+      // FOR UPDATE 锁地块行，防并发重复收获
+      const { rows } = await client.query(
+        'SELECT * FROM character_cave_plots WHERE character_id = $1 AND plot_index = $2 FOR UPDATE',
+        [charId, plot_index]
+      )
 
-    const plot = rows[0]
-    if (new Date(plot.mature_time).getTime() > Date.now()) {
-      return { code: 400, message: '尚未成熟' }
-    }
+      if (rows.length === 0 || !rows[0].herb_id) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '地块为空' }
+      }
 
-    // 收获时随机品质和产量
-    const { quality, count } = randomHarvestQuality(herbFieldLevel)
+      const plot = rows[0]
+      if (new Date(plot.mature_time).getTime() > Date.now()) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '尚未成熟' }
+      }
 
-    // 加到材料
-    await pool.query(
-      `INSERT INTO character_materials (character_id, material_id, quality, count)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
-      [charId, plot.herb_id, quality, count, count]
-    )
+      // 收获时随机品质和产量
+      const { quality, count } = randomHarvestQuality(herbFieldLevel)
 
-    // 清空地块
-    await pool.query(
-      'UPDATE character_cave_plots SET herb_id = NULL, herb_quality = NULL, plant_time = NULL, mature_time = NULL, yield_count = 0 WHERE id = $1',
-      [plot.id]
-    )
+      // 加到材料
+      await client.query(
+        `INSERT INTO character_materials (character_id, material_id, quality, count)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
+        [charId, plot.herb_id, quality, count, count]
+      )
 
-    checkAchievements(charId, 'herb_harvest', 1).catch(() => {})
+      // 清空地块
+      await client.query(
+        'UPDATE character_cave_plots SET herb_id = NULL, herb_quality = NULL, plant_time = NULL, mature_time = NULL, yield_count = 0 WHERE id = $1',
+        [plot.id]
+      )
 
-    return {
-      code: 200,
-      data: { herb_id: plot.herb_id, quality, count },
+      await client.query('COMMIT')
+
+      checkAchievements(charId, 'herb_harvest', 1).catch(() => {})
+
+      return {
+        code: 200,
+        data: { herb_id: plot.herb_id, quality, count },
+      }
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw e
+    } finally {
+      client.release()
     }
   } catch (error) {
     console.error('收获失败:', error)

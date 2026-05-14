@@ -424,39 +424,57 @@ export async function feedChild(
   herbId: string,
   herbQuality: string
 ): Promise<{ ok: boolean; message: string; data?: any }> {
-  const child = await getChildById(pool, childId, characterId)
-  if (!child) return { ok: false, message: '子女不存在' }
-
-  const today = new Date().toISOString().slice(0, 10)
-  const feedDate = child.feed_date ? String(child.feed_date).slice(0, 10) : ''
-  const feedCnt = feedDate === today ? child.feed_count_today : 0
-  if (feedCnt >= 5) return { ok: false, message: '今日喂养上限 5 次' }
-
-  // 检查灵草库存
-  const { rows: invRows } = await pool.query(
-    `SELECT count FROM character_materials
-      WHERE character_id = $1 AND material_id = $2 AND quality = $3`,
-    [characterId, herbId, herbQuality]
-  )
-  const stock = invRows[0]?.count || 0
-  if (stock < 1) return { ok: false, message: '灵草不足' }
-
-  const expGain = FEED_HERB_EXP[herbQuality] || 50
-
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    await client.query(
-      `UPDATE character_materials SET count = count - 1
-        WHERE character_id = $1 AND material_id = $2 AND quality = $3`,
+
+    // FOR UPDATE 锁子女行，事务内复查每日上限 + 灵草（防并发超限）
+    const { rows: childRows } = await client.query(
+      'SELECT * FROM children WHERE id = $1 AND character_id = $2 FOR UPDATE',
+      [childId, characterId]
+    )
+    if (childRows.length === 0) {
+      await client.query('ROLLBACK')
+      return { ok: false, message: '子女不存在' }
+    }
+    const child = childRows[0]
+
+    const today = new Date().toISOString().slice(0, 10)
+    const feedDate = child.feed_date ? String(child.feed_date).slice(0, 10) : ''
+    const feedCnt = feedDate === today ? child.feed_count_today : 0
+    if (feedCnt >= 5) {
+      await client.query('ROLLBACK')
+      return { ok: false, message: '今日喂养上限 5 次' }
+    }
+
+    // 事务内读灵草库存 + FOR UPDATE
+    const { rows: invRows } = await client.query(
+      `SELECT count FROM character_materials
+        WHERE character_id = $1 AND material_id = $2 AND quality = $3
+        FOR UPDATE`,
       [characterId, herbId, herbQuality]
     )
+    const stock = invRows[0]?.count || 0
+    if (stock < 1) {
+      await client.query('ROLLBACK')
+      return { ok: false, message: '灵草不足' }
+    }
+
+    const expGain = FEED_HERB_EXP[herbQuality] || 50
+
+    // 条件扣灵草
+    await client.query(
+      `UPDATE character_materials SET count = count - 1
+        WHERE character_id = $1 AND material_id = $2 AND quality = $3 AND count >= 1`,
+      [characterId, herbId, herbQuality]
+    )
+
     // 加经验、升级、换阶段
     const newExp = child.level_exp + expGain
     let newLevel = child.level
     let remainExp = newExp
-    const levelCap = getChildLevelCap(child.aptitude)  // 按资质走 50/80/100/130/160/200/999
-    while (remainExp >= newLevel * 100 && newLevel < levelCap) {  // 简化升级公式：lvl * 100 经验
+    const levelCap = getChildLevelCap(child.aptitude)
+    while (remainExp >= newLevel * 100 && newLevel < levelCap) {
       remainExp -= newLevel * 100
       newLevel++
     }
@@ -468,9 +486,7 @@ export async function feedChild(
     const existingTalents = Array.isArray(child.awakened_talents) ? child.awakened_talents : []
     const newAwakened: Array<{ level: number; talent_id: string; rarity: string }> = [...existingTalents]
     for (const lv of TALENT_LEVELS) {
-      // 已跨过该等级且尚未觉醒该槽位
       if (newLevel >= lv && !existingTalents.some((t: any) => t.level === lv)) {
-        // V2.1：避免天赋槽位间重复（已有 + 本轮新增的）
         const usedIds = newAwakened.map(x => x.talent_id)
         const t = rollTalentByAptitude(child.aptitude as ChildAptitude, usedIds)
         newAwakened.push({ level: lv, talent_id: t.id, rarity: t.rarity })

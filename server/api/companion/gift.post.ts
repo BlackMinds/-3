@@ -5,7 +5,6 @@ import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
 import {
   getCompanionById,
-  addIntimacy,
   getTodayGiftIntimacyTotal,
   isGiftItem,
   checkReaction,
@@ -28,48 +27,54 @@ export default defineEventHandler(async (event) => {
     const char = await getCharacterByUserId(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
 
+    // 反应判断（纯内存计算，与数据无关）
     const c = await getCompanionById(pool, companionId, char.id)
     if (!c) return { code: 404, message: '道侣不存在' }
-
-    // 检查每日上限（仅适用于"普通增益"，厌恶礼物不计入但仍消耗物品）
-    const todayTotal = await getTodayGiftIntimacyTotal(pool, companionId)
-    const remaining = INTIMACY_CONFIG.dailyGiftLimit - todayTotal
-    if (remaining <= 0) {
-      return { code: 400, message: '今日亲密度上限已达' }
-    }
-
-    // 检查物品库存（合并所有品质：新炼制是 'white'，历史可能残留高品；扣减时低品优先）
-    const { rows: invRows } = await pool.query(
-      `SELECT quality, count FROM character_materials
-        WHERE character_id = $1 AND material_id = $2 AND count > 0
-        ORDER BY CASE quality
-          WHEN 'white' THEN 0 WHEN 'green' THEN 1 WHEN 'blue' THEN 2
-          WHEN 'purple' THEN 3 WHEN 'gold' THEN 4 WHEN 'red' THEN 5 ELSE 99 END`,
-      [char.id, giftId]
-    )
-    const stock = invRows.reduce((a: number, r: any) => a + (r.count || 0), 0)
-    if (stock < quantity) return { code: 400, message: `物品不足，仅有 ${stock} 件` }
-
-    // 反应判断
     const reaction = checkReaction(
       c.personality as any,
       giftId,
       c.preferred_gifts || [],
       c.disliked_gifts || []
     )
-    // 单件礼物的亲密度（无品质系数）
     const perGiftIntimacy = calcGiftReward(giftId, reaction)
-
-    // 总亲密度（按 quantity 累加，但厌恶礼物每件 -3）
-    let totalDelta = perGiftIntimacy * quantity
-    // 上限抑制（仅正向收益受限）
-    if (totalDelta > 0 && totalDelta > remaining) totalDelta = remaining
 
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
 
-      // 扣物品（按高品质优先扣，保证 quantity 件被消耗）
+      // 防并发：锁道侣行 + 事务内复查每日上限
+      await client.query(
+        'SELECT id FROM companions WHERE id = $1 FOR UPDATE',
+        [companionId]
+      )
+      const todayTotal = await getTodayGiftIntimacyTotal(client, companionId)
+      const remaining = INTIMACY_CONFIG.dailyGiftLimit - todayTotal
+      if (remaining <= 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '今日亲密度上限已达' }
+      }
+
+      // 事务内读库存（FOR UPDATE 防并发扣负）
+      const { rows: invRows } = await client.query(
+        `SELECT quality, count FROM character_materials
+          WHERE character_id = $1 AND material_id = $2 AND count > 0
+          ORDER BY CASE quality
+            WHEN 'white' THEN 0 WHEN 'green' THEN 1 WHEN 'blue' THEN 2
+            WHEN 'purple' THEN 3 WHEN 'gold' THEN 4 WHEN 'red' THEN 5 ELSE 99 END
+          FOR UPDATE`,
+        [char.id, giftId]
+      )
+      const stock = invRows.reduce((a: number, r: any) => a + (r.count || 0), 0)
+      if (stock < quantity) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: `物品不足，仅有 ${stock} 件` }
+      }
+
+      // 总亲密度（按 quantity 累加）
+      let totalDelta = perGiftIntimacy * quantity
+      if (totalDelta > 0 && totalDelta > remaining) totalDelta = remaining
+
+      // 扣物品（低品优先）
       let remainingToDeduct = quantity
       for (const row of invRows) {
         if (remainingToDeduct <= 0) break
@@ -99,29 +104,29 @@ export default defineEventHandler(async (event) => {
       )
 
       await client.query('COMMIT')
+
+      const { rows: cur } = await pool.query('SELECT intimacy FROM companions WHERE id = $1', [companionId])
+      const newIntimacy = cur[0]?.intimacy || 0
+
+      // 亲密度峰值成就
+      const { checkAchievements } = await import('~/server/engine/achievementData')
+      checkAchievements(char.id, 'intimacy_peak', newIntimacy).catch(() => {})
+
+      return {
+        code: 200,
+        data: {
+          reaction,
+          intimacyGained: totalDelta,
+          intimacyTotal: newIntimacy,
+          dailyRemaining: Math.max(0, remaining - Math.max(0, totalDelta)),
+        },
+        message: reactionMessage(reaction, totalDelta),
+      }
     } catch (e) {
-      await client.query('ROLLBACK')
+      await client.query('ROLLBACK').catch(() => {})
       throw e
     } finally {
       client.release()
-    }
-
-    const { rows: cur } = await pool.query('SELECT intimacy FROM companions WHERE id = $1', [companionId])
-    const newIntimacy = cur[0]?.intimacy || 0
-
-    // 亲密度峰值成就 (intimacy_peak threshold 4000/8000)
-    const { checkAchievements } = await import('~/server/engine/achievementData')
-    checkAchievements(char.id, 'intimacy_peak', newIntimacy).catch(() => {})
-
-    return {
-      code: 200,
-      data: {
-        reaction,
-        intimacyGained: totalDelta,
-        intimacyTotal: newIntimacy,
-        dailyRemaining: Math.max(0, remaining - Math.max(0, totalDelta)),
-      },
-      message: reactionMessage(reaction, totalDelta),
     }
   } catch (error) {
     console.error('赠礼失败:', error)
