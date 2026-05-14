@@ -1528,8 +1528,11 @@
               class="skill-picker-item"
               @click="equipSkill(skill)"
             >
-              <span class="picker-name">{{ skill.name }}</span>
-              <span class="picker-desc">{{ skill.description }}</span>
+              <span class="picker-name">
+                {{ skill.name }}
+                <span class="picker-level">Lv.{{ getSkillLevel(pickerSlotType, pickerSlotIndex, skill.id) }}</span>
+              </span>
+              <span class="picker-desc">{{ getScaledSkillDesc(skill, getSkillLevel(pickerSlotType, pickerSlotIndex, skill.id)) }}</span>
             </div>
             <div v-if="filteredSkillsForPicker.length === 0" class="inventory-hint">
               背包中没有该类型的功法
@@ -14149,6 +14152,16 @@ onUnmounted(() => {
   color: var(--jade);
   display: block;
   margin-bottom: 4px;
+}
+
+.picker-level {
+  font-size: 11px;
+  color: var(--gold-ink);
+  padding: 0 6px;
+  margin-left: 6px;
+  border: 1px solid rgba(232, 204, 138, 0.3);
+  border-radius: 2px;
+  vertical-align: middle;
 }
 
 .picker-desc {
