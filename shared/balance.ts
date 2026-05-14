@@ -357,6 +357,7 @@ export const BATTLE_FORMULA = {
   elementResistedMul: 0.88,    // v3.4: 0.7→0.88, 软化被克
   elementNeutralMul: 1.0,      // 无关: ×1.0
   maxResistRate: 0.7,          // 五行抗性 cap 70%
+  activeDivineDmgScale: 0.80,  // 主修+伤害神通倍率整体缩放 (2026-05-14)
 } as const
 
 // DOT 伤害公式

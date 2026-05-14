@@ -704,6 +704,8 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
     rootMatched = true
   }
   if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.0005
+  // 主修+伤害神通整体倍率缩放
+  if (used.multiplier > 0) mul *= BATTLE_FORMULA.activeDivineDmgScale
 
   // 治疗 / buff 技能
   if (mul === 0) {

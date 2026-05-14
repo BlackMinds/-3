@@ -729,6 +729,10 @@ export function runDuoWaveBattle(
     if (isMainSkill && player.awakenState?.mainSkillMultBonus) {
       mul *= 1 + player.awakenState.mainSkillMultBonus;
     }
+    // 主修+伤害神通整体倍率缩放
+    if ((isMainSkill || !!chosenSkill) && mul > 0) {
+      mul *= BATTLE_FORMULA.activeDivineDmgScale;
+    }
 
     // 玩家 buff: atk_up 通过 mul 放大；crit_up 临时调会心
     const atkUpSum = sumPlayerBuff('atk_up' as BuffType);

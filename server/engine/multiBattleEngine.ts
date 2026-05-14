@@ -827,6 +827,10 @@ export function runPvpBattle(
     if (isDivine && attacker.spirit > 0) {
       mul *= 1 + attacker.spirit * 0.0005
     }
+    // 主修+伤害神通整体倍率缩放
+    if ((isMainSkill || isDivine) && usedSkill.multiplier > 0) {
+      mul *= BATTLE_FORMULA.activeDivineDmgScale
+    }
     // v1.3 心法贯通：主修伤害倍率 +X%
     if (isMainSkill && attacker.awakenState?.mainSkillMultBonus) {
       mul *= 1 + attacker.awakenState.mainSkillMultBonus
