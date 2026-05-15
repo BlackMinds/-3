@@ -95,18 +95,12 @@ export const WEAPON_BONUS: Record<string, {
 }
 
 // =====================================================================
-// 四、境界加成 (v3.0 crit/dodge/critDmg 压缩)
+// 四、境界加成
 // =====================================================================
-// 原数值 → 新数值: 基于"境界占毕业战力 28%"的预算重算
-// T8 最高境界:
-//   crit_rate 0.15 → 0.10 (−33%)
-//   crit_dmg  0.80 → 0.60 (−25%)
-//   dodge     0.06 → 0.04 (−33%)
-// 其他 tier 按比例同步下调
+// 2026-05-15: 移除境界对 crit_rate/crit_dmg/dodge 的加成（这些只走装备/词条/被动）
 export interface RealmBonus {
   hp: number; atk: number; def: number; spd: number
   hp_pct: number; atk_pct: number; def_pct: number
-  crit_rate: number; crit_dmg: number; dodge: number
 }
 
 // 2026-05-04: 境界整体右移一档 — 混元·无极成为新顶点（= 旧飞升·大罗金仙数值）
@@ -114,15 +108,15 @@ export interface RealmBonus {
 // 让装备/等级在养成里更有存在感。配套改动：装备主属性 HP base ×3、副属性 HP/HP_PCT ×2、等级 hp ×3。
 // 筑基保留旧筑基 50% 的微小过渡值，让突破到筑基仍有"入门反馈"。
 export const REALM_BONUSES: Record<number, RealmBonus> = {
-  1: { hp: 0,     atk: 0,    def: 0,    spd: 0,   hp_pct: 0,   atk_pct: 0,   def_pct: 0,   crit_rate: 0,    crit_dmg: 0,    dodge: 0    },
-  2: { hp: 70,    atk: 3,    def: 2,    spd: 2,   hp_pct: 3,   atk_pct: 1.5, def_pct: 1.5, crit_rate: 0.004,crit_dmg: 0.02, dodge: 0    }, // 筑基（微小过渡）
-  3: { hp: 140,   atk: 5,    def: 3,    spd: 3,   hp_pct: 6,   atk_pct: 3,   def_pct: 3,   crit_rate: 0.007,crit_dmg: 0.04, dodge: 0    }, // 金丹（旧筑基）
-  4: { hp: 400,   atk: 17,   def: 10,   spd: 8,   hp_pct: 16,  atk_pct: 8,   def_pct: 7,   crit_rate: 0.013,crit_dmg: 0.08, dodge: 0.007}, // 元婴（旧金丹）
-  5: { hp: 1000,  atk: 50,   def: 27,   spd: 20,  hp_pct: 28,  atk_pct: 14,  def_pct: 13,  crit_rate: 0.027,crit_dmg: 0.15, dodge: 0.013}, // 化神（旧元婴）
-  6: { hp: 3400,  atk: 130,  def: 75,   spd: 50,  hp_pct: 54,  atk_pct: 21,  def_pct: 18,  crit_rate: 0.04, crit_dmg: 0.22, dodge: 0.02 }, // 渡劫（旧化神）
-  7: { hp: 9200,  atk: 330,  def: 180,  spd: 120, hp_pct: 90,  atk_pct: 32,  def_pct: 27,  crit_rate: 0.053,crit_dmg: 0.34, dodge: 0.027}, // 大乘（旧渡劫）
-  8: { hp: 25000, atk: 830,  def: 470,  spd: 270, hp_pct: 138, atk_pct: 46,  def_pct: 39,  crit_rate: 0.067,crit_dmg: 0.45, dodge: 0.033}, // 飞升（旧大乘）
-  9: { hp: 64000, atk: 2000, def: 1170, spd: 670, hp_pct: 224, atk_pct: 70,  def_pct: 56,  crit_rate: 0.10, crit_dmg: 0.60, dodge: 0.04 }, // 混元（旧飞升）— stage 5 无极 = 旧大罗金仙
+  1: { hp: 0,     atk: 0,    def: 0,    spd: 0,   hp_pct: 0,   atk_pct: 0,   def_pct: 0   },
+  2: { hp: 70,    atk: 3,    def: 2,    spd: 2,   hp_pct: 3,   atk_pct: 1.5, def_pct: 1.5 }, // 筑基（微小过渡）
+  3: { hp: 140,   atk: 5,    def: 3,    spd: 3,   hp_pct: 6,   atk_pct: 3,   def_pct: 3   }, // 金丹（旧筑基）
+  4: { hp: 400,   atk: 17,   def: 10,   spd: 8,   hp_pct: 16,  atk_pct: 8,   def_pct: 7   }, // 元婴（旧金丹）
+  5: { hp: 1000,  atk: 50,   def: 27,   spd: 20,  hp_pct: 28,  atk_pct: 14,  def_pct: 13  }, // 化神（旧元婴）
+  6: { hp: 3400,  atk: 130,  def: 75,   spd: 50,  hp_pct: 54,  atk_pct: 21,  def_pct: 18  }, // 渡劫（旧化神）
+  7: { hp: 9200,  atk: 330,  def: 180,  spd: 120, hp_pct: 90,  atk_pct: 32,  def_pct: 27  }, // 大乘（旧渡劫）
+  8: { hp: 25000, atk: 830,  def: 470,  spd: 270, hp_pct: 138, atk_pct: 46,  def_pct: 39  }, // 飞升（旧大乘）
+  9: { hp: 64000, atk: 2000, def: 1170, spd: 670, hp_pct: 224, atk_pct: 70,  def_pct: 56  }, // 混元（旧飞升）— stage 5 无极 = 旧大罗金仙
 }
 
 export function getRealmStageMultiplier(stage: number): number {
@@ -142,9 +136,6 @@ export function getRealmBonusAtLevel(tier: number, stage: number): RealmBonus {
     hp_pct: base.hp_pct * mul,
     atk_pct: base.atk_pct * mul,
     def_pct: base.def_pct * mul,
-    crit_rate: base.crit_rate * mul,
-    crit_dmg: base.crit_dmg * mul,
-    dodge: base.dodge * mul,
   }
 }
 

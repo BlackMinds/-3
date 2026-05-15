@@ -525,8 +525,7 @@ export const STARTER_SKILLS: SkillData[] = [
 ];
 
 // ========== 境界属性加成 ==========
-// v3.0: 从 shared/balance.ts 读取单一数值源
-// crit_rate/crit_dmg/dodge 已按预算压缩(T8 crit 0.15→0.10 等)
+// 2026-05-15: 境界仅加 hp/atk/def/spd（含 %），不再给 crit/dodge
 export { REALM_BONUSES, getRealmStageMultiplier, type RealmBonus } from '~/shared/balance';
 import { getRealmBonusAtLevel as _getRealmBonusAtLevel, type RealmBonus as _RealmBonus } from '~/shared/balance';
 
@@ -538,9 +537,6 @@ export function getRealmBonusAtLevel(tier: number, stage: number): _RealmBonus {
     hp_pct: Math.round(base.hp_pct * 10) / 10,
     atk_pct: Math.round(base.atk_pct * 10) / 10,
     def_pct: Math.round(base.def_pct * 10) / 10,
-    crit_rate: Math.round(base.crit_rate * 1000) / 1000,
-    crit_dmg: Math.round(base.crit_dmg * 100) / 100,
-    dodge: Math.round(base.dodge * 1000) / 1000,
   };
 }
 

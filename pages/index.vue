@@ -2562,18 +2562,6 @@
                 <span class="realm-bonus-label">身法</span>
                 <span class="realm-bonus-val">+{{ formatNum(currentRealmBonus.spd) }}</span>
               </div>
-              <div class="realm-bonus-item" v-if="currentRealmBonus.crit_rate > 0">
-                <span class="realm-bonus-label">会心率</span>
-                <span class="realm-bonus-pct">+{{ (currentRealmBonus.crit_rate * 100).toFixed(1) }}%</span>
-              </div>
-              <div class="realm-bonus-item" v-if="currentRealmBonus.crit_dmg > 0">
-                <span class="realm-bonus-label">会心伤害</span>
-                <span class="realm-bonus-pct">+{{ (currentRealmBonus.crit_dmg * 100).toFixed(0) }}%</span>
-              </div>
-              <div class="realm-bonus-item" v-if="currentRealmBonus.dodge > 0">
-                <span class="realm-bonus-label">闪避</span>
-                <span class="realm-bonus-pct">+{{ (currentRealmBonus.dodge * 100).toFixed(1) }}%</span>
-              </div>
             </div>
           </div>
 
@@ -5746,7 +5734,6 @@ const secondaryStats = computed(() => {
     buildStat('会心率', Number(c.crit_rate) * 100, '基础', [
       { source: '装备 主+副', value: eb.CRIT_RATE || 0 },
       { source: '武器类型', value: wb.CRIT_RATE_flat || 0 },
-      { source: '境界', value: rb.crit_rate * 100 },
       { source: '附灵', value: ab.critRate * 100 },
       { source: '主修功法', value: mainCritRate },
       { source: '功法被动', value: passCritRate },
@@ -5755,14 +5742,12 @@ const secondaryStats = computed(() => {
     buildStat('会心伤害', Number(c.crit_dmg) * 100, '基础', [
       { source: '装备 主+副', value: eb.CRIT_DMG || 0 },
       { source: '武器类型', value: wb.CRIT_DMG_flat || 0 },
-      { source: '境界', value: rb.crit_dmg * 100 },
       { source: '附灵', value: ab.critDmg * 100 },
       { source: '主修功法', value: mainCritDmg },
       { source: '功法被动', value: passCritDmg },
     ], PLAYER_CAPS.critDmg * 100, 0),
     buildStat('闪避率', Number(c.dodge) * 100, '基础', [
       { source: '装备 副属性', value: eb.DODGE || 0 },
-      { source: '境界', value: rb.dodge * 100 },
       { source: '附灵', value: ab.dodge * 100 },
       { source: '主修功法', value: mainDodge },
       { source: '功法被动', value: passDodge },

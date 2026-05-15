@@ -127,9 +127,7 @@ export function buildPlayer(build: PlayerBuild): PlayerStats {
   // ===== 境界加成 =====
   const realm = getRealmBonusAtLevel(build.realmTier, build.realmStage)
   atk += realm.atk; def += realm.def; maxHp += realm.hp; spd += realm.spd
-  critRate += realm.crit_rate; critDmg += realm.crit_dmg; dodge += realm.dodge
   sources.realm_flat = { atk: realm.atk, def: realm.def, hp: realm.hp, spd: realm.spd }
-  sources.realm_pct_added_to_special = { critRate: realm.crit_rate, critDmg: realm.crit_dmg, dodge: realm.dodge }
 
   // ===== 装备主属性(7 槽,按 slot 分配) =====
   // 槽位主属性: weapon=ATK, armor=DEF, helmet=HP, boots=SPD, treasure=ATK, ring=CRIT_RATE, pendant=SPIRIT

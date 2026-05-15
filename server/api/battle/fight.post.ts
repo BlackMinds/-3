@@ -455,9 +455,6 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
   atk += realmBonus.atk
   def += realmBonus.def
   spd += realmBonus.spd
-  critRate += realmBonus.crit_rate
-  critDmg += realmBonus.crit_dmg
-  dodge += realmBonus.dodge
 
   // 武器类型加成已从 shared/balance.ts 导入
 

@@ -60,7 +60,6 @@ async function buildPlayerBattleStats(char: any): Promise<{
   // 境界加成
   const realmBonus = getRealmBonusAtLevel(char.realm_tier || 1, char.realm_stage || 1)
   maxHp += realmBonus.hp; atk += realmBonus.atk; def += realmBonus.def; spd += realmBonus.spd
-  critRate += realmBonus.crit_rate; critDmg += realmBonus.crit_dmg; dodge += realmBonus.dodge
 
   // 武器类型加成已从 shared/balance.ts 导入
 

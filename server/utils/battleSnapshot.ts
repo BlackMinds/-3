@@ -143,9 +143,6 @@ export async function buildCharacterSnapshot(
   atk += realmBonus.atk
   def += realmBonus.def
   spd += realmBonus.spd
-  critRate += realmBonus.crit_rate
-  critDmg += realmBonus.crit_dmg
-  dodge += realmBonus.dodge
 
   // 装备 - 主属性 + 武器百分比 + 副属性
   let weaponAtkPct = 0, weaponSpdPct = 0, weaponSpiritPct = 0
