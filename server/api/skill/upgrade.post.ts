@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const charId = charRows[0].id
+    let newLevel = 1
 
     const client = await pool.connect()
     try {
@@ -53,7 +54,7 @@ export default defineEventHandler(async (event) => {
         return { code: 400, message: `需要 ${needPages} 个 ${skill_id} 残页(当前 ${havePages})` }
       }
 
-      const newLevel = currentLevel + 1
+      newLevel = currentLevel + 1
 
       // 条件扣残页 + 升 inventory 等级（唯一真相源）— 防扣负
       await client.query(
