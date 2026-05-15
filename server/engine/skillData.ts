@@ -199,7 +199,7 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'heavenly_wrath', name: '天罚雷劫', type: 'divine', rarity: 'red', element: 'metal', multiplier: 4.80, cdTurns: 12, description: '造成480%伤害,40%眩晕1回合', debuff: { type: 'stun', chance: 0.40, duration: 1 } },
   // v3.10 红品木/水/火/土补矩阵
   { id: 'myriad_grove', name: '万木归元', type: 'divine', rarity: 'red', element: 'wood', multiplier: 0, cdTurns: 12, description: '回复350%攻击力气血,每回合回3% 5回合', buff: { type: 'regen', duration: 5, valuePercent: 0.03 }, healAtkRatio: 3.5 },
-  { id: 'abyssal_return', name: '沧海归墟', type: 'divine', rarity: 'red', element: 'water', multiplier: 2.00, cdTurns: 12, description: '[群攻] 全体200%水伤害,60%冻结2回合,自身防御+30% 3回合', debuff: { type: 'freeze', chance: 0.60, duration: 2 }, buff: { type: 'def_up', duration: 3, value: 0.30 }, isAoe: true },
+  { id: 'abyssal_return', name: '沧海归墟', type: 'divine', rarity: 'red', element: 'water', multiplier: 2.00, cdTurns: 12, description: '[群攻] 全体200%水伤害,50%冻结1回合,自身防御+30% 3回合', debuff: { type: 'freeze', chance: 0.50, duration: 1 }, buff: { type: 'def_up', duration: 3, value: 0.30 }, isAoe: true },
   { id: 'hellfire_inferno', name: '焚天炼狱', type: 'divine', rarity: 'red', element: 'fire', multiplier: 2.20, cdTurns: 12, description: '[群攻] 全体220%火伤害,70%灼烧5回合', debuff: { type: 'burn', chance: 0.70, duration: 5 }, isAoe: true },
   { id: 'sky_split', name: '开天辟地', type: 'divine', rarity: 'red', element: 'earth', multiplier: 5.20, cdTurns: 12, description: '造成520%土伤害,无视30%防御,50%脆弱4回合(减防30%)', debuff: { type: 'brittle', chance: 0.50, duration: 4, value: 0.30 }, ignoreDef: 0.30 },
 ];
