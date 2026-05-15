@@ -81,6 +81,24 @@ export default defineEventHandler(async (event) => {
     const invLevelMap: Record<string, number> = {}
     for (const row of invRows) invLevelMap[row.skill_id] = Number(row.level) || 1
 
+    // 校验：装备的功法必须真实存在于背包，且 skill_type 与 SKILL_MAP 一致
+    // 防止客户端直接装备未拥有的高阶功法（穿越式作弊）
+    if (Array.isArray(equipped)) {
+      for (const item of equipped) {
+        const skillId = String(item.skill_id)
+        const skillDef = SKILL_MAP[skillId]
+        if (!skillDef) {
+          return { code: 400, message: `功法不存在：${skillId}` }
+        }
+        if (skillDef.type !== item.skill_type) {
+          return { code: 400, message: `功法类型不匹配：${skillId}` }
+        }
+        if (!(skillId in invLevelMap)) {
+          return { code: 400, message: `未拥有该功法：${skillDef.name || skillId}` }
+        }
+      }
+    }
+
     // 先清空旧装备
     await pool.query('DELETE FROM character_skills WHERE character_id = $1', [charId])
 

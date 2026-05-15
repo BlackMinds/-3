@@ -14,6 +14,16 @@ export default defineEventHandler(async (event) => {
     try {
       await client.query('BEGIN')
 
+      // 玩家所在宗门 — 用于校验任务归属
+      const { rows: memberRows } = await client.query(
+        'SELECT sect_id FROM sect_members WHERE character_id = $1', [char.id]
+      )
+      if (memberRows.length === 0) {
+        await client.query('ROLLBACK')
+        return { code: 400, message: '未加入宗门' }
+      }
+      const mySectId = memberRows[0].sect_id
+
       // FOR UPDATE 锁任务行，防并发重复领取
       const { rows: taskRows } = await client.query(
         'SELECT * FROM sect_weekly_tasks WHERE id = $1 FOR UPDATE', [task_id]
@@ -21,6 +31,11 @@ export default defineEventHandler(async (event) => {
       if (taskRows.length === 0) {
         await client.query('ROLLBACK')
         return { code: 400, message: '任务不存在' }
+      }
+      // 防止越权领取其他宗门的周常奖励
+      if (taskRows[0].sect_id !== mySectId) {
+        await client.query('ROLLBACK')
+        return { code: 403, message: '无权领取该任务' }
       }
       if (!taskRows[0].completed) {
         await client.query('ROLLBACK')

@@ -3,15 +3,21 @@ import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
   try {
+    // 仅服务端内部调用（cron / reward / 采药结算），不允许玩家直接刷材料
+    const authHeader = getHeader(event, 'authorization')
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    }
+
     const pool = getPool()
-    const userId = event.context.userId
-    const { herb_id, quality, count } = await readBody(event)
+    const { user_id, herb_id, quality, count } = await readBody(event)
 
     if (!herb_id || !quality || !count) return { code: 400, message: '参数错误' }
 
+    const targetUserId = user_id || event.context.userId
     const { rows: charRows } = await pool.query(
       'SELECT * FROM characters WHERE user_id = $1',
-      [userId]
+      [targetUserId]
     )
     if (charRows.length === 0) return { code: 400, message: '角色不存在' }
 
@@ -37,7 +43,8 @@ export default defineEventHandler(async (event) => {
     }
 
     return { code: 200 }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.statusCode === 401) throw error
     console.error('添加灵草失败:', error)
     return { code: 500, message: '服务器错误' }
   }

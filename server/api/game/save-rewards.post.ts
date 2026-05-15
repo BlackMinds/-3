@@ -2,6 +2,13 @@ import { getPool } from '~/server/database/db'
 
 export default defineEventHandler(async (event) => {
   try {
+    // 历史端点：客户端不再调用，只允许服务端内部使用（cron / 离线结算）
+    // 防止客户端反复上报刷修为/等级经验/任意功法残页
+    const authHeader = getHeader(event, 'authorization')
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    }
+
     const pool = getPool()
     const { exp_gained, spirit_stone_gained, level_exp_gained, current_map, skills_gained } = await readBody(event)
 
@@ -50,7 +57,8 @@ export default defineEventHandler(async (event) => {
     }
 
     return { code: 200, message: '保存成功' }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.statusCode === 401) throw error
     console.error('保存奖励失败:', error)
     return { code: 500, message: '服务器错误' }
   }

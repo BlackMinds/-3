@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { OFFLINE_MAP_DATA } from '~/server/utils/offlineMapData'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -13,6 +14,13 @@ export default defineEventHandler(async (event) => {
     // 仅允许客户端更新地图位置；核心属性由服务端引擎统一计算，不允许客户端直写
     const allowedFields: Record<string, string> = {
       current_map: 'current_map',
+    }
+
+    // 防止客户端传任意字符串刷『踏遍青山/万界行者』成就
+    if (body.current_map !== undefined && body.current_map !== null) {
+      if (typeof body.current_map !== 'string' || !(body.current_map in OFFLINE_MAP_DATA)) {
+        return { code: 400, message: '非法地图' }
+      }
     }
 
     for (const [key, col] of Object.entries(allowedFields)) {
