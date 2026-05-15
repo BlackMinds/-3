@@ -31,21 +31,33 @@ export default defineEventHandler(async (event) => {
     const occupied = new Map<number, boolean>()
     for (const p of existing) occupied.set(p.plot_index, !!p.herb_id)
 
-    let planted = 0
+    // 收集需要 UPDATE 和 INSERT 的地块，批量执行
+    const updateIndices: number[] = []
+    const insertIndices: number[] = []
     for (let i = 0; i < plotCount; i++) {
-      if (occupied.get(i)) continue
-      if (occupied.has(i)) {
-        await pool.query(
-          'UPDATE character_cave_plots SET herb_id = $1, herb_quality = NULL, plant_time = NOW(), mature_time = $2, yield_count = 0 WHERE character_id = $3 AND plot_index = $4',
-          [herb_id, matureTime, charId, i]
-        )
-      } else {
-        await pool.query(
-          'INSERT INTO character_cave_plots (character_id, plot_index, herb_id, herb_quality, plant_time, mature_time, yield_count) VALUES ($1, $2, $3, NULL, $4, $5, 0)',
-          [charId, i, herb_id, new Date(), matureTime]
-        )
-      }
-      planted++
+      if (occupied.get(i)) continue          // 已有生长中的灵草 → 跳过
+      if (occupied.has(i)) updateIndices.push(i)   // 有空行 → UPDATE
+      else insertIndices.push(i)                   // 无行 → INSERT
+    }
+
+    const planted = updateIndices.length + insertIndices.length
+    if (planted === 0) return { code: 200, message: '没有空地块', data: { planted: 0 } }
+
+    const plantTime = new Date()
+    // 批量 UPDATE：单条 SQL 更新所有空行
+    if (updateIndices.length > 0) {
+      await pool.query(
+        `UPDATE character_cave_plots SET herb_id = $1, herb_quality = NULL, plant_time = NOW(), mature_time = $2, yield_count = 0 WHERE character_id = $3 AND plot_index = ANY($4::int[])`,
+        [herb_id, matureTime, charId, updateIndices]
+      )
+    }
+    // 批量 INSERT：UNNEST 一次性写入所有缺失地块
+    if (insertIndices.length > 0) {
+      await pool.query(
+        `INSERT INTO character_cave_plots (character_id, plot_index, herb_id, herb_quality, plant_time, mature_time, yield_count)
+         SELECT $1, unnest($2::int[]), $3, NULL, $4, $5, 0`,
+        [charId, insertIndices, herb_id, plantTime, matureTime]
+      )
     }
 
     if (planted === 0) return { code: 200, message: '没有空地块', data: { planted: 0 } }
