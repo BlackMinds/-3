@@ -281,6 +281,16 @@ export async function countChildren(pool: Pool, characterId: number): Promise<nu
   return rows[0]?.cnt || 0
 }
 
+export async function countChildrenByCompanion(pool: Pool, companionId: number): Promise<number> {
+  // 单道侣已生胎数 — 用于「单道侣最多 3 胎」限制（2026-05-15 小夏调整）
+  // 注：和离时 parent_companion_id 置 NULL，所以这里只统计现存道侣的血脉
+  const { rows } = await pool.query(
+    'SELECT COUNT(*)::int AS cnt FROM children WHERE parent_companion_id = $1',
+    [companionId]
+  )
+  return rows[0]?.cnt || 0
+}
+
 // 创建一个新子女（出生时调用）
 export interface BirthInputs {
   characterId: number

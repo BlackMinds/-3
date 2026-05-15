@@ -38,6 +38,8 @@ export interface CompanionDetail extends CompanionListItem {
   }
   todayGiftIntimacyGained: number
   dailyGiftRemaining: number
+  bornCount: number
+  maxPerCompanion: number
 }
 
 export interface ExpeditionLocation {

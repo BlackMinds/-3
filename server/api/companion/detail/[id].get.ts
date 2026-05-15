@@ -3,11 +3,14 @@
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
 import { getCompanionById, getTodayGiftIntimacyTotal } from '~/server/utils/companion'
+import { countChildrenByCompanion } from '~/server/utils/child'
 import {
   QUALITY_NAMES, QUALITY_COLORS, ROOT_NAMES,
   getIntimacyStage, INTIMACY_STAGES, INTIMACY_CONFIG,
   QUALITY_TRAITS,
 } from '~/server/engine/companionData'
+
+const MAX_PER_COMPANION = 3  // 与 conceive.post.ts 保持一致
 
 export default defineEventHandler(async (event) => {
   try {
@@ -25,6 +28,7 @@ export default defineEventHandler(async (event) => {
     const traits = QUALITY_TRAITS[c.quality as 0|1|2|3|4|5]
     const todayGiftIntimacy = await getTodayGiftIntimacyTotal(pool, c.id)
     const dailyRemaining = Math.max(0, INTIMACY_CONFIG.dailyGiftLimit - todayGiftIntimacy)
+    const bornCount = await countChildrenByCompanion(pool, c.id)
 
     return {
       code: 200,
@@ -65,6 +69,8 @@ export default defineEventHandler(async (event) => {
         },
         todayGiftIntimacyGained: todayGiftIntimacy,
         dailyGiftRemaining: dailyRemaining,
+        bornCount,
+        maxPerCompanion: MAX_PER_COMPANION,
       },
     }
   } catch (error) {

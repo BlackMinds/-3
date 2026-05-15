@@ -47,6 +47,13 @@
               <span v-if="cultBonus.doubled" class="cult-mark">（心心相印 ×2）</span>
             </span>
           </div>
+          <div v-if="detail.isOfficial" class="row">
+            <span class="label">血脉</span>
+            <span :class="['info-tag', bornCountFull ? 'tag-bad' : 'tag-gold']">
+              已生 {{ detail.bornCount ?? 0 }} / {{ detail.maxPerCompanion ?? 3 }} 胎
+              <span v-if="bornCountFull">（已达上限）</span>
+            </span>
+          </div>
         </div>
 
         <div class="detail-section">
@@ -263,10 +270,15 @@ const pregnantRemainText = computed(() => {
   const m = Math.floor((ms % 3600000) / 60000)
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 })
+const bornCountFull = computed(() => {
+  if (!detail.value) return false
+  return (detail.value.bornCount ?? 0) >= (detail.value.maxPerCompanion ?? 3)
+})
 const canConceive = computed(() => detail.value
   && detail.value.isOfficial
   && detail.value.intimacy >= 1000
-  && !detail.value.pregnantUntil)
+  && !detail.value.pregnantUntil
+  && !bornCountFull.value)
 const canClaimBirth = computed(() => detail.value?.pregnantUntil && pregnantRemain.value === 0)
 
 async function onConceive() {
