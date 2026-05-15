@@ -2961,8 +2961,6 @@
             <div class="help-title">装备进阶</div>
             <table class="help-table"><tbody>
               <tr><td>鉴定符</td><td>重随装备副属性(保留主属性和强化等级)</td></tr>
-
-              <tr><td>套装碎片</td><td>合成 6 套套装(烈阳/渊海/万木/雷罚/磐岩/虚空)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">上述道具可通过宗门商店购买,或打怪/成就掉落。</p>
           </div>
@@ -7764,11 +7762,6 @@ async function useSectItem(item: any) {
     return;
   }
 
-
-  if (id === 'set_reforge_voucher') {
-    showToast('请在装备点击面板的「重铸套装 ❖」按钮使用', 'info');
-    return;
-  }
 
   if (id === 'universal_skill_page') {
     sectItemDialog.value = {

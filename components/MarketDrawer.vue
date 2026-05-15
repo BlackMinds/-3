@@ -29,11 +29,6 @@
           <option value="">全部 T 级</option>
           <option v-for="t in [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]" :key="t" :value="t">T{{ t }}</option>
         </select>
-        <select v-model="filter.set_id" @change="reload" title="按套装筛选">
-          <option value="">全部套装</option>
-          <option value="none">无套装</option>
-          <option v-for="s in EQUIP_SETS" :key="s.setKey" :value="s.setKey">{{ s.name }}</option>
-        </select>
         <select v-model="filter.sort" @change="reload">
           <option value="time_desc">时间↓</option>
           <option value="price_asc">价格↑</option>
@@ -288,7 +283,6 @@
 
 <script setup lang="ts">
 import { EQUIP_SLOTS } from '~/game/equipData'
-import { EQUIP_SETS } from '~/game/equipSetData'
 import EquipDetail from '~/components/EquipDetail.vue'
 
 const props = defineProps<{ modelValue: boolean }>()
@@ -301,7 +295,7 @@ const acting = ref(false)
 
 // 浏览
 const listings = ref<any[]>([])
-const filter = reactive({ rarity: '', slot: '', tier: '' as any, set_id: '', sort: 'time_desc' })
+const filter = reactive({ rarity: '', slot: '', tier: '' as any, sort: 'time_desc' })
 const attrFilter = ref<string[]>([])
 const attrPickerOpen = ref(false)
 
@@ -550,7 +544,6 @@ async function reload() {
     if (filter.rarity) q.rarity = filter.rarity
     if (filter.slot) q.slot = filter.slot
     if (filter.tier) q.tier = filter.tier
-    if (filter.set_id) q.set_id = filter.set_id
     const res = await api('/market/listings', { query: q })
     if (res.code === 200) listings.value = res.data.items
   } finally { loading.value = false }
