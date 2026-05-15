@@ -25,10 +25,10 @@
         <p class="admin-card-title">发功法（按品质随机）</p>
         <select v-model="grantSkills.rarity" class="admin-select admin-mb-sm">
           <option value="green">绿（10 池）</option>
-          <option value="blue">蓝（11 池）</option>
-          <option value="purple">紫（18 池）</option>
-          <option value="gold">金（9 池）</option>
-          <option value="red">红（4 池）</option>
+          <option value="blue">蓝（16 池）</option>
+          <option value="purple">紫（19 池）</option>
+          <option value="gold">金（14 池）</option>
+          <option value="red">红（13 池）</option>
         </select>
         <input v-model.number="grantSkills.count" type="number" min="1" max="100" class="admin-input admin-mb-sm" placeholder="本数 1-100" />
         <button class="admin-btn small" :disabled="busy" @click="onGrantSkills">发功法</button>

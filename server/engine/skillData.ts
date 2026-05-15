@@ -79,9 +79,10 @@ export interface Skill {
   };
 }
 
-// 主修功法 (11 个: 白×1 + 绿×5 + 紫×5)
+// 主修功法 (22 个: 白×1 + 绿×5 + 蓝×5 + 紫×5 + 金×5 + 红×1)
 //   v3.5: 绿品 1.3→1.10 (-15%)
 //   v3.9: 新增紫品五行主修，倍率 1.50，自带主修向被动（复用 v1.3 灵戒同名钩子）
+//   v3.10: 补全品阶矩阵 —— 蓝品五行(1.25)、金品五行(1.70)、红品至尊(2.00)
 export const ACTIVE_SKILLS: Skill[] = [
   { id: 'basic_sword', name: '基础剑法', type: 'active', rarity: 'white', element: null, multiplier: 1.0, description: '造成100%灵力伤害' },
   { id: 'wind_blade', name: '风刃术', type: 'active', rarity: 'green', element: 'metal', multiplier: 1.10, description: '造成110%金属性伤害,30%流血2回合', debuff: { type: 'bleed', chance: 0.30, duration: 2 } },
@@ -89,6 +90,27 @@ export const ACTIVE_SKILLS: Skill[] = [
   { id: 'ice_palm', name: '寒冰掌', type: 'active', rarity: 'green', element: 'water', multiplier: 1.10, description: '造成110%水属性伤害,25%冻结1回合', debuff: { type: 'freeze', chance: 0.25, duration: 1 } },
   { id: 'flame_sword', name: '烈焰剑诀', type: 'active', rarity: 'green', element: 'fire', multiplier: 1.10, description: '造成110%火属性伤害,40%灼烧3回合', debuff: { type: 'burn', chance: 0.40, duration: 3 } },
   { id: 'quake_fist', name: '裂地拳', type: 'active', rarity: 'green', element: 'earth', multiplier: 1.10, description: '造成110%土属性伤害,30%脆弱3回合', debuff: { type: 'brittle', chance: 0.30, duration: 3, value: 0.20 } },
+  // ===== v3.10 蓝品五行主修 =====
+  { id: 'tempest_blade', name: '暴风刃', type: 'active', rarity: 'blue', element: 'metal', multiplier: 1.25,
+    description: '造成125%金属性伤害,35%流血3回合;主修无视5%防御',
+    debuff: { type: 'bleed', chance: 0.35, duration: 3 },
+    innateMain: { mainSkillArmorPen: 0.05 } },
+  { id: 'poison_vine', name: '缠妖藤', type: 'active', rarity: 'blue', element: 'wood', multiplier: 1.25,
+    description: '造成125%木属性伤害,45%中毒3回合;主修命中回0.8%最大气血',
+    debuff: { type: 'poison', chance: 0.45, duration: 3 },
+    innateMain: { mainSkillLifesteal: 0.008 } },
+  { id: 'frost_chant', name: '寒霜诀', type: 'active', rarity: 'blue', element: 'water', multiplier: 1.25,
+    description: '造成125%水属性伤害,28%冻结1回合;主修命中5%概率额外冻结1回合',
+    debuff: { type: 'freeze', chance: 0.28, duration: 1 },
+    innateMain: { mainSkillExtraFreezeChance: 0.05 } },
+  { id: 'blaze_fist', name: '烈火诀', type: 'active', rarity: 'blue', element: 'fire', multiplier: 1.25,
+    description: '造成125%火属性伤害,45%灼烧3回合;主修施加灼烧每跳伤害+8%',
+    debuff: { type: 'burn', chance: 0.45, duration: 3 },
+    innateMain: { mainSkillBurnAmp: 0.08 } },
+  { id: 'stone_strike', name: '山岩击', type: 'active', rarity: 'blue', element: 'earth', multiplier: 1.25,
+    description: '造成125%土属性伤害,35%脆弱3回合(减防22%);主修无视5%防御',
+    debuff: { type: 'brittle', chance: 0.35, duration: 3, value: 0.22 },
+    innateMain: { mainSkillArmorPen: 0.05 } },
   // ===== v3.9 紫品五行主修 =====
   { id: 'gale_blade', name: '罡风斩', type: 'active', rarity: 'purple', element: 'metal', multiplier: 1.50,
     description: '造成150%金属性伤害,45%流血3回合;会心率+5%',
@@ -110,9 +132,39 @@ export const ACTIVE_SKILLS: Skill[] = [
     description: '造成150%土属性伤害,45%脆弱3回合(减防25%);主修无视目标8%防御',
     debuff: { type: 'brittle', chance: 0.45, duration: 3, value: 0.25 },
     innateMain: { mainSkillArmorPen: 0.08 } },
+  // ===== v3.10 金品五行主修 =====
+  { id: 'heaven_sword', name: '天罡剑诀', type: 'active', rarity: 'gold', element: 'metal', multiplier: 1.70,
+    description: '造成170%金属性伤害,55%流血4回合;主修无视10%防御,会心率+6%',
+    debuff: { type: 'bleed', chance: 0.55, duration: 4 },
+    effect: { CRIT_RATE_flat: 0.06 },
+    innateMain: { mainSkillArmorPen: 0.10 } },
+  { id: 'soul_devour', name: '噬魂木', type: 'active', rarity: 'gold', element: 'wood', multiplier: 1.70,
+    description: '造成170%木属性伤害,60%中毒4回合;主修中毒每跳伤害+20%,命中回2%最大气血',
+    debuff: { type: 'poison', chance: 0.60, duration: 4 },
+    innateMain: { mainSkillPoisonAmp: 0.20, mainSkillLifesteal: 0.02 } },
+  { id: 'glacier_art', name: '冰川大法', type: 'active', rarity: 'gold', element: 'water', multiplier: 1.70,
+    description: '造成170%水属性伤害,30%冻结2回合;主修命中15%概率额外冻结1回合,速度+8%',
+    debuff: { type: 'freeze', chance: 0.30, duration: 2 },
+    effect: { SPD_percent: 8 },
+    innateMain: { mainSkillExtraFreezeChance: 0.15 } },
+  { id: 'hellfire_chant', name: '业火真诀', type: 'active', rarity: 'gold', element: 'fire', multiplier: 1.70,
+    description: '造成170%火属性伤害,60%灼烧4回合;主修施加灼烧每跳伤害+25%,攻击+10%',
+    debuff: { type: 'burn', chance: 0.60, duration: 4 },
+    effect: { ATK_percent: 10 },
+    innateMain: { mainSkillBurnAmp: 0.25 } },
+  { id: 'mountain_press', name: '神山压', type: 'active', rarity: 'gold', element: 'earth', multiplier: 1.70,
+    description: '造成170%土属性伤害,55%脆弱4回合(减防30%);主修无视12%防御,脆弱减防加深+10%',
+    debuff: { type: 'brittle', chance: 0.55, duration: 4, value: 0.30 },
+    innateMain: { mainSkillArmorPen: 0.12, mainSkillBrittleAmp: 0.10 } },
+  // ===== v3.10 红品至尊主修 =====
+  { id: 'myriad_origin', name: '万象归元', type: 'active', rarity: 'red', element: null, multiplier: 2.00,
+    description: '造成200%灵力伤害;主修命中12%概率追加冻结1回合;会心率+8%,主修无视10%防御',
+    effect: { CRIT_RATE_flat: 0.08 },
+    innateMain: { mainSkillExtraFreezeChance: 0.12, mainSkillArmorPen: 0.10 } },
 ];
 
-// 神通技能 (21个) - v3.5: 全线 ×0.60 让数值视觉脱离"百万级",蓝品保底 ≥0.85
+// 神通技能 (32 个) - v3.5: 全线 ×0.60 让数值视觉脱离"百万级",蓝品保底 ≥0.85
+//                    v3.10: 补全紫土单体、金水/金无元素、红木水火土
 export const DIVINE_SKILLS: Skill[] = [
   { id: 'fire_rain', name: '天火术', type: 'divine', rarity: 'blue', element: 'fire', multiplier: 0.90, cdTurns: 5, description: '[群攻] 全体90%伤害,20%灼烧3回合', debuff: { type: 'burn', chance: 0.20, duration: 3 }, isAoe: true },
   { id: 'frost_nova', name: '霜冻新星', type: 'divine', rarity: 'blue', element: 'water', multiplier: 0.85, cdTurns: 7, description: '[群攻] 全体85%伤害,40%冻结2回合', debuff: { type: 'freeze', chance: 0.40, duration: 2 }, isAoe: true },
@@ -132,17 +184,27 @@ export const DIVINE_SKILLS: Skill[] = [
   { id: 'poison_mist', name: '毒雾蔓延', type: 'divine', rarity: 'purple', element: 'wood', multiplier: 1.50, cdTurns: 7, description: '[群攻] 全体150%伤害,50%中毒3回合', debuff: { type: 'poison', chance: 0.50, duration: 3 }, isAoe: true },
   { id: 'bleed_storm', name: '血雨腥风', type: 'divine', rarity: 'purple', element: 'metal', multiplier: 1.55, cdTurns: 7, description: '[群攻] 全体155%伤害,40%流血3回合', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, isAoe: true },
   { id: 'burn_inferno', name: '焚天烈魂', type: 'divine', rarity: 'purple', element: 'fire', multiplier: 1.40, cdTurns: 8, description: '[群攻] 全体140%伤害,50%灼烧3回合,自身攻击+20% 3回合', debuff: { type: 'burn', chance: 0.50, duration: 3 }, buff: { type: 'atk_up', duration: 3, value: 0.20 }, isAoe: true },
+  // v3.10 紫品土系单体（补矩阵）
+  { id: 'earth_shatter', name: '撼地裂石', type: 'divine', rarity: 'purple', element: 'earth', multiplier: 2.00, cdTurns: 7, description: '造成200%土属性伤害,45%脆弱4回合(减防25%)', debuff: { type: 'brittle', chance: 0.45, duration: 4, value: 0.25 } },
   { id: 'metal_burst', name: '万剑归宗', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 3.48, cdTurns: 10, description: '造成348%伤害,40%流血3回合', debuff: { type: 'bleed', chance: 0.40, duration: 3 } },
   { id: 'quake_stomp', name: '地裂天崩', type: 'divine', rarity: 'gold', element: 'earth', multiplier: 2.88, cdTurns: 9, description: '造成288%伤害,30%眩晕1回合,自身防御+20% 3回合', debuff: { type: 'stun', chance: 0.30, duration: 1 }, buff: { type: 'def_up', duration: 3, value: 0.20 } },
   { id: 'life_drain', name: '噬魂大法', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 2.70, cdTurns: 8, description: '造成270%伤害并吸血,40%降低敌方攻击20% 3回合', debuff: { type: 'atk_down', chance: 0.40, duration: 3, value: 0.20 } },
   { id: 'inferno_burst', name: '九天玄火阵', type: 'divine', rarity: 'gold', element: 'fire', multiplier: 2.10, cdTurns: 10, description: '[群攻] 全体210%伤害,50%灼烧4回合', debuff: { type: 'burn', chance: 0.50, duration: 4 }, isAoe: true },
   { id: 'storm_blade', name: '暴风斩', type: 'divine', rarity: 'gold', element: 'metal', multiplier: 2.88, cdTurns: 8, description: '[5段] 单体5×58%伤害,每段40%流血', debuff: { type: 'bleed', chance: 0.40, duration: 3 }, hitCount: 5 },
   { id: 'heaven_heal', name: '天地归元', type: 'divine', rarity: 'gold', element: 'wood', multiplier: 0, cdTurns: 10, description: '回复240%攻击力气血,每回合回2.4% 4回合', buff: { type: 'regen', duration: 4, valuePercent: 0.024 }, healAtkRatio: 2.4 },
+  // v3.10 金品水/无元素补矩阵
+  { id: 'frost_marrow', name: '寒髓裂魂', type: 'divine', rarity: 'gold', element: 'water', multiplier: 3.20, cdTurns: 10, description: '造成320%水属性伤害,50%冻结2回合', debuff: { type: 'freeze', chance: 0.50, duration: 2 } },
+  { id: 'taichi_reflect', name: '太极归一', type: 'divine', rarity: 'gold', element: null, multiplier: 0, cdTurns: 9, description: '反弹40%伤害+10%最大气血 5回合(基础反弹≤8倍攻击力)', buff: { type: 'reflect', duration: 5, value: 0.40 } },
   { id: 'time_stop', name: '时光凝滞', type: 'divine', rarity: 'red', element: null, multiplier: 0, cdTurns: 12, description: '[群攻] 全体冻结2回合,自身攻击+15% 3回合', debuff: { type: 'freeze', chance: 1.0, duration: 2 }, buff: { type: 'atk_up', duration: 3, value: 0.15 }, isAoe: true },
   { id: 'heavenly_wrath', name: '天罚雷劫', type: 'divine', rarity: 'red', element: 'metal', multiplier: 4.80, cdTurns: 12, description: '造成480%伤害,40%眩晕1回合', debuff: { type: 'stun', chance: 0.40, duration: 1 } },
+  // v3.10 红品木/水/火/土补矩阵
+  { id: 'myriad_grove', name: '万木归元', type: 'divine', rarity: 'red', element: 'wood', multiplier: 0, cdTurns: 12, description: '回复350%攻击力气血,每回合回3% 5回合', buff: { type: 'regen', duration: 5, valuePercent: 0.03 }, healAtkRatio: 3.5 },
+  { id: 'abyssal_return', name: '沧海归墟', type: 'divine', rarity: 'red', element: 'water', multiplier: 2.00, cdTurns: 12, description: '[群攻] 全体200%水伤害,60%冻结2回合,自身防御+30% 3回合', debuff: { type: 'freeze', chance: 0.60, duration: 2 }, buff: { type: 'def_up', duration: 3, value: 0.30 }, isAoe: true },
+  { id: 'hellfire_inferno', name: '焚天炼狱', type: 'divine', rarity: 'red', element: 'fire', multiplier: 2.20, cdTurns: 12, description: '[群攻] 全体220%火伤害,70%灼烧5回合', debuff: { type: 'burn', chance: 0.70, duration: 5 }, isAoe: true },
+  { id: 'sky_split', name: '开天辟地', type: 'divine', rarity: 'red', element: 'earth', multiplier: 5.20, cdTurns: 12, description: '造成520%土伤害,无视30%防御,50%脆弱4回合(减防30%)', debuff: { type: 'brittle', chance: 0.50, duration: 4, value: 0.30 }, ignoreDef: 0.30 },
 ];
 
-// 被动功法 (19个)
+// 被动功法 (30 个)  - v3.10 补全金品五行(金/木/火)与红品五行(金/木/水/火/土)
 export const PASSIVE_SKILLS: Skill[] = [
   { id: 'body_refine', name: '金刚体', type: 'passive', rarity: 'green', element: 'earth', multiplier: 0, description: '防御+10%,土抗+10%', effect: { DEF_percent: 10, RESIST_EARTH: 0.10 } },
   { id: 'flame_body', name: '焚体诀', type: 'passive', rarity: 'green', element: 'fire', multiplier: 0, description: '攻击+8%,火抗+10%', effect: { ATK_percent: 8, RESIST_FIRE: 0.10 } },
@@ -162,10 +224,19 @@ export const PASSIVE_SKILLS: Skill[] = [
   { id: 'phantom_step', name: '飘渺神行', type: 'passive', rarity: 'purple', element: 'water', multiplier: 0, description: '闪避+8%,闪避后下次攻击必会心,速度+8%', effect: { DODGE_flat: 0.08, crit_after_dodge: true, SPD_percent: 8 } },
   { id: 'healing_spring', name: '春风化雨', type: 'passive', rarity: 'purple', element: 'wood', multiplier: 0, description: '你受到的治疗+30%,每回合回血+1%,水/木抗+10%', effect: { heal_amplifier_percent: 30, regen_per_turn_percent: 0.01, RESIST_WATER: 0.10, RESIST_WOOD: 0.10 } },
   { id: 'water_mastery', name: '渊海之心', type: 'passive', rarity: 'gold', element: 'water', multiplier: 0, description: '每回合回1.5%血,水抗+20%,防御+12%', effect: { regen_per_turn_percent: 0.015, RESIST_WATER: 0.20, DEF_percent: 12 } },
+  { id: 'sword_bone', name: '剑骨大成', type: 'passive', rarity: 'gold', element: 'metal', multiplier: 0, description: '会心率+7%,会心伤害+22%,攻击+8%,金抗+18%', effect: { CRIT_RATE_flat: 0.07, CRIT_DMG_flat: 0.22, ATK_percent: 8, RESIST_METAL: 0.18 } },
+  { id: 'wood_blessing', name: '木灵祝福', type: 'passive', rarity: 'gold', element: 'wood', multiplier: 0, description: '气血+12%,每回合回1.5%,受治疗+22%,木抗+18%,水抗+10%', effect: { HP_percent: 12, regen_per_turn_percent: 0.015, heal_amplifier_percent: 22, RESIST_WOOD: 0.18, RESIST_WATER: 0.10 } },
+  { id: 'fire_heart', name: '业火焚心', type: 'passive', rarity: 'gold', element: 'fire', multiplier: 0, description: '造成的灼烧/中毒/流血伤害+30%,攻击+10%,火抗+22%,被打12%灼烧2回合', effect: { dot_amplifier_percent: 30, ATK_percent: 10, RESIST_FIRE: 0.22, burn_on_hit_taken_chance: 0.12 } },
   { id: 'battle_frenzy', name: '战意沸腾', type: 'passive', rarity: 'gold', element: null, multiplier: 0, description: '攻击+15%, 会心率+5%, 会心伤害+18%', effect: { ATK_percent: 15, CRIT_RATE_flat: 0.05, CRIT_DMG_flat: 0.18 } },
   { id: 'heavenly_body', name: '不灭金身', type: 'passive', rarity: 'gold', element: 'earth', multiplier: 0, description: '防御+15%,减伤8%,土抗+25%,免死1次保留20%血', effect: { DEF_percent: 15, damage_reduction_flat: 0.08, RESIST_EARTH: 0.25, revive_once: true } },
   { id: 'dao_heart', name: '道心通明', type: 'passive', rarity: 'red', element: null, multiplier: 0, description: '全属性+12%,全五行抗+10%,控抗+15%,所有神通CD-1', effect: { ATK_percent: 12, DEF_percent: 12, HP_percent: 12, RESIST_METAL: 0.10, RESIST_WOOD: 0.10, RESIST_WATER: 0.10, RESIST_FIRE: 0.10, RESIST_EARTH: 0.10, RESIST_CTRL: 0.15, skill_cd_reduction_turns: 1 } },
   { id: 'five_elements_harmony', name: '五行归一', type: 'passive', rarity: 'red', element: null, multiplier: 0, description: '攻防血+8%,全五行抗+15%', effect: { ATK_percent: 8, DEF_percent: 8, HP_percent: 8, RESIST_METAL: 0.15, RESIST_WOOD: 0.15, RESIST_WATER: 0.15, RESIST_FIRE: 0.15, RESIST_EARTH: 0.15 } },
+  // v3.10 红品五行流派终极被动
+  { id: 'sword_throne', name: '万剑朝宗', type: 'passive', rarity: 'red', element: 'metal', multiplier: 0, description: '会心率+8%,会心伤害+25%,攻击+12%,金抗+20%,控抗+10%', effect: { CRIT_RATE_flat: 0.08, CRIT_DMG_flat: 0.25, ATK_percent: 12, RESIST_METAL: 0.20, RESIST_CTRL: 0.10 } },
+  { id: 'jade_wood', name: '青木玄机', type: 'passive', rarity: 'red', element: 'wood', multiplier: 0, description: '造成的灼烧/中毒/流血伤害+35%,攻击+10%,吸血+6%,木抗+20%,受治疗+18%', effect: { dot_amplifier_percent: 35, ATK_percent: 10, LIFESTEAL_flat: 0.06, RESIST_WOOD: 0.20, heal_amplifier_percent: 18 } },
+  { id: 'boundless_sea', name: '碧海无极', type: 'passive', rarity: 'red', element: 'water', multiplier: 0, description: '每回合回2%,闪避+8%,速度+8%,受治疗+30%,水抗+20%,控抗+15%', effect: { regen_per_turn_percent: 0.02, DODGE_flat: 0.08, SPD_percent: 8, heal_amplifier_percent: 30, RESIST_WATER: 0.20, RESIST_CTRL: 0.15 } },
+  { id: 'vermilion_blaze', name: '朱雀焚心', type: 'passive', rarity: 'red', element: 'fire', multiplier: 0, description: '攻击+15%,造成的灼烧/中毒/流血伤害+30%,会心率+5%,火抗+20%,被打15%灼烧3回合', effect: { ATK_percent: 15, dot_amplifier_percent: 30, CRIT_RATE_flat: 0.05, RESIST_FIRE: 0.20, burn_on_hit_taken_chance: 0.15 } },
+  { id: 'black_warrior', name: '玄武天极', type: 'passive', rarity: 'red', element: 'earth', multiplier: 0, description: '气血+15%,防御+10%,减伤+12%,土抗+25%,免死1次保留20%血', effect: { HP_percent: 15, DEF_percent: 10, damage_reduction_flat: 0.12, RESIST_EARTH: 0.25, revive_once: true } },
 ];
 
 export const ALL_SKILLS = [...ACTIVE_SKILLS, ...DIVINE_SKILLS, ...PASSIVE_SKILLS];

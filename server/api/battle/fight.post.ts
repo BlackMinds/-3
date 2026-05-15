@@ -10,6 +10,7 @@ import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/util
 import { checkAchievements } from '~/server/engine/achievementData'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
+import { getSkillDropPool } from '~/server/engine/skillDropPools'
 import { rollSubStats, getEquipSellBase, decideEquipPrimariesV4, rollSubStatsV4 } from '~/server/utils/equipment'
 import { tryRollEquipmentV5DropSpec, tryRollV5SpecialDrop } from '~/server/utils/equipment-v5'
 import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
@@ -373,16 +374,7 @@ function getSkillDropRate(tier: number, isBoss: boolean): number {
 function generateSkillDrop(tier: number, isBoss: boolean, luckMul: number = 1, ownedCounts: Record<string, number> = {}): string | null {
   const rate = getSkillDropRate(tier, isBoss) * luckMul
   if (Math.random() >= rate) return null
-  const pools: Record<number, string[]> = {
-    1: ['wind_blade','vine_whip','ice_palm','flame_sword','quake_fist','body_refine','flame_body','water_flow','root_grip','metal_skin'],
-    3: ['fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell','swift_step','iron_skin','thorn_aura','flame_aura','earth_wall'],
-    5: ['sword_storm','twin_flame','flurry_palm','spring_heal','blood_fury','wood_heal','mirror_water','venom_burst','bleed_storm','burn_inferno','poison_mist','crit_master','earth_fortitude','poison_body','fire_mastery','dot_amplifier','phantom_step','healing_spring'],
-    7: ['metal_burst','quake_stomp','life_drain','inferno_burst','storm_blade','heaven_heal','water_mastery','battle_frenzy','heavenly_body','time_stop','heavenly_wrath','dao_heart','five_elements_harmony'],
-  }
-  let pool = pools[1]
-  if (tier >= 7) pool = pools[7]
-  else if (tier >= 5) pool = pools[5]
-  else if (tier >= 3) pool = pools[3]
+  const pool = getSkillDropPool(tier)
 
   const weightsList = pool.map(skillId => {
     const owned = ownedCounts[skillId] || 0

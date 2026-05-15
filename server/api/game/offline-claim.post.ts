@@ -10,6 +10,7 @@ import { rand } from '~/server/utils/random'
 import { generateEquipName } from '~/server/engine/equipNameData'
 import { rollEquipSet } from '~/server/engine/equipSetData'
 import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
+import { getSkillDropPool } from '~/server/engine/skillDropPools'
 
 /**
  * 离线挂机结算 v2：基于开始离线时的快照真打 N 场
@@ -295,17 +296,8 @@ export default defineEventHandler(async (event) => {
       await pool.query('UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2', [bagOverflowGain, char.id])
     }
 
-    // 功法掉落
-    const skillPools: Record<number, string[]> = {
-      1: ['wind_blade','vine_whip','ice_palm','flame_sword','quake_fist','body_refine','flame_body','water_flow','root_grip','metal_skin'],
-      3: ['fire_rain','frost_nova','earth_shield','quake_wave','vine_prison','golden_bell','swift_step','iron_skin','thorn_aura','flame_aura','earth_wall'],
-      5: ['sword_storm','twin_flame','flurry_palm','spring_heal','blood_fury','wood_heal','mirror_water','venom_burst','bleed_storm','burn_inferno','poison_mist','crit_master','earth_fortitude','poison_body','fire_mastery','dot_amplifier','phantom_step','healing_spring'],
-      7: ['metal_burst','quake_stomp','life_drain','inferno_burst','storm_blade','heaven_heal','water_mastery','battle_frenzy','heavenly_body','time_stop','heavenly_wrath','dao_heart','five_elements_harmony'],
-    }
-    let skillPool = skillPools[1]
-    if (mapData.tier >= 7) skillPool = skillPools[7]
-    else if (mapData.tier >= 5) skillPool = skillPools[5]
-    else if (mapData.tier >= 3) skillPool = skillPools[3]
+    // 功法掉落（池子来源：server/engine/skillDropPools.ts）
+    const skillPool = getSkillDropPool(mapData.tier)
 
     const actualSkillCount = Math.min(skillCount, 10)
     for (let i = 0; i < actualSkillCount; i++) {

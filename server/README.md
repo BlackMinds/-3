@@ -124,7 +124,7 @@ src/
 
 服务端完整战斗引擎,从前端 battleEngine.ts 移植:
 - **波次战斗**: 1-5只怪同时出现,1%概率Boss
-- **46个功法**: 6主修 + 21神通(AOE/多段/多目标/治疗/buff) + 19被动
+- **84 个功法**: 22 主修(白/绿/蓝/紫/金/红 全品阶) + 32 神通(AOE/多段/多目标/治疗/buff) + 30 被动
 - **10种debuff**: 灼烧/中毒/流血/冻结/眩晕/减速/脆弱/降攻/束缚/封印
 - **8种buff**: 攻击/防御/速度/会心/护盾/回血/反弹/免疫
 - **怪物AI**: 按tier分层技能池,Boss低血量狂暴,优先回复/攻击选择
@@ -165,6 +165,39 @@ mysql -u root -p < src/database/migration.sql
   - 对外返回 level 的接口/查询统一用 `COALESCE(csi.level, cs.level, 1)` 的 JOIN 取值
   - 历史 bug：曾出现 "前端显示 Lv.1 但点升报已满级" 的镜像分裂，根因就是 `character_skills` 单行自增导致同 skill_id 多行 level 不一致
 - 涉及文件：`server/api/skill/{upgrade,equipped,save-equipped}.ts`、`server/utils/{battleSnapshot,achievement,randomEvent}.ts`、`server/api/battle/fight.post.ts`
+
+### 关键资源新增/删除时的同步清单
+
+新增/删除/重命名任何会出现在玩家背包或掉落池的资源（功法、丹药、装备、强化石、灵草、道具等），必须把下列相关位置一并改掉。**只改一处必出 bug**：玩家能拿到但 GM 发不出来、或反之。
+
+**功法（skill）**
+- 数据源：`server/engine/skillData.ts`
+- 前端镜像（必须逐字一致）：`game/skillData.ts`
+- 掉落池单一真相源：`server/engine/skillDropPools.ts`
+  - 按 tier 池（`SKILL_DROP_POOLS` / `getSkillDropPool`）—— 影响战斗 / 挂机 / 历练
+  - 按品阶池（`SKILL_DROP_POOLS_BY_RARITY` / `getSkillRarityPool`）—— 影响 GM 发功法
+- 通天塔节点专属池：`server/api/tower/{challenge,sweep}.post.ts` 内的 `TOWER_PURPLE_ACTIVE_IDS`
+- GM 后台前端下拉数字：`components/AdminPlayerActions.vue` 「发功法」5 个 option 的「绿/蓝/紫/金/红 (N 池)」
+- 帮助文档：`pages/index.vue` 功法获取来源表
+- 设计文档：`design/system-skill.md`（§11 获取来源 / §13 变更历史）
+- 当前 README 计数：`server/README.md` 「N 个功法」行
+
+**丹药（pill）**
+- 数据源：`game/pillData.ts`（`PILL_RECIPES`）
+- GM 后台「发道具」下拉：`components/AdminPlayerActions.vue` —— 检查 pill_id 是否需要补
+- 解锁条件 / 帮助文案：`pages/index.vue` 炼丹系统帮助节
+- 设计文档：`design/system-herb-pill-rework.md`
+
+**装备 / 强化石 / 灵草**
+- 强化石数据 + 掉落率：`server/api/battle/fight.post.ts` 的 `generateEnhanceStoneDrop`
+- 装备掉落 / 词条 / 套装：`server/utils/equipment.ts`、`server/utils/equipment-v5.ts`、`server/engine/equipSetData.ts`、`server/engine/equipNameData.ts`
+- 灵草：`server/utils/secretRealmDrops.ts` `generateSecretRealmHerb`、洞府灵田 `server/api/cave/*`
+- 设计文档：`design/system-equipment-v5-0-2.json` 及相关 design 文件
+
+**通用准则**
+- 改完资源数据后，第一件事是 grep 旧 ID 在仓库出现的所有位置：`grep -r '旧_id' --include='*.ts' --include='*.vue'`
+- 玩家正规渠道能拿到的内容 = GM 后台能发的内容，**保持镜像**；专属渠道（如通天塔紫主修）除外，但要在代码注释和设计文档里说明清楚
+- 涉及计数的 UI 文案（如「绿（10 池）」「84 个功法」）改完后回头看一遍下拉/帮助页/README，不要留旧数字
 
 ## 环境变量 (.env)
 ```env
