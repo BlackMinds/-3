@@ -2247,6 +2247,7 @@
               <tr><td>装备</td><td>普怪 T1-2=20% / T3-6=12% / T7+=8% · Boss 100%</td></tr>
               <tr><td>功法</td><td>T1-3 普怪 1.5% / Boss 15% · T4+ 普怪 0.8% / Boss 10%</td></tr>
               <tr><td>Boss</td><td>每波 1% 概率出现</td></tr>
+              <tr><td>传奇</td><td>T8+ Boss 才有 · 秘宝 0.1% / 元始天尊装备 0.001%（秘境概率更高：0.5% / 0.05%）</td></tr>
             </tbody></table>
           </div>
 
@@ -2264,6 +2265,7 @@
                   </span>
                 </div>
                 <p>装备: T{{ map.tier }}阶 {{ dropQualityRange(map.tier) }}</p>
+                <p v-if="dropLegendaryInfo(map.tier)" style="color: #FFD700;">传奇: {{ dropLegendaryInfo(map.tier) }}</p>
                 <p>功法: {{ dropSkillRange(map.tier) }}</p>
               </div>
             </div>
@@ -5891,8 +5893,20 @@ function dropQualityRange(tier: number): string {
     9: '灵宝~太古神器', 10: '灵宝~太古神器',
     11: '灵宝~太古神器', 12: '仙器~太古神器', 13: '仙器~太古神器',
     14: '仙器~太古神器', 15: '仙器~太古神器',
+    16: '仙器~太古神器', 17: '仙器~太古神器', 18: '仙器~太古神器',
   };
-  return ranges[tier] || '凡器~灵宝';
+  return ranges[tier] || '仙器~太古神器';
+}
+
+function dropLegendaryInfo(tier: number): string | null {
+  if (tier < V5_LEGENDARY_SET_YUANSHI.min_tier) return null;
+  const parts: string[] = [];
+  const treasure = V5_BOSS_TREASURES.find(b => b.tier === tier);
+  if (treasure) {
+    parts.push(`Boss 秘宝「${treasure.name}」(${treasure.slot_v5}) 0.1%`);
+  }
+  parts.push(`元始天尊装备 0.001%`);
+  return parts.join(' · ');
 }
 
 function dropSkillRange(tier: number): string {
@@ -8521,6 +8535,8 @@ import {
   v5PrevSlotIndex as _v5PrevSlot,
   V5_WUXING_PREFIX_ZH as _V5_PREFIX_ZH,
   getV5LegendarySetActiveEffects,
+  V5_BOSS_TREASURES,
+  V5_LEGENDARY_SET_YUANSHI,
   type V5EquippedItem as _V5EquippedItem,
   type WuxingPrefix as _WuxingPrefix,
 } from '~/shared/balance-v5'
