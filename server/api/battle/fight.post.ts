@@ -411,23 +411,6 @@ function generateEnhanceStoneDrop(tier: number, isBoss: boolean, luckMul: number
   return `enhance_stone_t${tier}`
 }
 
-// ===== 灵草掉落 =====
-function generateHerbDrop(tier: number, monsterElement: string | null, isBoss: boolean, luckMul: number = 1): any | null {
-  const rate = (isBoss ? 0.80 : 0.30) * luckMul
-  if (Math.random() >= rate) return null
-  const elementToHerb: Record<string, string> = { metal: 'metal_herb', wood: 'wood_herb', water: 'water_herb', fire: 'fire_herb', earth: 'earth_herb' }
-  let herbId = monsterElement ? (elementToHerb[monsterElement] || 'common_herb') : 'common_herb'
-  if (isBoss && !monsterElement && Math.random() < 0.3) herbId = 'spirit_grass'
-  const qualityOrder = ['white', 'green', 'blue', 'purple', 'gold']
-  let qIdx = 0
-  const r2 = Math.random()
-  if (tier >= 7) qIdx = r2 < 0.4 ? 4 : 3
-  else if (tier >= 5) qIdx = r2 < 0.5 ? 3 : 2
-  else if (tier >= 3) qIdx = r2 < 0.4 ? 2 : 1
-  else qIdx = r2 < 0.2 ? 1 : 0
-  return { herb_id: herbId, quality: qualityOrder[qIdx], count: isBoss ? 3 : 1 }
-}
-
 // ===== 构建玩家战斗属性 =====
 export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], caveRows: any[], equippedSkills?: any): { stats: BattlerStats; expBonusPercent: number; luckPercent: number } {
   let atk = Number(char.atk)
@@ -1211,8 +1194,6 @@ export default defineEventHandler(async (event) => {
           allDrops.push({ type: 'skill', data: skillDrop })
           ownedSkillCounts[skillDrop] = (ownedSkillCounts[skillDrop] || 0) + 1
         }
-        const herbDrop = generateHerbDrop(tier, t.element, ib, luckMul)
-        if (herbDrop) allDrops.push({ type: 'herb', data: herbDrop })
         const stoneDrop = generateEnhanceStoneDrop(tier, ib, luckMul)
         if (stoneDrop) allDrops.push({ type: 'stone', data: { stone_id: stoneDrop, tier } })
       }
@@ -1317,15 +1298,6 @@ export default defineEventHandler(async (event) => {
                 [char.id, drop.data]
               )
               result.logs.push({ turn: 0, text: `掉落了功法!`, type: 'loot', playerHp: 0, playerMaxHp: 0, monsterHp: 0, monsterMaxHp: 0 })
-            }
-            if (drop.type === 'herb') {
-              const h = drop.data
-              await client.query(
-                `INSERT INTO character_materials (character_id, material_id, quality, count)
-                 VALUES ($1, $2, $3, $4)
-                 ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + $5`,
-                [char.id, h.herb_id, h.quality, h.count, h.count]
-              )
             }
             if (drop.type === 'stone') {
               const s = drop.data

@@ -20,7 +20,7 @@ import { getTopAvgLevel, getCatchUpMultiplier } from '~/server/utils/expCap'
  * - 每分钟 1 场代表战（runWaveBattle），每场代表 12 次实际战斗的产出
  * - 5 连败提前 break，按当前累计发奖（避免低战力挂在高图也能领满）
  * - 不出 BOSS（按设计：BOSS 掉落特殊，不适合抽样外推）
- * - 装备/功法/灵草掉落数量 = 总击杀 × 现有比例
+ * - 装备/功法掉落数量 = 总击杀 × 现有比例
  */
 
 // 每场代表战折算 N 次实际战斗的产出。
@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
     // 与在线版完全对齐的缩放系数（fight.post.ts:925-944）
     // - expMul / catchUpMul / 0.7 → 经验与等级经验
     // - stoneTierBonus（T≤3 = 1.2）→ 灵石（在线灵石不吃 luck）
-    // - luckMul → 装备/功法/灵草掉落概率
+    // - luckMul → 装备/功法掉落概率
     const avgLevel = await getTopAvgLevel()
     const catchUpMul = getCatchUpMultiplier(charLevelForCatchUp, avgLevel)
     const expMul = 1 + expBonusPercent / 100
@@ -192,11 +192,10 @@ export default defineEventHandler(async (event) => {
       await pool.query('UPDATE characters SET level = $1, level_exp = $2 WHERE id = $3', [lvResult.level, lvResult.level_exp, char.id])
     }
 
-    // === 装备/功法/灵草掉落（按总击杀 × 比例 × luckMul） ===
+    // === 装备/功法掉落（按总击杀 × 比例 × luckMul） ===
     // 在线版每只怪 Math.random() < rate × luckMul 决定掉落，离线用期望值外推时同样乘 luckMul 保持等价
     const equipCount = Math.floor(totalKills * 0.08 * luckMul)
     const skillCount = Math.floor(totalKills * 0.02 * luckMul)
-    const herbCount = Math.floor(totalKills * 0.10 * luckMul)
 
     // 装备掉落（v4.0：双主属性 + 部位分桶副词条）
     const rarities = ['white', 'green', 'blue', 'purple', 'gold', 'red']
@@ -317,26 +316,6 @@ export default defineEventHandler(async (event) => {
       )
     }
 
-    // 灵草掉落
-    const herbIds = ['common_herb', 'metal_herb', 'wood_herb', 'water_herb', 'fire_herb', 'earth_herb']
-    const qualityOrder = ['white', 'green', 'blue', 'purple', 'gold']
-    const actualHerbCount = Math.min(herbCount, 20)
-    for (let i = 0; i < actualHerbCount; i++) {
-      const hid = herbIds[Math.floor(Math.random() * herbIds.length)]
-      let qIdx = 0
-      const rr = Math.random()
-      if (mapData.tier >= 7) qIdx = rr < 0.4 ? 4 : 3
-      else if (mapData.tier >= 5) qIdx = rr < 0.5 ? 3 : 2
-      else if (mapData.tier >= 3) qIdx = rr < 0.4 ? 2 : 1
-      else qIdx = rr < 0.2 ? 1 : 0
-      await pool.query(
-        `INSERT INTO character_materials (character_id, material_id, quality, count)
-         VALUES ($1, $2, $3, 1)
-         ON CONFLICT (character_id, material_id, quality) DO UPDATE SET count = character_materials.count + 1`,
-        [char.id, hid, qualityOrder[qIdx]]
-      )
-    }
-
     // 成就
     checkAchievements(char.id, 'total_exp', expGained).catch(() => {})
     checkAchievements(char.id, 'char_level', newLevel).catch(() => {})
@@ -362,7 +341,6 @@ export default defineEventHandler(async (event) => {
         newLevel,
         equipCount: actualEquipCount,
         skillCount: actualSkillCount,
-        herbCount: actualHerbCount,
         character: updated[0],
       },
     }
