@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
 
     // 战斗丹药: 按品质系数决定持续时间（小时）
     if (pill_type === 'battle') {
-      const hours = Math.min(8, Math.max(1, Math.round(actualQf * 1.6)))
+      const hours = Math.min(8, Math.max(1, Math.round(5 + (actualQf - 1) * 1.5)))
       const expireTime = new Date(Date.now() + hours * 3600 * 1000)
       await client.query(
         'DELETE FROM character_buffs WHERE character_id = $1 AND pill_id = $2',

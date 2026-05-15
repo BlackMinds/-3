@@ -3157,7 +3157,7 @@
             <p class="help-text">打怪掉灵草或灵田种植 → 收获时随机品质 → 用灵草+灵石炼丹。灵草品质影响丹药品质系数(1.0x~3.0x),品质越高效果越强。</p>
             <p class="help-text" style="margin-top: 4px; color: #c45c4a;">炼制失败灵石和灵草全部损失!</p>
             <table class="help-table"><tbody>
-              <tr><td>战斗丹药</td><td>使用后持续 1-8 小时(按品质系数,实时倒计时)</td></tr>
+              <tr><td>战斗丹药</td><td>使用后持续 5-8 小时(按品质系数,实时倒计时)</td></tr>
               <tr><td>礼制（道侣）</td><td>合成赠送道侣的礼物,无品质,低品原料优先消耗(高品灵草请留给丹药)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">战斗丹药解锁条件: 练气=聚灵丹/铁皮丹/培元丹, 筑基=天元丹（金丹解锁）等,按境界递进。</p>
@@ -7322,7 +7322,7 @@ function formatPillEffect(recipe: any): string {
     if (e.defPercent)   parts.push(`防御+${(e.defPercent  * factor).toFixed(1)}%`);
     if (e.hpPercent)    parts.push(`气血+${(e.hpPercent   * factor).toFixed(1)}%`);
     if (e.spdPercent)   parts.push(`身法+${(e.spdPercent  * factor).toFixed(1)}%`);
-    const hours = Math.min(8, Math.max(1, Math.round(factor * 1.6)));
+    const hours = Math.min(8, Math.max(1, Math.round(5 + (factor - 1) * 1.5)));
     return parts.join(' / ') + `,持续${hours}小时`;
   }
   if (recipe.expGain) {

@@ -97,7 +97,7 @@ src/
 | GET | /herbs | 灵草背包(分种类品质) | 是 |
 | POST | /add-herb | 添加灵草(战斗掉落) | 是 |
 | POST | /craft | 炼丹(灵草+灵石,失败全扣) | 是 |
-| POST | /use | 使用丹药(时间制buff,1-8小时) | 是 |
+| POST | /use | 使用丹药(时间制buff,5-8小时) | 是 |
 | GET | /buffs | 当前buff(含过期检查) | 是 |
 | POST | /consume-buff | 扣减buff | 是 |
 
