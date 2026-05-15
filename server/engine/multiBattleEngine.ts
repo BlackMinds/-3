@@ -125,6 +125,13 @@ export interface PvpFighter {
 
   // v3.7 反伤副属性 + 附灵 reflectPct (与功法被动 reflectPercent + 明镜止水 buff 同池)
   reflectPctBonus: number
+  // V5 DOT 增伤副属性（小数 0.05 = 5%），DOT 计算时乘 (1 + dotDmgPctBonus)
+  dotDmgPctBonus: number
+  // V5 元始天尊 5/7 件套触发性效果
+  v5SkillCdMinus: number
+  v5RefreshShortestCdChance: number
+  v5StunAllChance: number
+  v5StunTurns: number
 
   // 附灵运行时状态
   awakenState: any
@@ -253,6 +260,13 @@ export function buildPvpFighter(input: PvpFighterInput, balance?: PvpBalanceConf
 
     // v3.7 反伤副属性 / 反伤附灵：buildCharacterSnapshot 已聚合到 stats.equipReflectPct
     reflectPctBonus: Number((s as any).equipReflectPct) || 0,
+    // V5 DOT 增伤副属性：透传到 dotAmpPct（与 battleEngine 口径一致）
+    dotDmgPctBonus: Number((s as any).equipDotDmgPct) || 0,
+    // V5 元始天尊 5/7 件套触发性效果
+    v5SkillCdMinus: Number((s as any).v5SkillCdMinus) || 0,
+    v5RefreshShortestCdChance: Number((s as any).v5RefreshShortestCdChance) || 0,
+    v5StunAllChance: Number((s as any).v5StunAllChance) || 0,
+    v5StunTurns: Number((s as any).v5StunTurns) || 1,
 
     awakenState: {
       burnOnHitChance: s.awaken?.burnOnHitChance || 0,
@@ -537,6 +551,8 @@ export function runPvpBattle(
     if (debuff.type === 'bleed' && bleedAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * bleedAmpMul))
     if (debuff.type === 'poison' && poisonAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * poisonAmpMul))
     if (debuff.type === 'burn' && burnAmpMul > 1) dmg = Math.max(1, Math.floor(dmg * burnAmpMul))
+    // V5 DOT 增伤副属性（与 battleEngine equipDotDmgPct 同口径，小数 0.05 = 5%）
+    if (inflictor && inflictor.dotDmgPctBonus > 0) dmg = Math.max(1, Math.floor(dmg * (1 + inflictor.dotDmgPctBonus)))
     // v3.8.5 玩家施加 DOT 享受元素强化 + 元素克制 + 目标抗性 + 套装 dmgMul（PvP 双方都是玩家，inflictor 必须存在）
     const isDotTypeMbe = debuff.type === 'burn' || debuff.type === 'poison' || debuff.type === 'bleed'
     if (isDotTypeMbe && inflictor) {
@@ -787,6 +803,15 @@ export function runPvpBattle(
       return
     }
 
+    // V5 元始天尊 7 件套：行动时 10% 概率触发「天尊气场」，全体震慑 1 回合（无视免控必中）
+    if (attacker.v5StunAllChance > 0 && Math.random() < attacker.v5StunAllChance) {
+      for (const enemy of enemies) {
+        if (!enemy.alive) continue
+        enemy.frozenTurns = Math.max(enemy.frozenTurns, attacker.v5StunTurns)
+      }
+      log({ turn, type: 'buff', text: `  ✦【天尊气场】${attacker.name} 震慑全场！全体眩晕 ${attacker.v5StunTurns} 回合` })
+    }
+
     // 选目标
     const target = pickTarget(enemies)
     if (!target) return
@@ -800,13 +825,37 @@ export function runPvpBattle(
     }
     const divines = (silenced || attacker.setEffects.basicBackBanDivine) ? [] : attacker.divineSkills
     const cdReduction = attacker.passiveEffects?.skillCdReduction || 0
+    let usedDivineIdx = -1
 
     for (let i = 0; i < divines.length; i++) {
       if (attacker.divineCds[i] <= 0) {
         usedSkill = divines[i]
         attacker.divineCds[i] = Math.max(1, (divines[i].cdTurns || 5) - cdReduction)
         isDivine = true
+        usedDivineIdx = i
         break
+      }
+    }
+    // V5 元始天尊 5 件套：释放神通时所有其他神通 CD-1 + 10% 概率刷新最短 CD
+    if (isDivine && usedDivineIdx >= 0) {
+      if (attacker.v5SkillCdMinus > 0) {
+        for (let j = 0; j < attacker.divineCds.length; j++) {
+          if (j !== usedDivineIdx && attacker.divineCds[j] > 0) {
+            attacker.divineCds[j] = Math.max(0, attacker.divineCds[j] - attacker.v5SkillCdMinus)
+          }
+        }
+      }
+      if (attacker.v5RefreshShortestCdChance > 0 && Math.random() < attacker.v5RefreshShortestCdChance) {
+        let shortestIdx = -1, shortestCd = Infinity
+        for (let j = 0; j < attacker.divineCds.length; j++) {
+          if (attacker.divineCds[j] > 0 && attacker.divineCds[j] < shortestCd) {
+            shortestCd = attacker.divineCds[j]; shortestIdx = j
+          }
+        }
+        if (shortestIdx >= 0) {
+          attacker.divineCds[shortestIdx] = 0
+          log({ turn, type: 'buff', text: `  ✦【元始天尊】${attacker.name} 刷新了 ${attacker.divineSkills[shortestIdx]?.name || '神通'} 的冷却` })
+        }
       }
     }
     // 所有 CD 递减

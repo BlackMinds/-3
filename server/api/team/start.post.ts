@@ -95,20 +95,23 @@ async function buildPlayerBattleStats(char: any): Promise<{
     else if (stat === 'EARTH_DMG') elementDmg.earth += value
   }
 
-  // 双修副本：附灵静态加成累加器（运行时触发类 hooks 因 teamBattleEngine 不支持暂留 TODO）
+  // 附灵静态加成累加器 + 运行时状态（透传给 teamBattleEngine）
   let awakenAtkPct = 0, awakenDefPct = 0, awakenHpPct = 0, awakenSpdPct = 0
   // v3.9：主修噬灵 — 来源 1) 戒指附灵 aw_main_lifesteal 2) 主修功法 innateMain.mainSkillLifesteal
   let mainSkillLifesteal = 0
+  // V5 DOT 增伤 / 反伤装备副属性累加器
+  let equipDotDmgPct = 0, equipReflectPct = 0
+  // 附灵运行时状态（与 fight.post.ts / battleSnapshot.ts 口径一致）
+  const awaken: Record<string, any> = {}
 
   for (const eq of equipRows) {
     if (!eq.slot) continue
 
-    // === 附灵静态加成（V4/V5 通用，必须在 V5 跳过前）===
-    // teamBattleEngine 不消费 awakenState，所以 burnOnHit/chainAttack/reflectPct 等运行时触发类暂时失效
-    // TODO: 双修副本接入完整 awakenState 需要在 teamBattleEngine 里织入 hooks
+    // === 附灵聚合（V4/V5 通用，必须在 V5 跳过前）===
     const aw = typeof eq.awaken_effect === 'string' ? JSON.parse(eq.awaken_effect) : eq.awaken_effect
     if (aw && aw.stat) {
       const v = Number(aw.value) || 0
+      const meta = aw.meta || null
       switch (aw.stat) {
         // 静态属性加成 — 直接累加
         case 'lifesteal':     lifesteal += v; break
@@ -138,7 +141,47 @@ async function buildPlayerBattleStats(char: any): Promise<{
           equipResist.metal += v; equipResist.wood += v; equipResist.water += v
           equipResist.fire  += v; equipResist.earth += v
           break
-        // 运行时触发类暂不接（reflectPct/burnOnHit/chainAttack 等）— teamBattleEngine 不消费
+        // 破甲%（叠加到 awakenState）
+        case 'armorPenPct':  awaken.armorPenPct = (awaken.armorPenPct || 0) + v; break
+        // 反伤（直接叠加到通用反伤通道）
+        case 'reflectPct':   equipReflectPct += v; break
+        // 受击触发类（Max-Merge）
+        case 'poisonOnHitTaken': awaken.poisonOnHitTaken = Math.max(awaken.poisonOnHitTaken || 0, v); break
+        case 'burnOnHitTaken':   awaken.burnOnHitTaken   = Math.max(awaken.burnOnHitTaken || 0, v); break
+        case 'reflectOnCrit':    awaken.reflectOnCrit    = Math.max(awaken.reflectOnCrit || 0, v); break
+        // 命中触发类（累加概率）
+        case 'burnOnHitChance':   awaken.burnOnHitChance   = (awaken.burnOnHitChance || 0) + v; break
+        case 'poisonOnHitChance': awaken.poisonOnHitChance = (awaken.poisonOnHitChance || 0) + v; break
+        case 'bleedOnHitChance':  awaken.bleedOnHitChance  = (awaken.bleedOnHitChance || 0) + v; break
+        case 'chainAttackChance': awaken.chainAttackChance = (awaken.chainAttackChance || 0) + v; break
+        // 斩杀 / 低血 / 减伤
+        case 'executeBonus':       awaken.executeBonus       = (awaken.executeBonus || 0) + v; break
+        case 'lowHpAtkBonus':      awaken.lowHpAtkBonus      = (awaken.lowHpAtkBonus || 0) + v; break
+        case 'lowHpDefBonus':      awaken.lowHpDefBonus      = (awaken.lowHpDefBonus || 0) + v; break
+        case 'damageReduction':    awaken.damageReduction    = Math.min(0.20, (awaken.damageReduction || 0) + v); break
+        case 'critTakenReduction': awaken.critTakenReduction = Math.min(0.50, (awaken.critTakenReduction || 0) + v); break
+        case 'regenPerTurn':       awaken.regenPerTurn       = (awaken.regenPerTurn || 0) + v; break
+        case 'cleanseInterval':
+          if (v > 0) awaken.cleanseInterval = awaken.cleanseInterval ? Math.min(awaken.cleanseInterval, v) : v
+          break
+        case 'frenzyOpening':      awaken.frenzyOpening      = (awaken.frenzyOpening || 0) + v; break
+        case 'vsBossBonus':        awaken.vsBossBonus        = (awaken.vsBossBonus || 0) + v; break
+        case 'vsEliteBonus':       awaken.vsEliteBonus       = (awaken.vsEliteBonus || 0) + v; break
+        case 'debuffDurationBonus':awaken.debuffDurationBonus = (awaken.debuffDurationBonus || 0) + v; break
+        // 灵戒附灵·主修功法增幅
+        case 'mainSkillMultBonus':  awaken.mainSkillMultBonus  = (awaken.mainSkillMultBonus || 0) + v; break
+        case 'mainSkillCritRate':   awaken.mainSkillCritRate   = (awaken.mainSkillCritRate || 0) + v; break
+        case 'mainSkillArmorPen':   awaken.mainSkillArmorPen   = (awaken.mainSkillArmorPen || 0) + v; break
+        // 属性匹配向
+        case 'mainSkillBleedAmp':   awaken.mainSkillBleedAmp = v; awaken.mainSkillBleedAmpElem = meta?.requireElement; break
+        case 'mainSkillPoisonAmp':  awaken.mainSkillPoisonAmp = v; awaken.mainSkillPoisonAmpElem = meta?.requireElement; break
+        case 'mainSkillFreezeChance': awaken.mainSkillFreezeChance = v; awaken.mainSkillFreezeChanceElem = meta?.requireElement; break
+        case 'mainSkillBurnDuration': awaken.mainSkillBurnDuration = v; awaken.mainSkillBurnDurationElem = meta?.requireElement; break
+        case 'mainSkillBurnAmp':    awaken.mainSkillBurnAmp = v; awaken.mainSkillBurnAmpElem = meta?.requireElement; break
+        case 'mainSkillBrittleAmp': awaken.mainSkillBrittleAmp = v; awaken.mainSkillBrittleAmpElem = meta?.requireElement; break
+        case 'mainSkillChainChance': awaken.mainSkillChainChance = (awaken.mainSkillChainChance || 0) + v; break
+        case 'mainSkillCritCdCut':  awaken.mainSkillCritCdCut = true; break
+        case 'mainSkillExecute':    awaken.mainSkillExecuteBonus = v; awaken.mainSkillExecuteThr = meta?.threshold ?? 0.20; break
       }
     }
 
@@ -222,7 +265,12 @@ async function buildPlayerBattleStats(char: any): Promise<{
   equipResist.water += v5Delta.resistAllPct
   equipResist.fire  += v5Delta.resistAllPct
   equipResist.earth += v5Delta.resistAllPct
-  // 元始天尊套装效果：1 件 +10% 攻防血神识身法（teamBattleEngine 简化版不消费 awakenState，3/5/7 件套触发性效果暂留 TODO）
+  // V5 DOT 增伤 / 减伤 / 反伤
+  if (v5Delta.dotDmgPct > 0) equipDotDmgPct += v5Delta.dotDmgPct
+  if (v5Delta.dmgReductionPct > 0) awaken.damageReduction = Math.min(0.20, (awaken.damageReduction || 0) + v5Delta.dmgReductionPct)
+  if (v5Delta.equipReflectPct > 0) equipReflectPct += v5Delta.equipReflectPct
+  // 元始天尊套装效果：1 件 +10% 攻防血神识身法；3/5/7 件套透传给 teamBattleEngine
+  let v5SkillCdMinus = 0, v5RefreshShortestCdChance = 0, v5StunAllChance = 0, v5StunTurns = 0
   for (const eff of v5Delta.legendarySetEffects) {
     const e = eff.effect as any
     if (typeof e.atk_pct === 'number') nonPassiveAtkPct += e.atk_pct
@@ -230,6 +278,16 @@ async function buildPlayerBattleStats(char: any): Promise<{
     if (typeof e.hp_pct === 'number')  nonPassiveHpPct  += e.hp_pct
     if (typeof e.spd_pct === 'number') nonPassiveSpdPct += e.spd_pct
     if (typeof e.spirit_pct === 'number' && e.spirit_pct > 0) spirit = Math.floor(spirit * (1 + e.spirit_pct))
+    // 3 件套：神通伤害 +10%（走 mainSkillMultBonus 通道，与 fight.post.ts 同口径）
+    if (typeof e.skill_dmg_pct === 'number' && e.skill_dmg_pct > 0) {
+      awaken.mainSkillMultBonus = (awaken.mainSkillMultBonus || 0) + e.skill_dmg_pct
+    }
+    // 5 件套：神通 CD-1 + 10% 概率刷新最短 CD
+    if (typeof e.skill_cd_minus === 'number') v5SkillCdMinus = Math.max(v5SkillCdMinus, e.skill_cd_minus)
+    if (typeof e.refresh_shortest_cd_chance === 'number') v5RefreshShortestCdChance = Math.max(v5RefreshShortestCdChance, e.refresh_shortest_cd_chance)
+    // 7 件套：10% 全体眩晕 1 回合（无视免控必中）
+    if (typeof e.stun_all_chance === 'number') v5StunAllChance = Math.max(v5StunAllChance, e.stun_all_chance)
+    if (typeof e.stun_turns === 'number') v5StunTurns = Math.max(v5StunTurns, e.stun_turns)
   }
   // 灵根共鸣 → 加法池
   if (v5Delta.lingenBonusPct > 0) {
@@ -360,6 +418,9 @@ async function buildPlayerBattleStats(char: any): Promise<{
     },
     // v4.0：装备 CTRL_CHANCE 副词条 → 玩家施加 status 时加成
     ctrlChance: equipCtrlChance,
+    // v3.7 反伤 / V5 DOT 增伤：透传给 teamBattleEngine
+    equipReflectPct,
+    equipDotDmgPct,
     spiritualRoot: char.spiritual_root,
     armorPen: Math.min(PLAYER_CAPS.armorPen, armorPen),
     accuracy: Math.min(PLAYER_CAPS.accuracy, accuracy),
@@ -372,6 +433,12 @@ async function buildPlayerBattleStats(char: any): Promise<{
     _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
     // v3.9 主修噬灵（teamBattleEngine.applySetDamage 在主修攻击命中时按 maxHp×系数回血）
     mainSkillLifesteal,
+    // V5 元始天尊 3/5/7 件套效果（对照 fight.post.ts）
+    awaken,
+    v5SkillCdMinus,
+    v5RefreshShortestCdChance,
+    v5StunAllChance,
+    v5StunTurns,
   } as any
   return { stats, equippedSkills, expBonusPercent: expBonusPercent + spiritDensity, luckPercent: luck }
 }

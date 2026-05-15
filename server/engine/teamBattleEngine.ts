@@ -81,6 +81,16 @@ interface TeamPlayer {
   damageDealt: number
   healingDone: number
   damageTaken: number
+  // V5 元始天尊 5/7 件套触发性效果
+  v5SkillCdMinus: number
+  v5RefreshShortestCdChance: number
+  v5StunAllChance: number
+  v5StunTurns: number
+  // 附灵运行时状态（与 battleEngine.playerAwakenState 口径一致）
+  awakenState: Record<string, any>
+  // 装备反伤池 / DOT 增伤
+  reflectPctBonus: number
+  dotDmgPctBonus: number
 }
 
 interface TeamMonster {
@@ -474,6 +484,56 @@ export function runTeamBattle(
       damageDealt: 0,
       healingDone: 0,
       damageTaken: 0,
+      // V5 元始天尊 5/7 件套触发性效果（从 stats 透传）
+      v5SkillCdMinus: Number((p.stats as any).v5SkillCdMinus) || 0,
+      v5RefreshShortestCdChance: Number((p.stats as any).v5RefreshShortestCdChance) || 0,
+      v5StunAllChance: Number((p.stats as any).v5StunAllChance) || 0,
+      v5StunTurns: Number((p.stats as any).v5StunTurns) || 1,
+      // 附灵运行时状态：从 stats.awaken 透传（与 multiBattleEngine.buildPvpFighter 口径一致）
+      awakenState: {
+        burnOnHitChance: (p.stats as any).awaken?.burnOnHitChance || 0,
+        poisonOnHitChance: (p.stats as any).awaken?.poisonOnHitChance || 0,
+        bleedOnHitChance: (p.stats as any).awaken?.bleedOnHitChance || 0,
+        chainAttackChance: (p.stats as any).awaken?.chainAttackChance || 0,
+        armorPenPct: (p.stats as any).awaken?.armorPenPct || 0,
+        executeBonus: (p.stats as any).awaken?.executeBonus || 0,
+        lowHpAtkBonus: (p.stats as any).awaken?.lowHpAtkBonus || 0,
+        lowHpDefBonus: (p.stats as any).awaken?.lowHpDefBonus || 0,
+        damageReduction: (p.stats as any).awaken?.damageReduction || 0,
+        critTakenReduction: (p.stats as any).awaken?.critTakenReduction || 0,
+        regenPerTurn: (p.stats as any).awaken?.regenPerTurn || 0,
+        cleanseInterval: (p.stats as any).awaken?.cleanseInterval || 0,
+        frenzyOpening: (p.stats as any).awaken?.frenzyOpening || 0,
+        vsBossBonus: (p.stats as any).awaken?.vsBossBonus || 0,
+        vsEliteBonus: (p.stats as any).awaken?.vsEliteBonus || 0,
+        debuffDurationBonus: (p.stats as any).awaken?.debuffDurationBonus || 0,
+        mainSkillMultBonus: (p.stats as any).awaken?.mainSkillMultBonus || 0,
+        mainSkillCritRate: (p.stats as any).awaken?.mainSkillCritRate || 0,
+        mainSkillArmorPen: (p.stats as any).awaken?.mainSkillArmorPen || 0,
+        mainSkillLifesteal: (p.stats as any).awaken?.mainSkillLifesteal || 0,
+        mainSkillBleedAmp: (p.stats as any).awaken?.mainSkillBleedAmp || 0,
+        mainSkillBleedAmpElem: (p.stats as any).awaken?.mainSkillBleedAmpElem,
+        mainSkillPoisonAmp: (p.stats as any).awaken?.mainSkillPoisonAmp || 0,
+        mainSkillPoisonAmpElem: (p.stats as any).awaken?.mainSkillPoisonAmpElem,
+        mainSkillFreezeChance: (p.stats as any).awaken?.mainSkillFreezeChance || 0,
+        mainSkillFreezeChanceElem: (p.stats as any).awaken?.mainSkillFreezeChanceElem,
+        mainSkillBurnDuration: (p.stats as any).awaken?.mainSkillBurnDuration || 0,
+        mainSkillBurnDurationElem: (p.stats as any).awaken?.mainSkillBurnDurationElem,
+        mainSkillBurnAmp: (p.stats as any).awaken?.mainSkillBurnAmp || 0,
+        mainSkillBurnAmpElem: (p.stats as any).awaken?.mainSkillBurnAmpElem,
+        mainSkillBrittleAmp: (p.stats as any).awaken?.mainSkillBrittleAmp || 0,
+        mainSkillBrittleAmpElem: (p.stats as any).awaken?.mainSkillBrittleAmpElem,
+        mainSkillChainChance: (p.stats as any).awaken?.mainSkillChainChance || 0,
+        mainSkillCritCdCut: !!(p.stats as any).awaken?.mainSkillCritCdCut,
+        mainSkillExecuteThr: (p.stats as any).awaken?.mainSkillExecuteThr || 0,
+        mainSkillExecuteBonus: (p.stats as any).awaken?.mainSkillExecuteBonus || 0,
+        poisonOnHitTaken: (p.stats as any).awaken?.poisonOnHitTaken || 0,
+        burnOnHitTaken: (p.stats as any).awaken?.burnOnHitTaken || 0,
+        reflectOnCrit: (p.stats as any).awaken?.reflectOnCrit || 0,
+      },
+      // 装备反伤 / DOT 增伤（与单人 battleEngine 口径一致）
+      reflectPctBonus: Number((p.stats as any).equipReflectPct) || 0,
+      dotDmgPctBonus: Number((p.stats as any).equipDotDmgPct) || 0,
     }
   })
 
@@ -526,7 +586,7 @@ export function runTeamBattle(
       // 被动回血 & debuff tick
       for (const p of players) {
         if (!p.alive) continue
-        const regen = p.equippedSkills?.passiveEffects?.regenPerTurn || 0
+        const regen = (p.equippedSkills?.passiveEffects?.regenPerTurn || 0) + (p.awakenState.regenPerTurn || 0)
         if (regen > 0 && p.stats.hp < p.stats.maxHp) {
           const heal = Math.floor(p.stats.maxHp * regen)
           p.stats.hp = Math.min(p.stats.maxHp, p.stats.hp + heal)
@@ -589,6 +649,14 @@ export function runTeamBattle(
             logs.push({ turn: totalTurns, text: `${p.name} 被控制，无法行动`, type: 'normal', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
             continue
           }
+          // V5 元始天尊 7 件套：行动时概率触发「天尊气场」，全体震慑
+          if (p.v5StunAllChance > 0 && Math.random() < p.v5StunAllChance) {
+            for (const m of monsters) {
+              if (!m.alive) continue
+              m.frozenTurns = Math.max(m.frozenTurns, p.v5StunTurns)
+            }
+            logs.push({ turn: totalTurns, text: `  ✦【天尊气场】${p.name} 震慑全场！全体眩晕 ${p.v5StunTurns} 回合`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+          }
           playerTurn(p, players, monsters, totalTurns, logs, killedMonsters)
         } else {
           const m = u.m
@@ -598,7 +666,7 @@ export function runTeamBattle(
             logs.push({ turn: totalTurns, text: `${m.stats.name} 被控制，无法行动`, type: 'normal', playerHp: 0, playerMaxHp: 0, monsterHp: m.stats.hp, monsterMaxHp: m.stats.maxHp })
             continue
           }
-          monsterTurn(m, players, totalTurns, logs, monsters)
+          monsterTurn(m, players, totalTurns, logs, monsters, killedMonsters)
         }
       }
 
@@ -694,6 +762,28 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   } else {
     used = p.equippedSkills?.activeSkill || { name: '基础剑法', multiplier: 1.0, element: null }
   }
+  // V5 元始天尊 5 件套：释放神通时所有其他神通 CD-1 + 10% 概率刷新最短 CD
+  if (isDivine && divineIdx >= 0) {
+    if (p.v5SkillCdMinus > 0) {
+      for (let j = 0; j < p.divineCds.length; j++) {
+        if (j !== divineIdx && p.divineCds[j] > 0) {
+          p.divineCds[j] = Math.max(0, p.divineCds[j] - p.v5SkillCdMinus)
+        }
+      }
+    }
+    if (p.v5RefreshShortestCdChance > 0 && Math.random() < p.v5RefreshShortestCdChance) {
+      let shortestIdx = -1, shortestCd = Infinity
+      for (let j = 0; j < p.divineCds.length; j++) {
+        if (p.divineCds[j] > 0 && p.divineCds[j] < shortestCd) {
+          shortestCd = p.divineCds[j]; shortestIdx = j
+        }
+      }
+      if (shortestIdx >= 0) {
+        p.divineCds[shortestIdx] = 0
+        logs.push({ turn, text: `  ✦【元始天尊】${p.name} 刷新了神通冷却`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+      }
+    }
+  }
   for (let i = 0; i < p.divineCds.length; i++) if (p.divineCds[i] > 0) p.divineCds[i]--
 
   // 灵根共鸣 + 神识
@@ -706,6 +796,9 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   if (isDivine && p.stats.spirit && p.stats.spirit > 0) mul *= 1 + p.stats.spirit * 0.0005
   // 主修+伤害神通整体倍率缩放
   if (used.multiplier > 0) mul *= BATTLE_FORMULA.activeDivineDmgScale
+  // V5 元始天尊 3 件套 + 附灵灵戒：主修伤害倍率 +X%
+  const isMain = !isDivine
+  if (isMain && p.awakenState.mainSkillMultBonus > 0) mul *= 1 + p.awakenState.mainSkillMultBonus
 
   // 治疗 / buff 技能
   if (mul === 0) {
@@ -781,6 +874,8 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
   const mainSkillLsRate = isMainSkill ? ((p.stats as any).mainSkillLifesteal || 0) : 0
   const applySetDamage = (t: TeamMonster, rawDmg: number, isCrit: boolean, opts?: { chained?: boolean }): { final: number; lifestealHeal: number; mainSkillHeal: number } => {
     let dmg = rawDmg
+    // 附灵减伤（cap 20%，与单人战口径一致）
+    if (p.awakenState.damageReduction > 0) dmg = Math.floor(dmg * (1 - p.awakenState.damageReduction))
     if (se.dmgVsFrozen > 0 && t.frozenTurns > 0) dmg = Math.floor(dmg * (1 + se.dmgVsFrozen))
     if (se.spearActive && p.spearStacks > 0) {
       dmg = Math.floor(dmg * (1 + p.spearStacks * se.spearStackDmgPerLevel))
@@ -921,6 +1016,10 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
         monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp,
       })
     }
+    // 附灵命中触发 DOT（焚魂/淬毒/裂魂）
+    if (totalDmg > 0 && t.alive && t.stats.hp > 0) {
+      triggerAwakenOnHit(t, turn)
+    }
     // 附加 debuff
     if (used.debuff && t.alive && t.stats.hp > 0) {
       applyDebuffDps(t, used.debuff, p.stats.atk, t.stats.maxHp, { inflictor: p, turn, logs })
@@ -929,6 +1028,24 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       t.alive = false
       killedMonsters.push({ name: t.stats.name, element: t.stats.element, isBoss: t.template.role === 'boss' })
       logs.push({ turn, text: `${p.name} 击杀了 ${t.stats.name}！`, type: 'kill', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: 0, monsterMaxHp: 0 })
+    }
+  }
+
+  // 附灵命中触发 DOT（焚魂/淬毒/裂魂）— 与 battleEngine/duoBattleEngine 口径一致
+  function triggerAwakenOnHit(t: TeamMonster, turnNum: number) {
+    const st = p.awakenState
+    if (!st) return
+    if (st.burnOnHitChance > 0 && Math.random() < st.burnOnHitChance) {
+      const ok = applyDebuffDps(t, { type: 'burn' as DebuffType, chance: 1.0, duration: 2 }, p.stats.atk, t.stats.maxHp, { inflictor: p, turn: turnNum, logs })
+      if (ok) logs.push({ turn: turnNum, text: `  ✦【焚魂】${t.stats.name} 被烈焰灼烧`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
+    }
+    if (st.poisonOnHitChance > 0 && Math.random() < st.poisonOnHitChance) {
+      const ok = applyDebuffDps(t, { type: 'poison' as DebuffType, chance: 1.0, duration: 2 }, p.stats.atk, t.stats.maxHp, { inflictor: p, turn: turnNum, logs })
+      if (ok) logs.push({ turn: turnNum, text: `  ✦【淬毒】${t.stats.name} 身中剧毒`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
+    }
+    if (st.bleedOnHitChance > 0 && Math.random() < st.bleedOnHitChance) {
+      const ok = applyDebuffDps(t, { type: 'bleed' as DebuffType, chance: 1.0, duration: 2 }, p.stats.atk, t.stats.maxHp, { inflictor: p, turn: turnNum, logs })
+      if (ok) logs.push({ turn: turnNum, text: `  ✦【裂魂】${t.stats.name} 血流不止`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, t.stats.hp), monsterMaxHp: t.stats.maxHp })
     }
   }
 
@@ -956,10 +1073,40 @@ function playerTurn(p: TeamPlayer, allPlayers: TeamPlayer[], monsters: TeamMonst
       }
     }
   }
+
+  // 附灵连击：主修攻击后概率追加 1 次同等段数的攻击（与 battleEngine / duoBattleEngine 口径一致）
+  const baseChain = p.awakenState?.chainAttackChance || 0
+  const ringChain = (isMainSkill && p.awakenState?.mainSkillChainChance) ? p.awakenState.mainSkillChainChance : 0
+  const chainChance = Math.max(baseChain, ringChain)
+  if (chainChance > 0 && isMainSkill && Math.random() < chainChance) {
+    let chainTgt = targets[0]?.alive && targets[0].stats.hp > 0
+      ? targets[0]
+      : monsters.find(m => m.alive && m.stats.hp > 0)
+    if (chainTgt) {
+      let chainDmg = 0
+      for (let h2 = 0; h2 < hits; h2++) {
+        if (!chainTgt.alive || chainTgt.stats.hp <= 0) break
+        const cr = calculateDamage(p.stats, chainTgt.stats, perHitMul, used.element, used.ignoreDef)
+        if (cr.damage > 0) {
+          const { final } = applySetDamage(chainTgt, cr.damage, cr.isCrit, { chained: true })
+          chainDmg += final
+        }
+      }
+      if (chainDmg > 0) {
+        p.damageDealt += chainDmg
+        logs.push({ turn, text: `  ✦【连击】${p.name} 追加 1 段攻击，对 ${chainTgt.stats.name} 造成 ${chainDmg} 伤害`, type: 'buff', playerHp: p.stats.hp, playerMaxHp: p.stats.maxHp, monsterHp: Math.max(0, chainTgt.stats.hp), monsterMaxHp: chainTgt.stats.maxHp })
+        if (chainTgt.alive && chainTgt.stats.hp > 0) triggerAwakenOnHit(chainTgt, turn)
+        if (chainTgt.stats.hp <= 0) {
+          chainTgt.alive = false
+          killedMonsters.push({ name: chainTgt.stats.name, element: chainTgt.stats.element, isBoss: chainTgt.template.role === 'boss' })
+        }
+      }
+    }
+  }
 }
 
 // ========== 怪物回合 ==========
-function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: BattleLogEntry[], allMonsters?: TeamMonster[]) {
+function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: BattleLogEntry[], allMonsters?: TeamMonster[], killedMonsters?: KilledMonsterInfo[]) {
   const alivePlayers = players.filter(p => p.alive)
   if (alivePlayers.length === 0) return
 
@@ -1085,10 +1232,36 @@ function monsterTurn(m: TeamMonster, players: TeamPlayer[], turn: number, logs: 
       continue
     }
     let dmg = r.damage
-    const dr = target.equippedSkills?.passiveEffects?.damageReductionFlat || 0
-    if (dr > 0) dmg = Math.floor(dmg * (1 - dr))
+    const dr = (target.equippedSkills?.passiveEffects?.damageReductionFlat || 0) + (target.awakenState?.damageReduction || 0)
+    if (dr > 0) dmg = Math.floor(dmg * (1 - Math.min(dr, 1)))
     target.stats.hp -= dmg
     target.damageTaken += dmg
+
+    // 附灵反伤：统一反伤池 = 功法被动 reflectPercent + 装备 REFLECT_PCT/反伤附灵（与单人战口径一致）
+    const pe: any = target.equippedSkills?.passiveEffects
+    const reflectSum = (pe?.reflectPercent || 0) + (target.reflectPctBonus || 0)
+    if (reflectSum > 0 && dmg > 0) {
+      const cap = Math.floor(target.stats.atk * 6)
+      const baseReflect = Math.min(Math.floor(dmg * reflectSum), cap)
+      const hpFloor = Math.floor(target.stats.maxHp * 0.08)
+      const reflectDmg = baseReflect + hpFloor
+      if (reflectDmg > 0) {
+        m.stats.hp -= reflectDmg
+        logs.push({ turn, text: `  ✦【反伤】${target.name} 反弹 ${reflectDmg} 伤害给 ${m.stats.name}`, type: 'buff', playerHp: target.stats.hp, playerMaxHp: target.stats.maxHp, monsterHp: Math.max(0, m.stats.hp), monsterMaxHp: m.stats.maxHp })
+        if (m.stats.hp <= 0) {
+          m.alive = false
+          killedMonsters?.push({ name: m.stats.name, element: m.stats.element, isBoss: m.template.role === 'boss' })
+        }
+      }
+    }
+    // 受击触发反中毒/反灼烧
+    if (pe?.poisonOnHitTaken && Math.random() < pe.poisonOnHitTaken) {
+      applyDebuffDps(m, { type: 'poison' as DebuffType, chance: 1, duration: 2 }, target.stats.atk, m.stats.maxHp)
+    }
+    if (pe?.burnOnHitTaken && Math.random() < pe.burnOnHitTaken) {
+      applyDebuffDps(m, { type: 'burn' as DebuffType, chance: 1, duration: 2 }, target.stats.atk, m.stats.maxHp)
+    }
+
     const hitText = hits > 1 ? `第${h + 1}段` : ''
     // 有技能时压缩成简短伤害行，否则完整打印"XX 普攻 YY 造成 Z 伤害"
     const lineText = skill

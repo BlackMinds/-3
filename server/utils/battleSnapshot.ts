@@ -153,6 +153,8 @@ export async function buildCharacterSnapshot(
   let equipAtkPct = 0, equipDefPct = 0, equipHpPct = 0, equipSpdPct = 0
   // v3.7 反伤流派 PvP 对齐：装备副属性 REFLECT_PCT + 附灵 reflectPct (明镜甲/玄镜佩) 汇入 equipReflectPct
   let equipReflectPct = 0
+  // V5 DOT 增伤副属性（小数 0.05=5%），multiBattleEngine 透传到 dotAmpPct
+  let equipDotDmgPct = 0
   // v3.7 加法池：所有非功法被动 % 累加（小数, 0.10=10%），最后统一一次乘
   let nonPassiveAtkPct = 0, nonPassiveDefPct = 0, nonPassiveHpPct = 0, nonPassiveSpdPct = 0
 
@@ -176,6 +178,10 @@ export async function buildCharacterSnapshot(
     else if (stat === 'EARTH_DMG') elementDmg.earth += value
   }
 
+  // 附灵运行时状态（与 fight.post.ts 同名累加器对齐，最终塞进 stats.awaken）
+  // 必须在 V5 聚合前声明，因为 V5 的 dmgReductionPct / skill_dmg_pct 也会写入 awaken
+  const awaken: PlayerAwakenState = {}
+
   // === V5 装备聚合（design/system-equipment-v5-0-2.json）— 与 V4 并存 ===
   const v5Delta = computeV5EquipmentDelta(equipRows, char.spiritual_root ?? null, getDominantSkillWuxing(equippedSkills))
   atk += v5Delta.atk;  def += v5Delta.def;  maxHp += v5Delta.maxHp;  spd += v5Delta.spd;  spirit += v5Delta.spirit
@@ -196,9 +202,11 @@ export async function buildCharacterSnapshot(
   equipResist.water += v5Delta.resistAllPct
   equipResist.fire  += v5Delta.resistAllPct
   equipResist.earth += v5Delta.resistAllPct
-  // TODO: v5Delta.dotDmgPct / dmgReductionPct 在 battleSnapshot 没有出口（简化版无 awaken/equipDotDmgPct）
-  //       接入需扩展返回的 BattlerStats 字段，等宗门战 V5 实测需求再补
+  // V5 DOT 增伤 / 减伤 → 透传到 PvP fighter（与 fight.post.ts 口径一致）
+  if (v5Delta.dotDmgPct > 0) equipDotDmgPct += v5Delta.dotDmgPct
+  if (v5Delta.dmgReductionPct > 0) awaken.damageReduction = Math.min(0.20, (awaken.damageReduction || 0) + v5Delta.dmgReductionPct)
   // 元始天尊套装效果（1 件 +10% 攻防血神识身法）
+  let v5SkillCdMinus = 0, v5RefreshShortestCdChance = 0, v5StunAllChance = 0, v5StunTurns = 0
   for (const eff of v5Delta.legendarySetEffects) {
     const e = eff.effect as any
     if (typeof e.atk_pct === 'number') nonPassiveAtkPct += e.atk_pct
@@ -206,7 +214,16 @@ export async function buildCharacterSnapshot(
     if (typeof e.hp_pct === 'number')  nonPassiveHpPct  += e.hp_pct
     if (typeof e.spd_pct === 'number') nonPassiveSpdPct += e.spd_pct
     if (typeof e.spirit_pct === 'number' && e.spirit_pct > 0) spirit = Math.floor(spirit * (1 + e.spirit_pct))
-    // 3 件套 skill_dmg_pct / 5 件套 CD-1 / 7 件套眩晕 — battleSnapshot 简化版暂不接（TODO）
+    // 3 件套：神通伤害 +10%（走 mainSkillMultBonus 通道）
+    if (typeof e.skill_dmg_pct === 'number' && e.skill_dmg_pct > 0) {
+      awaken.mainSkillMultBonus = (awaken.mainSkillMultBonus || 0) + e.skill_dmg_pct
+    }
+    // 5 件套：神通 CD-1 + 10% 概率刷新最短 CD
+    if (typeof e.skill_cd_minus === 'number') v5SkillCdMinus = Math.max(v5SkillCdMinus, e.skill_cd_minus)
+    if (typeof e.refresh_shortest_cd_chance === 'number') v5RefreshShortestCdChance = Math.max(v5RefreshShortestCdChance, e.refresh_shortest_cd_chance)
+    // 7 件套：10% 全体眩晕 1 回合（无视免控必中）
+    if (typeof e.stun_all_chance === 'number') v5StunAllChance = Math.max(v5StunAllChance, e.stun_all_chance)
+    if (typeof e.stun_turns === 'number') v5StunTurns = Math.max(v5StunTurns, e.stun_turns)
   }
   // 灵根共鸣 → 加法池
   if (v5Delta.lingenBonusPct > 0) {
@@ -217,8 +234,6 @@ export async function buildCharacterSnapshot(
   }
   // === V5 装备聚合结束 ===
 
-  // 附灵运行时状态（与 fight.post.ts 同名累加器对齐，最终塞进 stats.awaken）
-  const awaken: PlayerAwakenState = {}
   let awakenAtkPct = 0, awakenDefPct = 0, awakenHpPct = 0, awakenSpdPct = 0
 
   for (const eq of equipRows) {
@@ -506,6 +521,8 @@ export async function buildCharacterSnapshot(
     spirit,
     // v3.7 反伤流派 PvP 对齐：透传给 multiBattleEngine.buildPvpFighter
     equipReflectPct,
+    // V5 DOT 增伤：透传给 multiBattleEngine.buildPvpFighter → dotAmpPct
+    equipDotDmgPct,
     // v1 套装：已穿戴件数 + 主武器类型，buildPvpFighter 调用 buildSetEffects 解析
     ...aggregateEquipmentSetInfo(equipRows),
     // v3.7 加法池：flat 段总和 + 非功法 % 之和（小数, 0.10=10%）
@@ -515,6 +532,11 @@ export async function buildCharacterSnapshot(
     _pctSumHp: nonPassiveHpPct,   _pctSumSpd: nonPassiveSpdPct,
     // 附灵运行时状态：buildPvpFighter 从 s.awaken.* 透传到 awakenState
     awaken,
+    // V5 元始天尊 5/7 件套触发性效果：multiBattleEngine 在战斗循环中读取
+    v5SkillCdMinus,
+    v5RefreshShortestCdChance,
+    v5StunAllChance,
+    v5StunTurns,
   } as any
 
   // 战力综合评分（用于匹配/赔率）
