@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 
 export default defineEventHandler(async (event) => {
+  try {
   const query = getQuery(event)
   const nodeId = Number(query.id)
   if (!Number.isInteger(nodeId) || nodeId < 1 || nodeId > 9) return { code: 400, message: 'id 无效' }
@@ -48,5 +49,9 @@ export default defineEventHandler(async (event) => {
     code: 200,
     message: 'ok',
     data: { node: nodeRows[0], guards, recentRaids: raids, recentSurges: surges },
+  }
+  } catch (error) {
+    console.error('获取灵脉节点详情失败:', error)
+    return { code: 500, message: '服务器错误' }
   }
 })

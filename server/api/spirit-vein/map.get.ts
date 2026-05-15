@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 
 export default defineEventHandler(async () => {
+  try {
   const pool = getPool()
   const { rows: nodes } = await pool.query(
     `SELECT n.id, n.name, n.tier, n.stone_reward, n.exp_reward, n.guard_limit, n.min_sect_level,
@@ -25,5 +26,9 @@ export default defineEventHandler(async () => {
       sectOccupyMap,
       serverNow: new Date().toISOString(),
     },
+  }
+  } catch (error) {
+    console.error('获取灵脉地图失败:', error)
+    return { code: 500, message: '服务器错误' }
   }
 })

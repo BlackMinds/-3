@@ -2,6 +2,7 @@ import { getPool } from '~/server/database/db'
 import { currentSeasonNo, currentStage, currentSeasonStart, currentSeasonEnd } from '~/server/utils/sectWarOdds'
 
 export default defineEventHandler(async (event) => {
+  try {
   const pool = getPool()
   const seasonNo = currentSeasonNo()
   const stage = currentStage()
@@ -49,5 +50,9 @@ export default defineEventHandler(async (event) => {
       registrationCount: reg_count,
       matchCount: match_count,
     },
+  }
+  } catch (error) {
+    console.error('获取宗门战赛季失败:', error)
+    return { code: 500, message: '服务器错误' }
   }
 })

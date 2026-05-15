@@ -2,6 +2,7 @@ import { getPool } from '~/server/database/db'
 import { getCharByUserId } from '~/server/utils/sect'
 
 export default defineEventHandler(async (event) => {
+  try {
   const char = await getCharByUserId(event.context.userId)
   if (!char) return { code: 400, message: '角色不存在' }
   const pool = getPool()
@@ -31,5 +32,9 @@ export default defineEventHandler(async (event) => {
       dailyRaidCount: dailyRows[0]?.count || 0,
       dailyRaidLimit: 10,
     },
+  }
+  } catch (error) {
+    console.error('获取灵脉冷却失败:', error)
+    return { code: 500, message: '服务器错误' }
   }
 })

@@ -3,6 +3,7 @@ import { getPillById } from '~/game/pillData'
 import { issueCraftToken } from '~/server/utils/craftSession'
 
 export default defineEventHandler(async (event) => {
+  try {
   const pool = getPool()
   const userId = event.context.userId
   const { pill_id } = await readBody(event)
@@ -46,5 +47,9 @@ export default defineEventHandler(async (event) => {
       success_rate: Math.round(successRate * 1000) / 1000,
       cave_craft_rate: craftRate,
     },
+  }
+  } catch (error) {
+    console.error('炼丹开始失败:', error)
+    return { code: 500, message: '服务器错误' }
   }
 })

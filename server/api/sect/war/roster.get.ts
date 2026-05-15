@@ -3,6 +3,7 @@ import { getCharByUserId, getMembership } from '~/server/utils/sect'
 import { currentSeasonNo } from '~/server/utils/sectWarOdds'
 
 export default defineEventHandler(async (event) => {
+  try {
   const char = await getCharByUserId(event.context.userId)
   if (!char) return { code: 400, message: '角色不存在' }
   const membership = await getMembership(char.id)
@@ -37,5 +38,9 @@ export default defineEventHandler(async (event) => {
       rosterTeamA: reg.roster_team_a.map((id: number) => ({ id, ...(charMap[id] || {}) })),
       rosterTeamB: reg.roster_team_b.map((id: number) => ({ id, ...(charMap[id] || {}) })),
     },
+  }
+  } catch (error) {
+    console.error('获取宗门战阵容失败:', error)
+    return { code: 500, message: '服务器错误' }
   }
 })

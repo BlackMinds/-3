@@ -4,6 +4,7 @@ import { currentSeasonNo, currentStage } from '~/server/utils/sectWarOdds'
 import { buildCharacterSnapshot } from '~/server/utils/battleSnapshot'
 
 export default defineEventHandler(async (event) => {
+  try {
   const char = await getCharByUserId(event.context.userId)
   if (!char) return { code: 400, message: '角色不存在' }
   const membership = await getMembership(char.id)
@@ -68,4 +69,8 @@ export default defineEventHandler(async (event) => {
   )
 
   return { code: 200, message: '阵容已提交', data: { totalPower } }
+  } catch (error) {
+    console.error('宗门战提交阵容失败:', error)
+    return { code: 500, message: '服务器错误' }
+  }
 })

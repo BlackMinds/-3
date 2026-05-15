@@ -1,6 +1,7 @@
 import { getPool } from '~/server/database/db'
 
 export default defineEventHandler(async () => {
+  try {
   const pool = getPool()
 
   // 本周
@@ -32,5 +33,9 @@ export default defineEventHandler(async () => {
       history,
       topSects,
     },
+  }
+  } catch (error) {
+    console.error('获取灵脉奖池失败:', error)
+    return { code: 500, message: '服务器错误' }
   }
 })
