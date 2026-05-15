@@ -17,10 +17,6 @@
             <span class="cur-icon stone-icon"></span>
             {{ formatNum(gameStore.character?.spirit_stone || 0) }}
           </span>
-          <span class="currency" title="仙玉">
-            <span class="cur-icon jade-icon"></span>
-            {{ gameStore.character?.immortal_jade || 0 }}
-          </span>
         </div>
         <button class="drop-table-btn" @click="showDropTable = true">掉落表</button>
         <button class="drop-table-btn" @click="showMarket = true">坊市</button>

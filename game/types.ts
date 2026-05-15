@@ -24,8 +24,6 @@ export interface CharacterData {
   resist_earth: number;
   resist_ctrl: number;
   spirit_stone: number;
-  immortal_jade: number;
-  merit: number;
   current_map: string;
   last_online: string;
   created_at: string;

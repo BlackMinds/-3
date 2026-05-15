@@ -65,8 +65,6 @@ CREATE TABLE IF NOT EXISTS characters (
 
   -- 货币
   spirit_stone BIGINT DEFAULT 0,
-  immortal_jade INT DEFAULT 0,
-  merit INT DEFAULT 0,
 
   -- 游戏状态
   current_map VARCHAR(50) DEFAULT 'qingfeng_valley',
@@ -1819,7 +1817,6 @@ CREATE INDEX IF NOT EXISTS idx_child_abandon_char ON child_abandon_history(chara
 -- 已有字段复用：cave_output_mul + sponsor_expire_at（洞府倍率月卡）
 --             sponsor_oneclick_plant（一键种植 BOOLEAN 镜像，由 expire_at 驱动）
 --             sr_daily_bonus + sr_bonus_expire_at（秘境次数月卡）
---             immortal_jade（仙玉，已预留）
 -- ================================================================================
 
 -- 1. 管理员账号（与玩家 users 表完全隔离，独立登录）
@@ -1893,3 +1890,11 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_bonus_expire_at TIMES
 
 -- 商品详细说明（给玩家看的卖货文案，GM 后台可编辑）
 ALTER TABLE recharge_packages ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
+
+-- ========================================
+-- 2026-05-16: 清理死字段 immortal_jade / merit
+-- ========================================
+-- 两列从设计期保留但代码全程零读写，UI 仅以 0 占位（pages/index.vue 已下线显示）
+-- 安全：DROP COLUMN IF EXISTS 幂等，无外键/索引依赖
+ALTER TABLE characters DROP COLUMN IF EXISTS immortal_jade;
+ALTER TABLE characters DROP COLUMN IF EXISTS merit;
