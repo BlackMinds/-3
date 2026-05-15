@@ -7,34 +7,61 @@ const SKILL_TYPE_LABEL: Record<string, string> = {
   passive: '被动',
 }
 
+// 同时支持 V4（大写如 ATK）与 V5（小写如 atk / wuxing_dmg / hp_pct_or_def_pct）
+// lookup 统一转 lower-case
 const STAT_LABEL: Record<string, string> = {
-  ATK: '攻击', DEF: '防御', HP: '气血', SPD: '身法',
-  ATK_PCT: '攻击', DEF_PCT: '防御', HP_PCT: '气血', SPD_PCT: '身法', SPIRIT_PCT: '神识',
-  CRIT_RATE: '会心率', CRIT_DMG: '会心伤害',
-  SPIRIT: '神识', ARMOR_PEN: '破甲', ACCURACY: '命中',
-  METAL_DMG: '金系强化', WOOD_DMG: '木系强化', WATER_DMG: '水系强化',
-  FIRE_DMG: '火系强化', EARTH_DMG: '土系强化',
-  // v4.0 五行抗性
-  METAL_RES: '金系抗性', WOOD_RES: '木系抗性', WATER_RES: '水系抗性',
-  FIRE_RES: '火系抗性', EARTH_RES: '土系抗性',
-  // v4.0 控制概率/抗性
-  CTRL_CHANCE: '控制概率', CTRL_RES: '控制抗性',
-  SPIRIT_DENSITY: '灵气浓度', LUCK: '福缘',
-  DODGE: '闪避', LIFESTEAL: '吸血',
-  DOT_DMG_PCT: 'DOT伤害', REFLECT_PCT: '反伤倍率',
+  // 基础四维
+  atk: '攻击', def: '防御', hp: '气血', spd: '身法', spirit: '神识',
+  atk_pct: '攻击', def_pct: '防御', hp_pct: '气血', spd_pct: '身法', spirit_pct: '神识',
+  // 双向主属（V5 灵佩）
+  hp_pct_or_def_pct: '气血/防御',
+  // 会心 / 闪避 / 吸血 / 破甲 / 命中
+  crit_rate: '会心率', crit_dmg: '会心伤害',
+  dodge: '闪避', lifesteal: '吸血', armor_pen: '破甲',
+  accuracy: '命中', accuracy_pct: '命中',
+  // V5 五行强化（合并字段）
+  wuxing_dmg: '五行强化',
+  // V4 分五行强化
+  metal_dmg: '金系强化', wood_dmg: '木系强化', water_dmg: '水系强化',
+  fire_dmg: '火系强化', earth_dmg: '土系强化',
+  // V4 五行抗性
+  metal_res: '金系抗性', wood_res: '木系抗性', water_res: '水系抗性',
+  fire_res: '火系抗性', earth_res: '土系抗性',
+  // 控制概率 / 抗性
+  ctrl_chance: '控制概率', ctrl_res: '控制抗性',
+  // V5 通用抗性、减伤
+  res_pct: '抗性', dmg_reduction: '减伤',
+  // 福缘 / 灵气浓度
+  luck: '福缘', luck_pct: '福缘',
+  spirit_density: '灵气浓度', spirit_density_pct: '灵气浓度',
+  // DOT / 反伤
+  dot_dmg: 'DOT伤害', dot_dmg_pct: 'DOT伤害',
+  reflect: '反伤倍率', reflect_pct: '反伤倍率',
 }
+// 显示时带 % 的 stat（小写，lookup 已 lower-case 化）
 const PERCENT_STATS = new Set([
-  'CRIT_RATE','CRIT_DMG','ARMOR_PEN','ACCURACY',
-  'METAL_DMG','WOOD_DMG','WATER_DMG','FIRE_DMG','EARTH_DMG',
-  'METAL_RES','WOOD_RES','WATER_RES','FIRE_RES','EARTH_RES',
-  'CTRL_CHANCE','CTRL_RES','SPIRIT_PCT',
-  'SPIRIT_DENSITY','LUCK','DODGE','LIFESTEAL',
-  'ATK_PCT','DEF_PCT','HP_PCT','SPD_PCT','DOT_DMG_PCT','REFLECT_PCT',
+  // 四维百分比
+  'atk_pct','def_pct','hp_pct','spd_pct','spirit_pct','hp_pct_or_def_pct',
+  // 会心 / 闪避 / 吸血 / 破甲（V5 全是百分比）
+  'crit_rate','crit_dmg','dodge','lifesteal','armor_pen',
+  // 命中%（flat accuracy 不带 %）
+  'accuracy_pct',
+  // 五行强化 / 抗性
+  'wuxing_dmg',
+  'metal_dmg','wood_dmg','water_dmg','fire_dmg','earth_dmg',
+  'metal_res','wood_res','water_res','fire_res','earth_res',
+  'ctrl_chance','ctrl_res',
+  'res_pct','dmg_reduction',
+  // 福缘% / 灵气浓度%
+  'luck_pct','spirit_density_pct',
+  // DOT / 反伤
+  'dot_dmg','dot_dmg_pct','reflect','reflect_pct',
 ])
 
 function statText(stat: string, value: number): string {
-  const label = STAT_LABEL[stat] || stat
-  const pct = PERCENT_STATS.has(stat) ? '%' : ''
+  const key = String(stat || '').toLowerCase()
+  const label = STAT_LABEL[key] || stat
+  const pct = PERCENT_STATS.has(key) ? '%' : ''
   return `${label} +${value}${pct}`
 }
 
