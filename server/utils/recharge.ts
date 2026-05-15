@@ -121,12 +121,18 @@ export async function deliverPackage(
 
     case 'one_time_expedition_count': {
       // 一次性加今日游历次数：写入 expedition_extra_today
-      // calcDailyExpeditionLimit 会把这个值加到 limit，跨日 cron 自动归零
+      // 关键：同步处理跨日 - 若 expedition_date 不是今天，先把昨日的 extra/count
+      // 清零并把 date 设为今天，避免玩家下次进游历时 ensureExpeditionDailyReset
+      // 把我们刚加的次数清掉（曾经的真实 bug）
       const perUnit = Number(payload.count) || 1
       if (perUnit <= 0) throw new Error(`one_time_expedition_count: count 非法 (${perUnit})`)
       const totalCount = perUnit * qty
       await client.query(
-        `UPDATE characters SET expedition_extra_today = expedition_extra_today + $2 WHERE id = $1`,
+        `UPDATE characters
+            SET expedition_count_today = CASE WHEN expedition_date IS DISTINCT FROM CURRENT_DATE THEN 0 ELSE expedition_count_today END,
+                expedition_extra_today = CASE WHEN expedition_date IS DISTINCT FROM CURRENT_DATE THEN $2 ELSE expedition_extra_today + $2 END,
+                expedition_date = CURRENT_DATE
+          WHERE id = $1`,
         [characterId, totalCount]
       )
       return { type: pkg.type, applied: { perUnit, quantity: qty, totalCount, note: '加在 expedition_extra_today，跨日 cron 自动归零' } }

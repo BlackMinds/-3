@@ -453,17 +453,25 @@ export function listEligibleLocations(realmTier: number): ExpeditionLocation[] {
   return EXPEDITION_LOCATIONS.filter(l => l.realmRequired <= realmTier)
 }
 
-// 每日游历上限计算（基础 + 宗门 + 加次符 + 月卡付费加成）
+// 每日游历上限计算
+// 分两段：
+// 1) 自然次数 = base + 宗门 + 节日，受 hardCap=5 封顶（游戏经济保护）
+// 2) 付费次数 = GM 一次性发的 + 月卡每日加成，叠加在自然次数之上不受 hardCap 限制
+//    （expedition_extra_today 字段目前只被 GM 后台/cron 写入，玩家无自助途径刷它）
+// 总上限保险 100（防极端 GM 误操作）
+const ABSOLUTE_DAILY_CAP = 100
 export function calcDailyExpeditionLimit(opts: {
   sectLevel: number
   expeditionExtraToday: number
   paidBonus?: number          // 道侣游历月卡每日加成（未过期才传入）
   isFestival?: boolean
 }): number {
-  let limit = EXPEDITION_CONFIG.baseDailyLimit
-  if (opts.sectLevel >= 5) limit += EXPEDITION_CONFIG.sectBonus
-  if (opts.isFestival) limit += 2
-  limit += opts.expeditionExtraToday
+  let natural = EXPEDITION_CONFIG.baseDailyLimit
+  if (opts.sectLevel >= 5) natural += EXPEDITION_CONFIG.sectBonus
+  if (opts.isFestival) natural += 2
+  natural = Math.min(natural, EXPEDITION_CONFIG.hardCap)
+
+  let limit = natural + opts.expeditionExtraToday
   if (opts.paidBonus && opts.paidBonus > 0) limit += opts.paidBonus
-  return Math.min(limit, EXPEDITION_CONFIG.hardCap)
+  return Math.min(limit, ABSOLUTE_DAILY_CAP)
 }
