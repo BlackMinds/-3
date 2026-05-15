@@ -5,10 +5,12 @@ export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
   const path = url.pathname
 
-  // 跳过不需要鉴权的路径
+  // 跳过不需要玩家鉴权的路径
+  // 注意：/api/admin/* 由 admin-auth.ts 中间件单独处理，走独立 admin token
   if (path.startsWith('/api/auth/') ||
       path === '/api/health' ||
-      path.startsWith('/api/cron/')) return
+      path.startsWith('/api/cron/') ||
+      path.startsWith('/api/admin/')) return
 
   // 只拦截 /api/ 路径
   if (!path.startsWith('/api/')) return

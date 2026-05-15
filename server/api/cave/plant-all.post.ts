@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getChar, HERBS, getHerbFieldLevel, getPlotConfig } from '~/server/utils/cave'
+import { getChar, HERBS, getHerbFieldLevel, getEffectivePlotCount, isOneclickPlantActive } from '~/server/utils/cave'
 import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
@@ -11,11 +11,11 @@ export default defineEventHandler(async (event) => {
 
     const char = await getChar(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
-    if (!char.sponsor_oneclick_plant) return { code: 403, message: '未开通一键种植特权' }
+    if (!isOneclickPlantActive(char)) return { code: 403, message: '一键种植月卡未开通或已过期' }
 
     const charId = char.id
     const herbFieldLevel = await getHerbFieldLevel(charId)
-    const { plotCount } = getPlotConfig(herbFieldLevel)
+    const plotCount = getEffectivePlotCount(char, herbFieldLevel)
 
     if (herbFieldLevel < herb.unlockPlotMaxLevel) {
       return { code: 400, message: `灵田等级不足,需要${herb.unlockPlotMaxLevel}级` }

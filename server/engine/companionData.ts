@@ -453,15 +453,17 @@ export function listEligibleLocations(realmTier: number): ExpeditionLocation[] {
   return EXPEDITION_LOCATIONS.filter(l => l.realmRequired <= realmTier)
 }
 
-// 每日游历上限计算（基础 + 宗门 + 付费）
+// 每日游历上限计算（基础 + 宗门 + 加次符 + 月卡付费加成）
 export function calcDailyExpeditionLimit(opts: {
   sectLevel: number
   expeditionExtraToday: number
+  paidBonus?: number          // 道侣游历月卡每日加成（未过期才传入）
   isFestival?: boolean
 }): number {
   let limit = EXPEDITION_CONFIG.baseDailyLimit
   if (opts.sectLevel >= 5) limit += EXPEDITION_CONFIG.sectBonus
   if (opts.isFestival) limit += 2
   limit += opts.expeditionExtraToday
+  if (opts.paidBonus && opts.paidBonus > 0) limit += opts.paidBonus
   return Math.min(limit, EXPEDITION_CONFIG.hardCap)
 }

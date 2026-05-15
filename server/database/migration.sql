@@ -1811,3 +1811,82 @@ CREATE TABLE IF NOT EXISTS child_abandon_history (
   abandoned_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_child_abandon_char ON child_abandon_history(character_id);
+
+-- ================================================================================
+-- 充值/后台管理系统 (2026-05-15)
+-- 4 张新表 (admins / recharge_packages / recharge_orders / admin_audit_log)
+-- + characters 新增订阅过期字段 (oneclick_plant / bonus_plot / expedition_daily_bonus)
+-- 已有字段复用：cave_output_mul + sponsor_expire_at（洞府倍率月卡）
+--             sponsor_oneclick_plant（一键种植 BOOLEAN 镜像，由 expire_at 驱动）
+--             sr_daily_bonus + sr_bonus_expire_at（秘境次数月卡）
+--             immortal_jade（仙玉，已预留）
+-- ================================================================================
+
+-- 1. 管理员账号（与玩家 users 表完全隔离，独立登录）
+CREATE TABLE IF NOT EXISTS admins (
+  id            SERIAL PRIMARY KEY,
+  username      VARCHAR(32) NOT NULL UNIQUE,
+  password      VARCHAR(255) NOT NULL,                -- bcrypt
+  role          VARCHAR(16) NOT NULL DEFAULT 'admin', -- admin / super_admin
+  status        SMALLINT NOT NULL DEFAULT 1,          -- 1=启用 0=禁用
+  last_login    TIMESTAMP DEFAULT NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. 商品配置（9 个商品由 seed 脚本写入）
+CREATE TABLE IF NOT EXISTS recharge_packages (
+  id            SERIAL PRIMARY KEY,
+  code          VARCHAR(40) NOT NULL UNIQUE,          -- cave_1_5x_30d 等
+  name          VARCHAR(40) NOT NULL,
+  price_rmb     DECIMAL(8,2) NOT NULL,
+  type          VARCHAR(30) NOT NULL,                 -- sub_cave_mul / sub_oneclick_plant / sub_bonus_plot / sub_sr_bonus / sub_expedition_bonus / item_pill
+  payload       JSONB NOT NULL DEFAULT '{}'::jsonb,
+  enabled       BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order    SMALLINT NOT NULL DEFAULT 0,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_recharge_packages_enabled ON recharge_packages(enabled, sort_order);
+
+-- 3. 充值订单（每次发货一条记录，预留真实支付字段）
+CREATE TABLE IF NOT EXISTS recharge_orders (
+  id              SERIAL PRIMARY KEY,
+  order_no        VARCHAR(32) NOT NULL UNIQUE,
+  character_id    INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  package_id      INT NOT NULL REFERENCES recharge_packages(id) ON DELETE RESTRICT,
+  package_snapshot JSONB NOT NULL,                    -- 发货时 package 快照（防改价丢失审计）
+  price_rmb       DECIMAL(8,2) NOT NULL,
+  status          VARCHAR(16) NOT NULL DEFAULT 'pending', -- pending / paid / delivered / refunded / cancelled
+  pay_channel     VARCHAR(16) DEFAULT NULL,           -- manual / wechat / alipay（预留）
+  pay_external_id VARCHAR(64) DEFAULT NULL,           -- 第三方交易号（预留）
+  paid_at         TIMESTAMP DEFAULT NULL,
+  delivered_at    TIMESTAMP DEFAULT NULL,
+  delivered_by    INT DEFAULT NULL REFERENCES admins(id) ON DELETE SET NULL,
+  notes           TEXT DEFAULT NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_recharge_orders_char ON recharge_orders(character_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_recharge_orders_status ON recharge_orders(status, created_at DESC);
+
+-- 4. GM 操作审计（所有写操作落账）
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id              SERIAL PRIMARY KEY,
+  admin_id        INT NOT NULL REFERENCES admins(id) ON DELETE RESTRICT,
+  action          VARCHAR(40) NOT NULL,               -- deliver_order / grant_jade / grant_stone / send_mail / ban / unban / edit_package
+  target_character_id INT DEFAULT NULL REFERENCES characters(id) ON DELETE SET NULL,
+  payload         JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ip              VARCHAR(45) DEFAULT NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_audit_admin ON admin_audit_log(admin_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_target ON admin_audit_log(target_character_id, created_at DESC);
+
+-- 5. characters 新增订阅过期字段
+-- 一键种植：BOOLEAN 镜像保留（已有业务在读），新增 expire_at 由 cron 在过期时把 BOOLEAN 归位
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS oneclick_plant_expire_at TIMESTAMP DEFAULT NULL;
+-- 灵田扩容：count 表示当前生效的额外地块数，expire_at 过期时归零（作物收一茬再冻结由业务层处理）
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS bonus_plot_count SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS bonus_plot_expire_at TIMESTAMP DEFAULT NULL;
+-- 道侣游历每日次数加成
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_daily_bonus SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_bonus_expire_at TIMESTAMP DEFAULT NULL;

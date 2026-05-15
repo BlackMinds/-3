@@ -1,0 +1,218 @@
+/* 后台管理样式 —— 深色现代 admin 风（与玩家端水墨主题分离） */
+
+.admin-app {
+  --bg: #0f172a;
+  --bg-elev: #1e293b;
+  --bg-elev-2: #273449;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #38bdf8;
+
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.admin-app * { box-sizing: border-box; }
+
+/* ============ 布局 ============ */
+.admin-shell { display: flex; min-height: 100vh; }
+
+.admin-sidebar {
+  width: 220px;
+  background: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  padding: 16px 0;
+  flex-shrink: 0;
+}
+.admin-sidebar h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 20px 20px;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+.admin-nav { display: flex; flex-direction: column; }
+.admin-nav a {
+  padding: 10px 20px;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.admin-nav a:hover { background: var(--bg-elev-2); color: var(--text); }
+.admin-nav a.router-link-active {
+  color: var(--text);
+  border-left-color: var(--primary);
+  background: var(--bg-elev-2);
+  font-weight: 500;
+}
+
+.admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.admin-topbar {
+  height: 56px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+.admin-topbar .user-info { margin-left: auto; display: flex; align-items: center; gap: 12px; color: var(--text-dim); }
+.admin-content { padding: 24px; flex: 1; overflow: auto; }
+
+/* ============ 卡片 ============ */
+.admin-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.admin-card-title { font-size: 14px; color: var(--text-dim); margin: 0 0 8px; font-weight: 500; }
+.admin-card-value { font-size: 28px; font-weight: 600; color: var(--text); }
+.admin-card-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+.admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+
+/* ============ 表格 ============ */
+.admin-table-wrap { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; overflow: auto; }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.admin-table th {
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 13px;
+  position: sticky; top: 0; z-index: 1;
+}
+.admin-table tr:hover td { background: var(--bg-elev-2); }
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ============ 表单 ============ */
+.admin-input, .admin-select, .admin-textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.15s;
+  width: 100%;
+}
+.admin-input:focus, .admin-select:focus, .admin-textarea:focus { border-color: var(--primary); }
+.admin-textarea { resize: vertical; min-height: 80px; }
+.admin-label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.admin-form-row { margin-bottom: 14px; }
+
+/* ============ 按钮 ============ */
+.admin-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.admin-btn:hover { background: var(--primary-hover); }
+.admin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin-btn.ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+.admin-btn.ghost:hover { background: var(--bg-elev-2); color: var(--text); }
+.admin-btn.danger { background: var(--danger); }
+.admin-btn.danger:hover { background: #dc2626; }
+.admin-btn.small { padding: 4px 10px; font-size: 12px; }
+
+/* ============ 徽章 / Tag ============ */
+.admin-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+}
+.admin-tag.success { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+.admin-tag.warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.admin-tag.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+.admin-tag.info { background: rgba(56, 189, 248, 0.15); color: var(--info); }
+.admin-tag.primary { background: rgba(99, 102, 241, 0.15); color: var(--primary-hover); }
+
+/* ============ 装备品质色 ============ */
+.rarity-white { color: #cbd5e1; }
+.rarity-green { color: #4ade80; }
+.rarity-blue  { color: #60a5fa; }
+.rarity-purple{ color: #c084fc; }
+.rarity-gold  { color: #fbbf24; }
+.rarity-red   { color: #f87171; }
+
+/* ============ 工具 ============ */
+.admin-row { display: flex; align-items: center; gap: 12px; }
+.admin-row.between { justify-content: space-between; }
+.admin-row.wrap { flex-wrap: wrap; }
+.admin-gap-sm { gap: 8px; }
+.admin-mb-sm { margin-bottom: 8px; }
+.admin-mb { margin-bottom: 16px; }
+.admin-mb-lg { margin-bottom: 24px; }
+.admin-mt { margin-top: 16px; }
+.text-dim { color: var(--text-dim); }
+.text-muted { color: var(--text-muted); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.text-warning { color: var(--warning); }
+
+/* ============ 登录页 ============ */
+.admin-login-bg {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+}
+.admin-login-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.admin-login-card h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  text-align: center;
+}
+.admin-login-card .sub { text-align: center; color: var(--text-dim); margin-bottom: 28px; font-size: 13px; }
+
+/* ============ 分页 ============ */
+.admin-pagination {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 16px 0 0;
+}
+
+/* ============ 加载/空态 ============ */
+.admin-empty { padding: 60px 20px; text-align: center; color: var(--text-muted); }
+.admin-loading { padding: 40px 20px; text-align: center; color: var(--text-dim); }

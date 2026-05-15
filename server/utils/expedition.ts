@@ -317,6 +317,7 @@ export interface ExpeditionStatus {
   realmTier: number
   sectLevel: number
   spiritStone: number
+  paidBonus: number              // 道侣游历月卡每日加成（已校验未过期）
 }
 
 // 读取角色当前游历状态
@@ -325,6 +326,7 @@ export async function getExpeditionStatus(pool: Pool, characterId: number): Prom
     `SELECT c.expedition_count_today, c.expedition_date, c.expedition_extra_today,
             c.expedition_extra_week, c.expedition_week_number,
             c.realm_tier, c.spirit_stone,
+            c.expedition_daily_bonus, c.expedition_bonus_expire_at,
             COALESCE(s.level, 0) AS sect_level
        FROM characters c
        LEFT JOIN sect_members sm ON sm.character_id = c.id
@@ -333,15 +335,22 @@ export async function getExpeditionStatus(pool: Pool, characterId: number): Prom
     [characterId]
   )
   if (!rows[0]) return null
+  const r = rows[0]
+  // 月卡过期则 paidBonus = 0；未设置过期时间也按 0 处理（防御）
+  const paidBonus = (r.expedition_daily_bonus > 0
+    && r.expedition_bonus_expire_at
+    && new Date(r.expedition_bonus_expire_at).getTime() > Date.now())
+    ? Number(r.expedition_daily_bonus) : 0
   return {
-    countToday: rows[0].expedition_count_today,
-    date: rows[0].expedition_date ? String(rows[0].expedition_date) : null,
-    extraToday: rows[0].expedition_extra_today,
-    extraWeek: rows[0].expedition_extra_week,
-    weekNumber: rows[0].expedition_week_number,
-    realmTier: rows[0].realm_tier,
-    sectLevel: rows[0].sect_level,
-    spiritStone: rows[0].spirit_stone,
+    countToday: r.expedition_count_today,
+    date: r.expedition_date ? String(r.expedition_date) : null,
+    extraToday: r.expedition_extra_today,
+    extraWeek: r.expedition_extra_week,
+    weekNumber: r.expedition_week_number,
+    realmTier: r.realm_tier,
+    sectLevel: r.sect_level,
+    spiritStone: r.spirit_stone,
+    paidBonus,
   }
 }
 
@@ -366,6 +375,7 @@ export function calcRemaining(status: ExpeditionStatus, isFestival: boolean): nu
   const limit = calcDailyExpeditionLimit({
     sectLevel: status.sectLevel,
     expeditionExtraToday: status.extraToday,
+    paidBonus: status.paidBonus,
     isFestival,
   })
   return Math.max(0, limit - status.countToday)

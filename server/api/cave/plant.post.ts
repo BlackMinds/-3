@@ -1,5 +1,5 @@
 import { getPool } from '~/server/database/db'
-import { getChar, HERBS, getHerbFieldLevel, getPlotConfig } from '~/server/utils/cave'
+import { getChar, HERBS, getHerbFieldLevel, getEffectivePlotCount } from '~/server/utils/cave'
 import { checkAchievements } from '~/server/engine/achievementData'
 
 export default defineEventHandler(async (event) => {
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
     const charId = char.id
     const herbFieldLevel = await getHerbFieldLevel(charId)
-    const { plotCount } = getPlotConfig(herbFieldLevel)
+    const plotCount = getEffectivePlotCount(char, herbFieldLevel)
 
     if (plot_index < 0 || plot_index >= plotCount) {
       return { code: 400, message: '地块未解锁' }

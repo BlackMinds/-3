@@ -26,6 +26,23 @@ export default defineEventHandler(async (event) => {
   const mailStats = await cleanupExpiredMails()
 
   // ========================================
+  // 充值月卡过期归位（业务读取点已实时校验 expire，这里做数据库层清理保持详情/统计准确）
+  // ========================================
+  const subExpiry = await Promise.all([
+    pool.query(`UPDATE characters SET cave_output_mul = 1.0
+                 WHERE cave_output_mul > 1.0 AND sponsor_expire_at IS NOT NULL AND sponsor_expire_at < NOW()`),
+    pool.query(`UPDATE characters SET sponsor_oneclick_plant = FALSE
+                 WHERE sponsor_oneclick_plant = TRUE AND oneclick_plant_expire_at IS NOT NULL AND oneclick_plant_expire_at < NOW()`),
+    pool.query(`UPDATE characters SET bonus_plot_count = 0
+                 WHERE bonus_plot_count > 0 AND bonus_plot_expire_at IS NOT NULL AND bonus_plot_expire_at < NOW()`),
+    pool.query(`UPDATE characters SET sr_daily_bonus = 0
+                 WHERE sr_daily_bonus > 0 AND sr_bonus_expire_at IS NOT NULL AND sr_bonus_expire_at < NOW()`),
+    pool.query(`UPDATE characters SET expedition_daily_bonus = 0
+                 WHERE expedition_daily_bonus > 0 AND expedition_bonus_expire_at IS NOT NULL AND expedition_bonus_expire_at < NOW()`),
+  ])
+  const subscriptionsExpired = subExpiry.reduce((s, r) => s + (r.rowCount || 0), 0)
+
+  // ========================================
   // 道侣系统每日重置 (design/system-companion.md Phase 1)
   // ========================================
 
@@ -119,6 +136,7 @@ export default defineEventHandler(async (event) => {
     mailStats,
     companionshipSettled: companionshipResult.rowCount || 0,
     pregnantMailsSent,
+    subscriptionsExpired,
     weekNumber: currentWeek,
   }
 })
