@@ -30,6 +30,9 @@ export const ITEM_INFO: Record<string, ItemInfo> = {
   enhance_stone_t13:  { name: '强化石·T13', description: '强化 T13 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
   enhance_stone_t14:  { name: '强化石·T14', description: '强化 T14 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
   enhance_stone_t15:  { name: '强化石·T15', description: '强化 T15 装备每次消耗 1 个（地图/秘境低概率掉落）', category: 'enhance' },
+  enhance_stone_t16:  { name: '强化石·T16', description: '强化 T16 装备每次消耗 1 个（秘境商店/合成）', category: 'enhance' },
+  enhance_stone_t17:  { name: '强化石·T17', description: '强化 T17 装备每次消耗 1 个（秘境商店/合成）', category: 'enhance' },
+  enhance_stone_t18:  { name: '强化石·T18', description: '强化 T18 装备每次消耗 1 个（秘境商店/合成）', category: 'enhance' },
   // —— 装备类 ——
   reroll_sub_stat:    { name: '装备鉴定符', description: '重新随机一件装备的所有副属性',         category: 'equip', needsTarget: 'equip' },
   set_reforge_voucher:{ name: '套装重铸符', description: '将一件已带套装身份的装备重铸为指定套装（武器流套装需对齐武器类型）', category: 'equip', needsTarget: 'equip' },

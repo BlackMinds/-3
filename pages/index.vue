@@ -920,9 +920,92 @@
                 :class="{ active: selectedPillType === 'gift' }"
                 @click="switchPillType('gift')"
               >礼制</button>
+              <button
+                class="alchemy-tab-btn"
+                :class="{ active: selectedPillType === 'stone' }"
+                @click="switchPillType('stone')"
+              >强化石</button>
             </div>
 
-            <div class="alchemy-field">
+            <!-- ===== 强化石合成 ===== -->
+            <div v-if="selectedPillType === 'stone'" class="stone-craft-panel">
+              <div class="alchemy-field">
+                <label class="alchemy-label">源强化石</label>
+                <select class="alchemy-select alchemy-select-lg" v-model.number="stoneFromTier">
+                  <option v-for="t in stoneFromTierOptions" :key="t" :value="t">
+                    强化石·T{{ t }} → T{{ t + 1 }} (持有 {{ getPillCount(`enhance_stone_t${t}`) }})
+                  </option>
+                </select>
+              </div>
+
+              <div class="alchemy-effect" style="color: var(--gold-ink);">
+                5 个 T{{ stoneFromTier }} → 1 个 T{{ stoneFromTier + 1 }}<br />
+                <span style="font-size: 12px; color: var(--ink-medium);">
+                  概率: 5% 双倍产出 / 1% 五倍产出
+                </span>
+              </div>
+
+              <div class="alchemy-field">
+                <label class="alchemy-label">合成次数</label>
+                <div class="stone-craft-count-row">
+                  <input
+                    type="number"
+                    class="alchemy-select stone-craft-count-input"
+                    v-model.number="stoneCraftCount"
+                    :min="1"
+                    :max="stoneMaxCraft"
+                  />
+                  <button class="stone-craft-max-btn" @click="stoneCraftCount = stoneMaxCraft" :disabled="stoneMaxCraft <= 0">最大</button>
+                </div>
+                <div class="stone-craft-hint">
+                  可合成上限 {{ stoneMaxCraft }} 次（按当前 T{{ stoneFromTier }} 库存）
+                </div>
+              </div>
+
+              <div class="alchemy-preview">
+                <div class="preview-row">
+                  <span class="preview-key">消耗</span>
+                  <span class="preview-val">{{ stoneCraftCount * 5 }} × 强化石·T{{ stoneFromTier }}</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-key">基础产出</span>
+                  <span class="preview-val" style="color: var(--gold-ink)">{{ stoneCraftCount }} × 强化石·T{{ stoneFromTier + 1 }}</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-key">期望产出</span>
+                  <span class="preview-val" style="color: var(--gold-light)">
+                    {{ (stoneCraftCount * 1.14).toFixed(1) }} × T{{ stoneFromTier + 1 }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="alchemy-craft-row">
+                <button
+                  class="alchemy-craft-btn"
+                  @click="craftStone()"
+                  :disabled="stoneCrafting || stoneCraftCount < 1 || stoneCraftCount > stoneMaxCraft"
+                >
+                  <span class="craft-btn-text">{{ stoneCrafting ? '合成中...' : '开始合成' }}</span>
+                  <span class="craft-btn-sub">×{{ stoneCraftCount }}</span>
+                </button>
+              </div>
+
+              <div v-if="stoneCraftLastResult" class="alchemy-variants">
+                <div class="variants-title">合成结果</div>
+                <div class="stone-craft-result">
+                  <div>消耗 {{ stoneCraftLastResult.consumed }} × 强化石·T{{ stoneCraftLastResult.from_tier }}</div>
+                  <div style="color: var(--gold-light);">产出 {{ stoneCraftLastResult.produced }} × 强化石·T{{ stoneCraftLastResult.to_tier }}</div>
+                  <div v-if="stoneCraftLastResult.quintuples > 0" style="color: var(--gold-ink);">
+                    ✦ 五倍触发 {{ stoneCraftLastResult.quintuples }} 次
+                  </div>
+                  <div v-if="stoneCraftLastResult.doubles > 0" style="color: var(--jade);">
+                    ✦ 双倍触发 {{ stoneCraftLastResult.doubles }} 次
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="selectedPillType !== 'stone'" class="alchemy-field">
               <label class="alchemy-label">丹方</label>
               <select class="alchemy-select alchemy-select-lg" v-model="selectedPillId">
                 <option value="">选择丹方</option>
@@ -7024,7 +7107,7 @@ const battleRecipes = computed(() =>
 
 // 炼丹面板: 分类 + 选中丹方
 const cauldronImg = '/images/cauldron.svg';
-const selectedPillType = ref<'battle' | 'gift'>('battle');
+const selectedPillType = ref<'battle' | 'gift' | 'stone'>('battle');
 const selectedPillId = ref<string>('');
 
 // 礼制配方（道侣系统 Phase 2，design 3.3.4）—— 后端 /api/companion/gift-recipes 返回，转成类丹药结构以复用 UI
@@ -7061,10 +7144,56 @@ const currentRecipe = computed<any | null>(() => {
   if (!selectedPillId.value) return null;
   return currentRecipeList.value.find((r: any) => r.id === selectedPillId.value) || null;
 });
-function switchPillType(t: 'battle' | 'gift') {
+function switchPillType(t: 'battle' | 'gift' | 'stone') {
   selectedPillType.value = t;
   selectedPillId.value = '';
   if (t === 'gift' && giftRecipes.value.length === 0) loadGiftRecipes()
+  if (t === 'stone') loadPillsIfStale()
+}
+
+// ===== 强化石合成 =====
+const stoneFromTier = ref<number>(4)
+const stoneCraftCount = ref<number>(1)
+const stoneCrafting = ref(false)
+const stoneCraftLastResult = ref<{
+  from_tier: number; to_tier: number; consumed: number; produced: number; doubles: number; quintuples: number
+} | null>(null)
+const stoneFromTierOptions = Array.from({ length: 14 }, (_, i) => i + 4) // T4 ~ T17
+const stoneMaxCraft = computed(() => Math.floor(getPillCount(`enhance_stone_t${stoneFromTier.value}`) / 5))
+
+async function craftStone() {
+  if (stoneCrafting.value) return
+  const count = Math.floor(stoneCraftCount.value)
+  if (!count || count < 1) { showToast('请输入合成次数', 'error'); return }
+  if (count > stoneMaxCraft.value) { showToast(`库存不足，最多合成 ${stoneMaxCraft.value} 次`, 'error'); return }
+  stoneCrafting.value = true
+  try {
+    const res: any = await $fetch('/api/pill/stone-craft', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: { from_tier: stoneFromTier.value, craft_count: count },
+    })
+    if (res.code === 200) {
+      stoneCraftLastResult.value = res.data
+      const tip = res.data.quintuples > 0
+        ? `合成成功！产出 ${res.data.produced} 个（含 ${res.data.quintuples} 次五倍）`
+        : res.data.doubles > 0
+          ? `合成成功！产出 ${res.data.produced} 个（含 ${res.data.doubles} 次双倍）`
+          : `合成成功！产出 ${res.data.produced} 个`
+      showToast(tip, 'success')
+      await loadPills()
+      // 合成完毕，若库存仍可继续，保持次数为合理值；否则归 1
+      if (stoneMaxCraft.value <= 0) stoneCraftCount.value = 1
+      else if (stoneCraftCount.value > stoneMaxCraft.value) stoneCraftCount.value = stoneMaxCraft.value
+    } else {
+      showToast(res.message || '合成失败', 'error')
+    }
+  } catch (e) {
+    console.error('强化石合成请求失败', e)
+    showToast('网络错误', 'error')
+  } finally {
+    stoneCrafting.value = false
+  }
 }
 
 // 我的丹房: 按丹方分组所有已炼成的丹药 + 已炼成的礼物
@@ -13557,6 +13686,31 @@ onUnmounted(() => {
   color: var(--gold-light);
   box-shadow: 0 0 12px rgba(232, 204, 138, 0.2);
 }
+
+/* 强化石合成 */
+.stone-craft-panel { display: flex; flex-direction: column; gap: 12px; }
+.stone-craft-count-row { display: flex; gap: 8px; align-items: center; }
+.stone-craft-count-input { flex: 1; }
+.stone-craft-max-btn {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid rgba(184, 154, 90, 0.35);
+  border-radius: 4px;
+  color: var(--gold-ink);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.stone-craft-max-btn:hover:not(:disabled) {
+  border-color: var(--gold-ink);
+  background: rgba(232, 204, 138, 0.08);
+  color: var(--gold-light);
+}
+.stone-craft-max-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.stone-craft-hint { margin-top: 4px; font-size: 11px; color: var(--ink-faint); }
+.stone-craft-result { padding: 8px 4px; font-size: 13px; line-height: 1.8; color: var(--ink-medium); }
 
 .alchemy-field { margin-bottom: 12px; }
 .alchemy-field-group { margin-bottom: 10px; }
