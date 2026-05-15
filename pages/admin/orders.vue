@@ -63,6 +63,9 @@
           {{ deliverMsg }}
         </span>
       </div>
+      <p class="text-muted" style="font-size: 11px; margin: 8px 0 0; line-height: 1.4;">
+        发货成功后数据库即时生效。若玩家在游戏里已打开对应功能（洞府/灵田/秘境/游历），需 F5 或切出再切回该功能才会看到新次数/状态
+      </p>
     </div>
 
     <!-- 订单列表 -->
