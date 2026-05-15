@@ -59,7 +59,7 @@ export const useGameStore = defineStore('game', () => {
   const battleSession = ref(0)
 
   // 批量战斗：单次请求拿回 N 场，依次播放完才发下一批，省 Function 调用与连接开销
-  const BATCH_COUNT = 10
+  const BATCH_COUNT = 1
   const batchQueue = ref<any[]>([])
 
   const sessionDrops = ref<Record<string, number>>({})
