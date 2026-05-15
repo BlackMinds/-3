@@ -79,15 +79,17 @@ export default defineEventHandler(async (event) => {
       where.push(`wuxing_prefix IS NOT NULL AND $${params.length} = ANY(wuxing_prefix)`)
     }
 
-    const sql = `SELECT id, rarity, tier, enhance_level, primary_stat, primary_stat_2, sub_stats
+    const sql = `SELECT id, rarity, tier, enhance_level, primary_stat, primary_stat_2, sub_stats, wuxing_affixes
                  FROM character_equipment
                  WHERE ${where.join(' AND ')}
                  FOR UPDATE`
     const { rows } = await client.query(sql, params)
 
-    // 内存里再做 attr 过滤（属性1 / 属性2 / 副属性命中，多选需全部命中）
+    // 内存里再做 attr 过滤（属性1 / 属性2 / 副属性 / V5 五行词条命中，多选需全部命中）
+    // 与前端 filteredBagList 口径对齐：归一化为 SCREAMING_CASE，纳入 wuxing_affixes
     let filteredRows = rows
     if (useAttr) {
+      const wants = attrList.map(a => String(a).toUpperCase())
       filteredRows = rows.filter(eq => {
         let subs: any = eq.sub_stats
         if (typeof subs === 'string') {
@@ -96,7 +98,17 @@ export default defineEventHandler(async (event) => {
         const subStats: string[] = Array.isArray(subs)
           ? subs.map((s: any) => s?.stat).filter((v: any) => typeof v === 'string')
           : []
-        return attrList.every(a => eq.primary_stat === a || eq.primary_stat_2 === a || subStats.includes(a))
+        let wxRaw: any = (eq as any).wuxing_affixes
+        if (typeof wxRaw === 'string') {
+          try { wxRaw = JSON.parse(wxRaw) } catch { wxRaw = [] }
+        }
+        const wuxingStats: string[] = Array.isArray(wxRaw)
+          ? wxRaw.map((s: any) => s?.stat).filter((v: any) => typeof v === 'string')
+          : []
+        const allStats = [eq.primary_stat, eq.primary_stat_2, ...subStats, ...wuxingStats]
+          .filter(Boolean)
+          .map((s: any) => String(s).toUpperCase())
+        return wants.every(a => allStats.includes(a))
       })
     }
 
