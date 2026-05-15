@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     if (!pending.generatedName || typeof pending.generatedName !== 'string' || pending.generatedName.length < 2 || pending.generatedName.length > 8) {
       return { code: 400, message: '邂逅数据异常（name）' }
     }
-    if (!Number.isInteger(pending.quality) || pending.quality < 1 || pending.quality > 5) {
+    if (!Number.isInteger(pending.quality) || pending.quality < 0 || pending.quality > 5) {
       return { code: 400, message: '邂逅数据异常（quality）' }
     }
     const VALID_ROOTS = ['metal', 'wood', 'water', 'fire', 'earth', 'mixed']
