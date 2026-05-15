@@ -2,7 +2,7 @@
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
-import { getChildrenByCharacter, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct, getChildVisitCap } from '~/server/utils/child'
+import { getChildrenByCharacter, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct, getChildVisitCap, getChildLevelCap, getEffectiveChildLevelCap, CHILD_PARENT_LEVEL_GAP } from '~/server/utils/child'
 import type { ChildAptitude } from '~/server/engine/childTalentData'
 
 const STAGE_NAMES: Record<string, string> = {
@@ -74,6 +74,9 @@ export default defineEventHandler(async (event) => {
         visitCap: getChildVisitCap(c.aptitude),
         lastVisitAt: c.last_visit_at,
         bornAt: c.born_at,
+        // 2026-05-15 双上限：资质硬上限 + 父母 level + 30 软上限
+        aptitudeLevelCap: getChildLevelCap(c.aptitude),
+        effectiveLevelCap: getEffectiveChildLevelCap(c.aptitude, Number(char.level || 1)),
       }
     })
 
@@ -82,6 +85,8 @@ export default defineEventHandler(async (event) => {
       data: {
         children: list,
         battlingChildId: char.battling_child_id,
+        parentLevel: Number(char.level || 1),
+        parentLevelGap: CHILD_PARENT_LEVEL_GAP,
       },
     }
   } catch (error) {

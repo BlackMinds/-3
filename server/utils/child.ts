@@ -126,6 +126,12 @@ export const APTITUDE_LEVEL_CAP = [100, 150, 200, 250, 300, 350, 400]
 export function getChildLevelCap(aptitude: number): number {
   return APTITUDE_LEVEL_CAP[Math.min(Math.max(aptitude, 0), 6)] || 100
 }
+// 2026-05-15 小夏调整：子女实际等级上限 = min(资质硬上限, 父母 level + 30)
+// 防止氪佬靠红灵草批量肝出比本体还高的子女反推副本
+export const CHILD_PARENT_LEVEL_GAP = 30
+export function getEffectiveChildLevelCap(aptitude: number, parentLevel: number): number {
+  return Math.min(getChildLevelCap(aptitude), Math.max(0, parentLevel) + CHILD_PARENT_LEVEL_GAP)
+}
 // 资质 → 外出历练永久 buff 上限（2026-05-13 小夏调整）：上高低平梯度，圣品 22% 封顶
 export const APTITUDE_VISIT_CAP = [0.14, 0.16, 0.18, 0.20, 0.21, 0.215, 0.22]
 export function getChildVisitCap(aptitude: number): number {
@@ -457,6 +463,22 @@ export async function feedChild(
       return { ok: false, message: '今日喂养上限 5 次' }
     }
 
+    // 2026-05-15 双上限校验（资质硬上限 + 父母 level + 30）— 在扣灵草前判断，避免浪费
+    const { rows: parentRows } = await client.query(
+      'SELECT level FROM characters WHERE id = $1',
+      [characterId]
+    )
+    const parentLevel = Number(parentRows[0]?.level ?? 1)
+    const aptitudeCap = getChildLevelCap(child.aptitude)
+    const effectiveCap = getEffectiveChildLevelCap(child.aptitude, parentLevel)
+    if (child.level >= effectiveCap) {
+      await client.query('ROLLBACK')
+      if (child.level >= aptitudeCap) {
+        return { ok: false, message: `子女已达${APTITUDE_NAMES[child.aptitude] || '该资质'}等级上限 Lv.${aptitudeCap}` }
+      }
+      return { ok: false, message: `子女已达本人境界 +${CHILD_PARENT_LEVEL_GAP} 级上限（Lv.${effectiveCap}），请先提升自身修为` }
+    }
+
     // 事务内读灵草库存 + FOR UPDATE
     const { rows: invRows } = await client.query(
       `SELECT count FROM character_materials
@@ -479,12 +501,12 @@ export async function feedChild(
       [characterId, herbId, herbQuality]
     )
 
-    // 加经验、升级、换阶段
-    const newExp = child.level_exp + expGain
+    // 加经验、升级、换阶段（升级 cap 用 effectiveCap，溢出经验保留在 level_exp 里，本体升级后下次喂养可继续吃）
+    // 注意：level_exp 是 BIGINT，pg 返回 string，必须 Number() 强转后做加法（否则 "24100"+30000="2410030000" 字符串拼接）
+    const newExp = Number(child.level_exp || 0) + expGain
     let newLevel = child.level
     let remainExp = newExp
-    const levelCap = getChildLevelCap(child.aptitude)
-    while (remainExp >= newLevel * 100 && newLevel < levelCap) {
+    while (remainExp >= newLevel * 100 && newLevel < effectiveCap) {
       remainExp -= newLevel * 100
       newLevel++
     }

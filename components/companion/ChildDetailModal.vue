@@ -18,7 +18,7 @@
         </div>
 
         <div class="section stats-section">
-          <div class="row"><span class="lbl">阶段</span><span class="val">{{ detail.stageName }} · Lv.{{ detail.level }}</span></div>
+          <div class="row"><span class="lbl">阶段</span><span class="val">{{ detail.stageName }} · Lv.{{ detail.level }} / Lv.{{ childLevelCap }}<span v-if="cappedByParent" class="cap-hint" :title="`资质硬上限 Lv.${aptitudeLevelCap}，当前受本人境界 +${detail.parentLevelGap ?? 30} 级限制`">（本人 +{{ detail.parentLevelGap ?? 30 }}）</span></span></div>
           <div class="row"><span class="lbl">灵根</span><span class="val">{{ rootName(detail.spiritualRoot) }}灵根</span></div>
           <div class="row"><span class="lbl">气血</span><span class="val">{{ finalStats.maxHp }}<span v-if="finalStats.maxHp - detail.maxHp" class="eq-bonus">(装备 +{{ equipBonus.max_hp }}{{ talentPct.hpPct ? ` / 天赋 +${talentPct.hpPct}%` : '' }})</span></span></div>
           <div class="row"><span class="lbl">攻击</span><span class="val">{{ finalStats.atk }}<span v-if="finalStats.atk - detail.atk" class="eq-bonus">(装备 +{{ equipBonus.atk }}{{ talentPct.atkPct ? ` / 天赋 +${talentPct.atkPct}%` : '' }})</span></span></div>
@@ -341,10 +341,13 @@ const HERB_NAMES: Record<string, string> = {
 
 // 等级上限按资质（2026-05-12 小夏调整）：凡 100 / 下 150 / 中 200 / 上 250 / 极 300 / 仙 350 / 圣 400
 const APTITUDE_LEVEL_CAP = [100, 150, 200, 250, 300, 350, 400]
-const childLevelCap = computed(() => APTITUDE_LEVEL_CAP[detail.value?.aptitude || 0] || 100)
+// 2026-05-15 双上限：后端返回 effectiveLevelCap = min(资质cap, 父母 level + 30)
+const aptitudeLevelCap = computed(() => Number(detail.value?.aptitudeLevelCap ?? APTITUDE_LEVEL_CAP[detail.value?.aptitude || 0] ?? 100))
+const childLevelCap = computed(() => Number(detail.value?.effectiveLevelCap ?? aptitudeLevelCap.value))
+const cappedByParent = computed(() => childLevelCap.value < aptitudeLevelCap.value)
 const canFeed = computed(() => detail.value && detail.value.feedCountToday < detail.value.feedDailyMax && detail.value.level < childLevelCap.value && !detail.value.hasLeftHome)
-// 成年弹窗按"已达资质上限"判定（凡品 lv50 = 成年）
-const isAdult = computed(() => detail.value && detail.value.level >= childLevelCap.value)
+// 成年弹窗按"已达资质上限"判定（凡品 lv50 = 成年）— 注意：用资质上限，不受父母 cap 影响，否则永远不弹
+const isAdult = computed(() => detail.value && detail.value.level >= aptitudeLevelCap.value)
 // 2026-05-13: 移除 !isAdult 限制 —— 成年子女是「A 留家助战」选项的目标，必须能设助战
 const canBattle = computed(() => detail.value && detail.value.level >= 31 && !detail.value.hasLeftHome)
 const canReroll = computed(() => detail.value && !detail.value.hasLeftHome)
@@ -374,7 +377,7 @@ function formatVisitDate(iso: string | null): string {
 const comeOfAgeDismissed = ref(false)
 const showComeOfAge = computed(() =>
   detail.value &&
-  detail.value.level >= childLevelCap.value &&
+  detail.value.level >= aptitudeLevelCap.value &&
   !detail.value.hasLeftHome &&
   !comeOfAgeDismissed.value
 )
@@ -691,6 +694,7 @@ onMounted(async () => {
 .lbl { color: #aaa; min-width: 60px; }
 .val { color: #fff; }
 .eq-bonus { color: #5fcf6f; font-size: 11px; margin-left: 4px; }
+.cap-hint { color: #d4a14c; font-size: 11px; margin-left: 4px; cursor: help; }
 
 .stats-section { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 0; }
 .stats-section .row-full { grid-column: 1 / -1; }

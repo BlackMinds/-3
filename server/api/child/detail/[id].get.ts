@@ -2,7 +2,7 @@
 
 import { getPool } from '~/server/database/db'
 import { getCharacterByUserId } from '~/server/utils/team'
-import { getChildById, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct, getChildVisitCap, unlockSkillSlotsIfNeeded } from '~/server/utils/child'
+import { getChildById, APTITUDE_NAMES, calcChildBaseStats, calcChildTalentBonusPct, getChildVisitCap, unlockSkillSlotsIfNeeded, getChildLevelCap, getEffectiveChildLevelCap, CHILD_PARENT_LEVEL_GAP } from '~/server/utils/child'
 import { CHILD_TALENT_MAP, type ChildAptitude } from '~/server/engine/childTalentData'
 import { CHILD_SKILL_MAP } from '~/server/engine/childSkillData'
 import type { SpiritualRoot } from '~/server/engine/companionData'
@@ -132,6 +132,11 @@ export default defineEventHandler(async (event) => {
         lastVisitAt: c.last_visit_at,
         feedCountToday: c.feed_count_today,
         feedDailyMax: 5,
+        // 2026-05-15 双上限：资质硬上限 + 父母 level + 30 软上限
+        aptitudeLevelCap: getChildLevelCap(c.aptitude),
+        effectiveLevelCap: getEffectiveChildLevelCap(c.aptitude, Number(char.level || 1)),
+        parentLevel: Number(char.level || 1),
+        parentLevelGap: CHILD_PARENT_LEVEL_GAP,
         talents,
         skills,
         skillSlotUnlockLevels,
