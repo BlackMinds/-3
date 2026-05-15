@@ -19,13 +19,23 @@ export type DeliverResult = {
   expiresAt?: Date | null
 }
 
+// 支持批量倍乘的 type（一次性效果 + 道具堆叠）
+// 月卡类按业务语义只能 1 单一发（quantity > 1 在 orders.post.ts 提前拦截）
+const QUANTITY_SUPPORTED_TYPES = new Set(['one_time_expedition_count', 'item_pill'])
+
+export function supportsQuantity(type: string): boolean {
+  return QUANTITY_SUPPORTED_TYPES.has(type)
+}
+
 export async function deliverPackage(
   client: PoolClient,
   characterId: number,
-  pkg: { id: number; code: string; type: string; payload: any }
+  pkg: { id: number; code: string; type: string; payload: any },
+  quantity: number = 1
 ): Promise<DeliverResult> {
   const payload = pkg.payload || {}
   const days = Number(payload.days) || 30
+  const qty = Math.max(1, Math.trunc(quantity))
 
   switch (pkg.type) {
     case 'sub_cave_mul': {
@@ -112,28 +122,30 @@ export async function deliverPackage(
     case 'one_time_expedition_count': {
       // 一次性加今日游历次数：写入 expedition_extra_today
       // calcDailyExpeditionLimit 会把这个值加到 limit，跨日 cron 自动归零
-      const count = Number(payload.count) || 1
-      if (count <= 0) throw new Error(`one_time_expedition_count: count 非法 (${count})`)
+      const perUnit = Number(payload.count) || 1
+      if (perUnit <= 0) throw new Error(`one_time_expedition_count: count 非法 (${perUnit})`)
+      const totalCount = perUnit * qty
       await client.query(
         `UPDATE characters SET expedition_extra_today = expedition_extra_today + $2 WHERE id = $1`,
-        [characterId, count]
+        [characterId, totalCount]
       )
-      return { type: pkg.type, applied: { count, note: '加在 expedition_extra_today，跨日 cron 自动归零' } }
+      return { type: pkg.type, applied: { perUnit, quantity: qty, totalCount, note: '加在 expedition_extra_today，跨日 cron 自动归零' } }
     }
 
     case 'item_pill': {
       const pillId = String(payload.pill_id || '').trim()
-      const count = Number(payload.count) || 1
+      const perUnit = Number(payload.count) || 1
       if (!pillId) throw new Error(`item_pill: pill_id 为空`)
-      if (count <= 0) throw new Error(`item_pill: count 非法 (${count})`)
+      if (perUnit <= 0) throw new Error(`item_pill: count 非法 (${perUnit})`)
+      const totalCount = perUnit * qty
       await client.query(
         `INSERT INTO character_pills (character_id, pill_id, quality_factor, count)
          VALUES ($1, $2, 1.0, $3)
          ON CONFLICT (character_id, pill_id, quality_factor)
          DO UPDATE SET count = character_pills.count + EXCLUDED.count`,
-        [characterId, pillId, count]
+        [characterId, pillId, totalCount]
       )
-      return { type: pkg.type, applied: { pillId, count } }
+      return { type: pkg.type, applied: { pillId, perUnit, quantity: qty, totalCount } }
     }
 
     default:

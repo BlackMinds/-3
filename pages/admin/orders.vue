@@ -23,12 +23,29 @@
         <!-- 商品选择 -->
         <div style="flex: 1.5;">
           <label class="admin-label">商品</label>
-          <select v-model.number="form.package_id" class="admin-select">
+          <select v-model.number="form.package_id" class="admin-select" @change="onPackageChange">
             <option :value="0">— 请选择 —</option>
             <option v-for="p in enabledPackages" :key="p.id" :value="p.id">
               {{ p.name }} · ¥{{ Number(p.price_rmb).toFixed(0) }}
             </option>
           </select>
+        </div>
+
+        <!-- 数量（仅一次性 / 道具支持，月卡 disabled = 1） -->
+        <div style="width: 130px;">
+          <label class="admin-label">数量</label>
+          <input
+            v-model.number="form.quantity"
+            type="number"
+            min="1"
+            max="99"
+            class="admin-input"
+            :disabled="!quantitySupported"
+            :title="quantitySupported ? '可批量发货 1-99' : '月卡商品只能发 1 单'"
+          />
+          <p v-if="form.quantity > 1 && currentPackage" class="text-success" style="font-size: 12px; margin: 4px 0 0;">
+            总价 ¥{{ (Number(currentPackage.price_rmb) * form.quantity).toFixed(2) }}
+          </p>
         </div>
       </div>
 
@@ -86,7 +103,10 @@
               </NuxtLink>
               <span class="text-muted" style="font-size: 11px; margin-left: 4px;">#{{ o.character_id }}</span>
             </td>
-            <td>{{ o.package_name }}</td>
+            <td>
+              {{ o.package_name }}
+              <span v-if="o.package_snapshot?.quantity > 1" class="admin-tag info" style="margin-left: 4px;">×{{ o.package_snapshot.quantity }}</span>
+            </td>
             <td class="num">¥{{ Number(o.price_rmb).toFixed(2) }}</td>
             <td><span class="admin-tag" :class="statusClass(o.status)">{{ statusName(o.status) }}</span></td>
             <td class="text-dim">{{ o.pay_channel || '-' }}</td>
@@ -121,7 +141,14 @@ const page = ref(1)
 const loading = ref(false)
 const filter = reactive({ status: '' })
 
-const form = reactive({ character_id: 0, package_id: 0, notes: '' })
+const form = reactive({ character_id: 0, package_id: 0, quantity: 1, notes: '' })
+const QUANTITY_SUPPORTED_TYPES = new Set(['one_time_expedition_count', 'item_pill'])
+const currentPackage = computed(() => packages.value.find(p => p.id === form.package_id))
+const quantitySupported = computed(() => currentPackage.value && QUANTITY_SUPPORTED_TYPES.has(currentPackage.value.type))
+function onPackageChange() {
+  // 切换到月卡商品时，把 quantity 强制设回 1
+  if (!quantitySupported.value) form.quantity = 1
+}
 const playerQuery = ref('')
 const lookedPlayer = ref<any>(null)
 const lookupErr = ref('')
@@ -200,6 +227,7 @@ async function reload(p: number) {
 function resetForm() {
   form.character_id = 0
   form.package_id = 0
+  form.quantity = 1
   form.notes = ''
   playerQuery.value = ''
   lookedPlayer.value = null
@@ -209,7 +237,11 @@ function resetForm() {
 
 async function onDeliver() {
   if (!canSubmit.value) return
-  if (!confirm(`确认给「${lookedPlayer.value.name}」发货「${enabledPackages.value.find(p => p.id === form.package_id)?.name}」？`)) return
+  const qtyText = form.quantity > 1 ? ` × ${form.quantity}` : ''
+  const totalText = form.quantity > 1 && currentPackage.value
+    ? `（共 ¥${(Number(currentPackage.value.price_rmb) * form.quantity).toFixed(2)}）`
+    : ''
+  if (!confirm(`确认给「${lookedPlayer.value.name}」发货「${currentPackage.value?.name}」${qtyText}${totalText}？`)) return
 
   submitting.value = true
   deliverMsg.value = ''
