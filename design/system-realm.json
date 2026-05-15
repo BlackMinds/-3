@@ -136,7 +136,7 @@
         { "id": "metal", "name": "金灵根", "bonus": { "ATK_percent": 15 }, "resist_bonus": { "RESIST_METAL": 0.15 }, "affinity": "metal", "cultivation_bonus": 1.0, "description": "攻击天赋，适合暴力输出流" },
         { "id": "wood",  "name": "木灵根", "bonus": { "HP_percent": 15 }, "resist_bonus": { "RESIST_WOOD": 0.15 }, "affinity": "wood", "cultivation_bonus": 1.0, "description": "生命天赋，适合持久吸血流" },
         { "id": "water", "name": "水灵根", "bonus": { "DEF_percent": 15 }, "resist_bonus": { "RESIST_WATER": 0.15 }, "affinity": "water", "cultivation_bonus": 1.0, "description": "防御天赋，适合控制冻结流" },
-        { "id": "fire",  "name": "火灵根", "bonus": { "CRIT_DMG_percent": 20 }, "resist_bonus": { "RESIST_FIRE": 0.15 }, "affinity": "fire", "cultivation_bonus": 1.0, "description": "爆发天赋，适合会心灼烧流" },
+        { "id": "fire",  "name": "火灵根", "bonus": { "ATK_percent": 8, "HP_percent": 7 }, "resist_bonus": { "RESIST_FIRE": 0.15 }, "affinity": "fire", "cultivation_bonus": 1.0, "description": "攻血天赋，适合灼烧流" },
         { "id": "earth", "name": "土灵根", "bonus": { "DEF_percent": 10, "HP_percent": 10 }, "resist_bonus": { "RESIST_EARTH": 0.15 }, "affinity": "earth", "cultivation_bonus": 1.0, "description": "坚韧天赋，适合肉盾反击流" }
       ]
     },
@@ -184,9 +184,9 @@
         "skill_synergy": "技能联动优先判断觉醒灵根，若不匹配则判断主灵根",
         "cultivation_bonus": "取两者中较高的修炼加成",
         "example": {
-          "primary": "火灵根(CRIT_DMG+20%, 火抗+15%)",
+          "primary": "火灵根(ATK+8%, HP+7%, 火抗+15%)",
           "second": "天灵根(主灵根加成×1.6, 火抗额外+20%)",
-          "result": "CRIT_DMG+32%, 火抗+35%, 修炼速度×1.8, 火系功法解锁强化版"
+          "result": "ATK+12.8%, HP+11.2%, 火抗+35%, 修炼速度×1.8, 火系功法解锁强化版"
         }
       }
     }
