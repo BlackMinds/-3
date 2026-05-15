@@ -132,7 +132,7 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocation[] = [
 // ============================================================
 
 export const EXPEDITION_CONFIG = {
-  baseDailyLimit: 3,            // 基础每日次数（金丹+）
+  baseDailyLimit: 2,            // 基础每日次数（金丹+）
   sectBonus: 1,                 // 宗门 5 级 +1
   hardCap: 5,                   // 每日封顶（含付费）
   weeklyExtraLimit: 2,          // 仙玉"游历加次符"每周限购
