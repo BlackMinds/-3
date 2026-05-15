@@ -224,7 +224,13 @@ function weightedPickV5(candidates: ReadonlyArray<readonly [string, number]>): s
   return candidates[candidates.length - 1][0]
 }
 
-function rollEnhanceAffixes(slotIndex: number, rarity: V5Rarity, level: number, tier: number): V5StatValue[] {
+/**
+ * 按 V5.0.3 权重池 + V5 颜色/强化等级规则，重新生成全部强化副词条。
+ *
+ * 适用：装备首掉副词条生成 / 装备鉴定符洗练。
+ * 数量规则：由 V5_RARITY_TO_ENHANCE_AFFIX_COUNT[rarity] + milestone(3/6/9) 阶段决定，封顶 4。
+ */
+export function rollV5EnhanceAffixes(slotIndex: number, rarity: V5Rarity, level: number, tier: number): V5StatValue[] {
   const count = getV5EnhanceAffixCount(rarity, level)
   if (count <= 0) return []
   const pool = getV5SubStatPool(slotIndex)
@@ -347,7 +353,7 @@ export function rollEquipmentV5(opts: RollEquipmentV5Options): V5EquipmentInstan
   }
 
   // 4) enhance_affixes
-  const enhanceAffixes = rollEnhanceAffixes(slotIndex, rarity, enhanceLevel, tier)
+  const enhanceAffixes = rollV5EnhanceAffixes(slotIndex, rarity, enhanceLevel, tier)
 
   // 5) name / 套装标识
   let name: string | undefined
