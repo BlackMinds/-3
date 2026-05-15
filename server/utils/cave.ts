@@ -1,4 +1,5 @@
 import { getPool } from '~/server/database/db'
+import { isGiftIngredient } from '~/game/herbData'
 
 export interface BuildingConfig {
   id: string
@@ -109,9 +110,15 @@ export function getSponsorMul(char: any): number {
   return mul
 }
 
-export function randomHarvestQuality(herbFieldLevel: number): { quality: string; count: number } {
+export function randomHarvestQuality(herbFieldLevel: number, herbId?: string): { quality: string; count: number } {
   const { maxQualityIndex } = getPlotConfig(herbFieldLevel)
   const qOrder = ['white', 'green', 'blue', 'purple', 'gold', 'red']
+  const yields = [9, 9, 12, 12, 15, 15]
+
+  // 2026-05-15：礼物原料统一 white 品质（礼物 craft 与品质无关），产量按当前灵田最大档取，保留地块等级梯度
+  if (herbId && isGiftIngredient(herbId)) {
+    return { quality: 'white', count: yields[Math.max(0, maxQualityIndex)] }
+  }
 
   let weights: number[]
   if (herbFieldLevel >= 13)      weights = [5, 15, 25, 25, 20, 10]
@@ -130,6 +137,5 @@ export function randomHarvestQuality(herbFieldLevel: number): { quality: string;
     if (r <= 0) { qIdx = i; break }
   }
 
-  const yields = [9, 9, 12, 12, 15, 15]
   return { quality: qOrder[qIdx], count: yields[qIdx] }
 }

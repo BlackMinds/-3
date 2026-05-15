@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
       const harvested: any[] = []
       for (const plot of rows) {
         if (new Date(plot.mature_time).getTime() > Date.now()) continue
-        const { quality, count } = randomHarvestQuality(herbFieldLevel)
+        const { quality, count } = randomHarvestQuality(herbFieldLevel, plot.herb_id)
         await client.query(
           `INSERT INTO character_materials (character_id, material_id, quality, count)
            VALUES ($1, $2, $3, $4)

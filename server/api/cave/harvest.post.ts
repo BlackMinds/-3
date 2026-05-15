@@ -33,8 +33,8 @@ export default defineEventHandler(async (event) => {
         return { code: 400, message: '尚未成熟' }
       }
 
-      // 收获时随机品质和产量
-      const { quality, count } = randomHarvestQuality(herbFieldLevel)
+      // 收获时随机品质和产量（礼物原料统一 white，详见 randomHarvestQuality）
+      const { quality, count } = randomHarvestQuality(herbFieldLevel, plot.herb_id)
 
       // 加到材料
       await client.query(

@@ -1341,8 +1341,8 @@
                 <div class="plot-herb-name">
                   {{ getHerbName(plot.herb_id) }}
                 </div>
-                <div class="plot-quality-tag">
-                  品质收获时随机
+                <div class="plot-quality-tag" :class="{ 'tag-gift': isGiftHerb(plot.herb_id) }">
+                  {{ isGiftHerb(plot.herb_id) ? '礼物原料' : '品质收获时随机' }}
                 </div>
                 <div class="plot-status" v-if="plot.is_mature">
                   ✓ 已成熟
@@ -3892,7 +3892,7 @@ import {
 } from '~/game/caveData';
 import type { BuildingDef } from '~/game/caveData';
 import { setCaveBonus, setEquipLuck, setSpiritDensity, setEquipCombatStats } from '~/game/battleEngine';
-import { HERBS, HERB_QUALITIES, getHerbById, getQualityById, calcQualityFactor, getPlotConfig } from '~/game/herbData';
+import { HERBS, HERB_QUALITIES, getHerbById, getQualityById, calcQualityFactor, getPlotConfig, isGiftIngredient } from '~/game/herbData';
 import type { Skill } from '~/game/skillData';
 import CompanionDrawer from '~/components/companion/CompanionDrawer.vue';
 
@@ -6739,6 +6739,10 @@ const GIFT_NAMES_LOCAL: Record<string, string> = {
 }
 function getHerbName(id: string): string {
   return getHerbById(id)?.name || GIFT_NAMES_LOCAL[id] || id;
+}
+
+function isGiftHerb(id: string): boolean {
+  return isGiftIngredient(id);
 }
 
 function getQualityName(id: string): string {
@@ -12427,6 +12431,9 @@ onUnmounted(() => {
 
 .plot-quality-tag {
   font-size: 12px;
+}
+.plot-quality-tag.tag-gift {
+  color: #ff8cba;
 }
 
 .plot-status {
