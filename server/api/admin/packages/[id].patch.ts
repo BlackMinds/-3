@@ -7,11 +7,15 @@ export default defineEventHandler(async (event) => {
   if (!Number.isFinite(id) || id <= 0) {
     return { code: 400, message: '商品 ID 非法' }
   }
-  const body = await readBody<{ name?: string; price_rmb?: number; enabled?: boolean; sort_order?: number }>(event)
+  const body = await readBody<{ name?: string; description?: string | null; price_rmb?: number; enabled?: boolean; sort_order?: number }>(event)
 
   const fields: string[] = []
   const params: any[] = []
   if (typeof body.name === 'string') { params.push(body.name); fields.push(`name = $${params.length}`) }
+  if (body.description !== undefined) {
+    const desc = body.description === null ? null : String(body.description).slice(0, 2000)
+    params.push(desc); fields.push(`description = $${params.length}`)
+  }
   if (typeof body.price_rmb === 'number') {
     if (body.price_rmb < 0) return { code: 400, message: '价格不能为负' }
     params.push(body.price_rmb); fields.push(`price_rmb = $${params.length}`)

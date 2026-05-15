@@ -22,6 +22,7 @@
             <th class="num">价格 ¥</th>
             <th>type</th>
             <th>payload</th>
+            <th style="min-width: 280px;">详细说明</th>
             <th>启用</th>
             <th class="num">排序</th>
             <th></th>
@@ -41,6 +42,10 @@
             </td>
             <td><span class="admin-tag">{{ typeName(row.type) }}</span></td>
             <td class="text-muted" style="font-size: 12px;">{{ payloadDesc(row.type, row.payload) }}</td>
+            <td style="white-space: normal; line-height: 1.5; max-width: 380px;">
+              <textarea v-if="editingId === row.id" v-model="editForm.description" class="admin-textarea" rows="4" style="width: 100%; font-size: 12px;" placeholder="给玩家看的卖货文案"></textarea>
+              <span v-else class="text-dim" style="font-size: 12px;">{{ row.description || '—' }}</span>
+            </td>
             <td>
               <span v-if="row.enabled" class="admin-tag success">启用</span>
               <span v-else class="admin-tag danger">禁用</span>
@@ -75,7 +80,7 @@ const api = useAdminApi()
 const items = ref<any[]>([])
 const loading = ref(true)
 const editingId = ref<number | null>(null)
-const editForm = reactive({ name: '', price_rmb: 0, sort_order: 0 })
+const editForm = reactive({ name: '', description: '', price_rmb: 0, sort_order: 0 })
 const saving = ref(false)
 
 const TYPE_NAMES: Record<string, string> = {
@@ -116,6 +121,7 @@ async function reload() {
 function edit(row: any) {
   editingId.value = row.id
   editForm.name = row.name
+  editForm.description = row.description || ''
   editForm.price_rmb = Number(row.price_rmb)
   editForm.sort_order = row.sort_order
 }

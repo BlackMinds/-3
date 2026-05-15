@@ -4,7 +4,7 @@ import { getPool } from '~/server/database/db'
 export default defineEventHandler(async () => {
   const pool = getPool()
   const { rows } = await pool.query(
-    `SELECT id, code, name, price_rmb, type, payload, enabled, sort_order,
+    `SELECT id, code, name, description, price_rmb, type, payload, enabled, sort_order,
             created_at, updated_at
        FROM recharge_packages
        ORDER BY sort_order, id`

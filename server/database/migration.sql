@@ -1890,3 +1890,6 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS bonus_plot_expire_at TIMESTAMP D
 -- 道侣游历每日次数加成
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_daily_bonus SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_bonus_expire_at TIMESTAMP DEFAULT NULL;
+
+-- 商品详细说明（给玩家看的卖货文案，GM 后台可编辑）
+ALTER TABLE recharge_packages ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
