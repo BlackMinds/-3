@@ -96,7 +96,7 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     id: 'parting_charm',
     name: '红尘解 ×1',
     desc: '正式道侣和离专属信物',
-    price: 5000,
+    price: 3000,
     limit: { type: 'week', count: 10 },
     give: { itemId: 'parting_charm', qty: 1, kind: 'pill' },
   },

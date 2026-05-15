@@ -3294,7 +3294,7 @@
           <div class="help-section">
             <div class="help-title">和离机制</div>
             <p class="help-text">代价：<b style="color:#ff6b6b">红尘解 ×1 + 当前境界灵石（金丹期 50 万）+ 24 小时结侣冷却 + 风云阁公开广播</b>。和离后道侣从花名册永久删除，仙缘印记重置 LV0，子女由玩家保留（parent_companion_id 置 NULL，仍可继续助战/外出）。</p>
-            <p class="help-text" style="margin-top: 4px;">怀胎中不可和离。红尘解来源：游历奇遇极低概率（约 0.2%/次）+ 红尘玉商店 <b>5000 红尘玉 / 周限购 10 个</b>。</p>
+            <p class="help-text" style="margin-top: 4px;">怀胎中不可和离。红尘解来源：游历奇遇极低概率（约 0.2%/次）+ 红尘玉商店 <b>3000 红尘玉 / 周限购 10 个</b>。</p>
           </div>
           <div class="help-section">
             <div class="help-title">红尘玉</div>
