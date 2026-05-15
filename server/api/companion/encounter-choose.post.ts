@@ -30,11 +30,12 @@ export default defineEventHandler(async (event) => {
     if (!Number.isInteger(pending.quality) || pending.quality < 0 || pending.quality > 5) {
       return { code: 400, message: '邂逅数据异常（quality）' }
     }
-    const VALID_ROOTS = ['metal', 'wood', 'water', 'fire', 'earth', 'mixed']
+    const VALID_ROOTS = ['metal', 'wood', 'water', 'fire', 'earth']
     if (!VALID_ROOTS.includes(pending.spiritualRoot)) {
       return { code: 400, message: '邂逅数据异常（spiritual_root）' }
     }
-    const VALID_PERSONALITIES = ['gentle', 'bold', 'cold', 'mystic', 'fiery']
+    // 与 companionData.ts 的 Personality 类型保持一致（中文字面量）
+    const VALID_PERSONALITIES = ['冷艳', '活泼', '温柔', '高傲', '俏皮']
     if (!VALID_PERSONALITIES.includes(pending.personality)) {
       return { code: 400, message: '邂逅数据异常（personality）' }
     }
