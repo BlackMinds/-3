@@ -4,19 +4,19 @@
     <div class="admin-card">
       <h3 style="margin: 0 0 16px;">手动发货</h3>
       <div class="admin-row admin-mb" style="gap: 16px; align-items: flex-start;">
-        <!-- 玩家选择 -->
+        <!-- 玩家选择：输入道号搜索 -->
         <div style="flex: 1;">
-          <label class="admin-label">玩家</label>
+          <label class="admin-label">玩家（道号 / 账号 / ID）</label>
           <input
-            v-model.number="form.character_id"
+            v-model="playerQuery"
             class="admin-input"
-            type="number"
-            placeholder="输入玩家 ID"
+            placeholder="输入道号、账号或 ID"
+            @keyup.enter="lookupPlayer"
             @blur="lookupPlayer"
           />
           <p v-if="lookupErr" class="text-danger" style="font-size: 12px; margin: 4px 0 0;">{{ lookupErr }}</p>
           <p v-else-if="lookedPlayer" class="text-success" style="font-size: 12px; margin: 4px 0 0;">
-            ✓ {{ lookedPlayer.name }} · Lv.{{ lookedPlayer.level }} · 灵石 {{ Number(lookedPlayer.spirit_stone).toLocaleString() }}
+            ✓ {{ lookedPlayer.name }} (#{{ lookedPlayer.id }}) · Lv.{{ lookedPlayer.level }} · 灵石 {{ Number(lookedPlayer.spirit_stone).toLocaleString() }}
           </p>
         </div>
 
@@ -122,6 +122,7 @@ const loading = ref(false)
 const filter = reactive({ status: '' })
 
 const form = reactive({ character_id: 0, package_id: 0, notes: '' })
+const playerQuery = ref('')
 const lookedPlayer = ref<any>(null)
 const lookupErr = ref('')
 const submitting = ref(false)
@@ -146,13 +147,31 @@ function fmtDate(s: string | null) {
 async function lookupPlayer() {
   lookedPlayer.value = null
   lookupErr.value = ''
-  if (!form.character_id) return
+  form.character_id = 0
+  const q = (playerQuery.value || '').trim()
+  if (!q) return
   try {
-    const res = await api<any>(`/admin/players/${form.character_id}`)
-    if (res.code === 200) {
-      lookedPlayer.value = res.data.character
+    // 1) 纯数字 → 当作 ID 直接查详情
+    if (/^\d+$/.test(q)) {
+      const res = await api<any>(`/admin/players/${q}`)
+      if (res.code === 200) {
+        lookedPlayer.value = { ...res.data.character, spirit_stone: res.data.character.spiritStone }
+        form.character_id = res.data.character.id
+        return
+      }
+      lookupErr.value = res.message || '未找到玩家'
+      return
+    }
+    // 2) 非数字 → 道号/账号搜索（list 接口 ILIKE）
+    const res = await api<any>(`/admin/players?q=${encodeURIComponent(q)}&limit=2`)
+    if (res.data.items.length === 0) {
+      lookupErr.value = '未找到玩家'
+    } else if (res.data.items.length > 1) {
+      lookupErr.value = `匹配多个（${res.data.items.length}+ 个），请输入更精确的道号或 ID`
     } else {
-      lookupErr.value = res.message || '未找到'
+      const c = res.data.items[0]
+      lookedPlayer.value = c
+      form.character_id = c.id
     }
   } catch (e: any) {
     lookupErr.value = '查询失败'
@@ -182,6 +201,7 @@ function resetForm() {
   form.character_id = 0
   form.package_id = 0
   form.notes = ''
+  playerQuery.value = ''
   lookedPlayer.value = null
   lookupErr.value = ''
   deliverMsg.value = ''
@@ -216,7 +236,7 @@ onMounted(async () => {
   await loadPackages()
   // 支持 ?character_id=xxx 预填（玩家详情页跳过来）
   if (route.query.character_id) {
-    form.character_id = Number(route.query.character_id)
+    playerQuery.value = String(route.query.character_id)
     await lookupPlayer()
   }
   await reload(1)

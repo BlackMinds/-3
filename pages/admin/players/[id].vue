@@ -193,23 +193,44 @@ const subscriptionList = computed(() => {
 const REALM_NAMES = ['', '练气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '飞升']
 const ROOT_NAMES: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土' }
 const RARITY_NAMES: Record<string, string> = { white: '白', green: '绿', blue: '蓝', purple: '紫', gold: '金', red: '红' }
+// 装备 stat 字段：V4 大写（ATK / CRIT_DMG）与 V5 小写（atk / crit_dmg）共存，查询时统一小写匹配
 const STAT_NAMES: Record<string, string> = {
-  atk: '攻击', def: '防御', hp: '血量', max_hp: '最大血量', maxHp: '最大血量',
-  spd: '身法', crit_rate: '暴击率', critRate: '暴击率', crit_dmg: '暴击伤害', critDmg: '暴击伤害',
-  dodge: '闪避', lifesteal: '吸血', spirit: '神识', accuracy: '命中',
-  hp_pct: '血量加成%', atk_pct: '攻击加成%', def_pct: '防御加成%',
-  reflect: '反伤', regen: '回血', shield: '护盾', armorPen: '破甲',
+  // 基础
+  atk: '攻击', def: '防御', hp: '气血', max_hp: '最大气血', spd: '身法', spirit: '神识',
+  // 百分比加成
+  atk_pct: '攻击%', def_pct: '防御%', hp_pct: '气血%', spirit_pct: '神识%',
+  hp_pct_or_def_pct: '气血%/防御%',
+  // 会心
+  crit_rate: '会心率', crit_dmg: '会心伤害',
+  // 二级
+  dodge: '闪避', lifesteal: '吸血', accuracy: '命中', armor_pen: '破甲',
+  // 五行（V4 单系 + V5 综合）
+  metal_dmg: '金强化', wood_dmg: '木强化', water_dmg: '水强化', fire_dmg: '火强化', earth_dmg: '土强化',
+  wuxing_dmg: '五行强化',
+  // 资源 / DOT / 反伤
+  spirit_density: '灵气浓度', luck: '福缘',
+  dot_dmg: 'DOT伤害', dot_dmg_pct: 'DOT伤害',
+  reflect: '反伤', reflect_pct: '反伤倍率',
+  res_pct: '五行抗性%',
+  regen: '回血', shield: '护盾',
 }
 const SLOT_NAMES: Record<string, string> = {
-  weapon: '武器', armor: '衣', helmet: '冠', boots: '靴', ring: '戒指', necklace: '项链', amulet: '玉佩',
+  weapon: '武器', armor: '法袍', helmet: '法冠', boots: '步云靴',
+  treasure: '法宝', ring: '灵戒', pendant: '灵佩',
 }
 const SKILL_TYPE_NAMES: Record<string, string> = { active: '主修', divine: '神通', passive: '被动' }
 
 function realmName(tier: number, stage: number) { return `${REALM_NAMES[tier] || '?'} ${stage}层` }
 function rootName(r: string) { return ROOT_NAMES[r] || r }
 function rarityName(r: string) { return RARITY_NAMES[r] || r }
-function statName(s: string) { return STAT_NAMES[s] || s }
-function slotName(s: string) { return SLOT_NAMES[s] || s }
+function statName(s: string) {
+  if (!s) return s
+  return STAT_NAMES[s] || STAT_NAMES[s.toLowerCase()] || s
+}
+function slotName(s: string) {
+  if (!s) return s
+  return SLOT_NAMES[s] || SLOT_NAMES[s.toLowerCase()] || s
+}
 function skillTypeName(t: string) { return SKILL_TYPE_NAMES[t] || t }
 
 function fmtDate(s: string | null) {

@@ -83,7 +83,8 @@ const TYPE_NAMES: Record<string, string> = {
   sub_oneclick_plant: '一键种植',
   sub_bonus_plot: '灵田扩容',
   sub_sr_bonus: '秘境次数',
-  sub_expedition_bonus: '游历次数',
+  sub_expedition_bonus: '游历次数月卡',
+  one_time_expedition_count: '游历次数·单次',
   item_pill: '道具',
 }
 function typeName(t: string) { return TYPE_NAMES[t] || t }
@@ -96,6 +97,7 @@ function payloadDesc(type: string, p: any): string {
     case 'sub_bonus_plot': return `+${p.count}块 · ${p.days}天`
     case 'sub_sr_bonus': return `+${p.bonus}/天 · ${p.days}天`
     case 'sub_expedition_bonus': return `+${p.bonus}/天 · ${p.days}天`
+    case 'one_time_expedition_count': return `+${p.count} 次（仅今日）`
     case 'item_pill': return `${p.pill_id} ×${p.count}`
     default: return JSON.stringify(p)
   }

@@ -48,6 +48,9 @@
           <button class="admin-btn ghost small" :disabled="busy" @click="onReset('tower_daily')">通天塔</button>
           <button class="admin-btn ghost small" :disabled="busy" @click="onReset('expedition_today')">游历</button>
         </div>
+        <p class="text-muted" style="font-size: 11px; margin-top: 8px; line-height: 1.4;">
+          数据库即时生效；玩家若开着游戏页，需自己 F5 或重新进入秘境/通天塔/游历功能才会看到次数恢复
+        </p>
       </div>
 
       <!-- 降级 -->
