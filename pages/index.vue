@@ -1297,7 +1297,7 @@
                   灵田 <span class="herb-field-level">Lv.{{ getBuildingLevel('herb_field') }}/15</span>
                 </div>
                 <div class="herb-field-desc">
-                  地块: {{ plotData.plotCount }}/{{ getMaxPlotCountByLevel(getBuildingLevel('herb_field')) }}
+                  地块: {{ plotData.plotCount }}<span v-if="plotData.bonusPlotCount > 0"> (含月卡 +{{ plotData.bonusPlotCount }})</span>
                   · 最高品质: {{ getMaxQualityName() }}
                 </div>
               </div>
@@ -6710,9 +6710,11 @@ function getUpgradeRemaining(buildingId: string): number {
 const HERBS_LIST = HERBS;
 const HERB_QUALITIES_LIST = HERB_QUALITIES;
 
-const plotData = ref<{ plots: any[]; plotCount: number; maxQualityIndex: number }>({
+const plotData = ref<{ plots: any[]; plotCount: number; basePlotCount: number; bonusPlotCount: number; maxQualityIndex: number }>({
   plots: [],
   plotCount: 0,
+  basePlotCount: 0,
+  bonusPlotCount: 0,
   maxQualityIndex: -1,
 });
 
@@ -6785,6 +6787,8 @@ async function loadPlots() {
       plotData.value = {
         plots: res.data.plots,
         plotCount: res.data.plotCount,
+        basePlotCount: res.data.basePlotCount ?? res.data.plotCount,
+        bonusPlotCount: res.data.bonusPlotCount ?? 0,
         maxQualityIndex: res.data.maxQualityIndex,
       };
     }
