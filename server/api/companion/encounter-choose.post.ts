@@ -24,21 +24,21 @@ export default defineEventHandler(async (event) => {
     }
 
     // 服务端校验邂逅数据合法性（防客户端伪造品质/灵根）
-    if (!pending.name || typeof pending.name !== 'string' || pending.name.length < 2 || pending.name.length > 8) {
+    if (!pending.generatedName || typeof pending.generatedName !== 'string' || pending.generatedName.length < 2 || pending.generatedName.length > 8) {
       return { code: 400, message: '邂逅数据异常（name）' }
     }
     if (!Number.isInteger(pending.quality) || pending.quality < 1 || pending.quality > 5) {
       return { code: 400, message: '邂逅数据异常（quality）' }
     }
     const VALID_ROOTS = ['metal', 'wood', 'water', 'fire', 'earth', 'mixed']
-    if (!VALID_ROOTS.includes(pending.spiritual_root)) {
+    if (!VALID_ROOTS.includes(pending.spiritualRoot)) {
       return { code: 400, message: '邂逅数据异常（spiritual_root）' }
     }
     const VALID_PERSONALITIES = ['gentle', 'bold', 'cold', 'mystic', 'fiery']
     if (!VALID_PERSONALITIES.includes(pending.personality)) {
       return { code: 400, message: '邂逅数据异常（personality）' }
     }
-    if (!Number.isInteger(pending.avatar_id) || pending.avatar_id < 1 || pending.avatar_id > 999) {
+    if (typeof pending.avatarId !== 'string' || pending.avatarId.length === 0 || pending.avatarId.length > 64) {
       return { code: 400, message: '邂逅数据异常（avatar_id）' }
     }
 
