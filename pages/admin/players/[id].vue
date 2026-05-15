@@ -160,7 +160,6 @@ const baseStats = computed(() => {
     { label: '等级', value: `Lv.${c.value.level}`, sub: `经验 ${Number(c.value.levelExp).toLocaleString()}` },
     { label: '灵根', value: rootName(c.value.spiritualRoot) },
     { label: '灵石', value: Number(c.value.spiritStone).toLocaleString() },
-    { label: '功勋', value: c.value.merit },
     { label: '血量', value: `${c.value.hp} / ${c.value.maxHp}` },
     { label: '攻击', value: c.value.atk },
     { label: '防御', value: c.value.def },

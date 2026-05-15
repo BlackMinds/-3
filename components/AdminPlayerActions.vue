@@ -12,10 +12,12 @@
         <select v-model="grantCurrency.kind" class="admin-select admin-mb-sm">
           <option value="spirit_stone">灵石</option>
           <option value="cultivation_exp">修为</option>
-          <option value="merit">功勋</option>
         </select>
-        <input v-model.number="grantCurrency.amount" type="number" class="admin-input admin-mb-sm" placeholder="数量（可负数）" />
-        <button class="admin-btn small" :disabled="busy" @click="onGrantCurrency">提交</button>
+        <input v-model.number="grantCurrency.amount" type="number" min="0" class="admin-input admin-mb-sm" placeholder="数量（正整数）" />
+        <div class="admin-row admin-gap-sm">
+          <button class="admin-btn small" :disabled="busy || !grantCurrency.amount" @click="onGrantCurrency(1)">发放 +</button>
+          <button class="admin-btn small danger" :disabled="busy || !grantCurrency.amount" @click="onGrantCurrency(-1)">扣除 −</button>
+        </div>
       </div>
 
       <!-- 发功法 -->
@@ -35,9 +37,14 @@
       <!-- 发道具 -->
       <div class="admin-card" style="margin: 0;">
         <p class="admin-card-title">发道具</p>
-        <input v-model="grantItem.pill_id" class="admin-input admin-mb-sm" placeholder="pill_id 如 enhance_stone_t10" />
+        <select v-model="grantItem.pill_id" class="admin-select admin-mb-sm">
+          <option value="">— 选择道具 —</option>
+          <optgroup v-for="(items, cat) in ITEM_GROUPS" :key="cat" :label="CATEGORY_LABELS[cat]">
+            <option v-for="item in items" :key="item.id" :value="item.id">{{ item.name }}</option>
+          </optgroup>
+        </select>
         <input v-model.number="grantItem.count" type="number" min="1" class="admin-input admin-mb-sm" placeholder="数量" />
-        <button class="admin-btn small" :disabled="busy" @click="onGrantItem">发道具</button>
+        <button class="admin-btn small" :disabled="busy || !grantItem.pill_id" @click="onGrantItem">发道具</button>
       </div>
 
       <!-- 重置每日 -->
@@ -89,9 +96,22 @@
 </template>
 
 <script setup lang="ts">
+import { ITEM_INFO } from '~/game/items'
 const props = defineProps<{ characterId: number; isBanned: boolean }>()
 const emit = defineEmits<{ done: [] }>()
 const api = useAdminApi()
+
+const CATEGORY_LABELS: Record<string, string> = {
+  enhance: '强化', equip: '装备', awaken: '附灵',
+  character: '修为/丹药', skill: '功法', craft: '合成',
+}
+// 把 ITEM_INFO 按 category 分组（保留原顺序）
+const ITEM_GROUPS = Object.entries(ITEM_INFO).reduce<Record<string, Array<{ id: string; name: string }>>>((acc, [id, info]) => {
+  const cat = info.category
+  if (!acc[cat]) acc[cat] = []
+  acc[cat].push({ id, name: info.name })
+  return acc
+}, {})
 
 const open = ref(true)
 const busy = ref(false)
@@ -124,9 +144,16 @@ async function call(path: string, body: any, confirmText?: string) {
   }
 }
 
-async function onGrantCurrency() {
-  if (!grantCurrency.amount) return alert('数量必填')
-  await call(`/admin/players/${props.characterId}/grant-currency`, { ...grantCurrency }, `确认 ${grantCurrency.amount > 0 ? '发放' : '扣除'} ${Math.abs(grantCurrency.amount)} ${grantCurrency.kind}？`)
+async function onGrantCurrency(sign: 1 | -1) {
+  const amount = Math.abs(Math.trunc(Number(grantCurrency.amount) || 0))
+  if (!amount) return alert('数量必填')
+  const signed = sign * amount
+  const kindLabel = grantCurrency.kind === 'spirit_stone' ? '灵石' : '修为'
+  await call(
+    `/admin/players/${props.characterId}/grant-currency`,
+    { kind: grantCurrency.kind, amount: signed },
+    `确认${sign > 0 ? '发放' : '扣除'} ${amount} ${kindLabel}？`
+  )
 }
 async function onGrantSkills() {
   if (!grantSkills.count) return alert('本数必填')

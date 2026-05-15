@@ -87,7 +87,6 @@ export default defineEventHandler(async (event) => {
         spirit: c.spirit,
 
         spiritStone: c.spirit_stone,
-        merit: c.merit,
 
         title: c.title,
         sectId: c.sect_id,
