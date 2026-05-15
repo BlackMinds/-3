@@ -2163,7 +2163,6 @@
             <table class="help-table"><tbody>
               <tr><td>装备</td><td>普怪 T1-2=20% / T3-6=12% / T7+=8% · Boss 100%</td></tr>
               <tr><td>功法</td><td>T1-3 普怪 1.5% / Boss 15% · T4+ 普怪 0.8% / Boss 10%</td></tr>
-              <tr><td>灵草</td><td>普怪 30% / Boss 80%</td></tr>
               <tr><td>Boss</td><td>每波 1% 概率出现</td></tr>
             </tbody></table>
           </div>
@@ -2183,7 +2182,6 @@
                 </div>
                 <p>装备: T{{ map.tier }}阶 {{ dropQualityRange(map.tier) }}</p>
                 <p>功法: {{ dropSkillRange(map.tier) }}</p>
-                <p>灵草: {{ dropHerbInfo(map) }}</p>
               </div>
             </div>
           </template>
@@ -4630,16 +4628,12 @@ const isBreakthroughCrossBigRealm = computed(() => {
 
 const realmBonusStats = computed(() => {
   const rb = currentRealmBonus.value;
-  const stats = [
+  return [
     { label: '气血', flat: formatNum(rb.hp), pct: rb.hp_pct > 0 ? rb.hp_pct.toFixed(1) : '' },
     { label: '攻击', flat: formatNum(rb.atk), pct: rb.atk_pct > 0 ? rb.atk_pct.toFixed(1) : '' },
     { label: '防御', flat: formatNum(rb.def), pct: rb.def_pct > 0 ? rb.def_pct.toFixed(1) : '' },
     { label: '身法', flat: formatNum(rb.spd), pct: '' },
   ];
-  if (rb.crit_rate > 0) stats.push({ label: '会心率', flat: (rb.crit_rate * 100).toFixed(1) + '%', pct: '' });
-  if (rb.crit_dmg > 0) stats.push({ label: '会心伤害', flat: (rb.crit_dmg * 100).toFixed(0) + '%', pct: '' });
-  if (rb.dodge > 0) stats.push({ label: '闪避', flat: (rb.dodge * 100).toFixed(1) + '%', pct: '' });
-  return stats;
 });
 
 const breakthroughPending = ref(false);
@@ -5857,23 +5851,6 @@ function dropSkillRange(tier: number): string {
   if (groups.divine.length) parts.push(`神通：${groups.divine.join('/')}`);
   if (groups.passive.length) parts.push(`被动：${groups.passive.join('/')}`);
   return `${qualityName[key]} — ${parts.join('；')}`;
-}
-
-function dropHerbInfo(map: any): string {
-  const elems = new Set<string>();
-  for (const m of map.monsters) {
-    if (m.element) elems.add(elemName(m.element));
-  }
-  if (map.boss?.element) elems.add(elemName(map.boss.element));
-  const elemStr = elems.size > 0 ? [...elems].join('/') + '属性灵草' : '通用灵草';
-  const qualMap: Record<number, string> = {
-    1: '凡品~灵品', 2: '凡品~灵品', 3: '灵品~玄品', 4: '灵品~玄品',
-    5: '玄品~地品', 6: '玄品~地品', 7: '地品~天品', 8: '地品~天品',
-    9: '地品~天品', 10: '地品~天品',
-    11: '地品~天品', 12: '地品~天品', 13: '地品~天品',
-    14: '地品~天品', 15: '地品~天品',
-  };
-  return `${elemStr} (${qualMap[map.tier] || '凡品'})`;
 }
 
 // ===== 离线挂机 =====
