@@ -40,6 +40,13 @@
             <span class="label">仙缘印记</span>
             <span class="info-tag tag-gold">LV {{ detail.sealLevel }} (全属性 +{{ sealStat }}%)</span>
           </div>
+          <div v-if="cultBonus" class="row">
+            <span class="label">道侣加成</span>
+            <span class="info-tag tag-cult">
+              修为 +{{ cultBonus.total }}%
+              <span v-if="cultBonus.doubled" class="cult-mark">（心心相印 ×2）</span>
+            </span>
+          </div>
         </div>
 
         <div class="detail-section">
@@ -228,6 +235,16 @@ function giftCount(giftId: string): number {
 const SEAL_STATS = COMPANION_SEAL_PCT.map(p => Math.round(p * 100))
 const SEAL_COSTS = [0, 0, 500, 2000, 8000, 30000]  // LV1 是结侣赠送
 const sealStat = computed(() => SEAL_STATS[detail.value?.sealLevel || 0] || 0)
+
+// 道侣加成（design 3.4）：凡/下/中/上/极/仙 → +3/5/8/12/18/25%，亲密度 ≥1200（心心相印）后 ×2
+const CULT_PCT = [3, 5, 8, 12, 18, 25]
+const cultBonus = computed(() => {
+  if (!detail.value?.isOfficial) return null
+  const q = Math.min(Math.max(detail.value.quality, 0), 5)
+  const base = CULT_PCT[q]
+  const doubled = (detail.value.intimacy || 0) >= 1200
+  return { base, total: doubled ? base * 2 : base, doubled }
+})
 const canMarry = computed(() => detail.value && !detail.value.isOfficial && detail.value.intimacy >= 600)
 const canGift = computed(() => detail.value && detail.value.dailyGiftRemaining > 0)
 const canDate = computed(() => detail.value && detail.value.isOfficial && detail.value.intimacy >= 250)
@@ -541,6 +558,8 @@ onMounted(async () => {
 .root-earth { background: #a87a4a; color: #fff; }
 .info-tag { background: rgba(120,80,160,0.3); color: #c8a8ff; }
 .info-tag.tag-gold { background: rgba(255,215,0,0.2); color: #ffd700; }
+.info-tag.tag-cult { background: rgba(255,126,179,0.18); color: #ff8cba; }
+.cult-mark { color: #ffd166; font-size: 11px; margin-left: 4px; }
 .stage-tag { background: rgba(255,150,200,0.2); color: #ff8cba; }
 .intimacy-text { color: #ff8cba; font-weight: bold; }
 

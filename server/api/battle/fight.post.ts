@@ -1164,7 +1164,7 @@ export default defineEventHandler(async (event) => {
 
       const expMul = 1 + (expBonusPercent || 0) / 100
       const catchUpMul = getCatchUpMultiplier(char.level || 1, avgLevel)
-      // 双修被动修为加成（design 3.4）：已结侣按道侣品质 +3~25%，1500 亲密度后 ×2
+      // 道侣加成（被动）（design 3.4）：已结侣按道侣品质 +3~25%，1200 亲密度（心心相印）后 ×2
       // 凡=3% / 下=5% / 中=8% / 上=12% / 极=18% / 仙=25%
       let dualCultMul = 1
       try {
@@ -1175,7 +1175,7 @@ export default defineEventHandler(async (event) => {
         if (cmpExpRows[0]) {
           const CULT_PCT = [3, 5, 8, 12, 18, 25]
           const pct = CULT_PCT[Math.min(cmpExpRows[0].quality, 5)] || 0
-          const doubleMul = (cmpExpRows[0].intimacy || 0) >= 1500 ? 2 : 1
+          const doubleMul = (cmpExpRows[0].intimacy || 0) >= 1200 ? 2 : 1
           dualCultMul = 1 + (pct * doubleMul) / 100
         }
       } catch {}
