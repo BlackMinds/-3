@@ -1162,8 +1162,10 @@ export default defineEventHandler(async (event) => {
           dualCultMul = 1 + (pct * doubleMul) / 100
         }
       } catch {}
-      // v3.4.3: 历练经验整体 ×0.7（修为/等级双经验同步缩）
-      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul * dualCultMul * 0.7)
+      // v4.0: 历练经验分档打折 — T1×0.40 / T2-5×0.25 / T6-10×0.20 / T11-15×0.15 / T16+×0.12
+      const getExpNerf = (t: number) => t <= 1 ? 0.4 : t <= 5 ? 0.25 : t <= 10 ? 0.2 : t <= 15 ? 0.15 : 0.12
+      const expNerf = getExpNerf(mapData.tier)
+      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul * dualCultMul * expNerf)
       const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
       void stoneTierBonus
       // 怪物掉落灵石已停发；保留 totalStone 变量名以兼容下游 DB/前端接口，固定为 0

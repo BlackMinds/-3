@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
     const charLevelForCatchUp = Number(snapshot.charLevel || char.level || 1)
 
     // 与在线版完全对齐的缩放系数（fight.post.ts:925-944）
-    // - expMul / catchUpMul / 0.7 → 经验与等级经验
+    // - expMul / catchUpMul / 分档打折 → 经验与等级经验
     // - stoneTierBonus（T≤3 = 1.2）→ 灵石（在线灵石不吃 luck）
     // - luckMul → 装备/功法掉落概率
     const avgLevel = await getTopAvgLevel()
@@ -87,7 +87,9 @@ export default defineEventHandler(async (event) => {
     const expMul = 1 + expBonusPercent / 100
     const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
     const luckMul = 1 + luckPercent / 100
-    const expScaledPerBattle = expMul * catchUpMul * 0.7
+    const getExpNerf = (t: number) => t <= 1 ? 0.4 : t <= 5 ? 0.25 : t <= 10 ? 0.2 : t <= 15 ? 0.15 : 0.12
+    const expNerf = getExpNerf(mapData.tier)
+    const expScaledPerBattle = expMul * catchUpMul * expNerf
 
     // === 真打 N 场 ===
     let wins = 0
@@ -154,7 +156,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // === 收益折算：每场代表战 × 12 实际战斗 × efficiency ===
-    // expBonus / luck / catchUp / ×0.7 / stoneTierBonus 均已在循环内逐场算入，这里只做代表战外推
+    // expBonus / luck / catchUp / 分档打折 / stoneTierBonus 均已在循环内逐场算入，这里只做代表战外推
     const battleMultiplier = REPRESENTATIVE_BATTLES_PER_MIN * EFFICIENCY
 
     const totalKills = Math.floor(cumulativeKilled * battleMultiplier)
