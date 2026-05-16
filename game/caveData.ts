@@ -58,8 +58,8 @@ export const BUILDINGS: BuildingDef[] = [
     icon: '宝',
     description: '汇聚四方灵脉,产出灵石。',
     maxLevel: 20,
-    // base 900→1000 (+11%) — 满级 ~44500 灵石/h
-    output: { type: 'spirit_stone', base: 1000, perLevelMul: 1.22 },
+    // 2026-05-16: 对齐后端真值 base 900 并整体降 15% → 765；同时修复前后端 base 不一致 bug —— 满级 ~33457 灵石/h
+    output: { type: 'spirit_stone', base: 765, perLevelMul: 1.22 },
     baseCost: 2000,
     costMul: 1.8,
     baseTime: 0,
