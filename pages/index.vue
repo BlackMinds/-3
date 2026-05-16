@@ -2720,6 +2720,7 @@
         </div>
         <div class="help-tabs">
           <button :class="['help-tab', { active: helpTab === 'basic' }]" @click="helpTab = 'basic'">基础</button>
+          <button :class="['help-tab', { active: helpTab === 'newbie' }]" @click="helpTab = 'newbie'">攻略</button>
           <button :class="['help-tab', { active: helpTab === 'battle' }]" @click="helpTab = 'battle'">战斗</button>
           <button :class="['help-tab', { active: helpTab === 'growth' }]" @click="helpTab = 'growth'">养成</button>
           <button :class="['help-tab', { active: helpTab === 'pvp' }]" @click="helpTab = 'pvp'">宗门/PvP</button>
@@ -2765,12 +2766,92 @@
               <tr><td>风云阁</td><td>全服传奇掉落/事件播报,红点提示新传奇</td></tr>
               <tr><td>成就</td><td>多维度成就追踪,领取奖励,佩戴称号</td></tr>
               <tr><td>兑换码</td><td>输入官方/活动兑换码领取奖励</td></tr>
-              <tr><td>帮助</td><td>本帮助文档(基础/战斗/养成/PvP/秘境/其他)</td></tr>
+              <tr><td>帮助</td><td>本帮助文档(基础/攻略/战斗/养成/PvP/秘境/通天塔/红尘/坊市/其他)</td></tr>
               <tr><td>设置</td><td>背景主题/自动出售规则(按品质和阶位)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">秘境组队副本入口在「宗门」标签页内,不在顶部按钮。</p>
           </div>
           </div>
+          <div v-show="helpTab === 'newbie'">
+          <div class="help-section">
+            <div class="help-title">战力提升优先级（边际收益从高到低）</div>
+            <p class="help-text">新手期资源有限，按以下顺序投资性价比最高：</p>
+            <table class="help-table"><tbody>
+              <tr><td>① 突破境界</td><td>每次突破基础属性大幅提升，<b>练气期线性曲线</b>，首日可冲到筑基</td></tr>
+              <tr><td>② 凑齐功法槽位</td><td>3 槽功法（1 主修 + 1 神通 + 1 被动）远强于裸打，T1-T3 普通怪 1.5% / Boss 15% 爆率，前期慷慨</td></tr>
+              <tr><td>③ 装备强化 +6</td><td>+1~+6 <b>必成段</b>，每级主属性 +10%，零风险拉满</td></tr>
+              <tr><td>④ 灵根共鸣（同色装备 ≥3 件）</td><td>攻防血神识 +5%，≥5 件 +10%，≥7 件 +20%，性价比极高</td></tr>
+              <tr><td>⑤ 洞府建筑</td><td>演武堂（修为 +%）+ 藏经阁（功法掉率 +%）+ 聚宝盆（灵石）优先升</td></tr>
+              <tr><td>⑥ 升装备品质</td><td>蓝 → 紫 → 金 → 红，每档主词条数 +1，紫装是平民最划算的目标</td></tr>
+              <tr><td>⑦ 强化到 +7~+9</td><td>+7 起有失败概率（25%~60%），<b>消耗强化石</b>，凑齐保护符再上</td></tr>
+              <tr><td>⑧ 道侣 / 子女</td><td>金丹期解锁，结侣自动 +2% 全属性，子女出战提供真双人 dps</td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">资源产出速查</div>
+            <table class="help-table"><tbody>
+              <tr><td><b>灵石</b></td><td>历练打怪 / 洞府聚宝盆 / 宗门日常 / 每日签到 / 成就 / 斗法奖励 / 坊市卖装备</td></tr>
+              <tr><td><b>修为</b></td><td>历练打怪 / 离线挂机 / 洞府聚灵阵 / 灵脉节点（宗门）/ 演武堂 +%</td></tr>
+              <tr><td><b>等级经验</b></td><td>历练打怪（与境界修为同步） / 离线挂机</td></tr>
+              <tr><td><b>装备</b></td><td>历练打怪 / 秘境组队 / 通天塔 / 宝箱 / Boss 秘宝（T8+ 固定 Boss）/ 坊市</td></tr>
+              <tr><td><b>功法残页</b></td><td>历练 T1-T3 普通 1.5% / Boss 15%；T4+ 普通 0.8% / Boss 10%；秘境普通 6% / Boss 40%；通天塔每 10 层节点（紫品五行主修专属）</td></tr>
+              <tr><td><b>灵草</b></td><td>洞府灵田种植（推荐）/ 历练打怪 / 秘境采集 / 道侣红尘</td></tr>
+              <tr><td><b>强化石·TX</b></td><td>T4+ 地图普通怪 / 秘境组队本，<b>对应 tier 专用</b>不可跨级</td></tr>
+              <tr><td><b>丹药</b></td><td>炼丹（灵草 + 灵石）/ 成就奖励 / 红尘玉商店（金莲花露等）</td></tr>
+              <tr><td><b>红尘玉</b></td><td>道侣游历红尘（金丹期后）/ 已结侣每日 +5</td></tr>
+              <tr><td><b>宗门贡献</b></td><td>每日签到 / 日常周常任务 / 捐献灵石 / 宗门战参赛</td></tr>
+              <tr><td><b>洗髓丹 / 道果结晶</b></td><td>红尘玉商店（天道洗髓丹）/ 成就 / 充值商品 / 极少量秘境</td></tr>
+              <tr><td><b>附灵石 / 灵枢玉</b></td><td>红尘玉商店 / 斗法榜前 10 / 充值商品</td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">装备五行搭配指南</div>
+            <p class="help-text">V5 装备有<b>两条核心加成路径</b>，新手起步建议二选一专攻：</p>
+            <table class="help-table"><tbody>
+              <tr><td><b style="color: var(--gold-ink);">A. 灵根共鸣型</b><br/>（推荐新手）</td><td>尽量穿和自己灵根<b>同色</b>的 V5 装备。3/5/7 件分别 +5%/+10%/+20% 攻防血神识。简单粗暴，凑够 5 件就稳定 +10% 全属性</td></tr>
+              <tr><td><b style="color: #b87dff;">B. 相生链型</b><br/>（中后期）</td><td>按槽位 1→2→3→…→7 形成<b>木→火→土→金→水→木</b>相生链。链上累计 ≥3 件激活属性 2，≥6 件激活属性 3。每件最多 3 条「五行词条」生效</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px;"><b>关键规则提醒：</b></p>
+            <table class="help-table"><tbody>
+              <tr><td>灵戒主修元素</td><td>优先选与本体灵根<b>一致</b>的（克制系数 ×1.15 + 灵根共鸣 +20%）</td></tr>
+              <tr><td>五行强化（wuxing_dmg）</td><td>按<b>已装备神通中出现最多的五行</b>生效。神通别 5 色都带，专精 1-2 种五行</td></tr>
+              <tr><td>调位换不了链</td><td>装备相生链按槽位序号固定，灵戒挪到法宝位也不会换链</td></tr>
+              <tr><td>未触发词条灰色</td><td>装备上灰字 = 五行词条没激活，不计入面板。蓝字才生效</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">新手期建议 A 路线：找 V5 装备认色，灵根同色优先穿，缺位才补其他色。等齐 6-7 件 V5 再考虑 B 路线优化相生链。</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">新手 7 天路线</div>
+            <table class="help-table"><tbody>
+              <tr><td>Day 1</td><td>练气期速通 → 突破筑基 → 尽量推到 Lv.15 加入宗门</td></tr>
+              <tr><td>Day 2</td><td>凑齐 3 槽功法 → 装备强化到 +6 → 洞府升演武堂 / 藏经阁</td></tr>
+              <tr><td>Day 3</td><td>地图打到 T3-T4 → 开始攒强化石 → 紫装升品</td></tr>
+              <tr><td>Day 4</td><td>突破金丹 → 解锁<b>红尘</b>（道侣）→ 第一对道侣结缘</td></tr>
+              <tr><td>Day 5</td><td>组队秘境 → 红尘玉商店换金莲花露 → 准备结侣</td></tr>
+              <tr><td>Day 6</td><td>突破元婴 → V5 装备替换 V4 → 凑灵根共鸣 3 件</td></tr>
+              <tr><td>Day 7</td><td>挑战通天塔（紫品主修残页）→ 子女出战开发真双人 dps</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">实际节奏视赞助 / 在线时长 / 运气浮动。重点是<b>顺序</b>而非天数。</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">常见误区</div>
+            <table class="help-table"><tbody>
+              <tr><td style="color: #c45c4a;">❌ 同类被动堆满</td><td>ATK% / HP% / DEF% / SPD% 各项<b>上限 +40%</b>，超出截断。分散到攻防血</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 切高阶图离线挂机</td><td>连败 5 场自动停止，零收益。选战力够得着的图</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 连战不退</td><td>连败 3 次随机掉一件装备（锁定也掉）+ 自动暂停历练</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 高品灵草炼礼物</td><td>礼物无品质机制，低品灵草优先做礼物。高品灵草留给战斗丹药</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 急着卖蓝紫装</td><td>自动出售前先确认设置，蓝紫装可能是紧缺套装/秘宝</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 五行装备零散穿</td><td>5 件不同色 = 0 共鸣。要么凑同色 ≥3 件，要么沿相生链摆</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 神通五行混搭</td><td>五行强化按神通占多数生效。神通最好集中 1-2 种元素</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 强化保护符不留</td><td>+7 起失败退级，宗门商店 2000 贡献买<b>强化保护符</b>很值，攒着</td></tr>
+            </tbody></table>
+          </div>
+          </div>
+
           <div v-show="helpTab === 'battle'">
           <div class="help-section">
             <div class="help-title">等级系统</div>
@@ -3424,7 +3505,7 @@
               <tr><td>同时进行中挂单</td><td>≤ 30 单</td></tr>
               <tr><td>每日上架次数</td><td>≤ 30 次</td></tr>
               <tr><td>每日成交件数</td><td>≤ 30 件（买 + 卖合计）</td></tr>
-              <tr><td>每日成交金额</td><td>≤ 2,000 万灵石（买 + 卖合计）</td></tr>
+              <tr><td>每日成交金额</td><td>≤ 1,000 万灵石（买 + 卖合计）</td></tr>
             </tbody></table>
           </div>
           <div class="help-section">
@@ -4128,7 +4209,7 @@ const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showRedeemCode = ref(false);
 const showHelpDoc = ref(false);
-const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'romance' | 'market' | 'misc'>('basic');
+const helpTab = ref<'basic' | 'newbie' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'romance' | 'market' | 'misc'>('basic');
 const showSettings = ref(false);
 
 async function copyQqGroup() {

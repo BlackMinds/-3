@@ -195,7 +195,7 @@
 | 单角色同时挂单数 | 30 单 | 与每日成交上限对齐，防刷参考价 |
 | 单角色每日上架次数 | 30 次 | 给取消重挂留余量，仍限制刷参考价 |
 | 单角色**每日成交件数**（买 + 卖合计） | **30 件** | 主限额：阻断工作室批量化、限制 RMT 转账规模 |
-| 单角色每日成交额（买 + 卖） | 20,000,000 灵石 | 附加护栏：单件超大额下单的兜底约束 |
+| 单角色每日成交额（买 + 卖） | 10,000,000 灵石 | 附加护栏：单件超大额下单的兜底约束 |
 | 单件商品成交后冷却 | 无 | 不限制频次，只限制件数与金额 |
 
 超限的操作直接拒绝，前端按命中的具体规则提示：
@@ -602,7 +602,7 @@ ON CONFLICT (category_key) DO UPDATE SET
 | `market_max_active_listings` | 30 | 单角色同时进行中挂单 |
 | `market_max_daily_listings` | 30 | 单角色每日上架次数 |
 | `market_max_daily_trade_count` | 10 | 单角色每日成交件数（买 + 卖合计） |
-| `market_max_daily_trade_amount` | 20,000,000 | 单角色每日成交额（金额护栏） |
+| `market_max_daily_trade_amount` | 10,000,000 | 单角色每日成交额（金额护栏） |
 | `market_broadcast_threshold` | 1,000,000 | 触发全服广播的成交额 |
 | `market_entry_realm_tier` | 2 | 准入境界 |
 | `market_entry_level` | 30 | 准入等级 |
