@@ -1445,36 +1445,81 @@
 
       <!-- ===== 种植弹窗 ===== -->
       <div v-if="showPlantDialog" class="modal-overlay" @click="showPlantDialog = false">
-        <div class="modal-content" @click.stop style="max-width: 480px;">
+        <div
+          class="modal-content"
+          @click.stop
+          :style="plantPlotIndex < 0 ? 'max-width: 560px;' : 'max-width: 480px;'"
+        >
           <div class="modal-header">
-            <h3>{{ plantPlotIndex < 0 ? '一键种植 - 所有空地块' : `选择种植 - 地块 ${plantPlotIndex + 1}` }}</h3>
+            <h3>{{ plantPlotIndex < 0 ? `一键种植 · ${plotData.plotCount} 个地块` : `选择种植 - 地块 ${plantPlotIndex + 1}` }}</h3>
             <button class="modal-close" @click="showPlantDialog = false">×</button>
           </div>
           <div class="modal-body">
-            <div class="plant-section-title">灵草种类</div>
-            <div class="plant-herb-list">
-              <div
-                v-for="herb in HERBS_LIST"
-                :key="herb.id"
-                class="plant-herb-card"
-                :class="{ selected: plantHerbId === herb.id, locked: getBuildingLevel('herb_field') < herb.unlockPlotMaxLevel }"
-                @click="getBuildingLevel('herb_field') >= herb.unlockPlotMaxLevel && (plantHerbId = herb.id)"
-              >
-                <div class="plant-herb-name">{{ herb.name }}</div>
-                <div class="plant-herb-elem" v-if="herb.element">{{ elementName(herb.element) }}属</div>
-                <div class="plant-herb-locked" v-if="getBuildingLevel('herb_field') < herb.unlockPlotMaxLevel">
-                  灵田 Lv.{{ herb.unlockPlotMaxLevel }} 解锁
+            <!-- 一键种植：逐地块下拉配置 -->
+            <template v-if="plantPlotIndex < 0">
+              <p class="plant-tip" style="margin-top: 0; margin-bottom: 10px;">
+                为每块地选一种灵草,配置自动保存。已种地块本次会被跳过,但保存的配置会在下轮收获后继续生效。
+              </p>
+              <div class="plant-config-list">
+                <div
+                  v-for="plot in plantConfigPlotList"
+                  :key="plot.plot_index"
+                  class="plant-config-row"
+                  :class="{ occupied: plot.occupied }"
+                >
+                  <div class="plant-config-label">
+                    <span class="plant-config-idx">地块 {{ plot.plot_index + 1 }}</span>
+                    <span v-if="plot.occupied" class="plant-config-status">
+                      {{ plot.is_mature ? '已成熟' : '生长中' }} · {{ getHerbName(plot.current_herb_id) }}
+                    </span>
+                    <span v-else class="plant-config-status empty">空</span>
+                  </div>
+                  <select
+                    class="plant-config-select"
+                    :value="plantConfigs[plot.plot_index] || ''"
+                    @change="onPlantConfigChange(plot.plot_index, ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="">不种植</option>
+                    <option
+                      v-for="herb in availablePlantHerbs"
+                      :key="herb.id"
+                      :value="herb.id"
+                    >{{ herb.name }}{{ herb.element ? ' · ' + elementName(herb.element) + '属' : '' }}</option>
+                  </select>
                 </div>
               </div>
-            </div>
+              <button class="plant-confirm-btn" @click="confirmPlantAll" :disabled="plantAllCount === 0">
+                {{ plantAllCount > 0 ? `开始种植 (${plantAllCount} 块)` : '没有可种植的空地块' }}
+              </button>
+            </template>
 
-            <p class="plant-tip">
-              成熟时随机决定品质,灵田等级越高出高品质概率越大
-            </p>
+            <!-- 单地块：原灵草网格 -->
+            <template v-else>
+              <div class="plant-section-title">灵草种类</div>
+              <div class="plant-herb-list">
+                <div
+                  v-for="herb in HERBS_LIST"
+                  :key="herb.id"
+                  class="plant-herb-card"
+                  :class="{ selected: plantHerbId === herb.id, locked: getBuildingLevel('herb_field') < herb.unlockPlotMaxLevel }"
+                  @click="getBuildingLevel('herb_field') >= herb.unlockPlotMaxLevel && (plantHerbId = herb.id)"
+                >
+                  <div class="plant-herb-name">{{ herb.name }}</div>
+                  <div class="plant-herb-elem" v-if="herb.element">{{ elementName(herb.element) }}属</div>
+                  <div class="plant-herb-locked" v-if="getBuildingLevel('herb_field') < herb.unlockPlotMaxLevel">
+                    灵田 Lv.{{ herb.unlockPlotMaxLevel }} 解锁
+                  </div>
+                </div>
+              </div>
 
-            <button class="plant-confirm-btn" @click="confirmPlant" :disabled="!plantHerbId">
-              开始种植
-            </button>
+              <p class="plant-tip">
+                成熟时随机决定品质,灵田等级越高出高品质概率越大
+              </p>
+
+              <button class="plant-confirm-btn" @click="confirmPlant" :disabled="!plantHerbId">
+                开始种植
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -2713,7 +2758,7 @@
 
     <!-- ==================== 帮助文档弹窗 ==================== -->
     <div v-if="showHelpDoc" class="modal-overlay" @click="showHelpDoc = false">
-      <div class="modal-content" @click.stop style="max-width: 600px;">
+      <div class="modal-content" @click.stop style="max-width: 720px;">
         <div class="modal-header">
           <h3>万界仙途 · 帮助</h3>
           <button class="modal-close" @click="showHelpDoc = false">×</button>
@@ -2766,7 +2811,7 @@
               <tr><td>风云阁</td><td>全服传奇掉落/事件播报,红点提示新传奇</td></tr>
               <tr><td>成就</td><td>多维度成就追踪,领取奖励,佩戴称号</td></tr>
               <tr><td>兑换码</td><td>输入官方/活动兑换码领取奖励</td></tr>
-              <tr><td>帮助</td><td>本帮助文档(基础/攻略/战斗/养成/PvP/秘境/通天塔/红尘/坊市/其他)</td></tr>
+              <tr><td>帮助</td><td>本帮助文档(基础、攻略、战斗、养成、宗门/PvP、秘境、通天塔、红尘、坊市、其他)</td></tr>
               <tr><td>设置</td><td>背景主题/自动出售规则(按品质和阶位)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">秘境组队副本入口在「宗门」标签页内,不在顶部按钮。</p>
@@ -2831,7 +2876,7 @@
               <tr><td>Day 3</td><td>地图打到 T3-T4 → 开始攒强化石 → 紫装升品</td></tr>
               <tr><td>Day 4</td><td>突破金丹 → 解锁<b>红尘</b>（道侣）→ 第一对道侣结缘</td></tr>
               <tr><td>Day 5</td><td>组队秘境 → 红尘玉商店换金莲花露 → 准备结侣</td></tr>
-              <tr><td>Day 6</td><td>突破元婴 → V5 装备替换 V4 → 凑灵根共鸣 3 件</td></tr>
+              <tr><td>Day 6</td><td>突破元婴 → 装备凑灵根共鸣 3 件（同色 +5% 全属性）→ 攒强化保护符冲 +7</td></tr>
               <tr><td>Day 7</td><td>挑战通天塔（紫品主修残页）→ 子女出战开发真双人 dps</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">实际节奏视赞助 / 在线时长 / 运气浮动。重点是<b>顺序</b>而非天数。</p>
@@ -2841,10 +2886,9 @@
             <div class="help-title">常见误区</div>
             <table class="help-table"><tbody>
               <tr><td style="color: #c45c4a;">❌ 同类被动堆满</td><td>ATK% / HP% / DEF% / SPD% 各项<b>上限 +40%</b>，超出截断。分散到攻防血</td></tr>
-              <tr><td style="color: #c45c4a;">❌ 切高阶图离线挂机</td><td>连败 5 场自动停止，零收益。选战力够得着的图</td></tr>
-              <tr><td style="color: #c45c4a;">❌ 连战不退</td><td>连败 3 次随机掉一件装备（锁定也掉）+ 自动暂停历练</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 切高阶图离线挂机</td><td>连败 5 场提前结算，只按当前已胜场次外推奖励，等于浪费挂机时长</td></tr>
               <tr><td style="color: #c45c4a;">❌ 高品灵草炼礼物</td><td>礼物无品质机制，低品灵草优先做礼物。高品灵草留给战斗丹药</td></tr>
-              <tr><td style="color: #c45c4a;">❌ 急着卖蓝紫装</td><td>自动出售前先确认设置，蓝紫装可能是紧缺套装/秘宝</td></tr>
+              <tr><td style="color: #c45c4a;">❌ 急着卖蓝紫装</td><td>自动出售前先确认设置，蓝紫装可能是 V5 传说套装或 Boss 秘宝</td></tr>
               <tr><td style="color: #c45c4a;">❌ 五行装备零散穿</td><td>5 件不同色 = 0 共鸣。要么凑同色 ≥3 件，要么沿相生链摆</td></tr>
               <tr><td style="color: #c45c4a;">❌ 神通五行混搭</td><td>五行强化按神通占多数生效。神通最好集中 1-2 种元素</td></tr>
               <tr><td style="color: #c45c4a;">❌ 强化保护符不留</td><td>+7 起失败退级，宗门商店 2000 贡献买<b>强化保护符</b>很值，攒着</td></tr>
@@ -2888,7 +2932,7 @@
 
             <p class="help-text" style="margin-top: 8px;"><b>① 基础伤害（calculateDamage）</b></p>
             <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">伤害 = 攻击 × 技能倍率 × 五行系数 × (1 - 元素抗性) × atk/(atk + 实际防御 × 0.8) × (1 + 元素强化%) × 觉醒乘区</p>
-            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">闪避命中后伤害归零；会心命中再 × 会心伤害；其后叠加 DOT 加成、十三枪层数、噬灵套等"最终伤害"乘区。</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">闪避命中后伤害归零；会心命中再 × 会心伤害；其后叠加 DOT 加成等"最终伤害"乘区。</p>
 
             <p class="help-text" style="margin-top: 10px;"><b>② 防御 / 破甲</b></p>
             <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">总破甲 = 神通破甲% + 副属性破甲/100 + 附灵破玄% + 主修破玄%<br/>实际防御 = 防御 × max(0, 1 - 总破甲)<br/>减伤系数 = atk / (atk + 实际防御 × 0.8)</p>
@@ -2898,7 +2942,6 @@
               <tr><td>副属性「破甲」</td><td>+1~10/条 (除以 100 = +1~10%)</td></tr>
               <tr><td>附灵 / 觉醒「破玄」</td><td>+5~25% (常驻)</td></tr>
               <tr><td>主修「破玄」(灵戒)</td><td>+10~30% (仅主修攻击)</td></tr>
-              <tr><td>十三枪 6 件套</td><td>spearArmorPen 全场 +X%</td></tr>
             </tbody></table>
 
             <p class="help-text" style="margin-top: 10px;"><b>③ 五行相克</b></p>
@@ -2915,7 +2958,7 @@
 
             <p class="help-text" style="margin-top: 10px;"><b>⑥ 吸血</b></p>
             <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">回血 = floor(本次伤害 × 吸血率), cap 至最大气血</p>
-            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">玩家吸血上限 <b>25%</b>。血魔套对流血目标 +X% 吸血；主修「噬灵」按最大气血百分比额外回血(非按伤害)。</p>
+            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">玩家吸血上限 <b>25%</b>。主修「噬灵」按最大气血百分比额外回血(非按伤害)。</p>
 
             <p class="help-text" style="margin-top: 10px;"><b>⑦ 反伤(v3.7 统一池)</b></p>
             <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">反弹量 = min(floor(受击伤害 × 反伤系数Σ), 玩家攻击 × 6) + floor(玩家最大气血 × 8%)</p>
@@ -3093,20 +3136,6 @@
             <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);"><b>v3.6 新词条:</b><b>DOT伤害 +5~25%</b>(灼烧/中毒/流血总伤害放大,与功法被动「万毒归一」叠加)；<b>反伤倍率 +3~15%</b>(每件装备独立叠加到反伤系数)。</p>
           </div>
           <div class="help-section">
-            <div class="help-title">装备强化（V4 老装备）</div>
-            <p class="help-text">消耗灵石强化已穿戴装备,最高 +10。每级主属性 +10%(满级 +100%)。<span style="color: var(--fade-ink);">新版 V5 装备规则不同,见下方专门章节。</span></p>
-            <table class="help-table"><tbody>
-              <tr><td>+1 ~ +6</td><td>100% 必成</td></tr>
-              <tr><td>+7</td><td>75%</td></tr>
-              <tr><td>+8</td><td>55%</td></tr>
-              <tr><td>+9</td><td>40%</td></tr>
-              <tr><td>+10</td><td>25%</td></tr>
-            </tbody></table>
-            <p class="help-text" style="margin-top: 6px;">+7 起失败退 1 级(最低不低于 +6)。+5 和 +10 时触发副属性突破(随机一条 +30%,最少+1)。</p>
-            <p class="help-text" style="margin-top: 4px; color: var(--gold-ink);">宗门商店可购买【强化保护符】失败不退级,【强化大师符】+7 必成。</p>
-            <p class="help-text" style="margin-top: 4px; color: var(--cinnabar);"><b>T4+ 装备</b>每次强化额外消耗 1 个对应 tier 的【强化石·TX】(成败都扣)。强化石由 T4+ 地图怪、秘境组队本低概率掉落,对应 tier 专用不可跨级使用。</p>
-          </div>
-          <div class="help-section">
             <div class="help-title">装备进阶</div>
             <table class="help-table"><tbody>
               <tr><td>鉴定符</td><td>重随装备副属性(保留主属性和强化等级)</td></tr>
@@ -3115,8 +3144,8 @@
           </div>
 
           <div class="help-section" style="border-left: 3px solid var(--gold-ink); padding-left: 8px;">
-            <div class="help-title" style="color: var(--gold-ink);">装备 V5（新版掉落）</div>
-            <p class="help-text">V5 与 V4 老装备并存。新版掉落都走 V5,老装备完全不受影响,可继续穿戴/强化/升品。</p>
+            <div class="help-title" style="color: var(--gold-ink);">装备 V5 · 槽位与五行</div>
+            <p class="help-text">V5 是当前装备系统，蓝/紫/金/红品装备掉落均为 V5；带五行前缀、相生链、灵根共鸣三套机制。</p>
 
             <p class="help-text" style="margin-top: 8px;"><b>七槽位主属性</b></p>
             <table class="help-table"><tbody>
@@ -3147,7 +3176,7 @@
 
           <div class="help-section" style="border-left: 3px solid var(--gold-ink); padding-left: 8px;">
             <div class="help-title" style="color: var(--gold-ink);">装备 V5 · 强化</div>
-            <p class="help-text">V5 装备强化上限 <b>+9</b>（V4 装备仍为 +10）。每级主属性 +10%（满级 +90%）。失败退 1 级，最低 +6。</p>
+            <p class="help-text">装备强化上限 <b>+9</b>，消耗灵石。每级主属性 +10%（满级 +90%）。失败退 1 级，最低 +6。</p>
             <table class="help-table"><tbody>
               <tr><td>+1 ~ +6</td><td>100% 必成</td></tr>
               <tr><td>+7</td><td>75%</td></tr>
@@ -3270,7 +3299,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">死亡惩罚</div>
-            <p class="help-text">战败随机损失 <b>1-5%</b> 境界修为 + <b>1-5%</b> 等级经验,3 秒后原地复活继续战斗。<b style="color:#ff6b6b">连续战败 3 次</b>会随机遗落一件已穿戴装备 (锁定的装备<b>同样</b>会掉),并<b style="color:#ff6b6b">自动暂停历练</b>,需手动重新点开始;触发后连击重置,战斗胜利清零连击计数。被动功法【不灭金身】可免死一次(保留 20% 气血)。</p>
+            <p class="help-text">战败随机损失 <b>1-5%</b> 境界修为 + <b>1-5%</b> 等级经验，3 秒后原地复活继续战斗。被动功法【不灭金身】可免死一次（保留 20% 气血）。</p>
           </div>
           <div class="help-section">
             <div class="help-title">角色成长道具</div>
@@ -6955,6 +6984,80 @@ const plantPlotIndex = ref(0);
 const plantHerbId = ref('');
 const plantQuality = ref('');
 
+// 一键种植：每块地的配置（plot_index -> herb_id；缺失或空串视作不种）
+const plantConfigs = ref<Record<number, string>>({});
+
+const plantConfigPlotList = computed(() => {
+  const plotMap = new Map<number, any>();
+  for (const p of plotData.value.plots) plotMap.set(p.plot_index, p);
+  const list: Array<{ plot_index: number; occupied: boolean; is_mature: boolean; current_herb_id: string }> = [];
+  for (let i = 0; i < plotData.value.plotCount; i++) {
+    const p = plotMap.get(i);
+    list.push({
+      plot_index: i,
+      occupied: !!p?.herb_id,
+      is_mature: !!p?.is_mature,
+      current_herb_id: p?.herb_id || '',
+    });
+  }
+  return list;
+});
+
+const availablePlantHerbs = computed(() => {
+  const lv = getBuildingLevel('herb_field');
+  return HERBS_LIST.filter((h: any) => lv >= h.unlockPlotMaxLevel);
+});
+
+const plantAllCount = computed(() => {
+  const lv = getBuildingLevel('herb_field');
+  let cnt = 0;
+  for (const p of plantConfigPlotList.value) {
+    if (p.occupied) continue;
+    const herbId = plantConfigs.value[p.plot_index];
+    if (!herbId) continue;
+    const herb = HERBS_LIST.find((h: any) => h.id === herbId);
+    if (!herb || lv < herb.unlockPlotMaxLevel) continue;
+    cnt++;
+  }
+  return cnt;
+});
+
+function plantConfigStorageKey(): string {
+  const cid = gameStore.character?.id;
+  return cid ? `plantConfigs_v1_${cid}` : 'plantConfigs_v1';
+}
+
+function loadPlantConfigs(): Record<number, string> {
+  try {
+    const raw = localStorage.getItem(plantConfigStorageKey());
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      const result: Record<number, string> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        const idx = Number(k);
+        if (Number.isInteger(idx) && typeof v === 'string') result[idx] = v;
+      }
+      return result;
+    }
+  } catch {}
+  return {};
+}
+
+function savePlantConfigs() {
+  try {
+    localStorage.setItem(plantConfigStorageKey(), JSON.stringify(plantConfigs.value));
+  } catch {}
+}
+
+function onPlantConfigChange(plotIndex: number, herbId: string) {
+  const next = { ...plantConfigs.value };
+  if (herbId) next[plotIndex] = herbId;
+  else delete next[plotIndex];
+  plantConfigs.value = next;
+  savePlantConfigs();
+}
+
 function getMaxPlotCountByLevel(lv: number): number {
   return getPlotConfig(lv).plotCount;
 }
@@ -7032,26 +7135,16 @@ function openPlantDialog(plotIndex: number) {
   plantPlotIndex.value = plotIndex;
   plantHerbId.value = '';
   plantQuality.value = '';
+  if (plotIndex < 0) {
+    plantConfigs.value = loadPlantConfigs();
+  }
   showPlantDialog.value = true;
 }
 
 async function confirmPlant() {
+  if (plantPlotIndex.value < 0) return; // 走 confirmPlantAll
   if (!plantHerbId.value) return;
   try {
-    if (plantPlotIndex.value < 0) {
-      const res: any = await $fetch('/api/cave/plant-all', { method: 'POST', body: {
-        herb_id: plantHerbId.value,
-      }, headers: getAuthHeaders() });
-      if (res.code === 200) {
-        showPlantDialog.value = false;
-        const n = res.data?.planted || 0;
-        showToast(n > 0 ? `一键种植 ${n} 块` : '没有空地块', n > 0 ? 'success' : 'info');
-        await loadPlots();
-      } else {
-        showToast(res.message || '一键种植失败', 'error');
-      }
-      return;
-    }
     const res: any = await $fetch('/api/cave/plant', { method: 'POST', body: {
       plot_index: plantPlotIndex.value,
       herb_id: plantHerbId.value,
@@ -7065,6 +7158,42 @@ async function confirmPlant() {
   } catch (err) {
     console.error('种植失败', err);
     showToast('种植失败', 'error');
+  }
+}
+
+async function confirmPlantAll() {
+  const lv = getBuildingLevel('herb_field');
+  const configs: Array<{ plot_index: number; herb_id: string }> = [];
+  for (const p of plantConfigPlotList.value) {
+    if (p.occupied) continue;
+    const herbId = plantConfigs.value[p.plot_index];
+    if (!herbId) continue;
+    const herb = HERBS_LIST.find((h: any) => h.id === herbId);
+    if (!herb || lv < herb.unlockPlotMaxLevel) continue;
+    configs.push({ plot_index: p.plot_index, herb_id: herbId });
+  }
+  if (configs.length === 0) {
+    showToast('没有可种植的空地块', 'info');
+    return;
+  }
+  savePlantConfigs();
+  try {
+    const res: any = await $fetch('/api/cave/plant-all', {
+      method: 'POST',
+      body: { plot_configs: configs },
+      headers: getAuthHeaders(),
+    });
+    if (res.code === 200) {
+      showPlantDialog.value = false;
+      const n = res.data?.planted || 0;
+      showToast(n > 0 ? `一键种植 ${n} 块` : '没有空地块', n > 0 ? 'success' : 'info');
+      await loadPlots();
+    } else {
+      showToast(res.message || '一键种植失败', 'error');
+    }
+  } catch (err) {
+    console.error('一键种植失败', err);
+    showToast('一键种植失败', 'error');
   }
 }
 
@@ -12908,6 +13037,72 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+/* ===== 一键种植：逐地块配置 ===== */
+.plant-config-list {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid rgba(184, 154, 90, 0.18);
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.plant-config-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px dashed rgba(184, 154, 90, 0.1);
+}
+.plant-config-row:last-child { border-bottom: none; }
+.plant-config-row.occupied { opacity: 0.7; }
+
+.plant-config-label {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plant-config-idx {
+  font-size: 13px;
+  color: var(--gold-ink);
+  white-space: nowrap;
+  min-width: 50px;
+}
+
+.plant-config-status {
+  font-size: 11px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plant-config-status.empty { color: var(--jade); }
+
+.plant-config-select {
+  width: 160px;
+  padding: 5px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(184, 154, 90, 0.25);
+  border-radius: 3px;
+  color: var(--ink-medium);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+.plant-config-select:hover {
+  border-color: var(--gold-ink);
+}
+.plant-config-select:focus {
+  outline: none;
+  border-color: var(--gold-ink);
+}
+.plant-config-select option {
+  background: #1a1410;
+  color: var(--ink-medium);
+}
+
 /* ========== 炼丹页面 ========== */
 .pill-header-row {
   display: flex;
@@ -17225,6 +17420,12 @@ onUnmounted(() => {
   .plant-quality-list { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .plant-herb-card, .plant-quality-card { padding: 8px; }
   .plant-herb-name, .plant-quality-name { font-size: 13px; }
+
+  /* 一键种植：窄屏紧凑 */
+  .plant-config-row { padding: 6px 8px; gap: 6px; }
+  .plant-config-idx { min-width: 44px; font-size: 12px; }
+  .plant-config-status { font-size: 10px; }
+  .plant-config-select { width: 130px; font-size: 11px; padding: 4px 6px; }
 
   /* ---------- 帮助弹窗表格（防溢出） ---------- */
   .help-table { font-size: 11px; }
