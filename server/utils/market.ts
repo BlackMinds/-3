@@ -22,6 +22,8 @@ export const MARKET_ENTRY_REGISTER_DAYS = 1
 
 export const MARKET_ALLOWED_RARITIES = new Set(['purple', 'gold', 'red'])
 export const MARKET_MIN_TIER = 3
+// V5 传奇装备（legendary_set_id 非空）禁挂：极稀有，避免 RMT 与跳级
+export const MARKET_BLOCK_LEGENDARY = true
 
 // ============================================
 // 归一化键：eq:{base_slot}:{rarity}:{tier}:{enhance_level}

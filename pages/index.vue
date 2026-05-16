@@ -2726,6 +2726,7 @@
           <button :class="['help-tab', { active: helpTab === 'realm' }]" @click="helpTab = 'realm'">秘境</button>
           <button :class="['help-tab', { active: helpTab === 'tower' }]" @click="helpTab = 'tower'">通天塔</button>
           <button :class="['help-tab', { active: helpTab === 'romance' }]" @click="helpTab = 'romance'">红尘</button>
+          <button :class="['help-tab', { active: helpTab === 'market' }]" @click="helpTab = 'market'">坊市</button>
           <button :class="['help-tab', { active: helpTab === 'misc' }]" @click="helpTab = 'misc'">其他</button>
         </div>
         <div class="modal-body">
@@ -3373,6 +3374,62 @@
               <tr><td>奇遇产出</td><td>fortune 类 5% 概率 +50</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px;">用途：升级仙缘印记 LV2-5；红尘玉商店已开 17 种商品，含 <b>情花原料 / 金莲花露 / 夺天造化丹 / 红尘解 / 血脉重铸丹 / 天道洗髓丹 / 子女装备宝箱 / 装备附灵石&灵枢玉</b> 等，多数周限 1-10 件。</p>
+          </div>
+          </div>
+
+          <div v-show="helpTab === 'market'">
+          <div class="help-section">
+            <div class="help-title">系统总览</div>
+            <p class="help-text">顶部 <b>坊市</b> 按钮进入，全服 C2C 装备寄售平台。挂单期间装备从背包托管至坊市（物理移除，防一物二卖），成交 / 下架 / 过期统一走 <b>站内邮件</b> 分发。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">准入门槛</div>
+            <table class="help-table"><tbody>
+              <tr><td>账号注册</td><td>≥ 1 天</td></tr>
+              <tr><td>角色境界</td><td>≥ 筑基期</td></tr>
+              <tr><td>角色等级</td><td>≥ 30 级</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">未达标可浏览，不可挂 / 买。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">可挂物品</div>
+            <p class="help-text"><b>仅装备</b>可挂售（功法 / 丹药 / 灵草 / 强化石暂不开放）。须同时满足：</p>
+            <table class="help-table"><tbody>
+              <tr><td>品质</td><td>紫 / 金 / 红（白绿蓝禁止）</td></tr>
+              <tr><td>tier</td><td>≥ 3</td></tr>
+              <tr><td>状态</td><td>未穿戴、未锁定、不在方案中、未绑定</td></tr>
+              <tr><td style="color: var(--gold-ink);">V5 传奇装备</td><td style="color: var(--gold-ink);"><b>一律禁挂</b>（极稀有产出，防 RMT 与跳级）</td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">价格区间</div>
+            <p class="help-text">每件装备按「同槽位 / 同品质 / 同 tier / 同强化等级」聚合得到 <b>系统参考价</b>。挂单价必须落在：</p>
+            <table class="help-table"><tbody>
+              <tr><td>下限</td><td>参考价 × 0.30</td></tr>
+              <tr><td>上限</td><td>参考价 × 3.00</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">越界直接拒，前端会显示允许区间。</p>
+          </div>
+          <div class="help-section">
+            <div class="help-title">费率</div>
+            <table class="help-table"><tbody>
+              <tr><td>成交税率</td><td>10%（买家付全款，卖家到账 90%）</td></tr>
+              <tr><td>下架手续费</td><td>挂单价的 5%（防刷参考价）</td></tr>
+              <tr><td>到期自动下架</td><td>免费，原物邮件退回</td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">数量 / 金额限制</div>
+            <table class="help-table"><tbody>
+              <tr><td>同时进行中挂单</td><td>≤ 30 单</td></tr>
+              <tr><td>每日上架次数</td><td>≤ 30 次</td></tr>
+              <tr><td>每日成交件数</td><td>≤ 30 件（买 + 卖合计）</td></tr>
+              <tr><td>每日成交金额</td><td>≤ 2,000 万灵石（买 + 卖合计）</td></tr>
+            </tbody></table>
+          </div>
+          <div class="help-section">
+            <div class="help-title">时效 / 广播</div>
+            <p class="help-text">挂单 <b>48 小时</b>未成交自动下架，原物邮件退回卖家。单笔成交 ≥ <b>100 万灵石</b> 触发全服广播。</p>
           </div>
           </div>
 
@@ -4071,7 +4128,7 @@ const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showRedeemCode = ref(false);
 const showHelpDoc = ref(false);
-const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'romance' | 'misc'>('basic');
+const helpTab = ref<'basic' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'romance' | 'market' | 'misc'>('basic');
 const showSettings = ref(false);
 
 async function copyQqGroup() {

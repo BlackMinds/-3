@@ -13,6 +13,7 @@ import {
   MARKET_MAX_DAILY_LISTINGS,
   MARKET_ALLOWED_RARITIES,
   MARKET_MIN_TIER,
+  MARKET_BLOCK_LEGENDARY,
 } from '~/server/utils/market'
 
 export default defineEventHandler(async (event) => {
@@ -95,6 +96,10 @@ export default defineEventHandler(async (event) => {
       if ((eq.tier ?? 1) < MARKET_MIN_TIER) {
         await client.query('ROLLBACK')
         return { code: 400, code_str: 'ITEM_BELOW_MARKET_THRESHOLD', message: `tier 低于 ${MARKET_MIN_TIER}，不可挂售` }
+      }
+      if (MARKET_BLOCK_LEGENDARY && eq.legendary_set_id) {
+        await client.query('ROLLBACK')
+        return { code: 400, code_str: 'ITEM_LEGENDARY_NOT_TRADABLE', message: '传奇装备不可挂售' }
       }
 
       // 参考价 + 区间校验

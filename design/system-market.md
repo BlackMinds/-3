@@ -159,6 +159,7 @@
 **一期仅开放装备**。具体准入：
 - 品质 `rarity ∈ {purple, gold, red}`（白/绿/蓝品质装备一律不可挂单）
 - 地图 `tier ≥ 3`（早期阶段装备不进入坊市，避免低境界跳级、降低工作室低价倾销空间）
+- **V5 传奇装备一律不可挂单**（`legendary_set_id` 非空）：极稀有产出，禁止流通以防 RMT 与跳级
 
 功法残页 / 丹药 / 灵草等堆叠类资源同样暂不进入坊市，原因见 §4.2。
 
@@ -171,6 +172,7 @@
 - 洗髓丹 / 改名券 / 转职类道具
 - **白 / 绿 / 蓝品质装备**（低于紫色一律不可挂单，避免新手装垃圾流通污染参考价、压缩工作室低价倾销空间）
 - **tier < 3 的装备**（早期阶段装备只走自产自销，防低境界用坊市跳级）
+- **V5 传奇装备**（`legendary_set_id` 非空，如元始天尊套等）：极稀有产出，禁止流通以防 RMT 与跳级；命中时错误码 `ITEM_LEGENDARY_NOT_TRADABLE`
 - **功法残页 / 丹药 / 灵草等堆叠类资源**（一期不开放，原因：堆叠品流动性强、易被工作室批量化套现，留待后续单开"散件市集"或在反 RMT 体系成熟后再开放）
 
 ### 4.3 账号准入门槛
@@ -607,6 +609,7 @@ ON CONFLICT (category_key) DO UPDATE SET
 | `market_entry_register_days` | 1 | 账号最低注册天数 |
 | `market_item_min_rarity` | `purple` | 装备上架最低品质（白/绿/蓝禁止） |
 | `market_item_min_tier` | 3 | 装备上架最低 tier |
+| `market_block_legendary` | true | V5 传奇装备（`legendary_set_id` 非空）禁挂总开关 |
 | `market_ref_sample_min` | 5 | 参考价最小样本 |
 | `market_ref_window_days` | 7 | 参考价滑动窗口 |
 
@@ -731,6 +734,7 @@ ON CONFLICT (category_key) DO UPDATE SET
 - [ ] 试图上架功法残页 / 丹药 / 灵草被前后端双重拒绝
 - [ ] 试图上架蓝品（玄品）及以下品质装备被拒，错误码 `ITEM_BELOW_MARKET_THRESHOLD`
 - [ ] 试图上架 tier < 3 的紫色装备被拒
+- [ ] 试图上架 V5 传奇装备（`legendary_set_id` 非空）被拒，错误码 `ITEM_LEGENDARY_NOT_TRADABLE`
 - [ ] 紫色 tier 3 装备可正常挂单成交
 - [ ] 已穿戴中的装备无法上架
 - [ ] 单角色当日买入 5 件 + 卖出 5 件后，第 11 件买卖均被拒（前端提示"今日交易件数已达上限"）
