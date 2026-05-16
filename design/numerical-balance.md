@@ -1,3 +1,41 @@
+## ✅ v3.9.1 (2026-05-16) — 怪物 ATK ×1.10 / HP ×1.05（全图 T1-T18 + 通天塔 1-100）
+
+### 背景
+
+v3.9 把怪物 DEF ×0.6 后玩家"打不动"问题缓解，但玩家承伤侧没动；体感上前期到道祖三层全程"怪物太软"，回合内压力不够。本次先调全局攻击乘子让玩家承伤 +10%，再追加全图怪物血量 +5% 让秒怪节奏略放慢一档；DEF/SPD 不变。
+
+### 改动
+
+`server/engine/battleEngine.ts:818-820`：
+
+| 全局系数 | 旧值 | 新值 | 变化 |
+|---|---|---|---|
+| `MONSTER_HP_MUL` | 1.1088 | **1.16424** | ×1.05 |
+| `MONSTER_ATK_MUL` | 0.3906 | **0.42966** | ×1.10 |
+| `MONSTER_DEF_MUL` | 0.2508 | 0.2508 | 不变 |
+
+T5+ / T11-T18 的 tier 微调系数与 trait 全部为乘数，等比作用于新基线 → **通天塔 1-100 层、秘境副本（teamBattleEngine）、离线挂机（offline-claim）自动跟随**。
+
+### 影响范围
+
+`generateMonsterStats` 是唯一的怪物数值入口，下列调用全部 +10% 攻击：
+
+| 调用方 | 文件 | 覆盖 |
+|---|---|---|
+| 普通战斗 / 挂机 / 历练 | `server/api/battle/fight.post.ts` | T1-T18 全部地图 ✅ |
+| 通天塔 | `server/engine/towerEngine.ts` | 1-100 层 ✅ |
+| 秘境副本（组队） | `server/engine/teamBattleEngine.ts` | SR-1 ~ SR-11 ✅（连带 +10%） |
+| 离线挂机结算 | `server/api/game/offline-claim.post.ts` | T1-T10 ✅（连带 +10%） |
+| 战斗木桩 | `server/api/battle/dummy.post.ts` | 跳过 `generateMonsterStats`，不受影响 |
+
+### 预期
+
+- 玩家秒怪 TTK：×1.05（HP +5%，DEF 不变 → eHP 同步 +5%）
+- 玩家承伤：单次伤害 ×1.10（DOT/反伤/吸血生态被动调强）
+- 通天塔 trait（T01 atk×1.30 / T05 hp×1.25 等）依然在新基线上乘算
+
+---
+
 ## ✅ v3.9.0 (2026-05-13) — 道祖三层扩展（T16-T18 新增 6 张主图）
 
 ### 背景

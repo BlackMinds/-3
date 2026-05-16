@@ -815,8 +815,8 @@ export function generateMonsterStats(template: MonsterTemplate): BattlerStats {
   // 2026-05-14: 全图（含通天塔）DEF ×0.6 / HP ×1.2 — 降低"高 DEF 怪打不动"的体感，
   //   等效血量按 atkDefRatio=ATK/(ATK+0.8·DEF) 推导 R0≈30%~40% 减伤段 eHP 守恒，
   //   实际 +18% HP 中位，取整 +20% 偏怪略肉 1%~3%。Trait 全为乘数，通天塔等比跟随。
-  let MONSTER_HP_MUL  = 1.1088; // v3.8: 0.44 × 2 → ×1.05 → ×1.20 (2026-05-14)
-  let MONSTER_ATK_MUL = 0.3906; // v3.8: 0.62 × 0.6 → ×1.05
+  let MONSTER_HP_MUL  = 1.16424; // v3.8: 0.44 × 2 → ×1.05 → ×1.20 (2026-05-14) → ×1.05 (2026-05-16 T1-T18 血量 +5%)
+  let MONSTER_ATK_MUL = 0.42966; // v3.8: 0.62 × 0.6 → ×1.05 → ×1.10 (2026-05-16 T1-T18 + 通天塔 1-100 攻击 +10%)
   let MONSTER_DEF_MUL = 0.2508; // 0.44 × 0.95 → ×0.60 (2026-05-14)
   const MONSTER_SPD_MUL = 0.96;
   // v3.7.1 二次微调：
