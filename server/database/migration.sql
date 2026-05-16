@@ -1903,3 +1903,31 @@ ALTER TABLE recharge_packages ADD COLUMN IF NOT EXISTS description TEXT DEFAULT 
 -- 安全：DROP COLUMN IF EXISTS 幂等，无外键/索引依赖
 ALTER TABLE characters DROP COLUMN IF EXISTS immortal_jade;
 ALTER TABLE characters DROP COLUMN IF EXISTS merit;
+
+-- ========================================
+-- 2026-05-16: 补 3 个新充值商品（通天塔月卡 / 通天塔单次 / 天道洗髓丹）
+-- ========================================
+-- 与 scripts/seed-packages.mjs 同源；线上库未跑 seed，靠 migration 兜底
+-- ON CONFLICT (code) DO UPDATE 幂等：seed 与 migration 谁先跑都 OK
+INSERT INTO recharge_packages (code, name, description, price_rmb, type, payload, enabled, sort_order)
+VALUES
+  ('tower_bonus_30d',
+   '通天塔挑战次数 +1·月卡',
+   '【冲层利器】道台特许，每日通天塔挑战次数 +1（叠加在 3 次基础之上），持续 30 天。新层卡关时多一次试错机会，紫品主修和 BOSS 通关奖励囤起来不手软。',
+   30, 'sub_tower_bonus', '{"bonus":1,"days":30}'::jsonb, TRUE, 56),
+  ('tower_one_time_1',
+   '通天塔挑战次数 +1（一次性）',
+   '【再试一次】当日通天塔挑战次数 +1，仅当日有效，跨日自动清零。今日就差最后一把没冲过？2 元钱再来一次，离顶层只差一战。',
+   2,  'one_time_tower_count', '{"count":1}'::jsonb, TRUE, 57),
+  ('item_reset_root',
+   '天道洗髓丹（灵根/天赋重铸）',
+   '【洗筋伐髓】上古洗髓神丹一颗，可定向转换本体灵根（金/木/水/火/土），或重铸子女单个天赋槽位。修真路线不对、子女天赋开错？一丹归零，从头再战。',
+   6,  'item_pill', '{"pill_id":"reset_root","count":1}'::jsonb, TRUE, 62)
+ON CONFLICT (code) DO UPDATE
+  SET name        = EXCLUDED.name,
+      description = EXCLUDED.description,
+      price_rmb   = EXCLUDED.price_rmb,
+      type        = EXCLUDED.type,
+      payload     = EXCLUDED.payload,
+      sort_order  = EXCLUDED.sort_order,
+      updated_at  = NOW();
