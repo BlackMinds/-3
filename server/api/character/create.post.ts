@@ -15,6 +15,23 @@ const ROOT_BONUS: Record<string, {
   earth: { max_hp: 550, hp: 550, atk: 50, def: 33, spd: 50, crit_rate: 0.05, crit_dmg: 1.00, resist_field: 'resist_earth' },
 }
 
+// 各灵根对应的绿品主修功法（新手起步）
+const ROOT_STARTER_SKILL: Record<string, string> = {
+  metal: 'wind_blade',   // 风刃术
+  wood:  'vine_whip',    // 缠藤术
+  water: 'ice_palm',     // 寒冰掌
+  fire:  'flame_sword',  // 烈焰剑诀
+  earth: 'quake_fist',   // 裂地拳
+}
+
+// 新手大礼包：4 种初级战斗丹药各 2 个
+const STARTER_PILLS: Array<{ id: string; count: number }> = [
+  { id: 'basic_atk_pill',  count: 2 }, // 小聚灵丹
+  { id: 'basic_def_pill',  count: 2 }, // 小铁皮丹
+  { id: 'basic_hp_pill',   count: 2 }, // 小培元丹
+  { id: 'basic_crit_pill', count: 2 }, // 小破妄丹
+]
+
 export default defineEventHandler(async (event) => {
   const userId = event.context.userId
   const { name, spiritual_root } = await readBody(event)
@@ -75,6 +92,29 @@ export default defineEventHandler(async (event) => {
   // 初始化 5 套装备方案 + 3 套功法方案（默认全空，激活第 1 套）
   await ensureLoadouts(charId)
   await ensureSkillLoadouts(charId)
+
+  // 新手大礼包：4 种初级丹药各 2 个
+  for (const p of STARTER_PILLS) {
+    await pool.query(
+      `INSERT INTO character_pills (character_id, pill_id, quality_factor, count)
+       VALUES ($1, $2, 1.0, $3)
+       ON CONFLICT (character_id, pill_id, quality_factor)
+       DO UPDATE SET count = character_pills.count + EXCLUDED.count`,
+      [charId, p.id, p.count]
+    )
+  }
+
+  // 新手大礼包：对应灵根的绿品主修功法 1 本
+  const starterSkillId = ROOT_STARTER_SKILL[spiritual_root]
+  if (starterSkillId) {
+    await pool.query(
+      `INSERT INTO character_skill_inventory (character_id, skill_id, count, level)
+       VALUES ($1, $2, 1, 1)
+       ON CONFLICT (character_id, skill_id)
+       DO UPDATE SET count = character_skill_inventory.count + EXCLUDED.count`,
+      [charId, starterSkillId]
+    )
+  }
 
   return { code: 200, message: '角色创建成功', data: newChar[0] }
 })
