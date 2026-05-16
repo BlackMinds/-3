@@ -226,6 +226,14 @@ export const TITLES: Record<string, TitleDef> = {
 
 // ========== 等级 → Tier 映射 ==========
 function levelToTier(level: number): number {
+  if (level >= 385) return 18;
+  if (level >= 360) return 17;
+  if (level >= 335) return 16;
+  if (level >= 310) return 15;
+  if (level >= 285) return 14;
+  if (level >= 260) return 13;
+  if (level >= 240) return 12;
+  if (level >= 215) return 11;
   if (level >= 195) return 10;
   if (level >= 185) return 9;
   if (level >= 170) return 8;
@@ -278,7 +286,7 @@ export function generateEquipBox(boxType: 'normal' | 'fine' | 'legend', charLeve
   const slots = ['weapon', 'armor', 'helmet', 'boots', 'treasure', 'ring', 'pendant'];
   const slotIdx = rand(0, slots.length - 1);
   const slot = slots[slotIdx];
-  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310 };
+  const tierReqLevels: Record<number, number> = { 1:1, 2:15, 3:35, 4:55, 5:80, 6:110, 7:140, 8:170, 9:185, 10:195, 11:215, 12:240, 13:260, 14:285, 15:310, 16:335, 17:360, 18:385 };
   const weaponType = slot === 'weapon' ? ['sword','blade','spear','fan'][rand(0,3)] : null;
 
   // V5 灰度（蓝/紫/金/红走 V5；成就宝箱不掉传奇套装/Boss 秘宝，那些仅 boss 战产出）
