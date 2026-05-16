@@ -145,7 +145,7 @@ const loading = ref(false)
 const filter = reactive({ status: '' })
 
 const form = reactive({ character_id: 0, package_id: 0, quantity: 1, notes: '' })
-const QUANTITY_SUPPORTED_TYPES = new Set(['one_time_expedition_count', 'item_pill'])
+const QUANTITY_SUPPORTED_TYPES = new Set(['one_time_expedition_count', 'one_time_tower_count', 'item_pill'])
 const currentPackage = computed(() => packages.value.find(p => p.id === form.package_id))
 const quantitySupported = computed(() => currentPackage.value && QUANTITY_SUPPORTED_TYPES.has(currentPackage.value.type))
 function onPackageChange() {
