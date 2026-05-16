@@ -37,6 +37,7 @@ export interface EquipmentSnapshot {
 
 export type MailAttachment =
   | { type: 'spirit_stone'; amount: number }
+  | { type: 'red_jade'; amount: number }
   | { type: 'contribution'; amount: number }
   | { type: 'exp'; amount: number }
   | { type: 'material'; itemId: string; quality?: 'white' | 'green' | 'blue' | 'purple' | 'gold'; qty: number }
@@ -182,6 +183,12 @@ export async function grantAttachment(client: PoolClient, characterId: number, a
     case 'spirit_stone':
       await client.query(
         `UPDATE characters SET spirit_stone = LEAST(70000000000, spirit_stone + $1) WHERE id = $2`,
+        [att.amount, characterId]
+      )
+      break
+    case 'red_jade':
+      await client.query(
+        `UPDATE characters SET red_jade = red_jade + $1 WHERE id = $2`,
         [att.amount, characterId]
       )
       break

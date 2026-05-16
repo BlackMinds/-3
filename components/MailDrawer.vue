@@ -123,7 +123,7 @@ function catIcon(c: string) {
 
 function attIcon(type: string) {
   return {
-    spirit_stone: '💎', contribution: '📜', exp: '✨',
+    spirit_stone: '💎', red_jade: '❤️', contribution: '📜', exp: '✨',
     material: '🧪', recipe: '📖', title: '🏅', timed_buff: '🌟',
     equipment: '⚔️',
   }[type] || '🎁'
@@ -169,6 +169,7 @@ const RECIPE_LABEL: Record<string, string> = {
 function attLabel(att: any) {
   switch (att.type) {
     case 'spirit_stone': return `灵石 × ${att.amount.toLocaleString()}`
+    case 'red_jade': return `红尘玉 × ${att.amount.toLocaleString()}`
     case 'contribution': return `宗门贡献 × ${att.amount.toLocaleString()}`
     case 'exp': return `修为 × ${att.amount.toLocaleString()}`
     case 'material': {

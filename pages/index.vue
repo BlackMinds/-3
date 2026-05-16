@@ -3052,11 +3052,13 @@
               <tr><td>斗尊</td><td>2400~2599</td><td><span style="color: #ffd700;">斗圣</span></td><td>2600+</td></tr>
             </tbody></table>
 
-            <p class="help-text" style="margin-top: 10px;"><b>每日 12:00 榜首奖励</b>(取斗法榜前 10 邮件下发):</p>
+            <p class="help-text" style="margin-top: 10px;"><b>每日 12:00 榜首奖励</b>(取斗法榜前 100 邮件下发):</p>
             <table class="help-table"><tbody>
-              <tr><td>第 1 名</td><td>25,000 灵石 + 灵枢玉×1 + 称号「论道魁首」3 天 + atk/def/hp +3%</td></tr>
-              <tr><td>第 2-3 名</td><td>15,000 灵石 + 灵枢玉×1 + 称号「斗法翘楚」3 天 + atk/def/hp +1.5%</td></tr>
-              <tr><td>第 4-10 名</td><td>7,500 灵石 + 灵枢玉×1</td></tr>
+              <tr><td>第 1 名</td><td>25,000 灵石 + 灵枢玉×1 + 红尘玉×100 + 称号「论道魁首」3 天 + atk/def/hp +3%</td></tr>
+              <tr><td>第 2 名</td><td>15,000 灵石 + 灵枢玉×1 + 红尘玉×80 + 称号「斗法翘楚」3 天 + atk/def/hp +1.5%</td></tr>
+              <tr><td>第 3 名</td><td>15,000 灵石 + 灵枢玉×1 + 红尘玉×60 + 称号「斗法翘楚」3 天 + atk/def/hp +1.5%</td></tr>
+              <tr><td>第 4-10 名</td><td>7,500 灵石 + 灵枢玉×1 + 红尘玉×40</td></tr>
+              <tr><td>第 11-100 名</td><td>红尘玉×20</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">称号 buff 连续上榜会续期不累加;名次升降覆盖最新值(从第 1 跌到第 2,buff 自动从 +3% 降到 +1.5%)。</p>
           </div>
@@ -3638,7 +3640,7 @@
 
     <!-- ==================== 排行榜弹窗 ==================== -->
     <div v-if="showRanking" class="modal-overlay" @click="showRanking = false">
-      <div class="modal-content ranking-modal" @click.stop style="max-width: 580px;">
+      <div class="modal-content ranking-modal" @click.stop style="max-width: 760px;">
         <div class="modal-header">
           <h3>万界风云榜</h3>
           <button class="modal-close" @click="showRanking = false">×</button>
@@ -14888,7 +14890,7 @@ onUnmounted(() => {
 
 /* ===== 排行榜弹窗 ===== */
 .ranking-modal {
-  max-width: 580px;
+  max-width: 760px;
 }
 
 .ranking-tabs {

@@ -12,6 +12,7 @@
         <select v-model="grantCurrency.kind" class="admin-select admin-mb-sm">
           <option value="spirit_stone">灵石</option>
           <option value="cultivation_exp">修为</option>
+          <option value="red_jade">红尘玉</option>
         </select>
         <input v-model.number="grantCurrency.amount" type="number" min="0" class="admin-input admin-mb-sm" placeholder="数量（正整数）" />
         <div class="admin-row admin-gap-sm">
@@ -84,6 +85,9 @@
         <textarea v-model="mail.content" class="admin-textarea admin-mb-sm" placeholder="正文..." maxlength="2000" rows="3" />
         <div class="admin-row admin-mb-sm" style="gap: 8px;">
           <input v-model.number="mail.attachStone" type="number" class="admin-input" placeholder="附件灵石（可选）" style="flex: 1;" />
+          <input v-model.number="mail.attachRedJade" type="number" class="admin-input" placeholder="附件红尘玉（可选）" style="flex: 1;" />
+        </div>
+        <div class="admin-row admin-mb-sm" style="gap: 8px;">
           <input v-model="mail.attachPillId" class="admin-input" placeholder="附件 pill_id（可选）" style="flex: 1;" />
           <input v-model.number="mail.attachPillQty" type="number" class="admin-input" placeholder="数量" style="width: 80px;" />
         </div>
@@ -123,7 +127,7 @@ const grantSkills = reactive({ rarity: 'blue', count: 5 })
 const grantItem = reactive({ pill_id: '', count: 1 })
 const levelDown = ref(1)
 const banReason = ref('')
-const mail = reactive({ title: '', content: '', attachStone: 0, attachPillId: '', attachPillQty: 0 })
+const mail = reactive({ title: '', content: '', attachStone: 0, attachRedJade: 0, attachPillId: '', attachPillQty: 0 })
 
 async function call(path: string, body: any, confirmText?: string) {
   if (confirmText && !confirm(confirmText)) return null
@@ -148,7 +152,9 @@ async function onGrantCurrency(sign: 1 | -1) {
   const amount = Math.abs(Math.trunc(Number(grantCurrency.amount) || 0))
   if (!amount) return alert('数量必填')
   const signed = sign * amount
-  const kindLabel = grantCurrency.kind === 'spirit_stone' ? '灵石' : '修为'
+  const kindLabel = grantCurrency.kind === 'spirit_stone' ? '灵石'
+                  : grantCurrency.kind === 'red_jade' ? '红尘玉'
+                  : '修为'
   await call(
     `/admin/players/${props.characterId}/grant-currency`,
     { kind: grantCurrency.kind, amount: signed },
@@ -180,6 +186,7 @@ async function onSendMail() {
   if (!mail.title || !mail.content) return alert('标题和正文必填')
   const attachments: any[] = []
   if (mail.attachStone > 0) attachments.push({ type: 'spirit_stone', amount: mail.attachStone })
+  if (mail.attachRedJade > 0) attachments.push({ type: 'red_jade', amount: mail.attachRedJade })
   if (mail.attachPillId && mail.attachPillQty > 0) {
     attachments.push({ type: 'pill', pillId: mail.attachPillId, qty: mail.attachPillQty })
   }

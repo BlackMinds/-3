@@ -1,11 +1,12 @@
 import { getPool } from '~/server/database/db'
 import { writeAudit, getClientIp, loadTargetCharacter } from '~/server/utils/adminAudit'
 
-// 发/扣货币：灵石 / 修为
-// body: { kind: 'spirit_stone' | 'cultivation_exp', amount: number (可负) }
+// 发/扣货币：灵石 / 修为 / 红尘玉
+// body: { kind: 'spirit_stone' | 'cultivation_exp' | 'red_jade', amount: number (可负) }
 const FIELDS: Record<string, string> = {
   spirit_stone: 'spirit_stone',
   cultivation_exp: 'cultivation_exp',
+  red_jade: 'red_jade',
 }
 
 export default defineEventHandler(async (event) => {
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const amt = Math.trunc(Number(amount))
   if (!Number.isFinite(amt) || amt === 0) return { code: 400, message: 'amount 非法或为 0' }
   const field = FIELDS[kind]
-  if (!field) return { code: 400, message: 'kind 必须是 spirit_stone / cultivation_exp' }
+  if (!field) return { code: 400, message: 'kind 必须是 spirit_stone / cultivation_exp / red_jade' }
 
   const target = await loadTargetCharacter(characterId)
   if (!target) return { code: 404, message: '玩家不存在' }

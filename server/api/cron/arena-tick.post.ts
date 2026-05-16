@@ -4,14 +4,16 @@ import { sendMail } from '~/server/utils/mail'
 /**
  * 斗法榜每日奖励 cron
  * - 每天北京 12:00 (UTC 04:00) 由 GitHub Actions 触发
- * - 取 arena_score 前 10 发奖励
+ * - 取 arena_score 前 100 发奖励
  * - 幂等键: ref_type='arena_daily_reward' + ref_id=YYYY-MM-DD (北京日期)
  *   重复触发不会重复发奖, 同一天 manual workflow_dispatch 也安全
  *
  * 奖励:
- *   第 1   : 25000 灵石 + 1 灵枢玉 + 称号「论道魁首」 + atk/def/hp +3% (3 天)
- *   第 2-3 : 15000 灵石 + 1 灵枢玉 + 称号「斗法翘楚」 + atk/def/hp +1.5% (3 天)
- *   第 4-10: 7500 灵石 + 1 灵枢玉
+ *   第 1     : 25000 灵石 + 1 灵枢玉 + 100 红尘玉 + 称号「论道魁首」 + atk/def/hp +3% (3 天)
+ *   第 2     : 15000 灵石 + 1 灵枢玉 + 80 红尘玉 + 称号「斗法翘楚」 + atk/def/hp +1.5% (3 天)
+ *   第 3     : 15000 灵石 + 1 灵枢玉 + 60 红尘玉 + 称号「斗法翘楚」 + atk/def/hp +1.5% (3 天)
+ *   第 4-10  : 7500 灵石 + 1 灵枢玉 + 40 红尘玉
+ *   第 11-100: 20 红尘玉
  */
 
 const REWARD_DURATION_SEC = 3 * 24 * 3600
@@ -19,14 +21,17 @@ const REWARD_DURATION_SEC = 3 * 24 * 3600
 interface RewardConfig {
   stone: number
   jadeQty: number
+  redJade: number
   title?: string
   buffPct?: number
 }
 
 function getRewardForRank(rank: number): RewardConfig {
-  if (rank === 1) return { stone: 25000, jadeQty: 1, title: '论道魁首', buffPct: 3 }
-  if (rank <= 3)  return { stone: 15000, jadeQty: 1, title: '斗法翘楚', buffPct: 1.5 }
-  return { stone: 7500, jadeQty: 1 }
+  if (rank === 1) return { stone: 25000, jadeQty: 1, redJade: 100, title: '论道魁首', buffPct: 3 }
+  if (rank === 2) return { stone: 15000, jadeQty: 1, redJade: 80,  title: '斗法翘楚', buffPct: 1.5 }
+  if (rank === 3) return { stone: 15000, jadeQty: 1, redJade: 60,  title: '斗法翘楚', buffPct: 1.5 }
+  if (rank <= 10) return { stone: 7500,  jadeQty: 1, redJade: 40 }
+  return { stone: 0, jadeQty: 0, redJade: 20 }
 }
 
 export default defineEventHandler(async (event) => {
@@ -41,13 +46,13 @@ export default defineEventHandler(async (event) => {
 
   const pool = getPool()
 
-  // 取 top 10 (arena_score > 0 排除从未斗法过且被扣到 0 的)
+  // 取 top 100 (arena_score > 0 排除从未斗法过且被扣到 0 的)
   const { rows } = await pool.query(
     `SELECT id, name, arena_score
      FROM characters
      WHERE arena_score > 0
      ORDER BY arena_score DESC, realm_tier DESC, realm_stage DESC, level DESC
-     LIMIT 10`
+     LIMIT 100`
   )
 
   const sent: { rank: number; characterId: number; name: string; score: number }[] = []
@@ -71,10 +76,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const cfg = getRewardForRank(rank)
-    const attachments: any[] = [
-      { type: 'spirit_stone', amount: cfg.stone },
-      { type: 'pill', pillId: 'awaken_reroll', qty: cfg.jadeQty },
-    ]
+    const attachments: any[] = []
+    if (cfg.stone > 0) attachments.push({ type: 'spirit_stone', amount: cfg.stone })
+    if (cfg.jadeQty > 0) attachments.push({ type: 'pill', pillId: 'awaken_reroll', qty: cfg.jadeQty })
+    if (cfg.redJade > 0) attachments.push({ type: 'red_jade', amount: cfg.redJade })
 
     let titleLine = ''
     if (cfg.title && cfg.buffPct) {
