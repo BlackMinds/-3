@@ -186,6 +186,7 @@ const subscriptionList = computed(() => {
     { label: '灵田扩容', value: `+${s.bonusPlotCount} 块`, expire: s.bonusPlotExpireAt, active: isActive(s.bonusPlotExpireAt, s.bonusPlotCount > 0) },
     { label: '秘境次数', value: `+${s.srDailyBonus} / 天`, expire: s.srBonusExpireAt, active: isActive(s.srBonusExpireAt, s.srDailyBonus > 0) },
     { label: '道侣游历', value: `+${s.expeditionDailyBonus} / 天`, expire: s.expeditionBonusExpireAt, active: isActive(s.expeditionBonusExpireAt, s.expeditionDailyBonus > 0) },
+    { label: '通天塔次数', value: `+${s.towerDailyBonus || 0} / 天${s.towerExtraToday ? ` · 今日 +${s.towerExtraToday}` : ''}`, expire: s.towerBonusExpireAt, active: isActive(s.towerBonusExpireAt, (s.towerDailyBonus || 0) > 0) || (s.towerExtraToday || 0) > 0 },
   ]
 })
 

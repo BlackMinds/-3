@@ -21,7 +21,7 @@ export type DeliverResult = {
 
 // 支持批量倍乘的 type（一次性效果 + 道具堆叠）
 // 月卡类按业务语义只能 1 单一发（quantity > 1 在 orders.post.ts 提前拦截）
-const QUANTITY_SUPPORTED_TYPES = new Set(['one_time_expedition_count', 'item_pill'])
+const QUANTITY_SUPPORTED_TYPES = new Set(['one_time_expedition_count', 'one_time_tower_count', 'item_pill'])
 
 export function supportsQuantity(type: string): boolean {
   return QUANTITY_SUPPORTED_TYPES.has(type)
@@ -117,6 +117,40 @@ export async function deliverPackage(
         [characterId, bonus, String(days)]
       )
       return { type: pkg.type, applied: { bonus, days }, expiresAt: rows[0]?.expedition_bonus_expire_at }
+    }
+
+    case 'sub_tower_bonus': {
+      const bonus = Number(payload.bonus) || 1
+      const { rows } = await client.query(
+        `UPDATE characters
+            SET tower_daily_bonus = $2,
+                tower_bonus_expire_at = CASE
+                  WHEN tower_bonus_expire_at > NOW() THEN tower_bonus_expire_at + ($3 || ' days')::interval
+                  ELSE NOW() + ($3 || ' days')::interval
+                END
+          WHERE id = $1
+          RETURNING tower_bonus_expire_at`,
+        [characterId, bonus, String(days)]
+      )
+      return { type: pkg.type, applied: { bonus, days }, expiresAt: rows[0]?.tower_bonus_expire_at }
+    }
+
+    case 'one_time_tower_count': {
+      // 一次性加今日通天塔挑战次数：写入 tower_extra_today
+      // 跨日处理：若 tower_daily_date 不是今天（UTC），先把 tower_daily_fail 清零并把 date 设为今天
+      // 这样玩家下次访问 info / challenge 时不会把刚加的次数清掉
+      const perUnit = Number(payload.count) || 1
+      if (perUnit <= 0) throw new Error(`one_time_tower_count: count 非法 (${perUnit})`)
+      const totalCount = perUnit * qty
+      await client.query(
+        `UPDATE characters
+            SET tower_daily_fail   = CASE WHEN tower_daily_date IS DISTINCT FROM (NOW() AT TIME ZONE 'UTC')::DATE THEN 0 ELSE tower_daily_fail END,
+                tower_extra_today  = CASE WHEN tower_daily_date IS DISTINCT FROM (NOW() AT TIME ZONE 'UTC')::DATE THEN $2 ELSE tower_extra_today + $2 END,
+                tower_daily_date   = (NOW() AT TIME ZONE 'UTC')::DATE
+          WHERE id = $1`,
+        [characterId, totalCount]
+      )
+      return { type: pkg.type, applied: { perUnit, quantity: qty, totalCount, note: '加在 tower_extra_today，跨日自动归零' } }
     }
 
     case 'one_time_expedition_count': {

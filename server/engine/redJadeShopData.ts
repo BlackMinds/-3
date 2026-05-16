@@ -88,8 +88,8 @@ export const RED_JADE_SHOP_ITEMS: RedJadeShopItem[] = [
     id: 'bloodline_reroll_pill',
     name: '血脉重铸丹 ×1',
     desc: '重抽子女指定槽位血脉功法',
-    price: 800,
-    limit: { type: 'week', count: 20 },
+    price: 2000,
+    limit: { type: 'week', count: 5 },
     give: { itemId: 'bloodline_reroll_pill', qty: 1, kind: 'pill' },
   },
   {

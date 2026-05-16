@@ -62,17 +62,26 @@ export default defineEventHandler(async (event) => {
     }
 
     // 跨日懒重置（必须在校验失败次数前；与秘境一致按 UTC 日期 → 北京时间每日 8:00 重置）
+    // 一次性 extra 也随之清零
     let dailyFail = char.tower_daily_fail || 0
+    let extraToday = char.tower_extra_today || 0
     if (!char.fail_today) {
       await pool.query(
         `UPDATE characters
-            SET tower_daily_fail = 0,
-                tower_daily_date = (NOW() AT TIME ZONE 'UTC')::DATE
+            SET tower_daily_fail  = 0,
+                tower_extra_today = 0,
+                tower_daily_date  = (NOW() AT TIME ZONE 'UTC')::DATE
           WHERE id = $1`,
         [char.id]
       )
       dailyFail = 0
+      extraToday = 0
     }
+
+    // 当日实际可用次数 = 基础 + 月卡（若未过期） + 一次性
+    const bonusActive = !!char.tower_bonus_expire_at && new Date(char.tower_bonus_expire_at) > new Date()
+    const dailyBonus = bonusActive ? (char.tower_daily_bonus || 0) : 0
+    const dailyFailMax = DAILY_FAIL_LIMIT + dailyBonus + extraToday
 
     const maxFloor = char.tower_max_floor || 0
     const isReplay = floor <= maxFloor
@@ -82,7 +91,7 @@ export default defineEventHandler(async (event) => {
       return { code: 400, message: '不能跳层挑战，请先通关前置层' }
     }
 
-    if (isAdvance && dailyFail >= DAILY_FAIL_LIMIT) {
+    if (isAdvance && dailyFail >= dailyFailMax) {
       return { code: 403, message: '今日挑战次数已用尽，明日 8:00 重置' }
     }
 
@@ -359,7 +368,8 @@ export default defineEventHandler(async (event) => {
         state_after: {
           max_floor: newMaxFloor,
           daily_fail_used: dailyFail,
-          can_challenge: dailyFail < DAILY_FAIL_LIMIT && newMaxFloor < IMPLEMENTED_FLOORS,
+          daily_fail_max: dailyFailMax,
+          can_challenge: dailyFail < dailyFailMax && newMaxFloor < IMPLEMENTED_FLOORS,
         },
         is_replay: isReplay,
       }

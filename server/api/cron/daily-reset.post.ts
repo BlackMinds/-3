@@ -39,6 +39,8 @@ export default defineEventHandler(async (event) => {
                  WHERE sr_daily_bonus > 0 AND sr_bonus_expire_at IS NOT NULL AND sr_bonus_expire_at < NOW()`),
     pool.query(`UPDATE characters SET expedition_daily_bonus = 0
                  WHERE expedition_daily_bonus > 0 AND expedition_bonus_expire_at IS NOT NULL AND expedition_bonus_expire_at < NOW()`),
+    pool.query(`UPDATE characters SET tower_daily_bonus = 0
+                 WHERE tower_daily_bonus > 0 AND tower_bonus_expire_at IS NOT NULL AND tower_bonus_expire_at < NOW()`),
   ])
   const subscriptionsExpired = subExpiry.reduce((s, r) => s + (r.rowCount || 0), 0)
 

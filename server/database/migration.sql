@@ -1429,6 +1429,11 @@ ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_fail      SMALLINT N
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_date      DATE     DEFAULT NULL;
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_last_sweep_date DATE     DEFAULT NULL;  -- 上次领取每日扫荡的日期
 
+-- 通天塔次数加成（充值发货用：月卡 +N/日，跨日按 tower_daily_date 懒清零 extra）
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_daily_bonus      SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_bonus_expire_at  TIMESTAMP DEFAULT NULL;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS tower_extra_today      SMALLINT NOT NULL DEFAULT 0;
+
 -- 战斗记录（保留所有场次，可用于战斗历史/复盘）
 CREATE TABLE IF NOT EXISTS tower_battles (
   id            SERIAL PRIMARY KEY,

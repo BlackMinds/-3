@@ -18,25 +18,31 @@ export default defineEventHandler(async (event) => {
       `SELECT id, name, realm_tier, level,
               tower_max_floor,
               tower_daily_fail,
+              tower_daily_bonus,
+              tower_extra_today,
               (tower_daily_date = (NOW() AT TIME ZONE 'UTC')::DATE) AS fail_today,
-              (tower_last_sweep_date = (NOW() AT TIME ZONE 'UTC')::DATE) AS sweep_done_today
+              (tower_last_sweep_date = (NOW() AT TIME ZONE 'UTC')::DATE) AS sweep_done_today,
+              (tower_bonus_expire_at IS NOT NULL AND tower_bonus_expire_at > NOW()) AS tower_bonus_active
          FROM characters WHERE user_id = $1`,
       [event.context.userId]
     )
     if (charRows.length === 0) return { code: 400, message: '角色不存在' }
     const c = charRows[0]
 
-    // 懒重置：tower_daily_date 不是今天 → 失败次数清零（持久化）
+    // 懒重置：tower_daily_date 不是今天 → 失败次数 / 一次性 extra 清零（持久化）
     let dailyFail = c.tower_daily_fail || 0
+    let extraToday = c.tower_extra_today || 0
     if (!c.fail_today) {
       await pool.query(
         `UPDATE characters
-            SET tower_daily_fail = 0,
-                tower_daily_date = (NOW() AT TIME ZONE 'UTC')::DATE
+            SET tower_daily_fail  = 0,
+                tower_extra_today = 0,
+                tower_daily_date  = (NOW() AT TIME ZONE 'UTC')::DATE
           WHERE id = $1`,
         [c.id]
       )
       dailyFail = 0
+      extraToday = 0
     }
 
     const maxFloor = c.tower_max_floor || 0
@@ -44,9 +50,14 @@ export default defineEventHandler(async (event) => {
     const level = c.level || 1
     const eligible = realmTier >= ENTRY_REALM_TIER && level >= ENTRY_LEVEL
 
+    // 当日实际可用次数 = 基础 + 月卡（若未过期） + 一次性
+    const bonusActive = !!c.tower_bonus_active
+    const dailyBonus = bonusActive ? (c.tower_daily_bonus || 0) : 0
+    const dailyFailMax = DAILY_FAIL_LIMIT + dailyBonus + extraToday
+
     // 下一关：max_floor + 1，但不超过已实现层数
     const nextFloor = Math.min(IMPLEMENTED_FLOORS, maxFloor + 1)
-    const canChallenge = eligible && dailyFail < DAILY_FAIL_LIMIT && maxFloor < IMPLEMENTED_FLOORS
+    const canChallenge = eligible && dailyFail < dailyFailMax && maxFloor < IMPLEMENTED_FLOORS
 
     // 是否能扫荡：达到大乘 + 已通关至少 1 层 + 今日未领取
     const canSweep = eligible && maxFloor > 0 && !c.sweep_done_today
@@ -57,7 +68,10 @@ export default defineEventHandler(async (event) => {
         max_floor: maxFloor,
         next_floor: nextFloor,
         daily_fail_used: dailyFail,
-        daily_fail_max: DAILY_FAIL_LIMIT,
+        daily_fail_max: dailyFailMax,
+        daily_fail_base: DAILY_FAIL_LIMIT,
+        daily_fail_bonus: dailyBonus,
+        daily_fail_extra: extraToday,
         can_challenge: canChallenge,
         can_sweep: canSweep,
         total_floors: TOTAL_FLOORS,
