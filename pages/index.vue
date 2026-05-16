@@ -5663,7 +5663,7 @@ const secondaryStats = computed(() => {
 
   // 纯被动功法对二级属性的贡献（lvMul 0.15，全部转为百分数 / 单位 1）
   let passCritRate = 0, passCritDmg = 0, passDodge = 0, passLifesteal = 0;
-  let passReflect = 0;
+  let passReflect = 0, passDmgReduction = 0;
   for (let i = 0; i < equippedPassives.value.length; i++) {
     const pp = equippedPassives.value[i];
     if (!pp || !pp.effect) continue;
@@ -5674,6 +5674,7 @@ const secondaryStats = computed(() => {
     if (pp.effect.DODGE_flat) passDodge += pp.effect.DODGE_flat * lvMul * 100;
     if (pp.effect.LIFESTEAL_flat) passLifesteal += pp.effect.LIFESTEAL_flat * lvMul * 100;
     if (pp.effect.reflect_damage_percent) passReflect += pp.effect.reflect_damage_percent * lvMul * 100;
+    if (pp.effect.damage_reduction_flat) passDmgReduction += pp.effect.damage_reduction_flat * lvMul * 100;
   }
 
   // v3.9 紫品主修自带的常驻被动（active.effect）— 与战斗引擎 / syncEquippedSkills 对齐
@@ -5718,16 +5719,23 @@ const secondaryStats = computed(() => {
 
   // 通用 builder：base + 一组 contributions（百分数加法）+ 可选 cap
   // force: true 时即使 value=0 也展示这一行（用于 floor 精度损失但确实存在的加成，如神识 1%）
-  const buildStat = (label: string, base: number, baseSrc: string, items: { source: string; value: number; force?: boolean }[], cap: number | null, digits: number, suffix = '%') => {
+  // bypassCap: true 时该项绕开 cap（适用于战斗里走独立乘法层、不受同一 cap 限制的来源，如被动功法减伤）
+  const buildStat = (label: string, base: number, baseSrc: string, items: { source: string; value: number; force?: boolean; bypassCap?: boolean }[], cap: number | null, digits: number, suffix = '%') => {
     const steps: StatStep[] = [];
     let raw = base;
+    let cappable = base;
     if (base !== 0) steps.push({ source: baseSrc, delta: base });
     for (const it of items) {
-      if (it.value !== 0 || it.force) { steps.push({ source: it.source, delta: it.value }); raw += it.value; }
+      if (it.value !== 0 || it.force) {
+        steps.push({ source: it.source, delta: it.value });
+        raw += it.value;
+        if (!it.bypassCap) cappable += it.value;
+      }
     }
-    const capped = cap !== null && raw > cap;
-    const eff = cap !== null ? Math.min(raw, cap) : raw;
-    if (capped) steps.push({ source: `已达硬上限 ${cap!.toFixed(0)}${suffix}`, delta: eff - raw });
+    const overflow = (cap !== null && cappable > cap) ? cappable - cap : 0;
+    const eff = raw - overflow;
+    const capped = overflow > 0;
+    if (capped) steps.push({ source: `已达硬上限 ${cap!.toFixed(0)}${suffix}`, delta: -overflow });
     return {
       label,
       value: eff.toFixed(digits) + suffix,
@@ -5806,10 +5814,12 @@ const secondaryStats = computed(() => {
     buildStat('DOT 增伤', 0, '基础', [
       { source: '装备 主+副', value: (eb as any).DOT_DMG_PCT || 0 },
     ], null, 1),
-    // V5: 减伤 — 装备 dmg_reduction 副词条 + 附灵 damageReduction（cap 20%，与战斗引擎一致）
+    // V5: 减伤 — 装备 dmg_reduction 副词条 + 附灵 damageReduction（cap 20%）+ 功法被动 damage_reduction_flat（无 cap，独立乘法层）
+    // 战斗引擎里这两层是独立乘法（multiBattleEngine: 先乘被动再乘 awaken），面板按加和近似展示并标注 cap 仅覆盖装备+附灵
     buildStat('减伤', 0, '基础', [
       { source: '装备 主+副', value: (eb as any).DMG_REDUCTION || 0 },
       { source: '附灵', value: ab.damageReduction * 100 },
+      { source: '功法被动', value: passDmgReduction, bypassCap: true },
     ], 20, 1),
   ];
 });
