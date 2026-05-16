@@ -5,9 +5,10 @@ import { checkAchievements } from '~/server/engine/achievementData'
 export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
-    const { herb_id } = await readBody(event)
-    const herb = HERBS[herb_id]
-    if (!herb) return { code: 400, message: '参数错误' }
+    const body = await readBody(event)
+    const plotConfigs: Array<{ plot_index: number; herb_id: string }> | undefined =
+      Array.isArray(body?.plot_configs) ? body.plot_configs : undefined
+    const singleHerbId: string | undefined = body?.herb_id
 
     const char = await getChar(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
@@ -17,12 +18,34 @@ export default defineEventHandler(async (event) => {
     const herbFieldLevel = await getHerbFieldLevel(charId)
     const plotCount = getEffectivePlotCount(char, herbFieldLevel)
 
-    if (herbFieldLevel < herb.unlockPlotMaxLevel) {
-      return { code: 400, message: `灵田等级不足,需要${herb.unlockPlotMaxLevel}级` }
-    }
-
     const baseGrowMinutes = Math.max(360, 720 - Math.floor(herbFieldLevel / 3) * 90)
     const matureTime = new Date(Date.now() + baseGrowMinutes * 60 * 1000)
+
+    // 整理意图：plot_index -> herb_id
+    const intentMap = new Map<number, string>()
+    if (plotConfigs && plotConfigs.length > 0) {
+      for (const cfg of plotConfigs) {
+        if (typeof cfg?.plot_index !== 'number' || !cfg.herb_id) continue
+        if (cfg.plot_index < 0 || cfg.plot_index >= plotCount) continue
+        const herb = HERBS[cfg.herb_id]
+        if (!herb) continue
+        if (herbFieldLevel < herb.unlockPlotMaxLevel) continue
+        intentMap.set(cfg.plot_index, cfg.herb_id)
+      }
+    } else if (singleHerbId) {
+      const herb = HERBS[singleHerbId]
+      if (!herb) return { code: 400, message: '参数错误' }
+      if (herbFieldLevel < herb.unlockPlotMaxLevel) {
+        return { code: 400, message: `灵田等级不足,需要${herb.unlockPlotMaxLevel}级` }
+      }
+      for (let i = 0; i < plotCount; i++) intentMap.set(i, singleHerbId)
+    } else {
+      return { code: 400, message: '参数错误' }
+    }
+
+    if (intentMap.size === 0) {
+      return { code: 200, message: '没有可种植的地块', data: { planted: 0 } }
+    }
 
     const { rows: existing } = await pool.query(
       'SELECT plot_index, herb_id FROM character_cave_plots WHERE character_id = $1',
@@ -31,33 +54,38 @@ export default defineEventHandler(async (event) => {
     const occupied = new Map<number, boolean>()
     for (const p of existing) occupied.set(p.plot_index, !!p.herb_id)
 
-    // 收集需要 UPDATE 和 INSERT 的地块，批量执行
-    const updateIndices: number[] = []
-    const insertIndices: number[] = []
-    for (let i = 0; i < plotCount; i++) {
-      if (occupied.get(i)) continue          // 已有生长中的灵草 → 跳过
-      if (occupied.has(i)) updateIndices.push(i)   // 有空行 → UPDATE
-      else insertIndices.push(i)                   // 无行 → INSERT
+    // 按 herb_id 分组：UPDATE 已有空行的、INSERT 完全没行的
+    const groupUpdate = new Map<string, number[]>()
+    const groupInsert = new Map<string, number[]>()
+    for (const [i, herbId] of intentMap) {
+      if (occupied.get(i)) continue
+      if (occupied.has(i)) {
+        const arr = groupUpdate.get(herbId) || []
+        arr.push(i)
+        groupUpdate.set(herbId, arr)
+      } else {
+        const arr = groupInsert.get(herbId) || []
+        arr.push(i)
+        groupInsert.set(herbId, arr)
+      }
     }
 
-    const planted = updateIndices.length + insertIndices.length
-    if (planted === 0) return { code: 200, message: '没有空地块', data: { planted: 0 } }
-
+    let planted = 0
     const plantTime = new Date()
-    // 批量 UPDATE：单条 SQL 更新所有空行
-    if (updateIndices.length > 0) {
+    for (const [herbId, indices] of groupUpdate) {
       await pool.query(
         `UPDATE character_cave_plots SET herb_id = $1, herb_quality = NULL, plant_time = NOW(), mature_time = $2, yield_count = 0 WHERE character_id = $3 AND plot_index = ANY($4::int[])`,
-        [herb_id, matureTime, charId, updateIndices]
+        [herbId, matureTime, charId, indices]
       )
+      planted += indices.length
     }
-    // 批量 INSERT：UNNEST 一次性写入所有缺失地块
-    if (insertIndices.length > 0) {
+    for (const [herbId, indices] of groupInsert) {
       await pool.query(
         `INSERT INTO character_cave_plots (character_id, plot_index, herb_id, herb_quality, plant_time, mature_time, yield_count)
          SELECT $1, unnest($2::int[]), $3, NULL, $4, $5, 0`,
-        [charId, insertIndices, herb_id, plantTime, matureTime]
+        [charId, indices, herbId, plantTime, matureTime]
       )
+      planted += indices.length
     }
 
     if (planted === 0) return { code: 200, message: '没有空地块', data: { planted: 0 } }
