@@ -3390,7 +3390,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">赞助系统</div>
-            <p class="help-text">赞助增加洞府 1.5 倍 / 2 倍产出 一键种植 秘境次数 随机蓝色功法+1</p>
+            <p class="help-text">赞助增加洞府 1.5 倍 / 2 倍产出 一键种植 秘境次数 灵田扩容 道侣游历次数 </p>
             <p class="help-text" style="margin-top: 4px;">联系群主</p>
           </div>
           </div>
@@ -5487,6 +5487,7 @@ const V5_STAT_TO_V4_KEY: Record<string, string> = {
   lifesteal: 'LIFESTEAL', dodge: 'DODGE',
   armor_pen: 'ARMOR_PEN', accuracy: 'ACCURACY',
   reflect: 'REFLECT_PCT', dot_dmg: 'DOT_DMG_PCT',
+  dmg_reduction: 'DMG_REDUCTION',
   luck: 'LUCK', spirit_density: 'SPIRIT_DENSITY',
   // V5.0.3 新增百分比副词条 — 与 equipmentAggregateV5.ts 同口径
   accuracy_pct: 'ACCURACY', luck_pct: 'LUCK', spirit_density_pct: 'SPIRIT_DENSITY',
@@ -5608,6 +5609,7 @@ const awakenBonus = computed(() => {
     critRate: 0, critDmg: 0, dodge: 0, lifesteal: 0,    // 二级
     spirit: 0, accuracy: 0,                              // 神识 / 命中 flat
     luck: 0, spiritDensity: 0, armorPen: 0,              // 福缘 / 灵气浓度 / 破甲
+    reflectPct: 0, damageReduction: 0,                   // 反伤 / 减伤
     ctrlResist: 0, allResist: 0,                         // 抗性
     fireDmg: 0, metalDmg: 0, waterDmg: 0, woodDmg: 0, earthDmg: 0,  // 元素强化
   };
@@ -5633,6 +5635,8 @@ const awakenBonus = computed(() => {
       case 'luckBonus':   r.luck += v; break;
       case 'spiritDensityBonus': r.spiritDensity += v; break;
       case 'armorPenPct': r.armorPen += v; break;
+      case 'reflectPct':  r.reflectPct += v; break;
+      case 'damageReduction': r.damageReduction = Math.min(0.20, r.damageReduction + v); break;
       case 'ctrlResist':  r.ctrlResist += v; break;
       case 'allResistBonus': r.allResist += v; break;
       case 'FIRE_DMG_PCT':  r.fireDmg  += v; break;
@@ -5659,6 +5663,7 @@ const secondaryStats = computed(() => {
 
   // 纯被动功法对二级属性的贡献（lvMul 0.15，全部转为百分数 / 单位 1）
   let passCritRate = 0, passCritDmg = 0, passDodge = 0, passLifesteal = 0;
+  let passReflect = 0;
   for (let i = 0; i < equippedPassives.value.length; i++) {
     const pp = equippedPassives.value[i];
     if (!pp || !pp.effect) continue;
@@ -5668,6 +5673,7 @@ const secondaryStats = computed(() => {
     if (pp.effect.CRIT_DMG_flat) passCritDmg += pp.effect.CRIT_DMG_flat * lvMul * 100;
     if (pp.effect.DODGE_flat) passDodge += pp.effect.DODGE_flat * lvMul * 100;
     if (pp.effect.LIFESTEAL_flat) passLifesteal += pp.effect.LIFESTEAL_flat * lvMul * 100;
+    if (pp.effect.reflect_damage_percent) passReflect += pp.effect.reflect_damage_percent * lvMul * 100;
   }
 
   // v3.9 紫品主修自带的常驻被动（active.effect）— 与战斗引擎 / syncEquippedSkills 对齐
@@ -5711,12 +5717,13 @@ const secondaryStats = computed(() => {
   }
 
   // 通用 builder：base + 一组 contributions（百分数加法）+ 可选 cap
-  const buildStat = (label: string, base: number, baseSrc: string, items: { source: string; value: number }[], cap: number | null, digits: number, suffix = '%') => {
+  // force: true 时即使 value=0 也展示这一行（用于 floor 精度损失但确实存在的加成，如神识 1%）
+  const buildStat = (label: string, base: number, baseSrc: string, items: { source: string; value: number; force?: boolean }[], cap: number | null, digits: number, suffix = '%') => {
     const steps: StatStep[] = [];
     let raw = base;
     if (base !== 0) steps.push({ source: baseSrc, delta: base });
     for (const it of items) {
-      if (it.value !== 0) { steps.push({ source: it.source, delta: it.value }); raw += it.value; }
+      if (it.value !== 0 || it.force) { steps.push({ source: it.source, delta: it.value }); raw += it.value; }
     }
     const capped = cap !== null && raw > cap;
     const eff = cap !== null ? Math.min(raw, cap) : raw;
@@ -5762,7 +5769,8 @@ const secondaryStats = computed(() => {
     buildStat('神识', Number(c.spirit || 0), '基础', [
       { source: '装备 主+副', value: eb.SPIRIT || 0 },
       { source: '附灵', value: ab.spirit || 0 },
-      { source: `武器+装备% +${totalSpiritPct.toFixed(0)}%`, value: spiritWeaponBonus },
+      // totalSpiritPct > 0 时强制显示，即使 floor 后 value=0（如基础 19 × 1% = 0.19 → 0），让玩家看到这条加成存在
+      { source: `武器+装备% +${totalSpiritPct.toFixed(0)}%`, value: spiritWeaponBonus, force: totalSpiritPct > 0 },
       { source: sectSpiritSrcs.length ? `宗门心法（${sectSpiritSrcs.join(' / ')}）` : '宗门心法', value: sectSpiritBonus },
     ], null, 0, ''),
     // v4.0：改用 equipBonus（含主属性 1+2+副词条），原 xb/equipExtendedBonus 仅统计 sub_stats，
@@ -5788,6 +5796,21 @@ const secondaryStats = computed(() => {
     buildStat('控制概率', 0, '基础', [
       { source: '装备 副属性', value: (eb as any).CTRL_CHANCE || 0 },
     ], null, 1),
+    // V5: 反伤池 — 装备副词条 REFLECT_PCT + 附灵 reflectPct + 功法被动 reflect_damage_percent
+    buildStat('反伤', 0, '基础', [
+      { source: '装备 主+副', value: (eb as any).REFLECT_PCT || 0 },
+      { source: '附灵', value: ab.reflectPct * 100 },
+      { source: '功法被动', value: passReflect },
+    ], null, 1),
+    // V5: DOT 增伤 — 装备副词条 DOT_DMG_PCT
+    buildStat('DOT 增伤', 0, '基础', [
+      { source: '装备 主+副', value: (eb as any).DOT_DMG_PCT || 0 },
+    ], null, 1),
+    // V5: 减伤 — 装备 dmg_reduction 副词条 + 附灵 damageReduction（cap 20%，与战斗引擎一致）
+    buildStat('减伤', 0, '基础', [
+      { source: '装备 主+副', value: (eb as any).DMG_REDUCTION || 0 },
+      { source: '附灵', value: ab.damageReduction * 100 },
+    ], 20, 1),
   ];
 });
 
