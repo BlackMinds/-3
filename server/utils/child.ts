@@ -52,6 +52,8 @@ export interface ChildRow {
   awakened_talents: any[]
   learned_skills: any[]
   born_at: Date
+  come_of_age_decided: boolean
+  custom_avatar_url: string | null
 }
 
 // ============================================================

@@ -27,11 +27,15 @@ export default defineEventHandler(async (event) => {
     if (c.level < 100) return { code: 400, message: '子女尚未成年（需 Lv.100）' }
 
     if (choice === 'stay') {
-      // 仅做幂等记录（design 没要求落库 flag，前端依靠 level=100 自行隐藏弹窗）
+      // 2026-05-16: stay 也落库 come_of_age_decided=TRUE，避免每次打开详情都弹「成年选择」
+      await pool.query(
+        'UPDATE children SET come_of_age_decided = TRUE WHERE id = $1',
+        [childId]
+      )
       return {
         code: 200,
         message: `「${c.name}」留在家中助战`,
-        data: { childId, hasLeftHome: false },
+        data: { childId, hasLeftHome: false, comeOfAgeDecided: true },
       }
     }
 
@@ -40,10 +44,11 @@ export default defineEventHandler(async (event) => {
     try {
       await client.query('BEGIN')
 
-      // 1. 设离家
+      // 1. 设离家 + 标记已做决定
       await client.query(
         `UPDATE children
             SET has_left_home = TRUE,
+                come_of_age_decided = TRUE,
                 last_visit_at = NOW(),
                 is_battling = FALSE
           WHERE id = $1`,
@@ -68,7 +73,7 @@ export default defineEventHandler(async (event) => {
     return {
       code: 200,
       message: `「${c.name}」外出历练，每 3 天回家一次给予永久属性加成`,
-      data: { childId, hasLeftHome: true },
+      data: { childId, hasLeftHome: true, comeOfAgeDecided: true },
     }
   } catch (error) {
     console.error('成年选择失败:', error)

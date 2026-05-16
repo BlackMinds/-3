@@ -1931,3 +1931,14 @@ ON CONFLICT (code) DO UPDATE
       payload     = EXCLUDED.payload,
       sort_order  = EXCLUDED.sort_order,
       updated_at  = NOW();
+
+-- ========================================
+-- 2026-05-16: 子女成年选择落库 + 子女自定义头像
+-- ========================================
+-- come_of_age_decided：stay/leave 都置 TRUE，避免子女详情每次打开都弹「成年选择」弹窗
+--   存量 has_left_home=TRUE 的子女回填 TRUE（相当于已 leave）；
+--   存量 has_left_home=FALSE 但已成年的子女保持 FALSE，下次打开详情还能弹一次让玩家做决定
+-- custom_avatar_url：与道侣 companions.custom_avatar_url 同套机制，TEXT 存 data URL，上限 600KB
+ALTER TABLE children ADD COLUMN IF NOT EXISTS come_of_age_decided BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE children ADD COLUMN IF NOT EXISTS custom_avatar_url   TEXT DEFAULT NULL;
+UPDATE children SET come_of_age_decided = TRUE WHERE has_left_home = TRUE AND come_of_age_decided = FALSE;

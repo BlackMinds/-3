@@ -127,6 +127,8 @@ export default defineEventHandler(async (event) => {
         },
         isBattling: c.is_battling,
         hasLeftHome: c.has_left_home,
+        comeOfAgeDecided: c.come_of_age_decided,
+        customAvatarUrl: c.custom_avatar_url,
         permanentBuffPct: Number(c.permanent_buff_pct || 0),
         visitCap: getChildVisitCap(c.aptitude),
         lastVisitAt: c.last_visit_at,

@@ -8,7 +8,11 @@
 
       <div class="cd-body">
         <div class="hero">
-          <img class="hero-avatar" :src="childAvatarDataUrl(detail.gender, detail.aptitude)" :alt="detail.name" />
+          <div class="hero-avatar-wrap" @click="onPickAvatar" :title="'点击上传自定义头像（最大 600KB，png/jpg/webp）'">
+            <img class="hero-avatar" :src="avatarUrl" :alt="detail.name" />
+            <div class="hero-avatar-mask">📷 换头像</div>
+          </div>
+          <input ref="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" @change="onAvatarFileChange" />
           <div class="hero-meta">
             <span class="aptitude-tag">{{ detail.aptitudeName }}</span>
             <span :class="['gender-tag', detail.gender]">{{ detail.gender === 'male' ? '♂ 男' : '♀ 女' }}</span>
@@ -216,24 +220,6 @@
           <button class="btn-secondary" @click="talentRerollResult = null">关闭</button>
         </div>
 
-        <!-- 成年选择弹窗 -->
-        <div v-if="showComeOfAge" class="confirm-overlay" @click.self="() => {}">
-          <div class="coa-modal">
-            <div class="coa-title">🎉 {{ detail.name }} 已成年</div>
-            <div class="coa-body">
-              <p>「父母大人，孩儿已成年，欲……」</p>
-              <button class="coa-choice" :disabled="store.acting" @click="onComeOfAge('stay')">
-                <b>A. 留在家中助战</b>
-                <span class="coa-desc">继续作为助战单位，按 youth/adult 阶段加成</span>
-              </button>
-              <button class="coa-choice" :disabled="store.acting" @click="onComeOfAge('leave')">
-                <b>B. 外出历练</b>
-                <span class="coa-desc">每 3 天回家 +0.5% 永久属性（{{ detail.aptitudeName }}上限 +{{ visitCapPct }}%），不再助战</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
         <!-- 召回回家确认 -->
         <div v-if="recallConfirm" class="confirm-overlay" @click.self="recallConfirm = false">
           <div class="confirm-modal">
@@ -306,6 +292,25 @@
 
         <div v-if="toast" class="toast">{{ toast }}</div>
       </div>
+
+      <!-- 成年选择底栏（已成年 + 未离家 + 未做过决定 + 本次会话未关闭）-->
+      <!-- 2026-05-16: 从居中弹窗改为底部 sticky 底栏；按钮在下面，玩家可以同时看到上方属性 -->
+      <div v-if="showComeOfAge" class="coa-sheet">
+        <div class="coa-head">
+          <span class="coa-title">🎉 {{ detail.name }} 已成年 ·「父母大人，孩儿已成年，欲……」</span>
+          <button class="coa-dismiss" @click="onDismissComeOfAge" title="稍后再说">稍后再决定</button>
+        </div>
+        <div class="coa-actions">
+          <button class="coa-choice" :disabled="store.acting" @click="onComeOfAge('stay')">
+            <b>A. 留在家中助战</b>
+            <span class="coa-desc">继续作为助战单位（按 youth/adult 阶段加成）</span>
+          </button>
+          <button class="coa-choice" :disabled="store.acting" @click="onComeOfAge('leave')">
+            <b>B. 外出历练</b>
+            <span class="coa-desc">每 3 天回家 +0.5% 永久属性（上限 +{{ visitCapPct }}%），不再助战</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -373,21 +378,28 @@ function formatVisitDate(iso: string | null): string {
   return `${d.getMonth() + 1}-${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-// 成年弹窗（level=100 + 未离家 + 未做过选择 = 自动弹）
-const comeOfAgeDismissed = ref(false)
+// 成年选择 sheet：未做过选择 + 已成年 + 未离家 时显示
+// 2026-05-16：从「本地 ref」改为「后端 comeOfAgeDecided 字段」，避免每次重开详情都弹一次
+//   - 后端 stay/leave 都落 come_of_age_decided=TRUE
+//   - 「稍后再说」(onDismissComeOfAge) 只在本次会话内隐藏，下次打开还会再次提醒
+const comeOfAgeDismissedSession = ref(false)
 const showComeOfAge = computed(() =>
   detail.value &&
   detail.value.level >= aptitudeLevelCap.value &&
   !detail.value.hasLeftHome &&
-  !comeOfAgeDismissed.value
+  !detail.value.comeOfAgeDecided &&
+  !comeOfAgeDismissedSession.value
 )
+
+function onDismissComeOfAge() {
+  comeOfAgeDismissedSession.value = true
+}
 
 async function onComeOfAge(choice: 'stay' | 'leave') {
   if (!detail.value) return
   const res = await store.comeOfAgeChild(detail.value.id, choice)
   showToast(res.message || (res.ok ? (choice === 'stay' ? '留家成功' : '已外出历练') : '操作失败'))
   if (res.ok) {
-    comeOfAgeDismissed.value = true
     detail.value = await store.loadChildDetail(props.childId)
   }
 }
@@ -643,6 +655,50 @@ function showToast(msg: string) {
   setTimeout(() => { toast.value = '' }, 2000)
 }
 
+// ===== 头像上传（仿 CompanionDetailModal）=====
+const avatarUrl = computed(() => {
+  if (!detail.value) return ''
+  return detail.value.customAvatarUrl || childAvatarDataUrl(detail.value.gender, detail.value.aptitude, 160)
+})
+const avatarInput = ref<HTMLInputElement | null>(null)
+function onPickAvatar() {
+  avatarInput.value?.click()
+}
+async function onAvatarFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (file.size > 600 * 1024) {
+    showToast(`图片过大（${(file.size / 1024).toFixed(0)}KB），上限 600KB`)
+    input.value = ''
+    return
+  }
+  if (!['image/png','image/jpeg','image/webp'].includes(file.type)) {
+    showToast('仅支持 png / jpg / webp')
+    input.value = ''
+    return
+  }
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as string)
+    r.onerror = reject
+    r.readAsDataURL(file)
+  })
+  const api = useApi()
+  const res = await api<{ code: number; message?: string; data?: any }>('/child/upload-avatar', {
+    method: 'POST',
+    body: { child_id: detail.value!.id, image_data: dataUrl },
+  })
+  if (res.code === 200) {
+    showToast(`上传成功 (${res.data?.sizeKB}KB)`)
+    detail.value = await store.loadChildDetail(props.childId)
+    await store.loadChildren()
+  } else {
+    showToast(res.message || '上传失败')
+  }
+  input.value = ''
+}
+
 onMounted(async () => {
   detail.value = await store.loadChildDetail(props.childId)
   if (detail.value) await loadEquipments()
@@ -672,7 +728,22 @@ onMounted(async () => {
 .cd-body { flex: 1; overflow-y: auto; padding: 14px 18px; }
 
 .hero { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
-.hero-avatar { width: 80px; height: 80px; border-radius: 50%; }
+.hero-avatar-wrap {
+  position: relative; width: 80px; height: 80px;
+  flex-shrink: 0; cursor: pointer; border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(180,100,255,0.4);
+  overflow: hidden;
+}
+.hero-avatar-wrap:hover .hero-avatar-mask { opacity: 1; }
+.hero-avatar { width: 80px; height: 80px; border-radius: 50%; display: block; object-fit: cover; }
+.hero-avatar-mask {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  color: #ffd700; font-size: 11px; font-weight: bold;
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none;
+}
 .hero-meta { display: flex; flex-wrap: wrap; gap: 6px; }
 .aptitude-tag { padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: bold; background: rgba(255,215,0,0.25); color: #ffd700; }
 .gender-tag { padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: bold; }
@@ -842,33 +913,54 @@ onMounted(async () => {
 .rr-row { font-size: 12px; color: #ddd; padding: 2px 0; }
 .rr-row b { color: #ffd700; }
 
-/* 成年弹窗 */
+/* 确认类弹窗（放弃/召回/重铸）保持居中遮罩 */
 .confirm-overlay {
   position: absolute; inset: 0;
   background: rgba(0,0,0,0.75);
   display: flex; align-items: center; justify-content: center;
   z-index: 20;
 }
-.coa-modal {
-  background: linear-gradient(180deg, #2a1a3a, #1a1027);
-  border: 1px solid #ffd700; border-radius: 12px;
-  padding: 22px; width: 92%; max-width: 380px;
-  box-shadow: 0 4px 28px rgba(255,215,0,0.35);
+
+/* 成年选择 sheet：cd-modal 内部的固定底栏（不遮挡上方属性面板） */
+/* 2026-05-16：原来的居中 modal 把属性/天赋全挡住，改成底栏让玩家能边看属性边做决定 */
+.coa-sheet {
+  flex-shrink: 0;
+  padding: 10px 14px 12px;
+  background: linear-gradient(180deg, rgba(42,26,58,0.97), rgba(26,16,39,0.99));
+  border-top: 1px solid #ffd700;
+  box-shadow: 0 -4px 18px rgba(255,215,0,0.22);
+}
+.coa-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
 }
 .coa-title {
-  color: #ffd700; font-size: 16px; font-weight: bold;
-  text-align: center; margin-bottom: 16px;
+  flex: 1; color: #ffd700; font-size: 13px; font-weight: bold;
+  line-height: 1.5;
 }
-.coa-body p { color: #d8c4f0; font-size: 13px; text-align: center; margin-bottom: 12px; }
+.coa-dismiss {
+  flex-shrink: 0;
+  background: transparent; color: #aaa;
+  border: 1px solid #5a3a7a; border-radius: 4px;
+  padding: 4px 10px; font-size: 11px; cursor: pointer;
+}
+.coa-dismiss:hover { color: #fff; border-color: #b070ff; }
+.coa-actions {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
 .coa-choice {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  width: 100%; padding: 12px; margin-bottom: 8px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 12px;
   background: rgba(80,40,100,0.6); border: 1px solid #b070ff;
-  border-radius: 6px; cursor: pointer;
+  border-radius: 6px; cursor: pointer; text-align: left;
 }
 .coa-choice:hover:not(:disabled) { background: rgba(120,60,150,0.7); }
-.coa-choice b { color: #ffd700; font-size: 14px; }
-.coa-desc { color: #aaa; font-size: 11px; }
+.coa-choice:disabled { opacity: 0.5; cursor: not-allowed; }
+.coa-choice b { color: #ffd700; font-size: 13px; }
+.coa-desc { color: #aaa; font-size: 11px; line-height: 1.4; }
+@media (max-width: 480px) {
+  .coa-actions { grid-template-columns: 1fr; }
+}
 
 /* 资质重铸消耗确认 */
 .confirm-modal {

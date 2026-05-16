@@ -8,7 +8,7 @@
       <div class="section-title">⚔ 出战配置（仅 1 个槽位）</div>
       <div class="battling-slot">
         <div v-if="battlingChild" class="battling-card">
-          <img :src="childAvatarDataUrl(battlingChild.gender, battlingChild.aptitude)" :alt="battlingChild.name" />
+          <img :src="childAvatarSrc(battlingChild)" :alt="battlingChild.name" />
           <div>
             <div class="bc-name">{{ battlingChild.name }}（{{ battlingChild.stageName }} Lv.{{ battlingChild.level }}）</div>
             <div class="bc-stats">攻 {{ battlingChild.atk }} 防 {{ battlingChild.def }} 身法 {{ battlingChild.spd }}</div>
@@ -26,7 +26,7 @@
           :class="['child-card', `apt-${c.aptitude}`]"
           @click="openDetail(c.id)"
         >
-          <img class="child-avatar" :src="childAvatarDataUrl(c.gender, c.aptitude)" :alt="c.name" />
+          <img class="child-avatar" :src="childAvatarSrc(c)" :alt="c.name" />
           <div class="child-body">
             <div class="cc-head">
               <span class="cc-name">{{ c.name }}</span>
@@ -52,7 +52,7 @@
           :class="['child-card', `apt-${c.aptitude}`, 'left-home']"
           @click="openDetail(c.id)"
         >
-          <img class="child-avatar" :src="childAvatarDataUrl(c.gender, c.aptitude)" :alt="c.name" />
+          <img class="child-avatar" :src="childAvatarSrc(c)" :alt="c.name" />
           <div class="child-body">
             <div class="cc-head">
               <span class="cc-name">{{ c.name }}</span>
@@ -96,6 +96,11 @@ function buffPct(p: any): string { return (Number(p || 0) * 100).toFixed(1) }
 
 const ROOT_NAMES: Record<string, string> = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土', mixed: '混' }
 function rootName(r: string): string { return ROOT_NAMES[r] || r }
+
+// 优先用自定义头像（customAvatarUrl），否则回退到 SVG 占位
+function childAvatarSrc(c: any): string {
+  return c?.customAvatarUrl || childAvatarDataUrl(c.gender, c.aptitude)
+}
 
 function openDetail(id: number) { detailChildId.value = id }
 
