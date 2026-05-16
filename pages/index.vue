@@ -5663,7 +5663,7 @@ const secondaryStats = computed(() => {
 
   // 纯被动功法对二级属性的贡献（lvMul 0.15，全部转为百分数 / 单位 1）
   let passCritRate = 0, passCritDmg = 0, passDodge = 0, passLifesteal = 0;
-  let passReflect = 0, passDmgReduction = 0;
+  let passReflect = 0, passDmgReduction = 0, passDotAmp = 0;
   for (let i = 0; i < equippedPassives.value.length; i++) {
     const pp = equippedPassives.value[i];
     if (!pp || !pp.effect) continue;
@@ -5675,6 +5675,8 @@ const secondaryStats = computed(() => {
     if (pp.effect.LIFESTEAL_flat) passLifesteal += pp.effect.LIFESTEAL_flat * lvMul * 100;
     if (pp.effect.reflect_damage_percent) passReflect += pp.effect.reflect_damage_percent * lvMul * 100;
     if (pp.effect.damage_reduction_flat) passDmgReduction += pp.effect.damage_reduction_flat * lvMul * 100;
+    // 万毒归一 / 业火焚心 / 青木玄机 / 朱雀焚心 等 dot 增伤被动（单位已是 % 整数，不再 *100）
+    if (pp.effect.dot_amplifier_percent) passDotAmp += pp.effect.dot_amplifier_percent * lvMul;
   }
 
   // v3.9 紫品主修自带的常驻被动（active.effect）— 与战斗引擎 / syncEquippedSkills 对齐
@@ -5810,9 +5812,10 @@ const secondaryStats = computed(() => {
       { source: '附灵', value: ab.reflectPct * 100 },
       { source: '功法被动', value: passReflect },
     ], null, 1),
-    // V5: DOT 增伤 — 装备副词条 DOT_DMG_PCT
+    // V5: DOT 增伤 — 装备副词条 DOT_DMG_PCT + 功法被动 dot_amplifier_percent（万毒归一/业火焚心/青木玄机/朱雀焚心）
     buildStat('DOT 增伤', 0, '基础', [
       { source: '装备 主+副', value: (eb as any).DOT_DMG_PCT || 0 },
+      { source: '功法被动', value: passDotAmp },
     ], null, 1),
     // V5: 减伤 — 装备 dmg_reduction 副词条 + 附灵 damageReduction（cap 20%）+ 功法被动 damage_reduction_flat（无 cap，独立乘法层）
     // 战斗引擎里这两层是独立乘法（multiBattleEngine: 先乘被动再乘 awaken），面板按加和近似展示并标注 cap 仅覆盖装备+附灵
