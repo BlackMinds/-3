@@ -14,7 +14,13 @@ export function useApi() {
         headers,
       })
     } catch (error: any) {
-      if (error?.response?.status === 401 || error?.statusCode === 401) {
+      const status = error?.response?.status ?? error?.statusCode
+      const data = error?.response?._data ?? error?.data
+      if (status === 503 && data?.maintenance) {
+        navigateTo('/maintenance')
+        throw error
+      }
+      if (status === 401) {
         userStore.logout()
         navigateTo('/login')
       }

@@ -29,6 +29,10 @@ export default defineEventHandler(async (event) => {
     return { code: 400, message: '用户名或密码错误' }
   }
 
+  if (process.env.MAINTENANCE_MODE === 'on' && user.id !== 1) {
+    return { code: 503, message: '关服维护中，5月19日重新开服', maintenance: true, reopen_at: '2026-05-19' }
+  }
+
   await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id])
 
   const secret = process.env.JWT_SECRET || 'xiantu_secret_key_2026'
