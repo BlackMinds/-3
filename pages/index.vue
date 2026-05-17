@@ -218,7 +218,7 @@
           </div>
 
           <div v-else class="tower-row">
-            <span v-if="!towerStore.eligible" class="tower-locked-hint" :title="`大乘境界 + 等级 140 解锁（当前境界 ${towerStore.info?.current_realm_tier ?? '?'} / Lv.${towerStore.info?.current_level ?? '?'}）`">🔒 大乘 + Lv.140 解锁</span>
+            <span v-if="!towerStore.eligible" class="tower-locked-hint" :title="`大乘境界 + 等级 140 解锁（当前境界 ${towerStore.info?.current_realm_tier ?? '?'} / Lv.${towerStore.info?.current_level ?? '?'}）`" style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; margin-right: 8px; background: linear-gradient(90deg, rgba(255,107,107,0.12), rgba(176,112,255,0.10)); border: 1px solid rgba(255,107,107,0.35); border-radius: 10px; color: #ff9b9b; font-size: 11.5px; font-weight: 500; letter-spacing: 0.3px;">🔒 大乘 + Lv.140 解锁</span>
             <span class="tower-label">通天塔</span>
             <span class="tower-stat">最高 {{ towerStore.maxFloor }}/{{ towerStore.implementedFloors }}</span>
 
@@ -2011,7 +2011,8 @@
           <button v-if="(clickedEquip.enhance_level || 0) < 10" class="equip-action-btn-gold" @click="openEnhance(clickedEquip); clickedEquip = null">强化</button>
           <button
             :disabled="!canEquipAwaken(clickedEquip)"
-            :class="['equip-action-btn-awaken', { 'awaken-breathing': canEquipAwaken(clickedEquip) && !clickedEquip.awaken_effect, 'is-disabled-awaken': !canEquipAwaken(clickedEquip) }]"
+            :class="['equip-action-btn-awaken', { 'awaken-breathing': canEquipAwaken(clickedEquip) && !clickedEquip.awaken_effect }]"
+            :style="!canEquipAwaken(clickedEquip) ? { opacity: 0.35, filter: 'grayscale(0.8)', cursor: 'not-allowed', boxShadow: 'none' } : {}"
             :title="!canEquipAwaken(clickedEquip) ? '仅蓝品及以上 · 武器/防具/坠饰可附灵' : ''"
             @click="canEquipAwaken(clickedEquip) && (openAwakenDialog(clickedEquip), clickedEquip = null)"
           >
@@ -2436,8 +2437,8 @@
                 ? '将在该装备的' + getSlotName(awakenTarget.base_slot || awakenTarget.slot) + '池内随机一条附灵（保证与当前不同）。'
                 : '将在该装备的' + getSlotName(awakenTarget.base_slot || awakenTarget.slot) + '池内随机一条附灵，品质档位取决于装备品质。' }}
             </div>
-            <div class="awaken-source-hint">
-              💡 附灵石 / 灵枢玉来源：天罡秘境 Boss / 灵田收成 / 红尘玉商店
+            <div class="awaken-source-hint" style="margin-top: 10px; padding: 8px 12px; background: rgba(255, 170, 0, 0.07); border-left: 2px solid rgba(255, 170, 0, 0.45); border-radius: 4px; color: #d4a866; font-size: 11.5px; line-height: 1.55; letter-spacing: 0.3px;">
+              💡 附灵石 / 灵枢玉来源：天罡秘境 Boss · 灵田收成 · 红尘玉商店
             </div>
           </div>
 
