@@ -27,9 +27,9 @@ export default defineEventHandler(async (event) => {
     statusMessage: 'Service Unavailable',
     data: {
       code: 503,
-      message: '关服维护中，5月19日重新开服',
+      message: '关服维护中，5月18日 11:00 重新开服',
       maintenance: true,
-      reopen_at: '2026-05-19',
+      reopen_at: '2026-05-18T11:00:00+08:00',
     },
   })
 })

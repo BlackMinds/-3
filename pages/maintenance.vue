@@ -4,7 +4,7 @@
       <h1 class="title">关服维护中</h1>
       <div class="divider"></div>
       <p class="line">服务器正在进行公测前数据清理与维护</p>
-      <p class="line reopen">预计 <span class="date">2026 年 5 月 19 日</span> 重新开服</p>
+      <p class="line reopen">预计 <span class="date">2026 年 5 月 18 日 上午 11:00</span> 重新开服</p>
       <p class="hint">届时将以全新数据公测，敬请期待</p>
     </div>
   </div>

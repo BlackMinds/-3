@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (process.env.MAINTENANCE_MODE === 'on' && user.id !== 1) {
-    return { code: 503, message: '关服维护中，5月19日重新开服', maintenance: true, reopen_at: '2026-05-19' }
+    return { code: 503, message: '关服维护中，5月18日 11:00 重新开服', maintenance: true, reopen_at: '2026-05-18T11:00:00+08:00' }
   }
 
   await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id])
