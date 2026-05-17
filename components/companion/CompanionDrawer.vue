@@ -10,6 +10,10 @@
         <button class="close-btn" @click="close">×</button>
       </div>
 
+      <div v-if="jindanLocked" class="locked-banner">
+        🔒 金丹期（境界 3 阶）解锁游历红尘 · 邂逅道侣
+      </div>
+
       <div class="companion-tabs">
         <button :class="['tab', { active: tab === 'roster' }]" @click="switchTab('roster')">
           道侣花名册
@@ -37,7 +41,8 @@
         <div class="roster-section">
           <div class="section-title">📜 红颜花名册</div>
           <div v-if="unmarried.length === 0" class="empty-hint">
-            暂无邂逅对象。前往「游历红尘」碰碰机缘吧。
+            <template v-if="jindanLocked">🔒 金丹期方可邂逅红颜，先冲境界。</template>
+            <template v-else>暂无邂逅对象。前往「游历红尘」碰碰机缘吧。</template>
           </div>
           <div v-else class="roster-list">
             <CompanionCard
@@ -53,7 +58,11 @@
 
       <!-- ===== 游历 Tab ===== -->
       <div v-if="tab === 'expedition'" class="tab-content">
-        <div v-if="!status" class="empty-hint">加载中...</div>
+        <div v-if="jindanLocked" class="empty-hint locked-empty">
+          🔒 金丹期（境界 3 阶）后开启游历红尘<br/>
+          <span class="locked-sub">游历是邂逅道侣的唯一入口，先专心冲境界吧。</span>
+        </div>
+        <div v-else-if="!status" class="empty-hint">加载中...</div>
         <template v-else>
           <div class="expedition-summary">
             <div class="summary-row">
@@ -182,6 +191,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useCompanionStore } from '~/stores/companion'
+import { useGameStore } from '~/stores/game'
 import EncounterModal from './EncounterModal.vue'
 import CompanionCard from './CompanionCard.vue'
 import CompanionDetailModal from './CompanionDetailModal.vue'
@@ -192,6 +202,9 @@ const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 
 const store = useCompanionStore()
+const gameStore = useGameStore()
+const realmTier = computed(() => gameStore.character?.realm_tier ?? 1)
+const jindanLocked = computed(() => realmTier.value < 3)
 const tab = ref<'roster' | 'expedition' | 'children' | 'shop'>('roster')
 
 // ===== 红尘玉商店 =====
@@ -470,6 +483,19 @@ watch(() => props.modelValue, async (open) => {
   color: #c8a8ff; font-size: 14px; margin: 12px 0 8px;
   border-left: 3px solid #b070ff; padding-left: 8px;
 }
+.locked-banner {
+  margin: 8px 12px 0;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, rgba(255,140,186,0.12), rgba(176,112,255,0.10));
+  border: 1px solid rgba(255,140,186,0.35);
+  border-radius: 6px;
+  color: #ffb6d3;
+  font-size: 13px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.locked-empty { padding: 48px 16px !important; }
+.locked-sub { display: inline-block; margin-top: 6px; color: #999; font-size: 12px; }
 .empty-hint {
   text-align: center; color: #888; padding: 32px 12px;
   font-size: 13px;
