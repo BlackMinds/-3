@@ -145,7 +145,7 @@
           <div class="leave-title">🌿 外出历练中</div>
           <div class="leave-body">
             上次回家：{{ formatVisitDate(detail.lastVisitAt) }}<br />
-            累计永久属性加成：<b>+{{ permanentBuffPct }}%</b>（每 3 天回家 +0.5%，{{ detail.aptitudeName }}上限 +{{ visitCapPct }}%）
+            累计永久属性加成：<b>+{{ permanentBuffPct }}%</b>（每天回家 +0.5%，{{ detail.aptitudeName }}上限 +{{ visitCapPct }}%）
           </div>
           <button class="btn-recall" :disabled="store.acting" @click="recallConfirm = true">
             📯 召回回家（保留已累计加成）
@@ -228,7 +228,7 @@
               确定召回 <b>{{ detail.name }}</b> 回家？<br /><br />
               · 已累计 <b>+{{ permanentBuffPct }}%</b> 永久属性加成将<b>完整保留</b><br />
               · 召回后可重新设为助战，或再次选择外出历练继续累积<br />
-              · 召回后回家计时清零，下次外出从 3 天开始
+              · 召回后回家计时清零，下次外出从次日 00:00 开始计算
             </div>
             <div class="confirm-actions">
               <button class="btn-secondary" @click="recallConfirm = false">取消</button>
@@ -307,7 +307,7 @@
           </button>
           <button class="coa-choice" :disabled="store.acting" @click="onComeOfAge('leave')">
             <b>B. 外出历练</b>
-            <span class="coa-desc">每 3 天回家 +0.5% 永久属性（上限 +{{ visitCapPct }}%），不再助战</span>
+            <span class="coa-desc">每天回家 +0.5% 永久属性（上限 +{{ visitCapPct }}%），不再助战</span>
           </button>
         </div>
       </div>

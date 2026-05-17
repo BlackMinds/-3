@@ -957,7 +957,7 @@ export default defineEventHandler(async (event) => {
     const _assistPrep = await prepareChildAssist(pool, char)
 
     // 离家子女永久 buff：所有 has_left_home 子女的 permanent_buff_pct 求和后给本体全属性放大
-    // (design 5.8: 每 3 天回家 +0.5%, 上限按资质 凡14% ~ 圣22%)
+    // (design 5.8: 每 1 天回家 +0.5%, 上限按资质 凡14% ~ 圣22%)
     {
       const { rows: leftRows } = await pool.query(
         `SELECT COALESCE(SUM(permanent_buff_pct), 0)::numeric AS total
