@@ -49,6 +49,9 @@ export interface DuoWaveBattleResult {
   finalPlayerHp: number;
   finalAssistHp: number;
   assistFainted: boolean;
+  // 玩家本体是否在战斗中倒下（用于战后展示与死亡惩罚结算；won=true 时也可能为 true，
+  // 表示「主角倒地、子女接力打赢」的情况）
+  playerFainted: boolean;
 }
 
 // 扩展 BattleLogEntry 字段（不改 battleEngine 中的接口，运行时附加）
@@ -1262,15 +1265,25 @@ export function runDuoWaveBattle(
   };
 
   // ==== 主回合循环 ====
+  // playerFainted: 玩家首次倒地时置 true，仅用于战后展示与死亡惩罚（不影响"已死亡=禁止行动"判定）
+  let playerFainted = false;
   for (let turn = 1; turn <= maxTurns; turn++) {
     const aliveMonsters = monsters.filter(m => m.alive);
     if (aliveMonsters.length === 0) break;
-    if (player.hp <= 0) {
+    // 我方全灭才判负（玩家死但助战还活着 → 继续战斗，由助战接力）
+    const playerDown = player.hp <= 0;
+    const assistDown = assist._isNoop || assist.hp <= 0;
+    if (playerDown && assistDown) {
       logs.push({ turn, text: '你陨落了…3回合后原地复活', type: 'death', actor: 'player', playerHp: 0, playerMaxHp: player.maxHp, monstersHp: monsters.map(m => Math.max(0, m.stats.hp)), assistHp: assist._isNoop ? undefined : Math.max(0, assist.hp), assistMaxHp: assist._isNoop ? undefined : assist.maxHp });
       return {
         won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats,
-        finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: assist.hp <= 0,
+        finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: !assist._isNoop && assist.hp <= 0, playerFainted: true,
       };
+    }
+    // 玩家本回合刚倒下（且助战还在）→ 仅记一次日志，标记 playerFainted，战斗继续
+    if (playerDown && !playerFainted) {
+      playerFainted = true;
+      logs.push({ turn, text: '你陨落了…由子女继续战斗', type: 'death', actor: 'player', playerHp: 0, playerMaxHp: player.maxHp, monstersHp: monsters.map(m => Math.max(0, m.stats.hp)), assistHp: Math.max(0, assist.hp), assistMaxHp: assist.maxHp });
     }
 
     // ✦ v1.2 附灵：回合开始 — 回春（regenPerTurn）+ 洗髓（cleanseInterval）
@@ -1284,13 +1297,20 @@ export function runDuoWaveBattle(
     if (pDot > 0) {
       player.hp -= pDot;
       if (player.hp <= 0) {
-        // DOT 致死 → 尝试不灭金身复活
+        // DOT 致死 → 先尝试不灭金身复活；失败则视助战是否在场决定立即结束还是交棒
         if (!tryRevive(turn)) {
-          logs.push({ turn, text: '你在持续伤害中陨落了…3回合后原地复活', type: 'death', actor: 'player', ...snap() });
-          return {
-            won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats,
-            finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: !assist._isNoop && assist.hp <= 0,
-          };
+          const assistAliveNow = !assist._isNoop && assist.hp > 0;
+          if (!assistAliveNow) {
+            logs.push({ turn, text: '你在持续伤害中陨落了…3回合后原地复活', type: 'death', actor: 'player', ...snap() });
+            return {
+              won: false, logs, totalExp, totalStone, monstersKilled, stats: battleStats,
+              finalPlayerHp: 0, finalAssistHp: Math.max(0, assist.hp), assistFainted: !assist._isNoop && assist.hp <= 0, playerFainted: true,
+            };
+          }
+          if (!playerFainted) {
+            playerFainted = true;
+            logs.push({ turn, text: '你在持续伤害中陨落了…由子女继续战斗', type: 'death', actor: 'player', ...snap() });
+          }
         }
       }
     }
@@ -1407,7 +1427,9 @@ export function runDuoWaveBattle(
   }
 
   const aliveAtEnd = monsters.filter(m => m.alive);
-  const won = aliveAtEnd.length === 0 && player.hp > 0;
+  // 胜利条件：怪物全灭 && 我方至少一人存活（主角倒地、子女接力打赢也算赢）
+  const ourSideAlive = player.hp > 0 || (!assist._isNoop && assist.hp > 0);
+  const won = aliveAtEnd.length === 0 && ourSideAlive;
   return {
     won,
     logs,
@@ -1418,5 +1440,6 @@ export function runDuoWaveBattle(
     finalPlayerHp: Math.max(0, player.hp),
     finalAssistHp: assist._isNoop ? 0 : Math.max(0, assist.hp),
     assistFainted: !assist._isNoop && assist.hp <= 0,
+    playerFainted: playerFainted || player.hp <= 0,
   };
 }
