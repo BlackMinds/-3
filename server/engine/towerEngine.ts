@@ -52,6 +52,9 @@ export interface TowerBattleOutcome {
   damageTaken: number
   /** 助战子女最终 hp（无助战时为 null）— 供 challenge.post.ts 回填 child_battle_data */
   finalAssistHp: number | null
+  /** 玩家本体是否在战斗中倒下；走单人引擎时为 null（不跟踪）。won=true 时也可能为 true，
+   *  代表「主角倒地、子女接力打赢」的情况 */
+  playerFainted: boolean | null
   /** 怪物起手数据（前端展示用） */
   monstersInfo: Array<{
     name: string
@@ -153,6 +156,7 @@ export function runTowerBattle(
     : 0
 
   const finalAssistHp = (result as DuoWaveBattleResult).finalAssistHp
+  const playerFainted = (result as DuoWaveBattleResult).playerFainted
   return {
     won: result.won,
     logs: result.logs,
@@ -160,6 +164,7 @@ export function runTowerBattle(
     damageDealt,
     damageTaken,
     finalAssistHp: typeof finalAssistHp === 'number' ? finalAssistHp : null,
+    playerFainted: typeof playerFainted === 'boolean' ? playerFainted : null,
     monstersInfo,
   }
 }
