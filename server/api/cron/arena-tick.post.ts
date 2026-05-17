@@ -1,5 +1,6 @@
 import { getPool } from '~/server/database/db'
 import { sendMail } from '~/server/utils/mail'
+import { pickArenaRankBroadcast } from '~/server/engine/broadcastTemplates'
 
 /**
  * 斗法榜每日奖励 cron
@@ -48,7 +49,7 @@ export default defineEventHandler(async (event) => {
 
   // 取 top 100 (arena_score > 0 排除从未斗法过且被扣到 0 的)
   const { rows } = await pool.query(
-    `SELECT id, name, arena_score
+    `SELECT id, name, arena_score, sect_id
      FROM characters
      WHERE arena_score > 0
      ORDER BY arena_score DESC, realm_tier DESC, realm_stage DESC, level DESC
@@ -105,6 +106,22 @@ export default defineEventHandler(async (event) => {
     })
 
     sent.push({ rank, characterId: charId, name: row.name, score: Number(row.arena_score) })
+
+    // 风云阁广播（仅前 3 名）
+    // 失败不影响主流程（邮件已发，幂等键也已写入）
+    if (rank <= 3) {
+      try {
+        const bc = pickArenaRankBroadcast(rank as 1 | 2 | 3, row.name, Number(row.arena_score))
+        await pool.query(
+          `INSERT INTO world_broadcast
+             (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+           VALUES (NULL, $1, $2, $3, 'ARENA_DAILY', $4, TRUE, $5)`,
+          [charId, row.name, row.sect_id || null, bc.rarity, bc.text]
+        )
+      } catch (broadcastErr) {
+        console.error(`[arena-tick] 风云阁广播失败 rank=${rank}:`, (broadcastErr as Error).message)
+      }
+    }
   }
 
   return { code: 200, data: { date: today, sent, skipped, totalRanked: rows.length } }

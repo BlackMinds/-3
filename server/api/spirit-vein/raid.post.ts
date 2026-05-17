@@ -5,6 +5,7 @@ import { buildCharacterSnapshot, type CharacterSnapshot } from '~/server/utils/b
 import { runPvpBattle, simpleInputToPvp, type PvpFighterInput } from '~/server/engine/multiBattleEngine'
 import { sendMail } from '~/server/utils/mail'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { pickVeinRaidBroadcast } from '~/server/engine/broadcastTemplates'
 
 // 内置 NPC 守脉鬼差模板（按节点品级定强度）
 function makeNpcDefender(nodeTier: string, idx: number) {
@@ -221,6 +222,30 @@ export default defineEventHandler(async (event) => {
     client.release()
   }
   await refreshGuardCount(nodeId)
+
+  // 风云阁广播：偷家成功（非 NPC 节点）
+  if (winner === 'attacker' && !isNpcNode && node.occupying_sect_id) {
+    try {
+      const { rows: defSect } = await pool.query(
+        'SELECT name FROM sects WHERE id = $1',
+        [node.occupying_sect_id]
+      )
+      const defenderName = defSect[0]?.name || '敌宗'
+      const bc = pickVeinRaidBroadcast(
+        String(membership.sect_name),
+        String(defenderName),
+        String(node.name),
+      )
+      await pool.query(
+        `INSERT INTO world_broadcast
+           (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+         VALUES (NULL, $1, $2, $3, 'VEIN_RAID', $4, TRUE, $5)`,
+        [char.id, String(char.name).slice(0, 8), membership.sect_id, bc.rarity, bc.text]
+      )
+    } catch (broadcastErr) {
+      console.error('[vein-raid] 风云阁广播失败:', (broadcastErr as Error).message)
+    }
+  }
 
   return {
     code: 200,

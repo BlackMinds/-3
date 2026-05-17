@@ -7,6 +7,12 @@ import { buildCharacterSnapshot, type CharacterSnapshot } from '~/server/utils/b
 import { runPvpBattle, type PvpFighterInput } from '~/server/engine/multiBattleEngine'
 import { sendMail, sendMailBatch, upsertTimedBuff } from '~/server/utils/mail'
 import { computeOdds, currentSeasonNo } from '~/server/utils/sectWarOdds'
+import {
+  pickSectWarReportBroadcast,
+  pickSectWarMvpBroadcast,
+  pickSectWarSweepBroadcast,
+  pickSectWarWalkoverBroadcast,
+} from '~/server/engine/broadcastTemplates'
 
 /**
  * 周一 20:00 — 生成对阵 + 赔率
@@ -401,6 +407,79 @@ export async function settleMatchRewards(matchId: number) {
   }
 
   await pool.query('UPDATE sect_war_match SET settled_at = NOW() WHERE id = $1', [matchId])
+
+  // ============================================================
+  // 风云阁广播（失败不影响主流程）
+  // ============================================================
+  try {
+    const winnerCid: number = (winnerSide === 'a' ? m.a_duel : m.b_duel)?.[0] || 0
+    const winnerNameTrunc = String(winnerName).slice(0, 8)
+
+    // 检测 walkover：本场 battle 数 = 1 且双方阵容均为空数组
+    const { rows: walkoverChk } = await pool.query(
+      `SELECT COUNT(*)::int AS cnt
+         FROM sect_war_battle
+        WHERE match_id = $1
+          AND jsonb_array_length(side_a_chars) = 0
+          AND jsonb_array_length(side_b_chars) = 0`,
+      [matchId]
+    )
+    const isWalkover = walkoverChk[0].cnt > 0 && duelBattles.length === 0
+
+    if (isWalkover) {
+      const bc = pickSectWarWalkoverBroadcast(String(winnerName), String(loserName))
+      await pool.query(
+        `INSERT INTO world_broadcast
+           (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+         VALUES (NULL, $1, $2, $3, 'SECT_WAR_WO', $4, TRUE, $5)`,
+        [winnerCid, winnerNameTrunc, winnerSectId, bc.rarity, bc.text]
+      )
+    } else {
+      // 正常战报（比分按胜方视角）
+      const winnerScore = winnerSectId === m.sect_a_id ? Number(m.score_a) : Number(m.score_b)
+      const loserScore  = winnerSectId === m.sect_a_id ? Number(m.score_b) : Number(m.score_a)
+      const bc = pickSectWarReportBroadcast(
+        String(winnerName), String(loserName), winnerScore, loserScore
+      )
+      await pool.query(
+        `INSERT INTO world_broadcast
+           (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+         VALUES (NULL, $1, $2, $3, 'SECT_WAR_RPT', $4, TRUE, $5)`,
+        [winnerCid, winnerNameTrunc, winnerSectId, bc.rarity, bc.text]
+      )
+
+      // 单挑 3:0 横扫
+      if (allDuelWins) {
+        const bcSweep = pickSectWarSweepBroadcast(String(winnerName), String(loserName))
+        await pool.query(
+          `INSERT INTO world_broadcast
+             (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+           VALUES (NULL, $1, $2, $3, 'SECT_WAR_3_0', $4, TRUE, $5)`,
+          [winnerCid, winnerNameTrunc, winnerSectId, bcSweep.rarity, bcSweep.text]
+        )
+      }
+    }
+
+    // MVP 论道之星
+    if (m.mvp_character_id) {
+      const { rows: mvpRows } = await pool.query(
+        'SELECT name FROM characters WHERE id = $1',
+        [m.mvp_character_id]
+      )
+      if (mvpRows.length > 0) {
+        const mvpName = String(mvpRows[0].name)
+        const bcMvp = pickSectWarMvpBroadcast(mvpName, String(winnerName))
+        await pool.query(
+          `INSERT INTO world_broadcast
+             (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+           VALUES (NULL, $1, $2, $3, 'SECT_WAR_MVP', $4, TRUE, $5)`,
+          [m.mvp_character_id, mvpName.slice(0, 8), winnerSectId, bcMvp.rarity, bcMvp.text]
+        )
+      }
+    }
+  } catch (broadcastErr) {
+    console.error(`[sect-war] 风云阁广播失败 match=${matchId}:`, (broadcastErr as Error).message)
+  }
 }
 
 /**

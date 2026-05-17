@@ -4,6 +4,7 @@
 import { getPool } from '~/server/database/db'
 import { sendMail, sendMailBatch } from '~/server/utils/mail'
 import { refreshGuardCount, guardShareRatio } from '~/server/utils/spiritVein'
+import { pickVeinJackpotBroadcast } from '~/server/engine/broadcastTemplates'
 
 function now2HourBoundary(): Date {
   const d = new Date()
@@ -222,6 +223,32 @@ export async function settleJackpot(): Promise<{ ok: boolean }> {
   }
   if (scored[2]) {
     await pool.query('UPDATE sects SET fund = fund + $1 WHERE id = $2', [Math.floor(pot * 0.1), scored[2].sectId])
+  }
+
+  // 风云阁广播 TOP3（失败不影响主流程）
+  try {
+    const top3 = scored.slice(0, 3)
+    if (top3.length > 0) {
+      const { rows: sectRows } = await pool.query(
+        `SELECT id, name, leader_id FROM sects WHERE id = ANY($1::int[])`,
+        [top3.map(s => s.sectId)]
+      )
+      const sectMap = new Map(sectRows.map((r: any) => [r.id, r]))
+      for (let i = 0; i < top3.length; i++) {
+        const s = sectMap.get(top3[i].sectId)
+        if (!s) continue
+        const rank = (i + 1) as 1 | 2 | 3
+        const bc = pickVeinJackpotBroadcast(rank, String(s.name), pot)
+        await pool.query(
+          `INSERT INTO world_broadcast
+             (log_id, character_id, character_name, sect_id, event_id, rarity, is_positive, rendered_text)
+           VALUES (NULL, $1, $2, $3, 'VEIN_POT_TOP', $4, TRUE, $5)`,
+          [s.leader_id, String(s.name).slice(0, 8), s.id, bc.rarity, bc.text]
+        )
+      }
+    }
+  } catch (broadcastErr) {
+    console.error('[vein-jackpot] 风云阁广播失败:', (broadcastErr as Error).message)
   }
 
   // 30% 给"偷袭 ≥ 20 次的玩家"平分
