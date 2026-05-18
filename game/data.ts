@@ -135,6 +135,17 @@ export const MAPS: MapData[] = [
     boss: { id: 'ruin_guardian', name: '遗迹守护者', power: 6600, element: 'earth', exp: 4800, spirit_stone_range: [2000, 5000], role: 'boss', drop_table: 'boss_t3' },
   },
   {
+    id: 'flame_core_cave', name: '焰心熔窟', tier: 3,
+    realm_required: '金丹中期', recommended_power: 42,
+    element: 'fire', description: '岩浆奔涌的地脉熔窟，火妖盘踞于赤红烈焰之中',
+    monsters: [
+      { id: 'flame_serpent', name: '火灵蛇', power: 1500, element: 'fire', exp: 200, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
+      { id: 'ember_demon', name: '业焰魔', power: 1950, element: 'fire', exp: 260, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
+      { id: 'pyre_tiger', name: '焚天虎', power: 2400, element: 'fire', exp: 320, spirit_stone_range: [150, 400], role: 'dps', drop_table: 'uncommon_t3' },
+    ],
+    boss: { id: 'magma_sovereign', name: '烈焰熔君', power: 5400, element: 'fire', exp: 3600, spirit_stone_range: [2000, 5000], role: 'boss', drop_table: 'boss_t3' },
+  },
+  {
     id: 'dark_sea', name: '幽冥海', tier: 4,
     realm_required: '元婴初期', recommended_power: 55,
     element: 'water', description: '深邃黑暗的海域，巨兽潜伏其底',
@@ -168,6 +179,17 @@ export const MAPS: MapData[] = [
     boss: { id: 'sand_emperor', name: '流沙帝蝎', power: 20000, element: 'earth', exp: 10000, spirit_stone_range: [8000, 20000], role: 'boss', drop_table: 'boss_t4' },
   },
   {
+    id: 'karmic_flame_land', name: '业火秘地', tier: 4,
+    realm_required: '元婴中期', recommended_power: 62,
+    element: 'fire', description: '业火长燃不熄之地，魔焰之灵在此焚烧亡魂',
+    monsters: [
+      { id: 'karmic_spirit', name: '业火灵', power: 5000, element: 'fire', exp: 550, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
+      { id: 'pyre_butterfly', name: '焚天蝶', power: 6250, element: 'fire', exp: 700, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
+      { id: 'karmic_beast_king', name: '业火兽王', power: 8000, element: 'fire', exp: 950, spirit_stone_range: [600, 1500], role: 'dps', drop_table: 'uncommon_t4' },
+    ],
+    boss: { id: 'karmic_flame_emperor', name: '业火帝魔', power: 16250, element: 'fire', exp: 8750, spirit_stone_range: [8000, 20000], role: 'boss', drop_table: 'boss_t4' },
+  },
+  {
     id: 'purgatory', name: '九幽炼狱', tier: 5,
     realm_required: '化神初期', recommended_power: 80,
     element: 'fire', description: '炼狱业火焚天，狱卒魔将常驻于此',
@@ -199,6 +221,17 @@ export const MAPS: MapData[] = [
       { id: 'war_demon', name: '战魔', power: 20000, element: null, exp: 3300, spirit_stone_range: [5000, 12000], role: 'dps', drop_table: 'rare_t5' },
     ],
     boss: { id: 'demon_commander', name: '魔帅', power: 45000, element: null, exp: 22500, spirit_stone_range: [30000, 80000], role: 'boss', drop_table: 'boss_t5' },
+  },
+  {
+    id: 'primordial_earth_ruins', name: '玄黄古墟', tier: 5,
+    realm_required: '化神初期', recommended_power: 82,
+    element: 'earth', description: '玄黄之气凝成的古老遗墟，厚土深处沉睡着上古地灵',
+    monsters: [
+      { id: 'primordial_turtle', name: '玄黄龟', power: 9000, element: 'earth', exp: 1500, spirit_stone_range: [1000, 3000], role: 'balanced', drop_table: 'common_t5' },
+      { id: 'sallow_scorpion', name: '黄煞蝎', power: 11000, element: 'earth', exp: 1800, spirit_stone_range: [2000, 6000], role: 'dps', drop_table: 'uncommon_t5' },
+      { id: 'gaia_giant', name: '厚土巨灵', power: 15000, element: 'earth', exp: 2700, spirit_stone_range: [5000, 12000], role: 'dps', drop_table: 'rare_t5' },
+    ],
+    boss: { id: 'primordial_earth_emperor', name: '玄黄古帝', power: 35000, element: 'earth', exp: 15000, spirit_stone_range: [30000, 80000], role: 'boss', drop_table: 'boss_t5' },
   },
   {
     id: 'tribulation_wasteland', name: '天劫荒原', tier: 6,

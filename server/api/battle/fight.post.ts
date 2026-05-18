@@ -103,6 +103,11 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
     { name: '符傀儡', power: 2400, element: 'earth', exp: 182, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
     { name: '远古怨灵', power: 3000, element: null, exp: 228, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
   ], boss: { name: '遗迹守护者', power: 6600, element: 'earth', exp: 2266, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
+  flame_core_cave: { tier: 3, monsters: [
+    { name: '火灵蛇', power: 1500, element: 'fire', exp: 114, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
+    { name: '业焰魔', power: 1950, element: 'fire', exp: 148, stone_min: 56, stone_max: 140, role: 'balanced', drop_table: 'common_t3' },
+    { name: '焚天虎', power: 2400, element: 'fire', exp: 182, stone_min: 105, stone_max: 280, role: 'dps', drop_table: 'uncommon_t3' },
+  ], boss: { name: '烈焰熔君', power: 5400, element: 'fire', exp: 1700, stone_min: 1400, stone_max: 3500, role: 'boss', drop_table: 'boss_t3' } },
   dark_sea: { tier: 4, monsters: [
     { name: '海蛟', power: 4500, element: 'water', exp: 265, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
     { name: '幽灵鱼', power: 5500, element: 'water', exp: 332, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
@@ -118,6 +123,11 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
     { name: '沙虫', power: 7500, element: 'earth', exp: 424, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
     { name: '蜃狐', power: 9500, element: 'fire', exp: 557, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
   ], boss: { name: '流沙帝蝎', power: 20000, element: 'earth', exp: 5424, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
+  karmic_flame_land: { tier: 4, monsters: [
+    { name: '业火灵', power: 5000, element: 'fire', exp: 292, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '焚天蝶', power: 6250, element: 'fire', exp: 371, stone_min: 120, stone_max: 320, role: 'balanced', drop_table: 'common_t4' },
+    { name: '业火兽王', power: 8000, element: 'fire', exp: 504, stone_min: 240, stone_max: 600, role: 'dps', drop_table: 'uncommon_t4' },
+  ], boss: { name: '业火帝魔', power: 16250, element: 'fire', exp: 4746, stone_min: 3200, stone_max: 8000, role: 'boss', drop_table: 'boss_t4' } },
   purgatory: { tier: 5, monsters: [
     { name: '狱卒', power: 9000, element: 'fire', exp: 665, stone_min: 250, stone_max: 750, role: 'balanced', drop_table: 'common_t5' },
     { name: '魔兵', power: 11000, element: 'metal', exp: 798, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
@@ -133,6 +143,11 @@ export const ALL_MAPS: Record<string, { tier: number; monsters: MapMonster[]; bo
     { name: '暗骑士', power: 16000, element: 'metal', exp: 1197, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
     { name: '战魔', power: 20000, element: null, exp: 1463, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
   ], boss: { name: '魔帅', power: 45000, element: null, exp: 15425, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
+  primordial_earth_ruins: { tier: 5, monsters: [
+    { name: '玄黄龟', power: 9000, element: 'earth', exp: 665, stone_min: 250, stone_max: 750, role: 'balanced', drop_table: 'common_t5' },
+    { name: '黄煞蝎', power: 11000, element: 'earth', exp: 798, stone_min: 500, stone_max: 1500, role: 'dps', drop_table: 'uncommon_t5' },
+    { name: '厚土巨灵', power: 15000, element: 'earth', exp: 1197, stone_min: 1250, stone_max: 3000, role: 'dps', drop_table: 'rare_t5' },
+  ], boss: { name: '玄黄古帝', power: 35000, element: 'earth', exp: 10283, stone_min: 7500, stone_max: 20000, role: 'boss', drop_table: 'boss_t5' } },
   tribulation_wasteland: { tier: 6, monsters: [
     { name: '雷兽', power: 27000, element: 'metal', exp: 1931, stone_min: 900, stone_max: 2700, role: 'balanced', drop_table: 'common_t6' },
     { name: '虚空生物', power: 33000, element: null, exp: 2510, stone_min: 1440, stone_max: 4500, role: 'speed', drop_table: 'uncommon_t6' },
