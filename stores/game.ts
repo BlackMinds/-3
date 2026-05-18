@@ -90,7 +90,7 @@ export const useGameStore = defineStore('game', () => {
     equipQuality: 0,
   })
 
-  const activeTab = ref<'battle' | 'character' | 'skills' | 'equip' | 'cultivate' | 'cave' | 'sect'>('battle')
+  const activeTab = ref<'battle' | 'character' | 'skills' | 'equip' | 'cultivate' | 'cave' | 'sect' | 'pokedex'>('battle')
 
   // ===== 内部 API 调用 =====
   function getAuthHeaders() {
