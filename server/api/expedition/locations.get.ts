@@ -11,8 +11,8 @@ export default defineEventHandler(async (event) => {
     const char = await getCharacterByUserId(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
 
-    if (char.realm_tier < 3) {
-      return { code: 400, message: '境界不足，金丹期方可游历红尘' }
+    if (char.realm_tier < 2) {
+      return { code: 400, message: '境界不足，筑基期方可游历红尘' }
     }
 
     const eligible = listAvailableLocations(char.realm_tier)

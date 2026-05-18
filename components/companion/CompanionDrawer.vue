@@ -11,7 +11,7 @@
       </div>
 
       <div v-if="jindanLocked" class="locked-banner">
-        🔒 金丹期（境界 3 阶）解锁游历红尘 · 邂逅道侣
+        🔒 筑基期（境界 2 阶）解锁游历红尘 · 邂逅道侣
       </div>
 
       <div class="companion-tabs">
@@ -41,7 +41,7 @@
         <div class="roster-section">
           <div class="section-title">📜 红颜花名册</div>
           <div v-if="unmarried.length === 0" class="empty-hint">
-            <template v-if="jindanLocked">🔒 金丹期方可邂逅红颜，先冲境界。</template>
+            <template v-if="jindanLocked">🔒 筑基期方可邂逅红颜，先冲境界。</template>
             <template v-else>暂无邂逅对象。前往「游历红尘」碰碰机缘吧。</template>
           </div>
           <div v-else class="roster-list">
@@ -59,7 +59,7 @@
       <!-- ===== 游历 Tab ===== -->
       <div v-if="tab === 'expedition'" class="tab-content">
         <div v-if="jindanLocked" class="empty-hint locked-empty">
-          🔒 金丹期（境界 3 阶）后开启游历红尘<br/>
+          🔒 筑基期（境界 2 阶）后开启游历红尘<br/>
           <span class="locked-sub">游历是邂逅道侣的唯一入口，先专心冲境界吧。</span>
         </div>
         <div v-else-if="!status" class="empty-hint">加载中...</div>
@@ -204,7 +204,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 const store = useCompanionStore()
 const gameStore = useGameStore()
 const realmTier = computed(() => gameStore.character?.realm_tier ?? 1)
-const jindanLocked = computed(() => realmTier.value < 3)
+const jindanLocked = computed(() => realmTier.value < 2)
 const tab = ref<'roster' | 'expedition' | 'children' | 'shop'>('roster')
 
 // ===== 红尘玉商店 =====

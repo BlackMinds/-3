@@ -78,7 +78,7 @@ export const ROOT_NAMES: Record<SpiritualRoot, string> = {
 export interface ExpeditionLocation {
   id: string
   name: string
-  realmRequired: number      // 解锁境界 tier (3=金丹 / 4=元婴 / 5=化神 / 6=渡劫 / 7=大乘)
+  realmRequired: number      // 解锁境界 tier (2=筑基 / 3=金丹 / 4=元婴 / 5=化神 / 6=渡劫 / 7=大乘)
   rootBias: SpiritualRoot[]  // 灵根偏向（70% 概率出对应灵根，30% 随机）
   description: string
   redJadeRange: [number, number]  // 红尘玉拾获区间（用于 2.2.5.2 子表）
@@ -88,7 +88,7 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocation[] = [
   {
     id: 'falling_dawn_town',
     name: '落霞古镇',
-    realmRequired: 3,
+    realmRequired: 2,
     rootBias: ['metal', 'earth'],
     description: '烟火人间，市井小巷藏着不少散修隐居。偶遇凡间女修，机缘暗藏。',
     redJadeRange: [20, 40],

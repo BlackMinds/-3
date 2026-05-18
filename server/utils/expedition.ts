@@ -226,11 +226,12 @@ export interface ExpeditionContext {
   location: ExpeditionLocation
   isFestival: boolean
   rosterFull: boolean   // 名册是否已满 5 位未结侣
+  forceType?: ExpeditionOutcomeType  // 强制指定产出类型（首次游历必碰道侣等场景）
 }
 
 // 滚一次完整产出
 export function rollExpedition(ctx: ExpeditionContext): ExpeditionOutcome {
-  const type = rollOutcomeType(!ctx.rosterFull)
+  const type = ctx.forceType ?? rollOutcomeType(!ctx.rosterFull)
 
   // 附带灵石（每类产出有不同区间）
   let stoneBonus = 0
@@ -382,9 +383,10 @@ export function calcRemaining(status: ExpeditionStatus, isFestival: boolean): nu
 }
 
 // 计算游历灵石消耗（按境界梯度，参考文档 2.2.4：金丹期 = 1万）
-// 梯度递增：金丹 1万 / 元婴 3万 / 化神 10万 / 渡劫 30万 / 大乘 100万 / 飞升 300万
+// 梯度递增：筑基 3千 / 金丹 1万 / 元婴 3万 / 化神 10万 / 渡劫 30万 / 大乘 100万 / 飞升 300万
 export function calcExpeditionCost(realmTier: number): number {
   const TABLE: Record<number, number> = {
+    2: 3000,     // 筑基
     3: 10000,    // 金丹
     4: 30000,    // 元婴
     5: 100000,   // 化神
@@ -392,7 +394,7 @@ export function calcExpeditionCost(realmTier: number): number {
     7: 1000000,  // 大乘
     8: 3000000,  // 飞升
   }
-  return TABLE[realmTier] || 10000
+  return TABLE[realmTier] || 3000
 }
 
 // 列出可用地点

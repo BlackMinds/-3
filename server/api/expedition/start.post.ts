@@ -35,13 +35,20 @@ export default defineEventHandler(async (event) => {
 
     const char = await getCharacterByUserId(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
-    if (char.realm_tier < 3) return { code: 400, message: '境界不足，金丹期方可游历红尘' }
+    if (char.realm_tier < 2) return { code: 400, message: '境界不足，筑基期方可游历红尘' }
 
     const location = EXPEDITION_LOCATIONS.find(l => l.id === locationId)
     if (!location) return { code: 400, message: '游历地点无效' }
     if (location.realmRequired > char.realm_tier) {
       return { code: 400, message: `该地点需 ${location.realmRequired} 阶境界` }
     }
+
+    // 读取「是否首次游历」标志
+    const firstFlagRes = await pool.query(
+      'SELECT expedition_first_done FROM characters WHERE id = $1',
+      [char.id]
+    )
+    const isFirstExpedition = !firstFlagRes.rows[0]?.expedition_first_done
 
     // 跨日重置
     await ensureExpeditionDailyReset(pool, char.id)
@@ -61,13 +68,14 @@ export default defineEventHandler(async (event) => {
     // 名册满判定
     const rosterFull = await isRosterFull(pool, char.id)
 
-    // 滚产出
+    // 滚产出：首次游历且名册未满 → 强制邂逅产出；其余情况按权重随机
     const outcome = rollExpedition({
       characterId: char.id,
       realmTier: status.realmTier,
       location,
       isFestival,
       rosterFull,
+      forceType: (isFirstExpedition && !rosterFull) ? 'encounter' : undefined,
     })
 
     // 事务结算
@@ -75,13 +83,14 @@ export default defineEventHandler(async (event) => {
     try {
       await client.query('BEGIN')
 
-      // 1. 扣灵石 + 增次数
+      // 1. 扣灵石 + 增次数 + 标记首次游历完成
       const finalStoneDelta = -cost + (outcome.spiritStoneBonus || 0)
         + (outcome.rewardOrPenalty?.spiritStone || 0)
       await client.query(
         `UPDATE characters
             SET spirit_stone = GREATEST(0, spirit_stone + $1),
-                expedition_count_today = expedition_count_today + 1
+                expedition_count_today = expedition_count_today + 1,
+                expedition_first_done = TRUE
           WHERE id = $2`,
         [finalStoneDelta, char.id]
       )

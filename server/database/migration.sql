@@ -1973,3 +1973,11 @@ CREATE TABLE IF NOT EXISTS character_pokedex_bonus_cache (
   crit_dmg NUMERIC(10, 6) NOT NULL DEFAULT 0,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ========================================
+-- 2026-05-18: 游历解锁门槛下调至筑基期 + 首次游历必碰道侣
+-- 新角色第一次主动游历强制邂逅产出（不消耗自然 roll 概率），用此字段标记是否已用过
+-- 存量数据回填：已经游历过的角色（expedition_date 非空）视为「首次已用」，避免误享首次必碰
+-- ========================================
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS expedition_first_done BOOLEAN NOT NULL DEFAULT FALSE;
+UPDATE characters SET expedition_first_done = TRUE WHERE expedition_date IS NOT NULL AND expedition_first_done = FALSE;
