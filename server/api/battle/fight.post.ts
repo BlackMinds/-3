@@ -8,6 +8,7 @@ import { generateEquipName } from '~/server/engine/equipNameData'
 import { rollEquipSet } from '~/server/engine/equipSetData'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
+import { recordMonsterKills } from '~/server/utils/pokedex'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { getSkillDropPool } from '~/server/engine/skillDropPools'
@@ -1368,6 +1369,17 @@ export default defineEventHandler(async (event) => {
         if (bs && bs.playerCritCount >= 5) checkAchievements(char.id, 'crit_storm', 1).catch(() => {})
         if (bs && bs.playerHitsTaken >= 20) checkAchievements(char.id, 'tank_survive', 1).catch(() => {})
         if (bs?.bossKilledByTurn3) checkAchievements(char.id, 'fast_boss_kill', 1).catch(() => {})
+
+        // 妖兽图鉴：把本场命中名录的击杀写入 character_pokedex（fire-and-forget）
+        // duoBattleEngine 的 result.monstersKilled 与单人战斗同构，本 hook 自动覆盖 duo
+        const pokedexKills = result.monstersKilled.map(m => ({
+          mapKey: map_id,
+          name: m.template.name,
+          count: 1,
+        }))
+        recordMonsterKills(char.id, pokedexKills).catch(err =>
+          console.error('[pokedex] recordMonsterKills fail', { charId: char.id, err })
+        )
       }
 
       // 拉一次本场结算后的角色，作为下一场 buildPlayerStats 输入 + 末态返回

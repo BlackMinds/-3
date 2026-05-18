@@ -1959,3 +1959,17 @@ CREATE TABLE IF NOT EXISTS character_pokedex (
   UNIQUE (character_id, entry_key)
 );
 CREATE INDEX IF NOT EXISTS idx_pokedex_char ON character_pokedex(character_id);
+
+-- ========================================
+-- 妖兽图鉴加成缓存（Phase 4 接入战斗用）
+-- Phase 2 仅创建空表；Phase 4 的 buildCharacterSnapshot 会读这里
+-- NUMERIC(10, 6)：最大值 0.04 (满档 4%) + 6 位小数精度，远超需求；避免 DOUBLE PRECISION 浮点不一致
+-- ========================================
+CREATE TABLE IF NOT EXISTS character_pokedex_bonus_cache (
+  character_id INT PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
+  hp_pct NUMERIC(10, 6) NOT NULL DEFAULT 0,
+  atk_pct NUMERIC(10, 6) NOT NULL DEFAULT 0,
+  def_pct NUMERIC(10, 6) NOT NULL DEFAULT 0,
+  crit_dmg NUMERIC(10, 6) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
