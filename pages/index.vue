@@ -1996,6 +1996,11 @@
           </div>
         </div>
       </div>
+
+      <!-- 妖兽图鉴 Tab Panel -->
+      <div v-if="gameStore.activeTab === 'pokedex'" class="tab-panel pokedex-panel">
+        <PokedexPanel />
+      </div>
     </main>
 
     <!-- ==================== 装备悬浮提示 ==================== -->
@@ -3697,7 +3702,7 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'guofeng-row': item.name === '郭峰', 'special-card-row': !!SPECIAL_BADGE_MAP[item.name], 'heaven-row': rankingTab === 'heaven' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'guofeng-row': item.name === '郭峰', 'special-card-row': !!SPECIAL_BADGE_MAP[item.name], 'heaven-row': rankingTab === 'heaven' }]"
                   @mouseenter="rankingTab === 'heaven' && onHeavenRowEnter($event, item.characterId)"
                   @mousemove="rankingTab === 'heaven' && onHeavenRowMove($event)"
                   @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
@@ -3712,7 +3717,7 @@
                   <div class="rank-num">
                     <span v-if="item.rank === 1" class="rank-crown">👑</span>
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-bolt">⚡</span>
-                    <span v-if="item.name === '魚魚'" class="yuyu-bolt">🔬</span>
+                    <span v-if="item.name === '魚魚魚'" class="yuyu-bolt">🔬</span>
                     <span v-if="item.name === '僵尸仙人'" class="jiangshi-bolt">🧟</span>
                     <template v-if="SPECIAL_BADGE_MAP[item.name]">
                       <span class="special-card-moon">🌙</span>
@@ -3725,7 +3730,7 @@
                   <div class="rank-name">
                     {{ item.name }}
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-badge">影帝</span>
-                    <span v-if="item.name === '魚魚'" class="yuyu-badge">科研家</span>
+                    <span v-if="item.name === '魚魚魚'" class="yuyu-badge">科研家</span>
                     <span v-if="item.name === '僵尸仙人'" class="jiangshi-badge">姜尸头子</span>
                     <span v-if="item.name === '郭峰'" class="guofeng-music">🎵</span>
                     <span v-if="item.name === '郭峰'" class="guofeng-badge">小可爱</span>
@@ -4076,11 +4081,6 @@
             <div class="log-line" style="margin-top: 6px;">预览：你对青风狼造成 1234 伤害</div>
           </div>
         </div>
-      </div>
-
-      <!-- 妖兽图鉴 Tab Panel -->
-      <div v-if="gameStore.activeTab === 'pokedex'" class="tab-panel pokedex-panel">
-        <PokedexPanel />
       </div>
     </div>
 
