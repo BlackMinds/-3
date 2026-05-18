@@ -17,6 +17,7 @@ import { buildEquippedSkillInfo, type BattlerStats, type EquippedSkillInfo, type
 import { aggregateEquipmentSetInfo } from '~/server/engine/equipSetData'
 import { WEAPON_BONUS, COMPANION_SEAL_PCT } from '~/shared/balance'
 import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
+import { getPokedexBonus } from '~/server/utils/pokedex'
 
 export interface SnapshotOptions {
   forbidPills?: boolean       // 禁用战斗中丹药 (宗门战单挑用)
@@ -487,6 +488,13 @@ export async function buildCharacterSnapshot(
     nonPassiveHpPct  += companionSealPct
     nonPassiveSpdPct += companionSealPct
   }
+
+  // 妖兽图鉴加成（Phase 4 · 万界妖谱）— 4 项全局被动 hp%/atk%/def%/critDmg
+  const pokedex = await getPokedexBonus(characterId)
+  if (pokedex.atkPct > 0) nonPassiveAtkPct += pokedex.atkPct
+  if (pokedex.defPct > 0) nonPassiveDefPct += pokedex.defPct
+  if (pokedex.hpPct  > 0) nonPassiveHpPct  += pokedex.hpPct
+  if (pokedex.critDmg > 0) critDmg += pokedex.critDmg
 
   // 加法池一次乘（不含功法被动 — buildPvpFighter 把功法 % 加进 _pctSum 后再一次乘）
   const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd

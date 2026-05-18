@@ -1,9 +1,11 @@
 /**
  * 妖兽图鉴运行时 helper —— 击杀事件 → character_pokedex 累加 + 星级重算
  * Phase 2 · 后端核心（仅写入，无 UI / 加成 / 邮件）
+ * Phase 4 · 加成生效：星级跃迁 → 重算 character_pokedex_bonus_cache；战斗结算读 cache
  */
+import type { PoolClient } from 'pg'
 import { getPool } from '~/server/database/db'
-import { getEntryKey, isInRoster, getStarLevel } from '~/server/engine/pokedexData'
+import { getEntryKey, isInRoster, getStarLevel, getBonusForStars } from '~/server/engine/pokedexData'
 
 // ========== 类型定义 ==========
 
@@ -94,6 +96,11 @@ export async function recordMonsterKills(
       }
     }
 
+    // 星级跃迁则同事务重算 bonus cache（Phase 4 接入）
+    if (deltaStars.length > 0) {
+      await recomputePokedexBonusCache(characterId, client)
+    }
+
     await client.query('COMMIT')
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {})
@@ -106,4 +113,84 @@ export async function recordMonsterKills(
   const milestones: string[] = []
 
   return { deltaStars, milestones, totalRecorded: aggregated.size }
+}
+
+// ========== Phase 4 · 加成 cache ==========
+
+export interface PokedexBonusValues {
+  hpPct: number
+  atkPct: number
+  defPct: number
+  critDmg: number
+}
+
+/**
+ * 重算指定角色的图鉴加成总和并 UPSERT 到 character_pokedex_bonus_cache。
+ * - 在 recordMonsterKills 内星级跃迁时调用（同事务，传入 client）
+ * - 独立模式（无 client）用于 lazy backfill / 后台任务
+ * 返回最新加成（数值会被 pg 自动 round 到 NUMERIC(10,6) 精度）
+ */
+export async function recomputePokedexBonusCache(
+  characterId: number,
+  client?: PoolClient
+): Promise<PokedexBonusValues> {
+  const useClient = client ?? (await getPool().connect())
+  const ownClient = !client
+  try {
+    const { rows } = await useClient.query<{ stars: number }>(
+      'SELECT stars FROM character_pokedex WHERE character_id = $1 AND stars > 0',
+      [characterId]
+    )
+    let hpPct = 0
+    let atkPct = 0
+    let defPct = 0
+    let critDmg = 0
+    for (const r of rows) {
+      const stars = Number(r.stars) as 0 | 1 | 2 | 3 | 4
+      const b = getBonusForStars(stars)
+      hpPct += b.hpPct ?? 0
+      atkPct += b.atkPct ?? 0
+      defPct += b.defPct ?? 0
+      critDmg += b.critDmg ?? 0
+    }
+    await useClient.query(
+      `INSERT INTO character_pokedex_bonus_cache (character_id, hp_pct, atk_pct, def_pct, crit_dmg, updated_at)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+       ON CONFLICT (character_id)
+       DO UPDATE SET
+         hp_pct = EXCLUDED.hp_pct,
+         atk_pct = EXCLUDED.atk_pct,
+         def_pct = EXCLUDED.def_pct,
+         crit_dmg = EXCLUDED.crit_dmg,
+         updated_at = CURRENT_TIMESTAMP`,
+      [characterId, hpPct, atkPct, defPct, critDmg]
+    )
+    return { hpPct, atkPct, defPct, critDmg }
+  } finally {
+    if (ownClient) useClient.release()
+  }
+}
+
+/**
+ * 读取图鉴加成（buildPlayerStats / buildCharacterSnapshot 调用）。
+ * cache miss 时即时重算并写入（lazy backfill），保证既有玩家无需后台任务。
+ * cache hit 时不重算，O(1)。
+ *
+ * NUMERIC 列返回字符串，必须 Number() 转换，否则后续 nonPassive 池会变成字符串拼接。
+ */
+export async function getPokedexBonus(characterId: number): Promise<PokedexBonusValues> {
+  const pool = getPool()
+  const { rows } = await pool.query<{ hp_pct: string; atk_pct: string; def_pct: string; crit_dmg: string }>(
+    'SELECT hp_pct, atk_pct, def_pct, crit_dmg FROM character_pokedex_bonus_cache WHERE character_id = $1',
+    [characterId]
+  )
+  if (rows.length > 0) {
+    return {
+      hpPct: Number(rows[0].hp_pct),
+      atkPct: Number(rows[0].atk_pct),
+      defPct: Number(rows[0].def_pct),
+      critDmg: Number(rows[0].crit_dmg),
+    }
+  }
+  return await recomputePokedexBonusCache(characterId)
 }

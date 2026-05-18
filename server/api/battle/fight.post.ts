@@ -8,7 +8,7 @@ import { generateEquipName } from '~/server/engine/equipNameData'
 import { rollEquipSet } from '~/server/engine/equipSetData'
 import { updateSectDailyTask, updateSectWeeklyTaskByCharId } from '~/server/utils/sect'
 import { checkAchievements } from '~/server/engine/achievementData'
-import { recordMonsterKills } from '~/server/utils/pokedex'
+import { recordMonsterKills, getPokedexBonus } from '~/server/utils/pokedex'
 import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { SKILL_MAP } from '~/server/engine/skillData'
 import { getSkillDropPool } from '~/server/engine/skillDropPools'
@@ -850,6 +850,16 @@ export function buildPlayerStats(char: any, equipRows: any[], buffRows: any[], c
     nonPassiveSpdPct += sealPct
   }
 
+  // 妖兽图鉴加成（Phase 4 · 万界妖谱）— 4 项全局被动
+  // buildPlayerStats 是同步函数，必须由调用方 pre-fetch 挂到 char._pokedexBonus（与 _companion_seal_pct 同模式）
+  const pokedex = (char as any)._pokedexBonus as { hpPct: number; atkPct: number; defPct: number; critDmg: number } | undefined
+  if (pokedex) {
+    if (pokedex.atkPct > 0) nonPassiveAtkPct += pokedex.atkPct
+    if (pokedex.defPct > 0) nonPassiveDefPct += pokedex.defPct
+    if (pokedex.hpPct  > 0) nonPassiveHpPct  += pokedex.hpPct
+    if (pokedex.critDmg > 0) critDmg += pokedex.critDmg
+  }
+
   // 加法池一次乘（不含功法被动 — 由 battleEngine.applyPassive 用 _flat/_pctSum 字段并池后再乘）
   // 记录 flat 段总和供 battleEngine 重算使用
   const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd
@@ -1045,6 +1055,10 @@ export default defineEventHandler(async (event) => {
       const { rows: sectSkillRows } = await pool.query('SELECT skill_key, level FROM sect_skills WHERE character_id = $1 AND frozen = FALSE', [char.id])
       char._sectSkills = sectSkillRows
     }
+
+    // 妖兽图鉴加成（Phase 4）— buildPlayerStats 是同步，需外部预读后挂到 char
+    // 多场 batch 循环内不重读：升星会在战斗后 recordMonsterKills 时重算 cache，下一场 API 调用拿到新值
+    ;(char as any)._pokedexBonus = await getPokedexBonus(char.id)
 
     const equippedSkills = buildEquippedSkillInfo(skillRows)
 

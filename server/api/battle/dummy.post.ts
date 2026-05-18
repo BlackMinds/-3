@@ -13,6 +13,7 @@ import {
 } from '~/server/engine/battleEngine'
 import { buildPlayerStats } from '~/server/api/battle/fight.post'
 import { getCompanionSealPct } from '~/server/utils/companion'
+import { getPokedexBonus } from '~/server/utils/pokedex'
 
 interface DummyStatsInput {
   maxHp?: number
@@ -80,6 +81,9 @@ export default defineEventHandler(async (event) => {
     // 道侣仙缘印记 buff（与 fight.post.ts 同口径）
     const sealPct = await getCompanionSealPct(pool, char.id)
     if (sealPct > 0) (char as any)._companion_seal_pct = sealPct
+
+    // 妖兽图鉴加成（Phase 4）— buildPlayerStats 是同步，需外部预读后挂到 char
+    ;(char as any)._pokedexBonus = await getPokedexBonus(char.id)
 
     const equippedSkills = buildEquippedSkillInfo(skillRows)
     const { stats: playerStats } = buildPlayerStats(char, equipRows, buffRows, caveRows, equippedSkills)

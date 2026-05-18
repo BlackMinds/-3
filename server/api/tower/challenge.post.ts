@@ -11,6 +11,7 @@
 import { getPool } from '~/server/database/db'
 import { buildEquippedSkillInfo } from '~/server/engine/battleEngine'
 import { buildPlayerStats } from '~/server/api/battle/fight.post'
+import { getPokedexBonus } from '~/server/utils/pokedex'
 import { buildFloorMonsters, runTowerBattle } from '~/server/engine/towerEngine'
 import {
   IMPLEMENTED_FLOORS, DAILY_FAIL_LIMIT,
@@ -146,6 +147,9 @@ export default defineEventHandler(async (event) => {
     // 助战子女（design 5.6.2/5.6.3 + V2 血脉功法）：与普通战斗同源
     const assistPrep = await prepareChildAssist(pool, char)
     if (assistPrep) attachChildAssistToChar(char, assistPrep)
+
+    // 妖兽图鉴加成（Phase 4）— buildPlayerStats 是同步，需外部预读后挂到 char
+    ;(char as any)._pokedexBonus = await getPokedexBonus(char.id)
 
     const equippedSkills = buildEquippedSkillInfo(skillRows)
     const { stats: playerStats } = buildPlayerStats(char, equipRows, buffRows, caveRows, equippedSkills)
