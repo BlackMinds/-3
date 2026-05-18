@@ -2937,7 +2937,17 @@
 
             <p class="help-text" style="margin-top: 8px;"><b>① 基础伤害（calculateDamage）</b></p>
             <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">伤害 = 攻击 × 技能倍率 × 五行系数 × (1 - 元素抗性) × atk/(atk + 实际防御 × 0.8) × (1 + 元素强化%) × 觉醒乘区</p>
-            <p class="help-text" style="margin-top: 2px; color: var(--fade-ink); font-size: 12px;">闪避命中后伤害归零；会心命中再 × 会心伤害；其后叠加 DOT 加成等"最终伤害"乘区。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink); font-size: 12px;">7 个乘区按顺序连乘，每一项都独立放大/缩小，缺一不可。各项含义如下：</p>
+            <table class="help-table" style="margin-top: 4px;"><tbody>
+              <tr><td style="width: 110px;"><b>攻击</b></td><td>面板攻击力（已含装备 / 功法 / buff 加成）。</td></tr>
+              <tr><td><b>技能倍率</b></td><td>当前出手技能的 multiplier（普攻 = 1.0，神通 1.3~3.0+），治疗 / 纯增益技能 = 0。</td></tr>
+              <tr><td><b>五行系数</b></td><td>克制 <b>×1.15</b> / 被克 <b>×0.88</b> / 中性 <b>×1.0</b>（取技能元素，无则取攻击者元素，对比受击者元素）。</td></tr>
+              <tr><td><b>1 - 元素抗性</b></td><td>受击者对应元素抗性，单元素 cap <b>70%</b>（即最低 0.30）。无元素技能此项 = 1。</td></tr>
+              <tr><td><b>攻防比</b></td><td>atk / (atk + 实际防御 × <b>0.8</b>)。实际防御 = 防御 × (1 - 总破甲)，再受 def_down debuff 缩减。详见 ②。</td></tr>
+              <tr><td><b>1 + 元素强化%</b></td><td>攻击者「五行伤害%」副属性 / 元素戒（按技能元素取值）。无元素技能此项 = 1。</td></tr>
+              <tr><td><b>觉醒乘区</b></td><td>多个条件型加成相乘：斩杀（敌 HP&lt;30%）/ 逆鳞（己 HP&lt;50%）/ 对 Boss / 对精英 / 主修裂魂。无条件触发 = 1。</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 6px; color: var(--fade-ink); font-size: 12px;"><b>结算顺序：</b>先判定闪避 → 命中归零；命中后再判会心 → × 会心伤害；最后取 floor，至少为 1。DOT 加成、吸血、反伤走"伤害结算后"的独立通道，不进基础伤害乘区。</p>
 
             <p class="help-text" style="margin-top: 10px;"><b>② 防御 / 破甲</b></p>
             <p class="help-text" style="margin-top: 2px; font-family: ui-monospace, Consolas, monospace; color: var(--gold-ink); font-size: 12px; line-height: 1.6;">总破甲 = 神通破甲% + 副属性破甲/100 + 附灵破玄% + 主修破玄%<br/>实际防御 = 防御 × max(0, 1 - 总破甲)<br/>减伤系数 = atk / (atk + 实际防御 × 0.8)</p>
