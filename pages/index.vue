@@ -2783,6 +2783,7 @@
           <button :class="['help-tab', { active: helpTab === 'tower' }]" @click="helpTab = 'tower'">通天塔</button>
           <button :class="['help-tab', { active: helpTab === 'romance' }]" @click="helpTab = 'romance'">红尘</button>
           <button :class="['help-tab', { active: helpTab === 'market' }]" @click="helpTab = 'market'">坊市</button>
+          <button :class="['help-tab', { active: helpTab === 'pokedex' }]" @click="helpTab = 'pokedex'">图鉴</button>
           <button :class="['help-tab', { active: helpTab === 'misc' }]" @click="helpTab = 'misc'">其他</button>
         </div>
         <div class="modal-body">
@@ -2821,7 +2822,7 @@
               <tr><td>风云阁</td><td>全服传奇掉落/事件播报,红点提示新传奇</td></tr>
               <tr><td>成就</td><td>多维度成就追踪,领取奖励,佩戴称号</td></tr>
               <tr><td>兑换码</td><td>输入官方/活动兑换码领取奖励</td></tr>
-              <tr><td>帮助</td><td>本帮助文档(基础、攻略、战斗、养成、宗门/PvP、秘境、通天塔、红尘、坊市、其他)</td></tr>
+              <tr><td>帮助</td><td>本帮助文档(基础、攻略、战斗、养成、宗门/PvP、秘境、通天塔、红尘、坊市、图鉴、其他)</td></tr>
               <tr><td>设置</td><td>背景主题/自动出售规则(按品质和阶位)</td></tr>
             </tbody></table>
             <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">秘境组队副本入口在「宗门」标签页内,不在顶部按钮。</p>
@@ -3565,6 +3566,54 @@
           </div>
           </div>
 
+          <div v-show="helpTab === 'pokedex'">
+          <div class="help-section">
+            <div class="help-title">万界妖谱 · 概览</div>
+            <p class="help-text">底部主导航「<b>谱 · 图鉴</b>」入口，收录 <b>T5+ 精选 80 条</b>妖兽（30 BOSS + 10 精英 + 40 普通），击杀名录内妖兽自动累加，<b>星级永久属性加成</b>，无需主动操作。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">T1-T4 普通怪不计入名录，重点在五大主线后段（炼狱魔君、寒渊冰帝、魔帅起步）。</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">星级阈值</div>
+            <p class="help-text">同一妖兽累计击杀达到对应数量解锁星级：</p>
+            <table class="help-table"><tbody>
+              <tr><td>⭐ 1 星</td><td>首次击杀（1 只）</td></tr>
+              <tr><td>⭐⭐ 2 星</td><td>累计 50 只</td></tr>
+              <tr><td>⭐⭐⭐ 3 星</td><td>累计 200 只</td></tr>
+              <tr><td>⭐⭐⭐⭐ 4 星</td><td>累计 1000 只（满星）</td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">高 tier BOSS 出现率低，4 星属于长线目标；低 tier 普通稀有怪 1000 击杀通过挂机即可达成。</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">星级加成</div>
+            <p class="help-text">每条妖兽每个星级提供<b>叠加且永久</b>的全战斗加成，按星级类型分配：</p>
+            <table class="help-table"><tbody>
+              <tr><td>⭐ 1 星</td><td>血量 <b>+0.05%</b></td></tr>
+              <tr><td>⭐⭐ 2 星</td><td>攻击 <b>+0.05%</b></td></tr>
+              <tr><td>⭐⭐⭐ 3 星</td><td>防御 <b>+0.05%</b></td></tr>
+              <tr><td>⭐⭐⭐⭐ 4 星</td><td>暴击伤害 <b>+0.03%</b></td></tr>
+            </tbody></table>
+            <p class="help-text" style="margin-top: 4px;">80 条全满 4 星理论上限：血量 +4% / 攻击 +4% / 防御 +4% / 暴击伤害 +2.4%。属于「滚雪球式」养成奖励，所有战斗（历练 / 秘境 / 通天塔 / 斗法 / 真双人）均生效。</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">面板入口 / 阅读方式</div>
+            <table class="help-table"><tbody>
+              <tr><td>头部摘要</td><td>解锁数 / 80，总星数 / 320（最大可获得星数）</td></tr>
+              <tr><td>进度条</td><td>已解锁条目占比（首次击杀即算解锁）</td></tr>
+              <tr><td>分类切换</td><td>全部 / BOSS / 精英 / 普通，标签角标显示该分类条目数</td></tr>
+              <tr><td>详情弹窗</td><td>点格子查看妖兽属性、产地地图、当前击杀数、下一星阈值</td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="help-section">
+            <div class="help-title">触发说明</div>
+            <p class="help-text">击杀计数在<b>战斗结算时</b>累加（含历练挂机、离线挂机、通天塔、秘境的 BOSS 怪）。真双人战斗（子女出战）补刀只算一次。星级跃迁实时重算并写入加成 cache，<b>下一场战斗即刻生效</b>，无需重登。</p>
+            <p class="help-text" style="margin-top: 4px; color: var(--fade-ink);">同名异产地妖兽（如「虚空之主·虚空裂域」与「虚空之主·永恒虚空」）按地图独立计数，是两条独立图鉴条目。</p>
+          </div>
+          </div>
+
           <div v-show="helpTab === 'misc'">
           <div class="help-section">
             <div class="help-title">成就与称号</div>
@@ -4276,7 +4325,7 @@ const skillInventory = ref<any[]>([]);
 const showDropTable = ref(false);
 const showRedeemCode = ref(false);
 const showHelpDoc = ref(false);
-const helpTab = ref<'basic' | 'newbie' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'romance' | 'market' | 'misc'>('basic');
+const helpTab = ref<'basic' | 'newbie' | 'battle' | 'growth' | 'pvp' | 'realm' | 'tower' | 'romance' | 'market' | 'pokedex' | 'misc'>('basic');
 const showSettings = ref(false);
 
 async function copyQqGroup() {
