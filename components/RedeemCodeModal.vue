@@ -40,6 +40,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ITEM_INFO } from '~/game/items'
+import { getPillById } from '~/game/pillData'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'success'): void }>()
@@ -62,9 +63,11 @@ const QUALITY_NAME: Record<string, string> = {
 function describeAttachment(att: any): string {
   switch (att?.type) {
     case 'spirit_stone':
-      return `灵石 +${att.amount}`
+      return `灵石 +${Number(att.amount).toLocaleString()}`
+    case 'red_jade':
+      return `红尘玉 +${Number(att.amount).toLocaleString()}`
     case 'exp':
-      return `修为 +${att.amount}`
+      return `修为 +${Number(att.amount).toLocaleString()}`
     case 'contribution':
       return `宗门贡献 +${att.amount}`
     case 'material': {
@@ -73,7 +76,7 @@ function describeAttachment(att: any): string {
       return `${name}${q} ×${att.qty}`
     }
     case 'pill': {
-      const name = ITEM_INFO[att.pillId]?.name || att.pillId
+      const name = getPillById(att.pillId)?.name || att.pillId
       return `${name} ×${att.qty}`
     }
     case 'recipe':
