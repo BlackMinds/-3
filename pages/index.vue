@@ -3985,6 +3985,16 @@
             </div>
           </div>
 
+          <!-- 自动突破 -->
+          <div class="settings-section">
+            <div class="settings-title">自动突破</div>
+            <p class="settings-desc">勾选后：修为一旦满槽就自动尝试突破，无视成功率（金丹起的小境界、飞升以上失败可能损失修为，请自行权衡）。混元末阶已到顶时自动跳过。</p>
+            <label class="auto-sell-label">
+              <input type="checkbox" v-model="autoBreakthrough" @change="saveSettings" />
+              <span>启用自动突破</span>
+            </label>
+          </div>
+
           <!-- 自动出售 -->
           <div class="settings-section">
             <div class="settings-title">自动出售</div>
@@ -4720,6 +4730,9 @@ const fontFamilyOptions = [
 const uiFontFamily = ref<string>(DEFAULT_FONT_FAMILY);
 const battleLogFontSize = ref<number>(18);
 
+// ===== 设置: 自动突破 =====
+const autoBreakthrough = ref<boolean>(false);
+
 function applyFontFamily() {
   document.documentElement.style.setProperty('--ui-font-family', uiFontFamily.value);
   saveSettings();
@@ -4741,6 +4754,7 @@ function saveSettings() {
     autoSellWuxingBlacklist: autoSellWuxingBlacklist.value,
     uiFontFamily: uiFontFamily.value,
     battleLogFontSize: battleLogFontSize.value,
+    autoBreakthrough: autoBreakthrough.value,
   };
   localStorage.setItem('xiantu_settings', JSON.stringify(settings));
 }
@@ -4753,6 +4767,7 @@ function loadSettings() {
     autoSellThreshold.value = settings.autoSell || 'none';
     autoSellTier.value = settings.autoSellTier || 0;
     autoSellWuxingBlacklist.value = Array.isArray(settings.autoSellWuxingBlacklist) ? settings.autoSellWuxingBlacklist : [];
+    autoBreakthrough.value = !!settings.autoBreakthrough;
     if (settings.uiFontFamily) {
       uiFontFamily.value = settings.uiFontFamily;
       document.documentElement.style.setProperty('--ui-font-family', uiFontFamily.value);
@@ -4886,6 +4901,37 @@ const realmBonusStats = computed(() => {
 });
 
 const breakthroughPending = ref(false);
+
+// 自动突破：修为一旦满槽（expPercent >= 100）且开启开关时，自动调用突破 API
+// 混元末阶（tier=9, stage>=5）已到顶则跳过，避免噪音 toast
+watch(
+  () => gameStore.expPercent,
+  async (pct) => {
+    if (!autoBreakthrough.value) return;
+    if (pct < 100) return;
+    if (breakthroughPending.value) return;
+    const ch: any = gameStore.character;
+    if (!ch) return;
+    const tier = Number(ch.realm_tier || 1);
+    const stage = Number(ch.realm_stage || 1);
+    if (tier === 9 && stage >= 5) return;
+    breakthroughPending.value = true;
+    try {
+      const res = await gameStore.tryBreakthrough();
+      if (res) {
+        if (res.success) {
+          showToast(`✨ 自动突破成功：${gameStore.realmName}`, 'success');
+        } else {
+          const penaltyPct = res.penalty ? Math.round(res.penalty * 100) : 0;
+          showToast(`💥 自动突破失败 ${Math.round(res.rate * 100)}% · 损失 ${penaltyPct}% 修为`, 'error');
+        }
+      }
+    } finally {
+      breakthroughPending.value = false;
+    }
+  }
+);
+
 async function doRealmBreakthrough() {
   if (!gameStore.character || breakthroughPending.value) return;
   breakthroughPending.value = true;
