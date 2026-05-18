@@ -4532,8 +4532,16 @@ const achCategories = [
 ];
 
 const filteredAchList = computed(() => {
-  if (achCategory.value === 'all') return achList.value;
-  return achList.value.filter(a => a.category === achCategory.value);
+  const base = achCategory.value === 'all'
+    ? achList.value
+    : achList.value.filter(a => a.category === achCategory.value);
+  // 排序优先级：可领取 > 未完成 > 已领取
+  const rank = (a: any) => {
+    if (a.completed && !a.claimed) return 0;
+    if (!a.completed) return 1;
+    return 2;
+  };
+  return [...base].sort((a, b) => rank(a) - rank(b));
 });
 
 const TITLE_COLORS: Record<string, string> = {
