@@ -23,6 +23,7 @@ export default defineEventHandler(async (event) => {
             FROM companions
            GROUP BY character_id
         ) m ON m.character_id = cmp.character_id AND m.max_q = cmp.quality
+       WHERE c.name <> '吴彦祖1号'
        ORDER BY cmp.quality DESC, cmp.is_official DESC, cmp.encountered_at ASC
        LIMIT 50
     `)

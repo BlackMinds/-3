@@ -22,6 +22,7 @@ export default defineEventHandler(async (event) => {
             FROM children
            GROUP BY character_id
         ) m ON m.character_id = ch.character_id AND m.score = ch.aptitude * 1000 + ch.level
+       WHERE c.name <> '吴彦祖1号'
        ORDER BY ch.aptitude DESC, ch.level DESC
        LIMIT 50
     `)
