@@ -9269,6 +9269,13 @@ async function loadEquipList() {
   }
 }
 
+// 战斗有装备/功法掉落 → store 把 dropTick +1 → 静默同步背包，
+// 避免玩家挂机停在角色页时新装备已入库但 UI 不显示
+watch(() => gameStore.dropTick, () => {
+  loadEquipList();
+  loadSkillInventory();
+});
+
 async function saveEquippedSkills() {
   try {
     const equipped: { skill_id: string; skill_type: string; slot_index: number }[] = [];

@@ -63,6 +63,9 @@ export const useGameStore = defineStore('game', () => {
   const batchQueue = ref<any[]>([])
 
   const sessionDrops = ref<Record<string, number>>({})
+  // 战斗有装备/功法掉落时 +1；pages/index.vue watch 此值自动 loadEquipList/loadSkillInventory，
+  // 避免玩家挂机时停在角色页看不到新掉落（DB 已写入但前端 equipList 没刷新）
+  const dropTick = ref(0)
   const equippedSkills = ref<any>(null)
   const battleFrenzyStacks = ref(0)
 
@@ -558,10 +561,12 @@ export const useGameStore = defineStore('game', () => {
       sessionExp.value += result.expGained
       sessionStone.value += result.spiritStoneGained + result.autoSellGained
 
-      if (result.drops && Array.isArray(result.drops)) {
+      if (result.drops && Array.isArray(result.drops) && result.drops.length > 0) {
         result.drops.forEach((dropName: string) => {
           if (dropName) sessionDrops.value[dropName] = (sessionDrops.value[dropName] || 0) + 1
         })
+        // 通知 UI 层刷新装备/功法背包（pages/index.vue watch dropTick → loadEquipList + loadSkillInventory）
+        dropTick.value++
       }
       // 优先消费当前批次剩余战斗，本地直接切下一场，不再发请求
       if (isBattling.value && batchQueue.value.length > 0) {
@@ -657,7 +662,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     character, loaded, battleLogs, isBattling, currentMapId,
-    killCount, defeatCount, sessionExp, sessionStone, sessionDrops, battleStartTime, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab, dummyStats,
+    killCount, defeatCount, sessionExp, sessionStone, sessionDrops, dropTick, battleStartTime, equippedSkills, caveBonus, battleFrenzyStacks, deathCooldown, activeTab, dummyStats,
     displayPlayerHp, displayPlayerMaxHp, displayMonsterHp, displayMonsterMaxHp,
     currentMonsterInfo, waveMonstersInfo, waveMonsterNames, waveMonsterHps, waveMonsterMaxHps, inFight,
     currentMap, unlockedMaps, realmName, expRequired, expPercent,
