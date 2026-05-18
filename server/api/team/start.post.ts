@@ -569,15 +569,14 @@ export default defineEventHandler(async (event) => {
 
       // ========== 生成装备/灵草/附灵掉落（战斗胜利才给）==========
       // v2026-05-14: 秘境不再掉落功法残页
+      // v2026-05-18: 奖励按 4 人正常生成 + 全员参与分配，无次数队员分到的份额在入库阶段直接作废
+      //              （避免没次数的 3 人份额全部汇集到 1 个有次数的人头上）
       let drops = { equipments: [] as any[], bossEquipments: [] as any[], herbs: [] as any[], awakenStones: 0, rerollStones: 0, enhanceStones: 0 }
-      // 实际能拿奖励的人数（带人模式下，无次数队员不在分配名单，保底也按这个算）
-      // 之前用 allMembers.length 会让"3 人带 1 人"的场景按 4 件保底全砸给那 1 个有次数的人 → 装备暴增
-      const quotaCount = [...hasQuotaMap.values()].filter(v => v).length
       if (result.won) {
         drops = generateSecretRealmDrops(
           realm.dropTier, difficulty,
           result.killedMonsters.map(k => ({ element: k.element, isBoss: k.isBoss })),
-          quotaCount,
+          allMembers.length,
         )
         // v3.4: S 评级团队奖励 — 额外送 1 件红装（由 distributeEquipments 随机派发）
         if (result.rating === 'S' && result.killedMonsters.length > 0) {
@@ -588,23 +587,17 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      // 装备分配（仅分给有次数的队员；无次数的"带队"玩家不在分配名单）
+      // 装备分配：全员参与分配；无次数的队员分到的装备/灵草/附灵会在入库阶段被丢弃（份额作废）
       const contribList = result.contributions
-        .filter(c => hasQuotaMap.get(c.characterId))
         .map(c => ({ characterId: c.characterId, contribution: c.contribution }))
       const allEquips = [...drops.equipments, ...drops.bossEquipments]
       const playerEquips = distributeEquipments(allEquips, contribList)
 
       // 灵草均分（同品质同类型聚合）
-      const herbsPerPlayer = Math.floor(drops.herbs.length / contribList.length)
-      const herbRemainder = drops.herbs.length % contribList.length
       const playerHerbs = new Map<number, any[]>()
-      contribList.forEach((c, i) => {
-        const count = herbsPerPlayer + (i < herbRemainder ? 1 : 0)
-        playerHerbs.set(c.characterId, drops.herbs.slice(i * herbsPerPlayer, i * herbsPerPlayer + count))
-      })
-      // 修正切片
-      {
+      if (contribList.length > 0) {
+        const herbsPerPlayer = Math.floor(drops.herbs.length / contribList.length)
+        const herbRemainder = drops.herbs.length % contribList.length
         let offset = 0
         for (let i = 0; i < contribList.length; i++) {
           const count = herbsPerPlayer + (i < herbRemainder ? 1 : 0)
