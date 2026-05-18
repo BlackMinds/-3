@@ -46,7 +46,7 @@
         </div>
 
         <div class="detail-section hint-block">
-          <div class="hint-line">📍 出没地图：{{ item.mapKey }}</div>
+          <div class="hint-line">📍 出没地图：{{ mapLabel }}</div>
           <div v-if="!item.unlocked" class="hint-line locked">🔒 击败 1 次即可解锁</div>
         </div>
       </div>
@@ -57,9 +57,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { PokedexCardItem } from './PokedexCard.vue';
+import { MAPS } from '~/game/data';
 
 const props = defineProps<{ item: PokedexCardItem | null }>();
 defineEmits<{ close: [] }>();
+
+const mapLabel = computed(() => {
+  if (!props.item) return '';
+  return MAPS.find(m => m.id === props.item!.mapKey)?.name ?? props.item.mapKey;
+});
 
 const CATEGORY_LABELS: Record<'boss' | 'rare' | 'uncommon', string> = {
   boss: 'BOSS', rare: '精英', uncommon: '普通',
