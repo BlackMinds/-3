@@ -182,7 +182,6 @@ const subscriptionList = computed(() => {
   const s = subs.value
   return [
     { label: '洞府倍率', value: `${s.caveOutputMul}x`, expire: s.sponsorExpireAt, active: isActive(s.sponsorExpireAt, Number(s.caveOutputMul) > 1.0) },
-    { label: '一键种植', value: s.oneclickPlant ? '启用' : '关闭', expire: s.oneclickPlantExpireAt, active: isActive(s.oneclickPlantExpireAt, !!s.oneclickPlant) },
     { label: '灵田扩容', value: `+${s.bonusPlotCount} 块`, expire: s.bonusPlotExpireAt, active: isActive(s.bonusPlotExpireAt, s.bonusPlotCount > 0) },
     { label: '秘境次数', value: `+${s.srDailyBonus} / 天`, expire: s.srBonusExpireAt, active: isActive(s.srBonusExpireAt, s.srDailyBonus > 0) },
     { label: '道侣游历', value: `+${s.expeditionDailyBonus} / 天`, expire: s.expeditionBonusExpireAt, active: isActive(s.expeditionBonusExpireAt, s.expeditionDailyBonus > 0) },

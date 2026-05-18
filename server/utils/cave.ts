@@ -113,16 +113,6 @@ export function getSponsorMul(char: any): number {
 }
 
 /**
- * 一键种植月卡是否生效：读 sponsor_oneclick_plant + oneclick_plant_expire_at 双字段。
- */
-export function isOneclickPlantActive(char: any): boolean {
-  if (!char || !char.sponsor_oneclick_plant) return false
-  const expire = char.oneclick_plant_expire_at
-  if (expire && new Date(expire).getTime() < Date.now()) return false
-  return true
-}
-
-/**
  * 当前生效的地块上限 = 基础（按灵田等级）+ 月卡未过期的 bonus_plot_count。
  * 月卡过期后只减「可种植上限」，扩容地块上已有作物可继续收获（收一茬再冻结）。
  */

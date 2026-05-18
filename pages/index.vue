@@ -1386,10 +1386,9 @@
               <button class="herb-help-btn" @click="showHerbHelp = true" title="灵田说明">?</button>
               <button class="herb-action-btn jade" @click="harvestAllPlots">一键收获</button>
               <button
-                v-if="gameStore.character?.sponsor_oneclick_plant"
                 class="herb-action-btn"
                 @click="openPlantDialog(-1)"
-                title="赞助特权：一键种满所有空地块"
+                title="一键种满所有空地块"
               >一键种植</button>
               <template v-if="getBuildingLevel('herb_field') < 15">
                 <button
@@ -3565,7 +3564,7 @@
           </div>
           <div class="help-section">
             <div class="help-title">赞助系统</div>
-            <p class="help-text">赞助增加洞府 1.5 倍 / 2 倍产出 一键种植 秘境次数 灵田扩容 道侣游历次数 </p>
+            <p class="help-text">赞助增加洞府 1.5 倍 / 2 倍产出 秘境次数 灵田扩容 道侣游历次数 </p>
             <p class="help-text" style="margin-top: 4px;">联系群主</p>
           </div>
           </div>

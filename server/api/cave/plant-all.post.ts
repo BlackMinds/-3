@@ -1,7 +1,8 @@
 import { getPool } from '~/server/database/db'
-import { getChar, HERBS, getHerbFieldLevel, getEffectivePlotCount, isOneclickPlantActive } from '~/server/utils/cave'
+import { getChar, HERBS, getHerbFieldLevel, getEffectivePlotCount } from '~/server/utils/cave'
 import { checkAchievements } from '~/server/engine/achievementData'
 
+// 2026-05-18: 一键种植下放为全员基础功能（原月卡 sub_oneclick_plant 下架），不再校验订阅。
 export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
@@ -12,7 +13,6 @@ export default defineEventHandler(async (event) => {
 
     const char = await getChar(event.context.userId)
     if (!char) return { code: 400, message: '角色不存在' }
-    if (!isOneclickPlantActive(char)) return { code: 403, message: '一键种植月卡未开通或已过期' }
 
     const charId = char.id
     const herbFieldLevel = await getHerbFieldLevel(charId)
