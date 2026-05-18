@@ -4092,7 +4092,6 @@
         :class="['nav-item', { active: gameStore.activeTab === tab.id }]"
         @click="gameStore.activeTab = tab.id"
       >
-        <span class="nav-icon">{{ tab.icon }}</span>
         <span class="nav-label">{{ tab.label }}</span>
       </button>
     </nav>
