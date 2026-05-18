@@ -145,10 +145,12 @@
         </div>
         <div class="member-grid">
           <div v-for="slot in teamStore.currentRoom.max_members" :key="slot" class="member-slot">
-            <div v-if="teamStore.currentRoom.members[slot-1]" class="member-card">
+            <div v-if="teamStore.currentRoom.members[slot-1]" :class="['member-card', getMemberVariant(slot)?.cardClass]">
               <div class="member-main">
                 <span v-if="teamStore.currentRoom.members[slot-1].is_leader" class="leader-icon">👑</span>
+                <span v-if="getMemberVariant(slot)?.decoration" :class="getMemberVariant(slot)?.decorationClass">{{ getMemberVariant(slot)?.decoration }}</span>
                 <span class="member-name">{{ teamStore.currentRoom.members[slot-1].name }}</span>
+                <span v-if="getMemberVariant(slot)?.badgeText" :class="getMemberVariant(slot)?.badgeClass">{{ getMemberVariant(slot)?.badgeText }}</span>
                 <span class="member-elem" :style="{ color: elemColor(teamStore.currentRoom.members[slot-1].spiritual_root) }">
                   {{ elemName(teamStore.currentRoom.members[slot-1].spiritual_root) }}灵根
                 </span>
@@ -397,6 +399,7 @@ import { HERBS, HERB_QUALITIES } from '~/game/herbData'
 import { ALL_SKILLS } from '~/game/skillData'
 import { getRarityColor } from '~/game/equipData'
 import SecretRealmShop from '~/components/SecretRealmShop.vue'
+import { getSpecialVariant } from '~/shared/specialCard'
 
 const props = defineProps<{
   open: boolean
@@ -404,6 +407,11 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const teamStore = useTeamStore()
+
+function getMemberVariant(slot: number) {
+  const m = teamStore.currentRoom?.members?.[slot - 1]
+  return m ? getSpecialVariant(m.name) : undefined
+}
 const loading = ref(false)
 
 // 筛选
@@ -1214,4 +1222,334 @@ onUnmounted(() => {
   .result-rating { padding: 20px; }
   .realm-choice, .diff-choice { font-size: 12px; padding: 6px 12px; }
 }
+
+/* ==================== 特殊名片：卡片版（同冷月剑魂，由 SPECIAL_BADGE_MAP 触发） ==================== */
+.member-card.special-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 50%, rgba(200, 180, 255, 0.18) 0%, transparent 55%),
+    radial-gradient(circle at 12% 50%, rgba(140, 200, 255, 0.16) 0%, transparent 55%),
+    linear-gradient(90deg,
+      rgba(20, 22, 50, 0.55) 0%,
+      rgba(60, 50, 110, 0.45) 25%,
+      rgba(110, 130, 200, 0.35) 50%,
+      rgba(60, 50, 110, 0.45) 75%,
+      rgba(20, 22, 50, 0.55) 100%) !important;
+  background-size: 100% 100%, 100% 100%, 220% 100% !important;
+  animation: special-card-bg-flow 5.5s linear infinite, special-card-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes special-card-bg-flow {
+  0% { background-position: 88% 50%, 12% 50%, 0% 0; }
+  100% { background-position: 88% 50%, 12% 50%, 220% 0; }
+}
+
+@keyframes special-card-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(200, 190, 255, 0.45),
+      0 0 14px rgba(150, 140, 230, 0.4),
+      0 0 28px rgba(80, 90, 180, 0.2);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(230, 220, 255, 0.85),
+      0 0 24px rgba(150, 140, 230, 0.75),
+      0 0 48px rgba(80, 90, 180, 0.45);
+  }
+}
+
+.member-card.special-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 60%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transform: skewX(-20deg);
+  opacity: 0.45;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(180, 200, 255, 0.5) 30%,
+    rgba(245, 245, 255, 0.85) 50%,
+    rgba(200, 180, 255, 0.5) 70%,
+    transparent 100%);
+  animation: special-card-shimmer 2.6s ease-in-out infinite;
+}
+
+@keyframes special-card-shimmer {
+  0% { left: -60%; }
+  100% { left: 120%; }
+}
+
+.member-card.special-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.member-card.special-card .member-name {
+  background: linear-gradient(90deg,
+    #e8e0ff 0%, #b8a8ff 20%, #8c8cff 40%,
+    #f0eaff 55%, #b8c8ff 72%, #d4c8ff 88%, #e8e0ff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: special-card-text-shimmer 2.8s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 6px rgba(200, 180, 255, 0.7));
+}
+
+@keyframes special-card-text-shimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+
+.special-card-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #6e6bff 0%, #b8a8ff 25%, #e8e0ff 50%, #b8a8ff 75%, #6e6bff 100%);
+  background-size: 220% 100%;
+  border-radius: 3px;
+  animation: special-card-badge-shine 2.4s linear infinite;
+  box-shadow: 0 0 6px rgba(180, 168, 255, 0.75), 0 0 14px rgba(110, 107, 255, 0.5);
+  vertical-align: middle;
+  letter-spacing: 2px;
+  text-shadow: 0 0 4px rgba(80, 70, 180, 0.6);
+}
+
+@keyframes special-card-badge-shine {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+/* ==================== 特殊名片卡片版（吴彦祖/魚魚/僵尸/郭峰，由 getSpecialVariant 触发） ==================== */
+
+/* ── 吴彦祖1号：影帝（彩虹） ── */
+.member-card.wuyanzu-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg,
+      rgba(255, 80, 220, 0.18) 0%,
+      rgba(160, 100, 255, 0.14) 25%,
+      rgba(80, 180, 255, 0.14) 50%,
+      rgba(80, 255, 200, 0.10) 75%,
+      rgba(255, 200, 80, 0.08) 100%) !important;
+  background-size: 220% 100% !important;
+  animation: wuyanzu-card-bg-flow 4.5s linear infinite, wuyanzu-card-pulse 2.4s ease-in-out infinite;
+}
+@keyframes wuyanzu-card-bg-flow {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+@keyframes wuyanzu-card-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(200, 140, 255, 0.45), 0 0 14px rgba(180, 100, 255, 0.45), 0 0 28px rgba(255, 80, 200, 0.22); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(230, 180, 255, 0.85), 0 0 24px rgba(180, 100, 255, 0.9), 0 0 48px rgba(255, 80, 200, 0.55); }
+}
+.member-card.wuyanzu-card::before {
+  content: ''; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; z-index: 0; pointer-events: none;
+  transform: skewX(-18deg); opacity: 0.45;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 130, 240, 0.7) 30%, rgba(255, 255, 255, 0.95) 50%, rgba(140, 230, 255, 0.7) 70%, transparent 100%);
+  animation: special-card-shimmer 2.2s ease-in-out infinite;
+}
+.member-card.wuyanzu-card > * { position: relative; z-index: 1; }
+.member-card.wuyanzu-card .member-name {
+  background: linear-gradient(90deg, #ff5cd2 0%, #c66bff 18%, #6bb3ff 36%, #6bffc1 54%, #ffe26b 72%, #ff8c5c 86%, #ff5cd2 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  animation: wuyanzu-card-text-shimmer 2.4s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 6px rgba(255, 100, 230, 0.55));
+}
+@keyframes wuyanzu-card-text-shimmer { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+.wuyanzu-card-bolt {
+  position: absolute; top: -10px; right: 8px; font-size: 16px; line-height: 1; z-index: 5; pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(255, 220, 80, 0.95)) drop-shadow(0 0 10px rgba(180, 100, 255, 0.6));
+  animation: wuyanzu-card-bolt-zap 1.4s ease-in-out infinite;
+}
+@keyframes wuyanzu-card-bolt-zap {
+  0%, 100% { transform: rotate(-15deg) scale(1); opacity: 0.9; }
+  50% { transform: rotate(15deg) scale(1.28); opacity: 1; }
+}
+.wuyanzu-card-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: 10px; font-weight: 700; color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #ff5cd2 0%, #c66bff 35%, #6bb3ff 70%, #ff5cd2 100%);
+  background-size: 220% 100%; border-radius: 3px;
+  animation: wuyanzu-card-badge-shine 2.2s linear infinite;
+  box-shadow: 0 0 6px rgba(255, 100, 230, 0.7), 0 0 12px rgba(120, 100, 255, 0.4);
+  vertical-align: middle; letter-spacing: 1px; text-shadow: 0 0 4px rgba(120, 60, 180, 0.6);
+}
+@keyframes wuyanzu-card-badge-shine { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+
+/* ── 魚魚：科研家（青蓝） ── */
+.member-card.yuyu-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg,
+    rgba(80, 220, 255, 0.22) 0%,
+    rgba(60, 200, 200, 0.18) 25%,
+    rgba(120, 180, 255, 0.18) 50%,
+    rgba(100, 240, 200, 0.14) 75%,
+    rgba(80, 220, 255, 0.1) 100%) !important;
+  background-size: 220% 100% !important;
+  animation: yuyu-card-bg-flow 5s linear infinite, yuyu-card-pulse 2.6s ease-in-out infinite;
+}
+@keyframes yuyu-card-bg-flow { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+@keyframes yuyu-card-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(140, 210, 255, 0.45), 0 0 14px rgba(80, 200, 255, 0.4), 0 0 28px rgba(60, 220, 200, 0.2); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(180, 230, 255, 0.85), 0 0 24px rgba(80, 200, 255, 0.85), 0 0 48px rgba(60, 220, 200, 0.5); }
+}
+.member-card.yuyu-card::before {
+  content: ''; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; z-index: 0; pointer-events: none;
+  transform: skewX(-18deg); opacity: 0.45;
+  background: linear-gradient(90deg, transparent 0%, rgba(120, 230, 255, 0.65) 30%, rgba(220, 255, 250, 0.95) 50%, rgba(140, 255, 220, 0.65) 70%, transparent 100%);
+  animation: special-card-shimmer 2.4s ease-in-out infinite;
+}
+.member-card.yuyu-card > * { position: relative; z-index: 1; }
+.member-card.yuyu-card .member-name {
+  background: linear-gradient(90deg, #5cdcff 0%, #6be0d2 22%, #6bb8ff 44%, #8cffd0 66%, #b0e8ff 84%, #5cdcff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  animation: yuyu-card-text-shimmer 2.6s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 6px rgba(80, 220, 255, 0.55));
+}
+@keyframes yuyu-card-text-shimmer { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+.yuyu-card-bolt {
+  position: absolute; top: -10px; right: 8px; font-size: 16px; line-height: 1; z-index: 5; pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(140, 240, 255, 0.95)) drop-shadow(0 0 10px rgba(100, 240, 200, 0.6));
+  animation: yuyu-card-bolt-bob 2.4s ease-in-out infinite;
+}
+@keyframes yuyu-card-bolt-bob {
+  0%, 100% { transform: translateY(0) rotate(-6deg) scale(1); opacity: 0.95; }
+  50% { transform: translateY(-3px) rotate(8deg) scale(1.14); opacity: 1; }
+}
+.yuyu-card-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: 10px; font-weight: 700; color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #4ec8ff 0%, #5cd8c0 35%, #6bb8ff 70%, #4ec8ff 100%);
+  background-size: 220% 100%; border-radius: 3px;
+  animation: yuyu-card-badge-shine 2.4s linear infinite;
+  box-shadow: 0 0 6px rgba(80, 220, 255, 0.7), 0 0 12px rgba(100, 240, 200, 0.4);
+  vertical-align: middle; letter-spacing: 1px; text-shadow: 0 0 4px rgba(40, 80, 140, 0.6);
+}
+@keyframes yuyu-card-badge-shine { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+
+/* ── 僵尸仙人：姜尸头子（绿紫） ── */
+.member-card.jiangshi-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(154, 220, 92, 0.45) !important;
+  background:
+    radial-gradient(circle at 11% 18%, rgba(255, 224, 92, 0.26) 0 10px, transparent 11px),
+    repeating-linear-gradient(90deg, rgba(60, 128, 46, 0.2) 0 26px, rgba(40, 92, 38, 0.2) 26px 52px),
+    linear-gradient(90deg, rgba(34, 76, 30, 0.9) 0%, rgba(24, 48, 31, 0.88) 35%, rgba(46, 28, 66, 0.72) 72%, rgba(18, 16, 24, 0.8) 100%) !important;
+  background-size: 100% 100%, 104px 100%, 220% 100% !important;
+  animation: jiangshi-card-bg-flow 5.2s linear infinite, jiangshi-card-pulse 2.8s ease-in-out infinite;
+}
+@keyframes jiangshi-card-bg-flow {
+  0% { background-position: 0 0, 0 0, 0% 0; }
+  100% { background-position: 0 0, 104px 0, 220% 0; }
+}
+@keyframes jiangshi-card-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(185, 245, 92, 0.45), 0 0 14px rgba(96, 210, 76, 0.42), 0 0 28px rgba(136, 78, 190, 0.2); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(220, 255, 104, 0.82), 0 0 28px rgba(122, 255, 82, 0.78), 0 0 52px rgba(146, 84, 220, 0.5); }
+}
+.member-card.jiangshi-card > * { position: relative; z-index: 1; }
+.member-card.jiangshi-card .member-name {
+  background: linear-gradient(90deg, #a7ff5c 0%, #f6ff78 18%, #7fe84c 36%, #b87cff 56%, #f0ff80 76%, #a7ff5c 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  animation: jiangshi-card-text-shimmer 2.4s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 6px rgba(142, 255, 82, 0.62)) drop-shadow(0 0 12px rgba(162, 92, 220, 0.36));
+}
+@keyframes jiangshi-card-text-shimmer { 0% { background-position: 0% 0; } 100% { background-position: 240% 0; } }
+.jiangshi-card-bolt {
+  position: absolute; top: -10px; right: 8px; font-size: 17px; line-height: 1; z-index: 5; pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(172, 255, 92, 0.95)) drop-shadow(0 0 10px rgba(142, 84, 220, 0.6));
+  animation: jiangshi-card-bolt-lurch 1.6s ease-in-out infinite;
+}
+@keyframes jiangshi-card-bolt-lurch {
+  0%, 100% { transform: translateY(0) rotate(-8deg) scale(1); opacity: 0.92; }
+  50% { transform: translateY(1px) rotate(10deg) scale(1.16); opacity: 1; }
+}
+.jiangshi-card-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: 10px; font-weight: 800; color: #241600;
+  -webkit-text-fill-color: #241600;
+  background:
+    radial-gradient(circle at 18% 45%, #fff56a 0 4px, transparent 5px),
+    linear-gradient(90deg, #9cff4e 0%, #fff06a 32%, #82df44 58%, #b878ff 82%, #9cff4e 100%);
+  background-size: 120% 100%, 240% 100%;
+  border: 1px solid rgba(255, 245, 112, 0.65); border-radius: 3px;
+  animation: jiangshi-card-badge-shine 2.3s linear infinite;
+  box-shadow: 0 0 7px rgba(142, 255, 82, 0.72), 0 0 14px rgba(142, 84, 220, 0.42);
+  vertical-align: middle; letter-spacing: 1px;
+}
+@keyframes jiangshi-card-badge-shine { 0% { background-position: 0 0, 0% 0; } 100% { background-position: 0 0, 240% 0; } }
+
+/* ── 郭峰：小可爱（粉色胖丁） ── */
+.member-card.guofeng-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg,
+    rgba(255, 182, 193, 0.20) 0%,
+    rgba(255, 192, 203, 0.14) 25%,
+    rgba(255, 218, 233, 0.12) 50%,
+    rgba(255, 182, 193, 0.10) 75%,
+    rgba(255, 105, 180, 0.08) 100%) !important;
+  background-size: 220% 100% !important;
+  animation: guofeng-card-bg-flow 4s linear infinite, guofeng-card-pulse 2s ease-in-out infinite;
+}
+@keyframes guofeng-card-bg-flow { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+@keyframes guofeng-card-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 182, 193, 0.4), 0 0 14px rgba(255, 105, 180, 0.35), 0 0 28px rgba(255, 182, 193, 0.2); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(255, 192, 203, 0.7), 0 0 24px rgba(255, 105, 180, 0.6), 0 0 48px rgba(255, 182, 193, 0.4); }
+}
+.member-card.guofeng-card::before {
+  content: ''; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; z-index: 0; pointer-events: none;
+  transform: skewX(-18deg); opacity: 0.4;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 182, 193, 0.8) 30%, rgba(255, 255, 255, 0.95) 50%, rgba(255, 192, 203, 0.8) 70%, transparent 100%);
+  animation: special-card-shimmer 2s ease-in-out infinite;
+}
+.member-card.guofeng-card > * { position: relative; z-index: 1; }
+.member-card.guofeng-card .member-name {
+  background: linear-gradient(90deg, #ff69b4 0%, #ffb6c1 20%, #ffc0cb 40%, #ff69b4 60%, #ff85c1 80%, #ff69b4 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  animation: guofeng-card-text-shimmer 2.2s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 5px rgba(255, 105, 180, 0.5));
+}
+@keyframes guofeng-card-text-shimmer { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+.guofeng-card-music {
+  position: absolute; top: -10px; right: 8px; font-size: 15px; line-height: 1; z-index: 5; pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(255, 105, 180, 0.9)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.6));
+  animation: guofeng-card-music-bounce 1.2s ease-in-out infinite;
+}
+@keyframes guofeng-card-music-bounce {
+  0%, 100% { transform: translateY(0) rotate(-10deg); opacity: 0.9; }
+  50% { transform: translateY(-5px) rotate(10deg); opacity: 1; }
+}
+.guofeng-card-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: 10px; font-weight: 700; color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #ff69b4 0%, #ffb6c1 35%, #ffc0cb 70%, #ff69b4 100%);
+  background-size: 220% 100%; border-radius: 10px;
+  animation: guofeng-card-badge-shine 2s linear infinite;
+  box-shadow: 0 0 6px rgba(255, 105, 180, 0.7), 0 0 12px rgba(255, 182, 193, 0.4);
+  vertical-align: middle; letter-spacing: 1px; text-shadow: 0 0 4px rgba(200, 40, 100, 0.6);
+}
+@keyframes guofeng-card-badge-shine { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+
 </style>
