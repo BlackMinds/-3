@@ -27,12 +27,13 @@ export interface PokedexBonus {
 // 星级阈值：累计击杀达到 [1, 50, 200, 1000] 时分别升到 1/2/3/4 星
 export const POKEDEX_STAR_THRESHOLDS = [1, 50, 200, 1000] as const;
 
-// 每星加成（方案 A 保守）：1星 hp / 2星 atk / 3星 def / 4星 critDmg
+// 每星加成（方案 B 强档）：1星 hp / 2星 atk / 3星 def / 4星 critDmg
+// 80 条全满 4★ 上限：血量/攻击/防御 各 +80%，会心伤害 +88%
 export const POKEDEX_BONUS_PER_STAR: Record<1 | 2 | 3 | 4, PokedexBonus> = {
-  1: { hpPct: 0.0005 },
-  2: { atkPct: 0.0005 },
-  3: { defPct: 0.0005 },
-  4: { critDmg: 0.0003 },
+  1: { hpPct: 0.01 },
+  2: { atkPct: 0.01 },
+  3: { defPct: 0.01 },
+  4: { critDmg: 0.011 },
 };
 
 // 满星额外奖励（里程碑触发后永久加成，Phase 5 接入）

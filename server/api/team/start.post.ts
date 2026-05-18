@@ -14,6 +14,7 @@ import { applyCultivationExp, applyLevelExp } from '~/server/utils/realm'
 import { EQUIP_SELL_PRICES } from '~/server/utils/equipment'
 import { WEAPON_BONUS, PLAYER_CAPS, EQUIP_BAG_LIMIT, COMPANION_SEAL_PCT } from '~/shared/balance'
 import { computeV5EquipmentDelta, getDominantSkillWuxing } from '~/server/utils/equipmentAggregateV5'
+import { getPokedexBonus } from '~/server/utils/pokedex'
 
 // 构建单个玩家的战斗属性（简化版 buildPlayerStats，来自 battle/fight.post.ts）
 async function buildPlayerBattleStats(char: any): Promise<{
@@ -386,6 +387,13 @@ async function buildPlayerBattleStats(char: any): Promise<{
       }
     }
   }
+
+  // 妖兽图鉴加成（Phase 4 · 万界妖谱）— 与 fight.post.ts / battleSnapshot.ts 口径一致
+  const pokedex = await getPokedexBonus(char.id)
+  if (pokedex.atkPct > 0) nonPassiveAtkPct += pokedex.atkPct
+  if (pokedex.defPct > 0) nonPassiveDefPct += pokedex.defPct
+  if (pokedex.hpPct > 0)  nonPassiveHpPct  += pokedex.hpPct
+  if (pokedex.critDmg > 0) critDmg += pokedex.critDmg
 
   // 加法池一次乘（不含功法被动 — teamBattleEngine 把功法 % 加进同池后再一次乘）
   const _flatAtk = atk, _flatDef = def, _flatHp = maxHp, _flatSpd = spd

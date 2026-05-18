@@ -3589,12 +3589,12 @@
             <div class="help-title">星级加成</div>
             <p class="help-text">每条妖兽每个星级提供<b>叠加且永久</b>的全战斗加成，按星级类型分配：</p>
             <table class="help-table"><tbody>
-              <tr><td>⭐ 1 星</td><td>血量 <b>+0.05%</b></td></tr>
-              <tr><td>⭐⭐ 2 星</td><td>攻击 <b>+0.05%</b></td></tr>
-              <tr><td>⭐⭐⭐ 3 星</td><td>防御 <b>+0.05%</b></td></tr>
-              <tr><td>⭐⭐⭐⭐ 4 星</td><td>暴击伤害 <b>+0.03%</b></td></tr>
+              <tr><td>⭐ 1 星</td><td>血量 <b>+1%</b></td></tr>
+              <tr><td>⭐⭐ 2 星</td><td>攻击 <b>+1%</b></td></tr>
+              <tr><td>⭐⭐⭐ 3 星</td><td>防御 <b>+1%</b></td></tr>
+              <tr><td>⭐⭐⭐⭐ 4 星</td><td>会心伤害 <b>+1.1%</b></td></tr>
             </tbody></table>
-            <p class="help-text" style="margin-top: 4px;">80 条全满 4 星理论上限：血量 +4% / 攻击 +4% / 防御 +4% / 暴击伤害 +2.4%。属于「滚雪球式」养成奖励，所有战斗（历练 / 秘境 / 通天塔 / 斗法 / 真双人）均生效。</p>
+            <p class="help-text" style="margin-top: 4px;">80 条全满 4 星理论上限：血量 +80% / 攻击 +80% / 防御 +80% / 会心伤害 +88%。属于「滚雪球式」养成奖励，所有战斗（历练 / 秘境 / 通天塔 / 斗法 / 宗门战 / 真双人）均生效。</p>
           </div>
 
           <div class="help-section">

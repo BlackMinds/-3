@@ -48,22 +48,22 @@ describe('recomputePokedexBonusCache - 数值守门', () => {
 
     const result = await recomputePokedexBonusCache(1)
 
-    // 满档：每只 stars=4 贡献 {hp:0.0005, atk:0.0005, def:0.0005, critDmg:0.0003}
-    // 80 只 → {hp:0.04, atk:0.04, def:0.04, critDmg:0.024}
-    expect(result.hpPct).toBeCloseTo(0.04, 6)
-    expect(result.atkPct).toBeCloseTo(0.04, 6)
-    expect(result.defPct).toBeCloseTo(0.04, 6)
-    expect(result.critDmg).toBeCloseTo(0.024, 6)
+    // 满档：每只 stars=4 贡献 {hp:0.01, atk:0.01, def:0.01, critDmg:0.011}
+    // 80 只 → {hp:0.80, atk:0.80, def:0.80, critDmg:0.88}
+    expect(result.hpPct).toBeCloseTo(0.80, 6)
+    expect(result.atkPct).toBeCloseTo(0.80, 6)
+    expect(result.defPct).toBeCloseTo(0.80, 6)
+    expect(result.critDmg).toBeCloseTo(0.88, 6)
 
     const upsertCall = mockClient.query.mock.calls.find(c =>
       String(c[0]).includes('INSERT INTO character_pokedex_bonus_cache')
     )
     expect(upsertCall).toBeDefined()
     expect(upsertCall![1][0]).toBe(1) // characterId
-    expect(upsertCall![1][1]).toBeCloseTo(0.04, 6)
-    expect(upsertCall![1][2]).toBeCloseTo(0.04, 6)
-    expect(upsertCall![1][3]).toBeCloseTo(0.04, 6)
-    expect(upsertCall![1][4]).toBeCloseTo(0.024, 6)
+    expect(upsertCall![1][1]).toBeCloseTo(0.80, 6)
+    expect(upsertCall![1][2]).toBeCloseTo(0.80, 6)
+    expect(upsertCall![1][3]).toBeCloseTo(0.80, 6)
+    expect(upsertCall![1][4]).toBeCloseTo(0.88, 6)
 
     // 独立模式必须 release
     expect(mockClient.release).toHaveBeenCalledTimes(1)
@@ -77,10 +77,10 @@ describe('recomputePokedexBonusCache - 数值守门', () => {
 
     const result = await recomputePokedexBonusCache(1)
 
-    // stars=2: getBonusForStars(2) = 1段+2段 = {hp:0.0005, atk:0.0005}
-    // 20 只 → {hp:0.01, atk:0.01, def:0, critDmg:0}
-    expect(result.hpPct).toBeCloseTo(0.01, 6)
-    expect(result.atkPct).toBeCloseTo(0.01, 6)
+    // stars=2: getBonusForStars(2) = 1段+2段 = {hp:0.01, atk:0.01}
+    // 20 只 → {hp:0.20, atk:0.20, def:0, critDmg:0}
+    expect(result.hpPct).toBeCloseTo(0.20, 6)
+    expect(result.atkPct).toBeCloseTo(0.20, 6)
     expect(result.defPct).toBe(0)
     expect(result.critDmg).toBe(0)
   })
@@ -110,7 +110,7 @@ describe('recomputePokedexBonusCache - 数值守门', () => {
 
     const result = await recomputePokedexBonusCache(7, txClient as any)
 
-    expect(result.hpPct).toBeCloseTo(0.0005, 6)
+    expect(result.hpPct).toBeCloseTo(0.01, 6)
     expect(txClient.release).not.toHaveBeenCalled() // 调用方负责 release
     expect(mockClient.query).not.toHaveBeenCalled()
   })
@@ -128,15 +128,15 @@ describe('getPokedexBonus - cache 读取', () => {
 
   it('cache hit：NUMERIC 列返回 string，必须 Number() 转换', async () => {
     mockPool.query.mockResolvedValueOnce({
-      rows: [{ hp_pct: '0.040000', atk_pct: '0.040000', def_pct: '0.040000', crit_dmg: '0.024000' }],
+      rows: [{ hp_pct: '0.800000', atk_pct: '0.800000', def_pct: '0.800000', crit_dmg: '0.880000' }],
     })
 
     const result = await getPokedexBonus(1)
 
-    expect(result.hpPct).toBe(0.04)
-    expect(result.atkPct).toBe(0.04)
-    expect(result.defPct).toBe(0.04)
-    expect(result.critDmg).toBe(0.024)
+    expect(result.hpPct).toBe(0.80)
+    expect(result.atkPct).toBe(0.80)
+    expect(result.defPct).toBe(0.80)
+    expect(result.critDmg).toBe(0.88)
     // 类型守门：必须是 number 不是 string
     expect(typeof result.hpPct).toBe('number')
     expect(typeof result.critDmg).toBe('number')
@@ -152,8 +152,8 @@ describe('getPokedexBonus - cache 读取', () => {
 
     const result = await getPokedexBonus(99)
 
-    // 3 行 stars=1 → hp:3×0.0005=0.0015
-    expect(result.hpPct).toBeCloseTo(0.0015, 6)
+    // 3 行 stars=1 → hp:3×0.01=0.03
+    expect(result.hpPct).toBeCloseTo(0.03, 6)
     expect(result.atkPct).toBe(0)
 
     const upsertCall = mockClient.query.mock.calls.find(c =>

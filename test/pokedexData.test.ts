@@ -84,17 +84,17 @@ describe('getBonusForStars 加成累加', () => {
   })
   it('1 星只有 hpPct', () => {
     const b = getBonusForStars(1)
-    expect(b.hpPct).toBeCloseTo(0.0005)
+    expect(b.hpPct).toBeCloseTo(0.01)
     expect(b.atkPct).toBe(0)
   })
   it('4 星累加：hp + atk + def + critDmg', () => {
     const b = getBonusForStars(4)
-    expect(b.hpPct).toBeCloseTo(0.0005)
-    expect(b.atkPct).toBeCloseTo(0.0005)
-    expect(b.defPct).toBeCloseTo(0.0005)
-    expect(b.critDmg).toBeCloseTo(0.0003)
+    expect(b.hpPct).toBeCloseTo(0.01)
+    expect(b.atkPct).toBeCloseTo(0.01)
+    expect(b.defPct).toBeCloseTo(0.01)
+    expect(b.critDmg).toBeCloseTo(0.011)
   })
-  it('满 80 条 × 4 星 = 满档上限 +4% 三维 + 2.4% 暴伤（PRD 数值方案 A）', () => {
+  it('满 80 条 × 4 星 = 满档上限 +80% 三维 + 88% 暴伤（PRD 数值方案 B）', () => {
     const b = getBonusForStars(4)
     const total = {
       hpPct: b.hpPct! * 80,
@@ -102,16 +102,16 @@ describe('getBonusForStars 加成累加', () => {
       defPct: b.defPct! * 80,
       critDmg: b.critDmg! * 80,
     }
-    expect(total.hpPct).toBeCloseTo(0.04, 5)
-    expect(total.atkPct).toBeCloseTo(0.04, 5)
-    expect(total.defPct).toBeCloseTo(0.04, 5)
-    expect(total.critDmg).toBeCloseTo(0.024, 5)
+    expect(total.hpPct).toBeCloseTo(0.80, 5)
+    expect(total.atkPct).toBeCloseTo(0.80, 5)
+    expect(total.defPct).toBeCloseTo(0.80, 5)
+    expect(total.critDmg).toBeCloseTo(0.88, 5)
   })
-  it('POKEDEX_BONUS_PER_STAR 字面值与方案 A 一致', () => {
-    expect(POKEDEX_BONUS_PER_STAR[1].hpPct).toBeCloseTo(0.0005)
-    expect(POKEDEX_BONUS_PER_STAR[2].atkPct).toBeCloseTo(0.0005)
-    expect(POKEDEX_BONUS_PER_STAR[3].defPct).toBeCloseTo(0.0005)
-    expect(POKEDEX_BONUS_PER_STAR[4].critDmg).toBeCloseTo(0.0003)
+  it('POKEDEX_BONUS_PER_STAR 字面值与方案 B 一致', () => {
+    expect(POKEDEX_BONUS_PER_STAR[1].hpPct).toBeCloseTo(0.01)
+    expect(POKEDEX_BONUS_PER_STAR[2].atkPct).toBeCloseTo(0.01)
+    expect(POKEDEX_BONUS_PER_STAR[3].defPct).toBeCloseTo(0.01)
+    expect(POKEDEX_BONUS_PER_STAR[4].critDmg).toBeCloseTo(0.011)
   })
 })
 
