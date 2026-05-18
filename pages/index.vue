@@ -7973,6 +7973,22 @@ async function craftGiftBulk(recipe: any) {
 }
 
 async function useVariant(recipe: PillRecipe, variant: any) {
+  // 战斗丹：若已有同名 buff 生效，提醒后效会覆盖前效，避免浪费
+  if (recipe.type === 'battle') {
+    const existing = activeBuffs.value.find((b: any) => {
+      if (b.pill_id !== recipe.id) return false;
+      if (b.expire_time && new Date(b.expire_time).getTime() <= Date.now()) return false;
+      return true;
+    });
+    if (existing) {
+      const oldQf = Number(existing.quality_factor) || 1.0;
+      const newQf = Number(variant.quality_factor) || 1.0;
+      const remain = formatBuffTime(existing);
+      if (!confirm(`「${recipe.name}」当前已生效（${oldQf}x，剩余 ${remain}），再次使用将覆盖原有效果（替换为 ${newQf}x 并重置持续时间），是否继续？`)) {
+        return;
+      }
+    }
+  }
   try {
     const res: any = await $fetch('/api/pill/use', { method: 'POST', body: {
       pill_id: recipe.id,
