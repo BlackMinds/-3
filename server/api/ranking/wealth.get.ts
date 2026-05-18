@@ -41,6 +41,7 @@ function formatCharRow(row: any, rank: number) {
 export default defineEventHandler(async (event) => {
   try {
     const pool = getPool()
+    // 排除 GM 账号「吴彦祖1号」（与 heaven.get.ts 一致）
     const { rows } = await pool.query(`
       SELECT c.id, c.name, c.spiritual_root, c.realm_tier, c.realm_stage,
              c.cultivation_exp, c.level, c.spirit_stone, c.title,
@@ -48,6 +49,7 @@ export default defineEventHandler(async (event) => {
       FROM characters c
       LEFT JOIN sect_members sm ON sm.character_id = c.id
       LEFT JOIN sects s ON s.id = sm.sect_id
+      WHERE c.name <> '吴彦祖1号'
       ORDER BY c.spirit_stone DESC
       LIMIT 50
     `)
@@ -62,7 +64,7 @@ export default defineEventHandler(async (event) => {
     if (charRows.length > 0) {
       const c = charRows[0]
       const { rows: countRows } = await pool.query(
-        'SELECT COUNT(*) AS cnt FROM characters WHERE spirit_stone > $1',
+        `SELECT COUNT(*) AS cnt FROM characters WHERE name <> '吴彦祖1号' AND spirit_stone > $1`,
         [c.spirit_stone]
       )
       myRank = Number(countRows[0]?.cnt || 0) + 1
