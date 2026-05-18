@@ -1106,10 +1106,10 @@ export default defineEventHandler(async (event) => {
         const template: MonsterTemplate = mapData.boss
         monsterList.push({ stats: generateMonsterStats(template), template })
       } else {
-        // T1/T2: 1-2 只；T3/T4: 1-4 只；T5+: 2-4 只（其中必出 1 只 healer）
+        // T1/T2: 1-2 只；T3/T4: 1-3 只；T5+: 2-4 只（其中必出 1 只 healer）
         let waveSize: number
         if (mapData.tier <= 2) waveSize = 1 + Math.floor(Math.random() * 2)
-        else if (mapData.tier <= 4) waveSize = 1 + Math.floor(Math.random() * 4)
+        else if (mapData.tier <= 4) waveSize = 1 + Math.floor(Math.random() * 3)
         else waveSize = 2 + Math.floor(Math.random() * 3)
 
         const useHealer = mapData.tier >= 5
