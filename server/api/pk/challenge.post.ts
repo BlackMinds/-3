@@ -103,11 +103,13 @@ export default defineEventHandler(async (event) => {
           [scoreLoss, loserId]
         )
       }
-      // 胜方加分（受 DAILY_CHALLENGE_LIMIT 自然限制：单日最多 10 场）
-      await client.query(
-        'UPDATE characters SET arena_score = arena_score + $1 WHERE id = $2',
-        [scoreGain, winnerId]
-      )
+      // 仅主动挑战获胜才加分；防守反杀不加分（避免被刷分）
+      if (winnerSide === 'a') {
+        await client.query(
+          'UPDATE characters SET arena_score = arena_score + $1 WHERE id = $2',
+          [scoreGain, winnerId]
+        )
+      }
       await client.query(
         `INSERT INTO pk_records
          (attacker_id, defender_id, attacker_name, defender_name, winner_side, cultivation_loss, battle_log)
