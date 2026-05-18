@@ -4069,7 +4069,7 @@
       </div>
 
       <!-- 妖兽图鉴 Tab Panel -->
-      <div v-show="gameStore.activeTab === 'pokedex'" class="tab-panel pokedex-panel">
+      <div v-if="gameStore.activeTab === 'pokedex'" class="tab-panel pokedex-panel">
         <PokedexPanel />
       </div>
     </div>
@@ -4159,14 +4159,7 @@ import { HERBS, HERB_QUALITIES, getHerbById, getQualityById, calcQualityFactor, 
 import type { Skill } from '~/game/skillData';
 import CompanionDrawer from '~/components/companion/CompanionDrawer.vue';
 import PokedexPanel from '~/components/PokedexPanel.vue';
-
-const SPECIAL_BADGE_MAP: Record<string, string> = {
-  '无心': '剑魂',
-  '陳太初': '太初道君',
-  '好运加载中': '好运加载中',
-  '夷陵': '老祖',
-  '天生是怪人': '天生是怪人',
-};
+import { SPECIAL_BADGE_MAP } from '~/shared/specialCard';
 
 function getAuthHeaders() {
   const userStore = useUserStore()
