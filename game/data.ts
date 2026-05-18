@@ -60,7 +60,7 @@ export const MAPS: MapData[] = [
   {
     id: 'misty_swamp', name: '迷雾沼泽', tier: 1,
     realm_required: '练气五层', recommended_power: 5,
-    element: 'water', description: '毒瘴弥漫的湿地，盛产炼丹草药',
+    element: 'water', description: '毒瘴弥漫的湿地，蛇虫潜伏于淤泥深处',
     monsters: [
       { id: 'toad_spirit', name: '蟾蜍精', power: 200, element: 'water', exp: 20, spirit_stone_range: [5, 15], role: 'balanced', drop_table: 'common_t1' },
       { id: 'swamp_snake', name: '沼蛇', power: 280, element: 'water', exp: 30, spirit_stone_range: [5, 15], role: 'balanced', drop_table: 'common_t1' },
@@ -71,7 +71,7 @@ export const MAPS: MapData[] = [
   {
     id: 'sunset_mountain', name: '落霞山', tier: 2,
     realm_required: '筑基初期', recommended_power: 15,
-    element: 'fire', description: '晚霞笼罩的火灵山，装备掉率较高',
+    element: 'fire', description: '晚霞笼罩的火灵山，岩浆涌动，烈焰焚林',
     monsters: [
       { id: 'fire_fox', name: '火狐妖', power: 640, element: 'fire', exp: 56, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
       { id: 'magma_lizard', name: '熔岩蜥', power: 800, element: 'fire', exp: 70, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
@@ -82,7 +82,7 @@ export const MAPS: MapData[] = [
   {
     id: 'jade_bamboo_forest', name: '翠竹林', tier: 2,
     realm_required: '筑基初期', recommended_power: 20,
-    element: 'wood', description: '灵竹成林，功法残页掉率高',
+    element: 'wood', description: '灵竹成林，万顷青翠遮天蔽日',
     monsters: [
       { id: 'bamboo_spirit', name: '竹灵', power: 720, element: 'wood', exp: 63, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
       { id: 'vine_demon', name: '藤妖', power: 960, element: 'wood', exp: 84, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
@@ -93,7 +93,7 @@ export const MAPS: MapData[] = [
   {
     id: 'iron_ore_cave', name: '黑铁矿洞', tier: 2,
     realm_required: '筑基中期', recommended_power: 25,
-    element: 'metal', description: '地下矿洞，盛产炼器矿石',
+    element: 'metal', description: '地下矿洞幽深，铁灵嘶吼回荡四壁',
     monsters: [
       { id: 'iron_golem', name: '铁傀儡', power: 960, element: 'metal', exp: 77, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
       { id: 'cave_bat', name: '矿蝠', power: 1120, element: 'metal', exp: 91, spirit_stone_range: [20, 60], role: 'balanced', drop_table: 'common_t2' },
@@ -104,7 +104,7 @@ export const MAPS: MapData[] = [
   {
     id: 'myriad_demon_mountain', name: '万妖山', tier: 3,
     realm_required: '金丹初期', recommended_power: 35,
-    element: 'wood', description: '妖兽盘踞深山，高品质装备掉率提升',
+    element: 'wood', description: '妖兽盘踞的深山秘境，妖王坐镇于此',
     monsters: [
       { id: 'tree_demon', name: '树妖', power: 1200, element: 'wood', exp: 160, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
       { id: 'bear_spirit', name: '熊妖', power: 1650, element: 'earth', exp: 220, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
@@ -115,7 +115,7 @@ export const MAPS: MapData[] = [
   {
     id: 'thunderpeak', name: '雷鸣峰', tier: 3,
     realm_required: '金丹初期', recommended_power: 40,
-    element: 'metal', description: '雷电交加的山巅，金系功法的圣地',
+    element: 'metal', description: '雷电交加的山巅，金光劈裂九霄',
     monsters: [
       { id: 'thunder_hawk', name: '雷鹰', power: 1500, element: 'metal', exp: 200, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
       { id: 'storm_wolf', name: '风暴狼', power: 1950, element: 'metal', exp: 260, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
@@ -126,7 +126,7 @@ export const MAPS: MapData[] = [
   {
     id: 'ancient_ruins', name: '上古遗迹', tier: 3,
     realm_required: '金丹中期', recommended_power: 45,
-    element: 'earth', description: '远古修士留下的遗迹，套装部件掉落概率高',
+    element: 'earth', description: '远古修士留下的废墟，符纹未灭，守护犹在',
     monsters: [
       { id: 'stone_guard', name: '石卫士', power: 1800, element: 'earth', exp: 240, spirit_stone_range: [80, 200], role: 'balanced', drop_table: 'common_t3' },
       { id: 'rune_puppet', name: '符傀儡', power: 2400, element: 'earth', exp: 320, spirit_stone_range: [150, 400], role: 'dps', drop_table: 'uncommon_t3' },
@@ -137,7 +137,7 @@ export const MAPS: MapData[] = [
   {
     id: 'dark_sea', name: '幽冥海', tier: 4,
     realm_required: '元婴初期', recommended_power: 55,
-    element: 'water', description: '深邃黑暗的海域，水系装备圣地',
+    element: 'water', description: '深邃黑暗的海域，巨兽潜伏其底',
     monsters: [
       { id: 'sea_serpent', name: '海蛟', power: 4500, element: 'water', exp: 500, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
       { id: 'ghost_fish', name: '幽灵鱼', power: 5500, element: 'water', exp: 625, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
@@ -148,7 +148,7 @@ export const MAPS: MapData[] = [
   {
     id: 'soul_forest', name: '噬魂林', tier: 4,
     realm_required: '元婴初期', recommended_power: 60,
-    element: 'wood', description: '诡异的黑森林，藏有上古功法残卷',
+    element: 'wood', description: '诡异的黑森林，林间阴魂啃噬入者神魂',
     monsters: [
       { id: 'soul_tree', name: '噬魂树', power: 5000, element: 'wood', exp: 550, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
       { id: 'shadow_cat', name: '幽影猫', power: 6250, element: null, exp: 700, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
@@ -159,7 +159,7 @@ export const MAPS: MapData[] = [
   {
     id: 'desert_of_sands', name: '流沙大漠', tier: 4,
     realm_required: '元婴中期', recommended_power: 65,
-    element: 'earth', description: '无尽沙漠，稀有矿物和土系材料产地',
+    element: 'earth', description: '无尽沙海茫茫，狂沙之下藏着远古生灵',
     monsters: [
       { id: 'sand_scorpion', name: '沙蝎王', power: 6000, element: 'earth', exp: 650, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
       { id: 'dust_wyrm', name: '沙虫', power: 7500, element: 'earth', exp: 800, spirit_stone_range: [300, 800], role: 'balanced', drop_table: 'common_t4' },
@@ -170,7 +170,7 @@ export const MAPS: MapData[] = [
   {
     id: 'purgatory', name: '九幽炼狱', tier: 5,
     realm_required: '化神初期', recommended_power: 80,
-    element: 'fire', description: '炼狱之地，极品装备产出',
+    element: 'fire', description: '炼狱业火焚天，狱卒魔将常驻于此',
     monsters: [
       { id: 'hell_guard', name: '狱卒', power: 9000, element: 'fire', exp: 1500, spirit_stone_range: [1000, 3000], role: 'balanced', drop_table: 'common_t5' },
       { id: 'demon_soldier', name: '魔兵', power: 11000, element: 'metal', exp: 1800, spirit_stone_range: [2000, 6000], role: 'dps', drop_table: 'uncommon_t5' },
@@ -181,7 +181,7 @@ export const MAPS: MapData[] = [
   {
     id: 'frozen_abyss', name: '寒渊冰窟', tier: 5,
     realm_required: '化神初期', recommended_power: 85,
-    element: 'water', description: '极寒深渊，冰系套装部件产出地',
+    element: 'water', description: '万年寒冰深渊，冰魄怒号撕裂血肉',
     monsters: [
       { id: 'frost_giant', name: '霜巨人', power: 9500, element: 'water', exp: 1650, spirit_stone_range: [1000, 3000], role: 'balanced', drop_table: 'common_t5' },
       { id: 'ice_wraith', name: '冰魄', power: 12000, element: 'water', exp: 2100, spirit_stone_range: [2000, 6000], role: 'dps', drop_table: 'uncommon_t5' },
@@ -192,7 +192,7 @@ export const MAPS: MapData[] = [
   {
     id: 'demon_battlefield', name: '魔域战场', tier: 5,
     realm_required: '化神中期', recommended_power: 95,
-    element: null, description: '人魔大战遗址，各属性功法均有掉落',
+    element: null, description: '人魔大战的旧战场，残骸与厉魂同在',
     monsters: [
       { id: 'demon_general', name: '魔将', power: 13000, element: 'fire', exp: 2250, spirit_stone_range: [2000, 6000], role: 'dps', drop_table: 'uncommon_t5' },
       { id: 'dark_knight', name: '暗骑士', power: 16000, element: 'metal', exp: 2700, spirit_stone_range: [2000, 6000], role: 'dps', drop_table: 'uncommon_t5' },
@@ -203,7 +203,7 @@ export const MAPS: MapData[] = [
   {
     id: 'tribulation_wasteland', name: '天劫荒原', tier: 6,
     realm_required: '渡劫初期', recommended_power: 110,
-    element: 'metal', description: '天劫频繁降临的荒原，顶级装备产出',
+    element: 'metal', description: '天劫频繁降临的荒原，雷火焚毁山河',
     monsters: [
       { id: 'thunder_beast', name: '雷兽', power: 27000, element: 'metal', exp: 5000, spirit_stone_range: [5000, 15000], role: 'balanced', drop_table: 'common_t6' },
       { id: 'void_creature', name: '虚空生物', power: 33000, element: null, exp: 6500, spirit_stone_range: [8000, 25000], role: 'speed', drop_table: 'uncommon_t6' },
@@ -214,7 +214,7 @@ export const MAPS: MapData[] = [
   {
     id: 'void_rift', name: '虚空裂缝', tier: 6,
     realm_required: '渡劫初期', recommended_power: 120,
-    element: null, description: '时空裂缝中的异度空间，顶级功法产出',
+    element: null, description: '时空裂缝中的异度空间，规则与法则皆扭曲',
     monsters: [
       { id: 'void_stalker', name: '虚空猎手', power: 28800, element: null, exp: 5500, spirit_stone_range: [5000, 15000], role: 'balanced', drop_table: 'common_t6' },
       { id: 'time_phantom', name: '时光幻影', power: 34800, element: null, exp: 7000, spirit_stone_range: [8000, 25000], role: 'speed', drop_table: 'uncommon_t6' },
@@ -225,7 +225,7 @@ export const MAPS: MapData[] = [
   {
     id: 'celestial_mountain', name: '昆仑仙境', tier: 7,
     realm_required: '大乘初期', recommended_power: 140,
-    element: 'metal', description: '传说中的仙山，仙器级装备掉率极高',
+    element: 'metal', description: '传说中的昆仑仙山，云海翻腾，仙音渺渺',
     monsters: [
       { id: 'celestial_crane', name: '仙鹤', power: 36000, element: 'metal', exp: 16000, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
       { id: 'jade_lion', name: '玉麒麟', power: 44000, element: 'earth', exp: 20000, spirit_stone_range: [50000, 150000], role: 'dps', drop_table: 'uncommon_t7' },
@@ -236,7 +236,7 @@ export const MAPS: MapData[] = [
   {
     id: 'nether_realm', name: '幽冥黄泉', tier: 7,
     realm_required: '大乘中期', recommended_power: 155,
-    element: 'water', description: '生死之间的黄泉路，高阶套装产出',
+    element: 'water', description: '生死之间的黄泉路，亡魂在此往返超度',
     monsters: [
       { id: 'nether_guard', name: '冥卫', power: 50000, element: 'water', exp: 22400, spirit_stone_range: [30000, 80000], role: 'balanced', drop_table: 'common_t7' },
       { id: 'soul_reaper', name: '夺魂使', power: 60000, element: null, exp: 28000, spirit_stone_range: [50000, 150000], role: 'dps', drop_table: 'uncommon_t7' },
@@ -247,7 +247,7 @@ export const MAPS: MapData[] = [
   {
     id: 'immortal_realm', name: '天界仙宫', tier: 8,
     realm_required: '飞升·散仙', recommended_power: 170,
-    element: null, description: '飞升后的仙界，太古神器掉落之地',
+    element: null, description: '飞升后的仙界，天兵神兽列阵巡守',
     monsters: [
       { id: 'immortal_soldier', name: '天兵', power: 80000, element: 'metal', exp: 48000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
       { id: 'divine_beast', name: '神兽', power: 100000, element: null, exp: 60000, spirit_stone_range: [400000, 1000000], role: 'dps', drop_table: 'uncommon_t8' },
@@ -258,7 +258,7 @@ export const MAPS: MapData[] = [
   {
     id: 'chaos_origin', name: '混沌本源', tier: 8,
     realm_required: '飞升·金仙', recommended_power: 180,
-    element: null, description: '万物起源之地，终极历练场',
+    element: null, description: '万物起源之地，混沌之力扭曲踏入者神魂',
     monsters: [
       { id: 'chaos_beast', name: '混沌兽', power: 180000, element: null, exp: 120000, spirit_stone_range: [200000, 500000], role: 'balanced', drop_table: 'common_t8' },
       { id: 'primordial_fiend', name: '太古凶兽', power: 220000, element: null, exp: 150000, spirit_stone_range: [800000, 2000000], role: 'dps', drop_table: 'rare_t8' },
