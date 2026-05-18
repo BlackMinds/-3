@@ -1,6 +1,7 @@
 // 道侣系统状态管理 - design/system-companion.md Phase 1 MVP
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useGameStore } from './game'
 
 export interface CompanionListItem {
   id: number
@@ -148,6 +149,11 @@ export const useCompanionStore = defineStore('companion', () => {
     const res = await api<{ code: number; data?: ExpeditionStatus }>('/expedition/status')
     if (res.code === 200 && res.data) {
       expeditionStatus.value = res.data
+      // 同步后端真实灵石到 gameStore，避免顶部缓存值与游历界面判定不一致
+      const gameStore = useGameStore()
+      if (gameStore.character) {
+        gameStore.character.spirit_stone = res.data.spiritStone
+      }
     }
   }
 
