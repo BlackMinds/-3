@@ -3687,7 +3687,7 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'guofeng-row': item.name === '郭峰', 'wuxin-row': item.name === '无心', 'heaven-row': rankingTab === 'heaven' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'guofeng-row': item.name === '郭峰', 'special-card-row': !!SPECIAL_BADGE_MAP[item.name], 'heaven-row': rankingTab === 'heaven' }]"
                   @mouseenter="rankingTab === 'heaven' && onHeavenRowEnter($event, item.characterId)"
                   @mousemove="rankingTab === 'heaven' && onHeavenRowMove($event)"
                   @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
@@ -3704,8 +3704,10 @@
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-bolt">⚡</span>
                     <span v-if="item.name === '魚魚'" class="yuyu-bolt">🔬</span>
                     <span v-if="item.name === '僵尸仙人'" class="jiangshi-bolt">🧟</span>
-                    <span v-if="item.name === '无心'" class="wuxin-moon">🌙</span>
-                    <span v-if="item.name === '无心'" class="wuxin-sword">🗡️</span>
+                    <template v-if="SPECIAL_BADGE_MAP[item.name]">
+                      <span class="special-card-moon">🌙</span>
+                      <span class="special-card-sword">🗡️</span>
+                    </template>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
@@ -3717,7 +3719,7 @@
                     <span v-if="item.name === '僵尸仙人'" class="jiangshi-badge">姜尸头子</span>
                     <span v-if="item.name === '郭峰'" class="guofeng-music">🎵</span>
                     <span v-if="item.name === '郭峰'" class="guofeng-badge">小可爱</span>
-                    <span v-if="item.name === '无心'" class="wuxin-badge">剑魂</span>
+                    <span v-if="SPECIAL_BADGE_MAP[item.name]" class="special-card-badge">{{ SPECIAL_BADGE_MAP[item.name] }}</span>
                     <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
                   </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
@@ -4065,6 +4067,11 @@
           </div>
         </div>
       </div>
+
+      <!-- 妖兽图鉴 Tab Panel -->
+      <div v-show="gameStore.activeTab === 'pokedex'" class="tab-panel pokedex-panel">
+        <PokedexPanel />
+      </div>
     </div>
 
     <!-- ==================== 底部导航 ==================== -->
@@ -4151,6 +4158,15 @@ import { setCaveBonus, setEquipLuck, setSpiritDensity, setEquipCombatStats } fro
 import { HERBS, HERB_QUALITIES, getHerbById, getQualityById, calcQualityFactor, getPlotConfig, isGiftIngredient } from '~/game/herbData';
 import type { Skill } from '~/game/skillData';
 import CompanionDrawer from '~/components/companion/CompanionDrawer.vue';
+import PokedexPanel from '~/components/PokedexPanel.vue';
+
+const SPECIAL_BADGE_MAP: Record<string, string> = {
+  '无心': '剑魂',
+  '陳太初': '太初道君',
+  '好运加载中': '好运加载中',
+  '夷陵': '老祖',
+  '天生是怪人': '天生是怪人',
+};
 
 function getAuthHeaders() {
   const userStore = useUserStore()
@@ -5475,6 +5491,7 @@ const tabs = [
   { id: 'skills' as const, icon: '法', label: '功法' },
   { id: 'cave' as const, icon: '府', label: '洞府' },
   { id: 'sect' as const, icon: '门', label: '宗门' },
+  { id: 'pokedex' as const, icon: '谱', label: '图鉴' },
 ];
 
 // 灵根信息
@@ -15728,8 +15745,9 @@ onUnmounted(() => {
   100% { background-position: 220% 0; }
 }
 
-/* ==================== 「无心」专属冷月剑魂特效 ==================== */
-.ranking-row.wuxin-row {
+/* ==================== 排行榜专属名片通用特效（冷月剑魂同款） ==================== */
+/* 触发：item.name 在 SPECIAL_BADGE_MAP 中即套用 */
+.ranking-row.special-card-row {
   padding-top: 22px;
   position: relative;
   overflow: hidden;
@@ -15743,15 +15761,15 @@ onUnmounted(() => {
       rgba(60, 50, 110, 0.45) 75%,
       rgba(20, 22, 50, 0.55) 100%);
   background-size: 100% 100%, 100% 100%, 220% 100%;
-  animation: wuxin-bg-flow 5.5s linear infinite, wuxin-pulse 2.8s ease-in-out infinite;
+  animation: special-card-bg-flow 5.5s linear infinite, special-card-pulse 2.8s ease-in-out infinite;
 }
 
-@keyframes wuxin-bg-flow {
+@keyframes special-card-bg-flow {
   0% { background-position: 88% 50%, 12% 50%, 0% 0; }
   100% { background-position: 88% 50%, 12% 50%, 220% 0; }
 }
 
-@keyframes wuxin-pulse {
+@keyframes special-card-pulse {
   0%, 100% {
     box-shadow:
       inset 4px 0 0 0 rgba(220, 210, 255, 0.85),
@@ -15770,8 +15788,7 @@ onUnmounted(() => {
   }
 }
 
-/* 流光：银白冷月扫光 */
-.ranking-row.wuxin-row::before {
+.ranking-row.special-card-row::before {
   content: '';
   position: absolute;
   top: 0;
@@ -15791,8 +15808,7 @@ onUnmounted(() => {
   animation: rank-shimmer 2.6s ease-in-out infinite;
 }
 
-/* 旋转光环：冷月银紫 conic */
-.ranking-row.wuxin-row::after {
+.ranking-row.special-card-row::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -15814,8 +15830,7 @@ onUnmounted(() => {
   animation: rank-halo-rotate 4.2s linear infinite;
 }
 
-/* 名字文字：冷月银白渐变流光 */
-.ranking-row.wuxin-row .rank-name {
+.ranking-row.special-card-row .rank-name {
   background: linear-gradient(90deg,
     #e8e0ff 0%, #b8a8ff 20%, #8c8cff 40%,
     #f0eaff 55%, #b8c8ff 72%, #d4c8ff 88%, #e8e0ff 100%);
@@ -15828,8 +15843,7 @@ onUnmounted(() => {
   filter: drop-shadow(0 0 6px rgba(200, 180, 255, 0.7)) drop-shadow(0 0 12px rgba(120, 130, 220, 0.45));
 }
 
-/* 冷月装饰（左上） */
-.wuxin-moon {
+.special-card-moon {
   position: absolute;
   top: -14px;
   left: 36%;
@@ -15839,16 +15853,15 @@ onUnmounted(() => {
   pointer-events: none;
   transform-origin: 50% 100%;
   filter: drop-shadow(0 0 6px rgba(220, 210, 255, 0.95)) drop-shadow(0 0 12px rgba(140, 130, 230, 0.7));
-  animation: wuxin-moon-float 3.6s ease-in-out infinite;
+  animation: special-card-moon-float 3.6s ease-in-out infinite;
 }
 
-@keyframes wuxin-moon-float {
+@keyframes special-card-moon-float {
   0%, 100% { transform: translateX(-50%) translateY(0) rotate(-8deg) scale(1); opacity: 0.85; }
   50% { transform: translateX(-50%) translateY(-4px) rotate(8deg) scale(1.15); opacity: 1; }
 }
 
-/* 剑装饰（右上） */
-.wuxin-sword {
+.special-card-sword {
   position: absolute;
   top: -16px;
   left: 62%;
@@ -15858,18 +15871,17 @@ onUnmounted(() => {
   pointer-events: none;
   transform-origin: 50% 100%;
   filter: drop-shadow(0 0 5px rgba(220, 210, 255, 0.95)) drop-shadow(0 0 10px rgba(140, 130, 230, 0.6));
-  animation: wuxin-sword-slash 1.8s ease-in-out infinite;
+  animation: special-card-sword-slash 1.8s ease-in-out infinite;
 }
 
-@keyframes wuxin-sword-slash {
+@keyframes special-card-sword-slash {
   0%, 100% { transform: translateX(-50%) rotate(-12deg) scale(1); opacity: 0.9; }
   30% { transform: translateX(-50%) rotate(-32deg) scale(1.18); opacity: 1; }
   55% { transform: translateX(-50%) rotate(18deg) scale(1.28); opacity: 1; }
   80% { transform: translateX(-50%) rotate(30deg) scale(1.1); opacity: 1; }
 }
 
-/* 剑魂徽章 */
-.wuxin-badge {
+.special-card-badge {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 7px;
@@ -15880,7 +15892,7 @@ onUnmounted(() => {
   background: linear-gradient(90deg, #6e6bff 0%, #b8a8ff 25%, #e8e0ff 50%, #b8a8ff 75%, #6e6bff 100%);
   background-size: 220% 100%;
   border-radius: 3px;
-  animation: wuxin-badge-shine 2.4s linear infinite;
+  animation: special-card-badge-shine 2.4s linear infinite;
   box-shadow: 0 0 6px rgba(180, 168, 255, 0.75), 0 0 14px rgba(110, 107, 255, 0.5);
   vertical-align: middle;
   letter-spacing: 2px;
@@ -15888,11 +15900,10 @@ onUnmounted(() => {
   text-shadow: 0 0 4px rgba(80, 70, 180, 0.6);
 }
 
-@keyframes wuxin-badge-shine {
+@keyframes special-card-badge-shine {
   0% { background-position: 0% 0; }
   100% { background-position: 220% 0; }
 }
-
 /* ==================== 「鱼鱼」专属科研家特效 ==================== */
 .ranking-row.yuyu-row {
   padding-top: 20px;
