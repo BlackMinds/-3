@@ -1331,7 +1331,7 @@ onUnmounted(() => {
   0% { background-position: 0% 0; }
   100% { background-position: 220% 0; }
 }
-/* ==================== 特殊名片卡片版（吴彦祖/魚魚/僵尸/郭峰，由 getSpecialVariant 触发） ==================== */
+/* ==================== 特殊名片卡片版（吴彦祖/魚魚魚/僵尸/郭峰，由 getSpecialVariant 触发） ==================== */
 
 /* ── 吴彦祖1号：影帝（彩虹） ── */
 .member-card.wuyanzu-card {
@@ -1391,7 +1391,7 @@ onUnmounted(() => {
 }
 @keyframes wuyanzu-card-badge-shine { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
 
-/* ── 魚魚：科研家（青蓝） ── */
+/* ── 魚魚魚：科研家（青蓝） ── */
 .member-card.yuyu-card {
   position: relative;
   overflow: hidden;

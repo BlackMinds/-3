@@ -24,7 +24,7 @@ export const SPECIAL_VARIANTS: Record<string, SpecialCardVariant> = {
   // ───── 影帝（彩虹） ─────
   '吴彦祖1号':  { cardClass: 'wuyanzu-card',  badgeText: '影帝',     badgeClass: 'wuyanzu-card-badge',  decoration: '⚡', decorationClass: 'wuyanzu-card-bolt' },
   // ───── 科研家（青蓝） ─────
-  '魚魚':       { cardClass: 'yuyu-card',     badgeText: '科研家',   badgeClass: 'yuyu-card-badge',     decoration: '🔬', decorationClass: 'yuyu-card-bolt' },
+  '魚魚魚':       { cardClass: 'yuyu-card',     badgeText: '科研家',   badgeClass: 'yuyu-card-badge',     decoration: '🔬', decorationClass: 'yuyu-card-bolt' },
   // ───── 姜尸头子（绿紫） ─────
   '僵尸仙人':   { cardClass: 'jiangshi-card', badgeText: '姜尸头子', badgeClass: 'jiangshi-card-badge', decoration: '🧟', decorationClass: 'jiangshi-card-bolt' },
   // ───── 小可爱（粉色胖丁） ─────
