@@ -1942,3 +1942,20 @@ ON CONFLICT (code) DO UPDATE
 ALTER TABLE children ADD COLUMN IF NOT EXISTS come_of_age_decided BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE children ADD COLUMN IF NOT EXISTS custom_avatar_url   TEXT DEFAULT NULL;
 UPDATE children SET come_of_age_decided = TRUE WHERE has_left_home = TRUE AND come_of_age_decided = FALSE;
+
+-- ========================================
+-- 妖兽图鉴系统（万界妖谱）
+-- 详细设计：.claude/PRPs/prds/monster-pokedex.prd.md
+-- 名录定义：server/engine/pokedexData.ts (POKEDEX_ROSTER)
+-- ========================================
+CREATE TABLE IF NOT EXISTS character_pokedex (
+  id SERIAL PRIMARY KEY,
+  character_id INT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  entry_key VARCHAR(120) NOT NULL,  -- 格式 'mapKey:name'，来自 getEntryKey()
+  kill_count BIGINT NOT NULL DEFAULT 0,
+  stars SMALLINT NOT NULL DEFAULT 0,  -- 冗余字段：getStarLevel(kill_count) 的预计算值，加速查询
+  first_killed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (character_id, entry_key)
+);
+CREATE INDEX IF NOT EXISTS idx_pokedex_char ON character_pokedex(character_id);

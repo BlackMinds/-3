@@ -3688,7 +3688,7 @@
                 <div
                   v-for="item in rankingList"
                   :key="item.characterId"
-                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'guofeng-row': item.name === '郭峰', 'heaven-row': rankingTab === 'heaven' }]"
+                  :class="['ranking-row', { 'is-me': item.characterId === myCharId, 'rank-1': item.rank === 1, 'rank-2': item.rank === 2, 'rank-3': item.rank === 3, 'wuyanzu-row': item.name === '吴彦祖1号', 'yuyu-row': item.name === '魚魚', 'jiangshi-row': item.name === '僵尸仙人', 'guofeng-row': item.name === '郭峰', 'wuxin-row': item.name === '无心', 'heaven-row': rankingTab === 'heaven' }]"
                   @mouseenter="rankingTab === 'heaven' && onHeavenRowEnter($event, item.characterId)"
                   @mousemove="rankingTab === 'heaven' && onHeavenRowMove($event)"
                   @mouseleave="rankingTab === 'heaven' && onHeavenRowLeave()"
@@ -3705,6 +3705,8 @@
                     <span v-if="item.name === '吴彦祖1号'" class="wuyanzu-bolt">⚡</span>
                     <span v-if="item.name === '魚魚'" class="yuyu-bolt">🔬</span>
                     <span v-if="item.name === '僵尸仙人'" class="jiangshi-bolt">🧟</span>
+                    <span v-if="item.name === '无心'" class="wuxin-moon">🌙</span>
+                    <span v-if="item.name === '无心'" class="wuxin-sword">🗡️</span>
                     <span v-if="item.rank <= 3" :class="['rank-medal', { gold: item.rank === 1, silver: item.rank === 2, bronze: item.rank === 3 }]">{{ item.rank }}</span>
                     <span v-else class="rank-plain">{{ item.rank }}</span>
                   </div>
@@ -3716,6 +3718,7 @@
                     <span v-if="item.name === '僵尸仙人'" class="jiangshi-badge">姜尸头子</span>
                     <span v-if="item.name === '郭峰'" class="guofeng-music">🎵</span>
                     <span v-if="item.name === '郭峰'" class="guofeng-badge">小可爱</span>
+                    <span v-if="item.name === '无心'" class="wuxin-badge">剑魂</span>
                     <span v-if="item.title" class="rank-title">「{{ item.title }}」</span>
                   </div>
                   <div class="rank-realm">{{ item.realmDisplay }}</div>
@@ -15661,6 +15664,171 @@ onUnmounted(() => {
 }
 
 @keyframes wuyanzu-badge-shine {
+  0% { background-position: 0% 0; }
+  100% { background-position: 220% 0; }
+}
+
+/* ==================== 「无心」专属冷月剑魂特效 ==================== */
+.ranking-row.wuxin-row {
+  padding-top: 22px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 50%, rgba(200, 180, 255, 0.18) 0%, transparent 55%),
+    radial-gradient(circle at 12% 50%, rgba(140, 200, 255, 0.16) 0%, transparent 55%),
+    linear-gradient(90deg,
+      rgba(20, 22, 50, 0.55) 0%,
+      rgba(60, 50, 110, 0.45) 25%,
+      rgba(110, 130, 200, 0.35) 50%,
+      rgba(60, 50, 110, 0.45) 75%,
+      rgba(20, 22, 50, 0.55) 100%);
+  background-size: 100% 100%, 100% 100%, 220% 100%;
+  animation: wuxin-bg-flow 5.5s linear infinite, wuxin-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes wuxin-bg-flow {
+  0% { background-position: 88% 50%, 12% 50%, 0% 0; }
+  100% { background-position: 88% 50%, 12% 50%, 220% 0; }
+}
+
+@keyframes wuxin-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(220, 210, 255, 0.85),
+      inset -3px 0 0 0 rgba(140, 130, 220, 0.7),
+      inset 0 0 0 1px rgba(200, 190, 255, 0.45),
+      0 0 22px rgba(150, 140, 230, 0.45),
+      0 0 44px rgba(80, 90, 180, 0.25);
+  }
+  50% {
+    box-shadow:
+      inset 4px 0 0 0 rgba(240, 235, 255, 1),
+      inset -3px 0 0 0 rgba(180, 170, 255, 1),
+      inset 0 0 0 1px rgba(230, 220, 255, 0.85),
+      0 0 44px rgba(150, 140, 230, 0.9),
+      0 0 82px rgba(80, 90, 180, 0.55);
+  }
+}
+
+/* 流光：银白冷月扫光 */
+.ranking-row.wuxin-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 60%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  transform: skewX(-20deg);
+  opacity: 0.55;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(180, 200, 255, 0.6) 30%,
+    rgba(245, 245, 255, 0.95) 50%,
+    rgba(200, 180, 255, 0.6) 70%,
+    transparent 100%);
+  animation: rank-shimmer 2.6s ease-in-out infinite;
+}
+
+/* 旋转光环：冷月银紫 conic */
+.ranking-row.wuxin-row::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  width: 86px;
+  height: 86px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(6px);
+  opacity: 0.55;
+  background: conic-gradient(from 0deg,
+    rgba(230, 220, 255, 0.7) 0deg,
+    rgba(160, 140, 240, 0.6) 90deg,
+    rgba(120, 160, 255, 0.6) 180deg,
+    rgba(200, 180, 255, 0.6) 270deg,
+    rgba(230, 220, 255, 0.7) 360deg);
+  animation: rank-halo-rotate 4.2s linear infinite;
+}
+
+/* 名字文字：冷月银白渐变流光 */
+.ranking-row.wuxin-row .rank-name {
+  background: linear-gradient(90deg,
+    #e8e0ff 0%, #b8a8ff 20%, #8c8cff 40%,
+    #f0eaff 55%, #b8c8ff 72%, #d4c8ff 88%, #e8e0ff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rank-text-shimmer 2.8s linear infinite;
+  font-weight: 800;
+  filter: drop-shadow(0 0 6px rgba(200, 180, 255, 0.7)) drop-shadow(0 0 12px rgba(120, 130, 220, 0.45));
+}
+
+/* 冷月装饰（左上） */
+.wuxin-moon {
+  position: absolute;
+  top: -14px;
+  left: 36%;
+  font-size: 15px;
+  line-height: 1;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 6px rgba(220, 210, 255, 0.95)) drop-shadow(0 0 12px rgba(140, 130, 230, 0.7));
+  animation: wuxin-moon-float 3.6s ease-in-out infinite;
+}
+
+@keyframes wuxin-moon-float {
+  0%, 100% { transform: translateX(-50%) translateY(0) rotate(-8deg) scale(1); opacity: 0.85; }
+  50% { transform: translateX(-50%) translateY(-4px) rotate(8deg) scale(1.15); opacity: 1; }
+}
+
+/* 剑装饰（右上） */
+.wuxin-sword {
+  position: absolute;
+  top: -16px;
+  left: 62%;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 5px rgba(220, 210, 255, 0.95)) drop-shadow(0 0 10px rgba(140, 130, 230, 0.6));
+  animation: wuxin-sword-slash 1.8s ease-in-out infinite;
+}
+
+@keyframes wuxin-sword-slash {
+  0%, 100% { transform: translateX(-50%) rotate(-12deg) scale(1); opacity: 0.9; }
+  30% { transform: translateX(-50%) rotate(-32deg) scale(1.18); opacity: 1; }
+  55% { transform: translateX(-50%) rotate(18deg) scale(1.28); opacity: 1; }
+  80% { transform: translateX(-50%) rotate(30deg) scale(1.1); opacity: 1; }
+}
+
+/* 剑魂徽章 */
+.wuxin-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: linear-gradient(90deg, #6e6bff 0%, #b8a8ff 25%, #e8e0ff 50%, #b8a8ff 75%, #6e6bff 100%);
+  background-size: 220% 100%;
+  border-radius: 3px;
+  animation: wuxin-badge-shine 2.4s linear infinite;
+  box-shadow: 0 0 6px rgba(180, 168, 255, 0.75), 0 0 14px rgba(110, 107, 255, 0.5);
+  vertical-align: middle;
+  letter-spacing: 2px;
+  filter: none;
+  text-shadow: 0 0 4px rgba(80, 70, 180, 0.6);
+}
+
+@keyframes wuxin-badge-shine {
   0% { background-position: 0% 0; }
   100% { background-position: 220% 0; }
 }
