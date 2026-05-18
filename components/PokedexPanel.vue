@@ -89,10 +89,13 @@ async function loadPokedex() {
   if (loading.value) return;
   loading.value = true;
   try {
+    const userStore = useUserStore();
     const res = await $fetch<{
       code: number;
       data?: { list: PokedexCardItem[]; summary: Summary };
-    }>('/api/pokedex/list');
+    }>('/api/pokedex/list', {
+      headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
+    });
     if (res.code === 200 && res.data) {
       list.value = res.data.list;
       summary.value = res.data.summary;
