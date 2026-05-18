@@ -11,14 +11,15 @@ export interface BuildingConfig {
   prerequisite?: { buildingId: string; level: number }
 }
 
+// 2026-05-18: costMul 对齐前端 game/caveData.ts（聚宝盆 1.7→1.8；藏经阁/炼丹房/炼器房 2.2→2.5）
 export const BUILDINGS: Record<string, BuildingConfig> = {
-  spirit_array:   { id: 'spirit_array',   maxLevel: 20, baseCost: 1000,  costMul: 1.6, baseTime: 0,   output: { type: 'exp',          base: 144, perLevelMul: 1.17 } },
+  spirit_array:   { id: 'spirit_array',   maxLevel: 20, baseCost: 1000,  costMul: 1.6, baseTime: 0,   output: { type: 'exp',          base: 160, perLevelMul: 1.17 } },
   herb_field:     { id: 'herb_field',     maxLevel: 15, baseCost: 1500,  costMul: 1.7, baseTime: 0   },
-  treasure_pot:   { id: 'treasure_pot',   maxLevel: 20, baseCost: 2000,  costMul: 1.7, baseTime: 0,   output: { type: 'spirit_stone', base: 765, perLevelMul: 1.22 } },
+  treasure_pot:   { id: 'treasure_pot',   maxLevel: 20, baseCost: 2000,  costMul: 1.8, baseTime: 0,   output: { type: 'spirit_stone', base: 765, perLevelMul: 1.22 } },
   martial_hall:   { id: 'martial_hall',   maxLevel: 10, baseCost: 3000,  costMul: 2.5, baseTime: 60 },
-  sutra_pavilion: { id: 'sutra_pavilion', maxLevel: 10, baseCost: 5000,  costMul: 2.2, baseTime: 120, prerequisite: { buildingId: 'spirit_array', level: 5 } },
-  pill_room:      { id: 'pill_room',      maxLevel: 10, baseCost: 8000,  costMul: 2.2, baseTime: 180, prerequisite: { buildingId: 'herb_field', level: 5 } },
-  forge_room:     { id: 'forge_room',     maxLevel: 10, baseCost: 10000, costMul: 2.2, baseTime: 300, prerequisite: { buildingId: 'sutra_pavilion', level: 5 } },
+  sutra_pavilion: { id: 'sutra_pavilion', maxLevel: 10, baseCost: 5000,  costMul: 2.5, baseTime: 120, prerequisite: { buildingId: 'spirit_array', level: 5 } },
+  pill_room:      { id: 'pill_room',      maxLevel: 10, baseCost: 8000,  costMul: 2.5, baseTime: 180, prerequisite: { buildingId: 'herb_field', level: 5 } },
+  forge_room:     { id: 'forge_room',     maxLevel: 10, baseCost: 10000, costMul: 2.5, baseTime: 300, prerequisite: { buildingId: 'sutra_pavilion', level: 5 } },
 }
 
 export const HERBS: Record<string, { id: string; element: string | null; unlockPlotMaxLevel: number }> = {
@@ -78,8 +79,9 @@ export async function getChar(userId: any): Promise<any | null> {
   return rows.length > 0 ? rows[0] : null
 }
 
+// 2026-05-18: 末尾 *0.9 折扣对齐前端 game/caveData.ts getUpgradeCost；前端显示 = 后端真实扣费
 export function getUpgradeCost(b: BuildingConfig, level: number): number {
-  return Math.floor(b.baseCost * Math.pow(b.costMul, level - 1))
+  return Math.floor(b.baseCost * Math.pow(b.costMul, level - 1) * 0.9)
 }
 
 export function getUpgradeTime(b: BuildingConfig, level: number): number {
