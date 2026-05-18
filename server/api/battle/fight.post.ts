@@ -1155,12 +1155,21 @@ export default defineEventHandler(async (event) => {
       // v4.0: 历练经验分档打折 — T1×0.40 / T2-5×0.25 / T6-10×0.20 / T11-15×0.15 / T16+×0.12
       const getExpNerf = (t: number) => t <= 1 ? 0.4 : t <= 5 ? 0.25 : t <= 10 ? 0.2 : t <= 15 ? 0.15 : 0.12
       const expNerf = getExpNerf(mapData.tier)
-      const totalExp = Math.floor(result.totalExp * expMul * catchUpMul * dualCultMul * expNerf)
+      const expPostMul = expMul * catchUpMul * dualCultMul * expNerf
+      const totalExp = Math.floor(result.totalExp * expPostMul)
       const stoneTierBonus = mapData.tier <= 3 ? 1.2 : 1.0
       void stoneTierBonus
       // 怪物掉落灵石已停发；保留 totalStone 变量名以兼容下游 DB/前端接口，固定为 0
       const totalStone = 0
       const levelExp = totalExp
+
+      // 把战斗日志里 type='kill' 的「获得 N 修为」改成乘数折算后的真实入账值，
+      // 否则日志显示原始 36，统计入账只 +9，玩家会困惑（v4.0 expNerf 分档打折）
+      for (const log of result.logs) {
+        if (log.type === 'kill') {
+          log.text = log.text.replace(/获得 (\d+) 修为/g, (_m, n) => `获得 ${Math.floor(Number(n) * expPostMul)} 修为`)
+        }
+      }
 
       if (result.won && catchUpMul < 1.0 && result.totalExp > 0) {
         const diff = Math.floor((char.level || 1) - avgLevel)
